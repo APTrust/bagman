@@ -1,0 +1,16 @@
+{
+	"dev": {
+		"TarDirectory": "/Users/apd4n/tmp/",
+		"MaxFileSize": 200000,
+		"LogLevel": 4,
+		"Fetchers": 12,
+		"Workers": 4
+	},
+	"test": {
+		"TarDirectory": "/mnt/apt_data",
+		"MaxFileSize": 20000000000,
+		"LogLevel": 4,
+		"Fetchers": 12,
+		"Workers": 4
+	}
+}

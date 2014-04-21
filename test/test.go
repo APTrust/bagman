@@ -3,9 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
+	"encoding/json"
 	"os"
 	"regexp"
 	"sync"
+	"io/ioutil"
 	"path/filepath"
 	"github.com/APTrust/bagman"
 	"launchpad.net/goamz/aws"
@@ -29,6 +31,14 @@ var allBuckets = []string {
 	"aptrust.receiving.und.edu",
 	"aptrust.receiving.virginia.edu",
 	"aptrust.receiving.vt.edu",
+}
+
+type Config struct {
+	TarDirectory   string
+	MaxFileSize    int64
+	LogLevel       bagman.LogLevel
+	Fetchers       int
+	Workers        int
 }
 
 type S3File struct {
@@ -66,6 +76,10 @@ var bytesInS3 = int64(0)
 var bytesProcessed = int64(0)
 
 func main() {
+
+	configurations := loadConfig()
+	fmt.Println(configurations)
+
 
 	fetchers := 12
 	workers := 4
@@ -108,6 +122,22 @@ func main() {
 	printTotals()
 }
 
+
+func loadConfig() (configurations map[string]Config) {
+	file, err := ioutil.ReadFile("../config.json")
+	if err != nil {
+		fmt.Printf("Error reading config file: %v\n", err)
+		os.Exit(1)
+	}
+
+	//var config ConfigFile
+	err = json.Unmarshal(file, &configurations)
+	if err != nil{
+		fmt.Print("Error:", err)
+		os.Exit(1)
+	}
+	return configurations
+}
 
 // This runs as a go routine to fetch files from S3.
 func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, fetchChannel <-chan S3File) {
