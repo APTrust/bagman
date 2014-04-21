@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"sync"
 	"path/filepath"
 	"github.com/APTrust/bagman"
 	"launchpad.net/goamz/aws"
@@ -58,6 +59,7 @@ var maxFileSize = int64(200000)  // ~200k
 //var maxFileSize = int64(20000000000)  // ~20GB
 
 // Global vars. Should be moved to closure in results processing function
+var waitGroup sync.WaitGroup
 var succeeded = int64(0)
 var failed = int64(0)
 var bytesInS3 = int64(0)
@@ -75,10 +77,6 @@ func main() {
 	cleanUpChannel := make(chan TestResult, workerBufferSize)
 	resultsChannel := make(chan TestResult, workerBufferSize)
 
-	// completedChannel size is a hack. See TODO comment below.
-	// also, worker buffer size should be bigger. The workers are slacking!
-	completedChannel := make(chan bool, 1000)
-
 	fmt.Println("Checking S3 bucket lists")
 	bucketSummaries, err := CheckAllBuckets()
 	if err != nil {
@@ -94,40 +92,20 @@ func main() {
 	for i := 0; i < workers; i++ {
 		go doUnpack(resultsChannel, unpackChannel)
 		go printResult(cleanUpChannel, resultsChannel)
-		go doCleanUp(completedChannel, cleanUpChannel)
+		go doCleanUp(cleanUpChannel)
 	}
 
 	for _, bucketSummary := range bucketSummaries {
 		for _, key := range bucketSummary.Keys {
 			if key.Size < maxFileSize {
 				fetchChannel <- S3File{bucketSummary.BucketName, key}
+				waitGroup.Add(1)
 				fmt.Printf(">> Put %s into fetch queue\n", key.Key)
 			}
 		}
 	}
-
-	// TODO: Fix this. We don't start reading from the completed channel
-	// until the above for loop is done. By then, we have fetched just
-	// about everything. The completed channel fills up an N number of items,
-	// and then blocks all of the other channels.
-	//
-	// - completedChannel should have a limited size
-	// - it must know the number of items being fetched
-	// - its go routine must start BEFORE we start filling the fetchChannel
-	itemsToFetch := len(fetchChannel)
-	doneCount := 0
-	for _ = range completedChannel {
-		doneCount++
-		if doneCount == itemsToFetch {
-			break
-		}
-	}
-	fmt.Println("-----------------------------------------------------------")
-	fmt.Printf("Total Bags:       %d\n", succeeded + failed)
-	fmt.Printf("Succeeded:        %d\n", succeeded)
-	fmt.Printf("Failed:           %d\n", failed)
-	fmt.Printf("Bytes in S3:      %d\n", bytesInS3)
-	fmt.Printf("Bytes processed:  %d\n", bytesProcessed)
+	waitGroup.Wait()
+	printTotals()
 }
 
 
@@ -160,22 +138,29 @@ func doUnpack(resultsChannel chan<- TestResult, unpackChannel <-chan TestResult)
 
 // This runs as a go routine to remove the files we downloaded
 // and untarred.
-func doCleanUp(completedChannel chan<- bool, cleanUpChannel <-chan TestResult) {
+func doCleanUp(cleanUpChannel <-chan TestResult) {
 	for result := range cleanUpChannel {
 		fmt.Printf(">> Cleaning up %s\n", result.S3File.Key.Key)
-		if result.FetchResult.LocalTarFile == "" {
-			completedChannel <- true
-			return
-		}
-		errors := CleanUp(result.FetchResult.LocalTarFile)
-		if errors != nil && len(errors) > 0 {
-			fmt.Println("Errors cleaning up", result.FetchResult.LocalTarFile)
-			for e := range errors {
-				fmt.Println(e)
+		if result.FetchResult.LocalTarFile != "" {
+			errors := CleanUp(result.FetchResult.LocalTarFile)
+			if errors != nil && len(errors) > 0 {
+				fmt.Println("Errors cleaning up", result.FetchResult.LocalTarFile)
+				for e := range errors {
+					fmt.Println(e)
+				}
 			}
 		}
-		completedChannel <- true
+		waitGroup.Done()
 	}
+}
+
+func printTotals() {
+	fmt.Println("-----------------------------------------------------------")
+	fmt.Printf("Total Bags:       %d\n", succeeded + failed)
+	fmt.Printf("Succeeded:        %d\n", succeeded)
+	fmt.Printf("Failed:           %d\n", failed)
+	fmt.Printf("Bytes in S3:      %d\n", bytesInS3)
+	fmt.Printf("Bytes processed:  %d\n", bytesProcessed)
 }
 
 // This prints the result of the program's attempt to fetch, untar, unbag
