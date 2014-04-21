@@ -77,13 +77,13 @@ func main() {
 	cleanUpChannel := make(chan TestResult, workerBufferSize)
 	resultsChannel := make(chan TestResult, workerBufferSize)
 
-	fmt.Println("Checking S3 bucket lists")
+	bagman.LogDebug("Checking S3 bucket lists")
 	bucketSummaries, err := CheckAllBuckets()
 	if err != nil {
-		fmt.Println(err)
+		bagman.LogError(err)
 		return
 	}
-	fmt.Println("Got info on", len(bucketSummaries), "buckets")
+	bagman.LogDebug(fmt.Sprintf("Got info on %d buckets", len(bucketSummaries)))
 
 
 	for i := 0; i < fetchers; i++ {
@@ -100,7 +100,7 @@ func main() {
 			if key.Size < maxFileSize {
 				fetchChannel <- S3File{bucketSummary.BucketName, key}
 				waitGroup.Add(1)
-				fmt.Printf(">> Put %s into fetch queue\n", key.Key)
+				bagman.LogDebug(">> Put %s into fetch queue\n", key.Key)
 			}
 		}
 	}
@@ -112,7 +112,7 @@ func main() {
 // This runs as a go routine to fetch files from S3.
 func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, fetchChannel <-chan S3File) {
 	for s3File := range fetchChannel {
-		fmt.Printf(">> Fetching %s\n", s3File.Key.Key)
+		bagman.LogDebug(">> Fetching %s\n", s3File.Key.Key)
 		fetchResult := Fetch(s3File.BucketName, s3File.Key)
 		if fetchResult.Error != nil {
 			resultsChannel <- TestResult{&s3File, fetchResult.Error, fetchResult, nil, nil}
@@ -126,7 +126,7 @@ func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, 
 // This runs as a go routine to untar files downloaded from S3.
 func doUnpack(resultsChannel chan<- TestResult, unpackChannel <-chan TestResult) {
 	for result := range unpackChannel {
-		fmt.Printf(">> Unpacking %s\n", result.S3File.Key.Key)
+		bagman.LogDebug(fmt.Sprintf(">> Unpacking %s\n", result.S3File.Key.Key))
 		TestBagFile(&result)
 		if result.Error != nil {
 			resultsChannel <- result
@@ -140,13 +140,13 @@ func doUnpack(resultsChannel chan<- TestResult, unpackChannel <-chan TestResult)
 // and untarred.
 func doCleanUp(cleanUpChannel <-chan TestResult) {
 	for result := range cleanUpChannel {
-		fmt.Printf(">> Cleaning up %s\n", result.S3File.Key.Key)
+		bagman.LogDebug(fmt.Sprintf(">> Cleaning up %s\n", result.S3File.Key.Key))
 		if result.FetchResult.LocalTarFile != "" {
 			errors := CleanUp(result.FetchResult.LocalTarFile)
 			if errors != nil && len(errors) > 0 {
-				fmt.Println("Errors cleaning up", result.FetchResult.LocalTarFile)
+				bagman.LogWarning("Errors cleaning up", result.FetchResult.LocalTarFile)
 				for e := range errors {
-					fmt.Println(e)
+					bagman.LogWarning(e)
 				}
 			}
 		}
@@ -155,12 +155,12 @@ func doCleanUp(cleanUpChannel <-chan TestResult) {
 }
 
 func printTotals() {
-	fmt.Println("-----------------------------------------------------------")
-	fmt.Printf("Total Bags:       %d\n", succeeded + failed)
-	fmt.Printf("Succeeded:        %d\n", succeeded)
-	fmt.Printf("Failed:           %d\n", failed)
-	fmt.Printf("Bytes in S3:      %d\n", bytesInS3)
-	fmt.Printf("Bytes processed:  %d\n", bytesProcessed)
+	bagman.LogInfo("-----------------------------------------------------------")
+	bagman.LogInfo(fmt.Sprintf("Total Bags:       %d", succeeded + failed))
+	bagman.LogInfo(fmt.Sprintf("Succeeded:        %d", succeeded))
+	bagman.LogInfo(fmt.Sprintf("Failed:           %d", failed))
+	bagman.LogInfo(fmt.Sprintf("Bytes in S3:      %d", bytesInS3))
+	bagman.LogInfo(fmt.Sprintf("Bytes processed:  %d", bytesProcessed))
 }
 
 // This prints the result of the program's attempt to fetch, untar, unbag
@@ -171,50 +171,50 @@ func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestRes
 		fmt.Println("")
 		if(result.Error != nil) {
 			failed++
-			fmt.Printf("%s [ERROR] -> %s\n", result.S3File.Key.Key, result.Error)
+			bagman.LogError(fmt.Sprintf("%s (ERROR) -> %s", result.S3File.Key.Key, result.Error))
 		} else {
 			succeeded++
 			bytesProcessed += result.S3File.Key.Size
-			fmt.Printf("%s [OK]\n", result.S3File.Key.Key)
+			bagman.LogInfo(fmt.Sprintf("%s (OK)", result.S3File.Key.Key))
 		}
 		printFetchResult(result.FetchResult)
 		printTarResult(result.TarResult)
 		printBagReadResult(result.BagReadResult)
-		fmt.Println("--- End of file", succeeded + failed, "---")
+		bagman.LogInfo("--- End of file", succeeded + failed, "---")
 		cleanUpChannel <- result
 	}
 }
 
 func printFetchResult(result *bagman.FetchResult) {
 	if result == nil {
-		fmt.Println("  Could not fetch tar file from S3")
+		bagman.LogInfo("  Could not fetch tar file from S3")
 	} else {
-		fmt.Println("  Results of fetch from S3")
-		fmt.Println("    Remote md5:  ", result.RemoteMd5)
-		fmt.Println("    Local md5:   ", result.LocalMd5)
-		fmt.Println("    Error:       ", result.Error)
-		fmt.Println("    Warning:     ", result.Warning)
+		bagman.LogInfo("  Results of fetch from S3")
+		bagman.LogInfo("    Remote md5:  ", result.RemoteMd5)
+		bagman.LogInfo("    Local md5:   ", result.LocalMd5)
+		bagman.LogInfo("    Error:       ", result.Error)
+		bagman.LogInfo("    Warning:     ", result.Warning)
 	}
 }
 
 func printTarResult(result *bagman.TarResult) {
 	if result == nil {
-		fmt.Println("  Could not untar file")
+		bagman.LogInfo("  Could not untar file")
 	} else {
-		fmt.Println("  Results of untar")
-		fmt.Println("    Input file:  ", result.InputFile)
-		fmt.Println("    Output dir:   ", result.OutputDir)
-		fmt.Println("    Error:       ", result.Error)
+		bagman.LogInfo("  Results of untar")
+		bagman.LogInfo("    Input file:  ", result.InputFile)
+		bagman.LogInfo("    Output dir:   ", result.OutputDir)
+		bagman.LogInfo("    Error:       ", result.Error)
 		if result.Warnings != nil && len(result.Warnings) > 0 {
-			fmt.Println("    Warnings:")
+			bagman.LogWarning("    Warnings:")
 			for _, warning := range result.Warnings {
-				fmt.Println("     ", warning)
+				bagman.LogWarning("     ", warning)
 			}
 		}
 		if result.FilesUnpacked != nil && len(result.FilesUnpacked) > 0 {
-			fmt.Println("    Files:   ")
+			bagman.LogInfo("    Files:   ")
 			for _, file:= range result.FilesUnpacked {
-				fmt.Println("     ", file)
+				bagman.LogInfo("     ", file)
 			}
 		}
 	}
@@ -222,26 +222,26 @@ func printTarResult(result *bagman.TarResult) {
 
 func printBagReadResult(result *bagman.BagReadResult) {
 	if result == nil {
-		fmt.Println("  Could not read bag")
+		bagman.LogInfo("  Could not read bag")
 	} else {
-		fmt.Println("  Results of bag read")
-		fmt.Println("    Path:       ", result.Path)
-		fmt.Println("    Error:      ", result.Error)
+		bagman.LogInfo("  Results of bag read")
+		bagman.LogInfo("    Path:       ", result.Path)
+		bagman.LogInfo("    Error:      ", result.Error)
 		if result.ChecksumErrors != nil {
 			for _, err := range result.ChecksumErrors {
-				fmt.Println("    Checksum Error:", err)
+				bagman.LogWarning("    Checksum Error:", err)
 			}
 		}
 		if result.Files != nil {
-			fmt.Println("    Files")
+			bagman.LogInfo("    Files")
 			for _, file := range result.Files {
-				fmt.Println("      ", file)
+				bagman.LogInfo("      ", file)
 			}
 		}
 		if result.Tags != nil {
-			fmt.Println("    Tags")
+			bagman.LogInfo("    Tags")
 			for _, tag := range result.Tags {
-				fmt.Printf("      %s %s\n", tag.Label(), tag.Value())
+				bagman.LogInfo(fmt.Sprintf("      %s %s", tag.Label(), tag.Value()))
 			}
 		}
 	}
