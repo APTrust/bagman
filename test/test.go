@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"flag"
 	"encoding/json"
 	"os"
 	"regexp"
@@ -69,22 +70,20 @@ var maxFileSize = int64(200000)  // ~200k
 //var maxFileSize = int64(20000000000)  // ~20GB
 
 // Global vars. Should be moved to closure in results processing function
+var config Config
 var waitGroup sync.WaitGroup
 var succeeded = int64(0)
 var failed = int64(0)
 var bytesInS3 = int64(0)
 var bytesProcessed = int64(0)
 
+
 func main() {
 
-	configurations := loadConfig()
-	fmt.Println(configurations)
+	config = loadRequestedConfig()
 
-
-	fetchers := 12
-	workers := 4
-	fetcherBufferSize := fetchers * 4
-	workerBufferSize := workers * 2
+	fetcherBufferSize := config.Fetchers * 4
+	workerBufferSize := config.Workers * 2
 
 	fetchChannel := make(chan S3File, fetcherBufferSize)
 	unpackChannel := make(chan TestResult, workerBufferSize)
@@ -100,10 +99,10 @@ func main() {
 	bagman.LogDebug(fmt.Sprintf("Got info on %d buckets", len(bucketSummaries)))
 
 
-	for i := 0; i < fetchers; i++ {
+	for i := 0; i < config.Fetchers; i++ {
 		go doFetch(unpackChannel, resultsChannel, fetchChannel)
 	}
-	for i := 0; i < workers; i++ {
+	for i := 0; i < config.Workers; i++ {
 		go doUnpack(resultsChannel, unpackChannel)
 		go printResult(cleanUpChannel, resultsChannel)
 		go doCleanUp(cleanUpChannel)
@@ -111,7 +110,7 @@ func main() {
 
 	for _, bucketSummary := range bucketSummaries {
 		for _, key := range bucketSummary.Keys {
-			if key.Size < maxFileSize {
+			if key.Size < config.MaxFileSize {
 				fetchChannel <- S3File{bucketSummary.BucketName, key}
 				waitGroup.Add(1)
 				bagman.LogDebug(">> Put %s into fetch queue\n", key.Key)
@@ -122,15 +121,33 @@ func main() {
 	printTotals()
 }
 
+func loadRequestedConfig() (config Config){
+	requestedConfig := flag.String("config", "", "configuration to run")
+	flag.Parse()
+	configurations := loadConfigFile()
+	config, configExists := configurations[*requestedConfig]
+	if requestedConfig == nil || !configExists  {
+		printConfigHelp(*requestedConfig, configurations)
+		os.Exit(1)
+	}
+	return config
+}
 
-func loadConfig() (configurations map[string]Config) {
+func printConfigHelp(requestedConfig string, configurations map[string]Config) {
+	fmt.Printf("Unrecognized config '%s'\n", requestedConfig)
+	fmt.Println("Please specify one of the following configurations:")
+	for name, _ := range configurations {
+		fmt.Println(name)
+	}
+	os.Exit(1)
+}
+
+func loadConfigFile() (configurations map[string]Config) {
 	file, err := ioutil.ReadFile("../config.json")
 	if err != nil {
 		fmt.Printf("Error reading config file: %v\n", err)
 		os.Exit(1)
 	}
-
-	//var config ConfigFile
 	err = json.Unmarshal(file, &configurations)
 	if err != nil{
 		fmt.Print("Error:", err)
