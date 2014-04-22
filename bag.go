@@ -20,8 +20,6 @@ type TarResult struct {
 	FilesUnpacked   []string
 }
 
-const FILE      = '0'
-const DIRECTORY = '5'
 
 // Untars the file at the specified path and returns a list
 // of files that were untarred from the archive. Check
@@ -71,7 +69,7 @@ func Untar(path string) (result *TarResult) {
 
 		// Copy the file, if it's an actual file. Otherwise, ignore it and record
 		// a warning. The bag library does not deal with items like symlinks.
-		if header.Typeflag == FILE {
+		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
 			outputWriter, err := os.OpenFile(outputPath, os.O_CREATE | os.O_WRONLY, 0644)
 			if err != nil {
 				tarResult.Error = err
@@ -81,7 +79,7 @@ func Untar(path string) (result *TarResult) {
 			io.Copy(outputWriter, tarReader);
 			outputRelativePath := strings.Replace(outputPath, tarResult.OutputDir + "/", "", 1)
 			tarResult.FilesUnpacked = append(tarResult.FilesUnpacked, outputRelativePath)
-		} else if header.Typeflag != DIRECTORY {
+		} else if header.Typeflag != tar.TypeDir {
 			tarResult.Warnings = append(tarResult.Warnings,
 				fmt.Sprintf("Ignoring item %s of type %c because it's neither a file nor a directory",
 					header.Name, header.Typeflag))
