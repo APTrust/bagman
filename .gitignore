@@ -24,3 +24,10 @@ _testmain.go
 
 # Emacs detritus
 *~
+
+# Test data that might have been untarred and not cleaned up
+testdata/sample_bad_checksums/
+testdata/sample_good/
+testdata/sample_no_bag_info/
+testdata/sample_missing_data_file/
+testdata/sample_no_bagit/
