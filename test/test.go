@@ -36,6 +36,7 @@ var allBuckets = []string {
 
 type Config struct {
 	TarDirectory   string
+	LogDirectory   string
 	MaxFileSize    int64
 	LogLevel       bagman.LogLevel
 	Fetchers       int
@@ -61,13 +62,6 @@ type BucketSummary struct {
 	MaxFileSize    int64
 }
 
-// Use these settings when running locally
-var outputDir = "/Users/apd4n/tmp/"
-var maxFileSize = int64(200000)  // ~200k
-
-// Use these settings on S3
-//var outputDir = "/mnt/apt_data"
-//var maxFileSize = int64(20000000000)  // ~20GB
 
 // Global vars. Should be moved to closure in results processing function
 var config Config
@@ -81,6 +75,8 @@ var bytesProcessed = int64(0)
 func main() {
 
 	config = loadRequestedConfig()
+	logFile := bagman.InitLogger(config.LogDirectory)
+	printConfig(config, logFile)
 
 	fetcherBufferSize := config.Fetchers * 4
 	workerBufferSize := config.Workers * 2
@@ -133,6 +129,17 @@ func loadRequestedConfig() (config Config){
 	return config
 }
 
+func printConfig(config Config, logFile string) {
+	fmt.Println("Running with the following configuration:")
+	fmt.Printf("    Tar Directory: %s\n", config.TarDirectory)
+	fmt.Printf("    Log Directory: %s\n", config.LogDirectory)
+	fmt.Printf("    Log Level:     %d\n", config.LogLevel)
+	fmt.Printf("    Max File Size: %d\n", config.MaxFileSize)
+	fmt.Printf("    Fetchers:      %d\n", config.Fetchers)
+	fmt.Printf("    Workers:       %d\n", config.Workers)
+	fmt.Printf("Output will be logged to %s\n", logFile)
+}
+
 func printConfigHelp(requestedConfig string, configurations map[string]Config) {
 	fmt.Printf("Unrecognized config '%s'\n", requestedConfig)
 	fmt.Println("Please specify one of the following configurations:")
@@ -150,7 +157,7 @@ func loadConfigFile() (configurations map[string]Config) {
 	}
 	err = json.Unmarshal(file, &configurations)
 	if err != nil{
-		fmt.Print("Error:", err)
+		fmt.Print("Error parsing JSON from config file:", err)
 		os.Exit(1)
 	}
 	return configurations
@@ -215,7 +222,6 @@ func printTotals() {
 func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestResult) {
 	for result := range resultsChannel {
 		bytesInS3 += result.S3File.Key.Size
-		fmt.Println("")
 		if(result.Error != nil) {
 			failed++
 			bagman.LogError(fmt.Sprintf("%s (ERROR) -> %s", result.S3File.Key.Key, result.Error))
@@ -227,7 +233,7 @@ func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestRes
 		printFetchResult(result.FetchResult)
 		printTarResult(result.TarResult)
 		printBagReadResult(result.BagReadResult)
-		bagman.LogInfo("--- End of file", succeeded + failed, "---")
+		bagman.LogInfo("--- End of file", succeeded + failed, "---\n")
 		cleanUpChannel <- result
 	}
 }
@@ -304,7 +310,7 @@ func Fetch(bucketName string, key s3.Key) (result *bagman.FetchResult) {
 	}
 	// TODO: We fetched this bucket before. Do we need to fetch it again?
 	bucket := client.Bucket(bucketName)
-	tarFilePath := filepath.Join(outputDir, key.Key)
+	tarFilePath := filepath.Join(config.TarDirectory, key.Key)
 	return bagman.FetchToFile(bucket, key, tarFilePath)
 }
 
