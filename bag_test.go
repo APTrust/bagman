@@ -29,10 +29,13 @@ var goodFiles []string = []string{
 }
 var allFiles []string = append(badFiles, goodFiles ...)
 
+// Setup to run before tests
 func setup() {
 
 }
 
+// Teardown to run after tests. This deletes the directories
+// that were created when tar files were unpacked.
 func teardown() {
 	files, err := ioutil.ReadDir(testDataPath)
 	if err != nil {
@@ -50,6 +53,9 @@ func teardown() {
 	}
 }
 
+// Check to see if the label and value of a tag match what
+// we're expecting. If the label or value does not match
+// what's expected, return an error. Otherwise return nil.
 func assertTagMatch(tag bagins.TagField, expectedLabel string, expectedValue string) (err error) {
 	if tag.Label() != expectedLabel || tag.Value() != expectedValue {
 		return errors.New(fmt.Sprintf("Expected tag '%s: %s', got '%s: %s'",
@@ -84,21 +90,24 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 		t.Errorf("Expected 6 tags, got %d", len(result.Tags))
 	}
 	// TODO: This empty tag should not be here.
-	if err := assertTagMatch(result.Tags[0], "", ""); err != nil { t.Error(err) }
+	// if err := assertTagMatch(result.Tags[0], "", ""); err != nil { t.Error(err) }
 
-	err := assertTagMatch(result.Tags[1], "Source-Organization", "virginia.edu")
+	err := assertTagMatch(result.Tags[0], "Source-Organization", "virginia.edu")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[2], "Bagging-Date", "2014-04-14T11:55:26.17-0400")
+	err = assertTagMatch(result.Tags[1], "Bagging-Date", "2014-04-14T11:55:26.17-0400")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[3], "Bag-Count", "1 of 1")
+	err = assertTagMatch(result.Tags[2], "Bag-Count", "1 of 1")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[4], "Bag-Group-Identifier", "")
+	err = assertTagMatch(result.Tags[3], "Bag-Group-Identifier", "")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[5], "Internal-Sender-Description", "")
+	err = assertTagMatch(result.Tags[4], "Internal-Sender-Description", "")
+	if err != nil { t.Error(err) }
+
+	err = assertTagMatch(result.Tags[5], "Internal-Sender-Identifier", "")
 	if err != nil { t.Error(err) }
 
 	if len(result.ChecksumErrors) != 0 {
