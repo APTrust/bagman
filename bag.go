@@ -107,7 +107,10 @@ func ReadBag(path string) (result *BagReadResult) {
 	bagReadResult := new(BagReadResult)
 	bagReadResult.Path = path
 
-	bag, err := bagins.ReadBag(path, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}, "") //"manifest-md5.txt")
+	// Final param to bagins.ReadBag is the name of the checksum file.
+	// That param defaults to manifest-md5.txt, which is what it
+	// should be for bags we're fetching from the S3 receiving buckets.
+	bag, err := bagins.ReadBag(path, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}, "")
 	if err != nil {
 		bagReadResult.Error = err
 		return bagReadResult
@@ -118,8 +121,21 @@ func ReadBag(path string) (result *BagReadResult) {
 		bagReadResult.Error = err
 		return bagReadResult
 	}
+
+	errMsg := ""
 	bagReadResult.Files = make([]string, len(fileNames))
-	copy(bagReadResult.Files, fileNames)
+	hasBagit := false
+	hasMd5Manifest := false
+	for index, fileName := range fileNames {
+		bagReadResult.Files[index] = fileName
+		if fileName == "bagit.txt" {
+			hasBagit = true
+		} else if fileName == "manifest-md5.txt" {
+			hasMd5Manifest = true
+		}
+	}
+	if !hasBagit { errMsg += "Bag is missing bagit.txt file. " }
+	if !hasMd5Manifest { errMsg += "Bag is missing manifest-md5.txt file. " }
 
 	bagInfo, err := bag.BagInfo()
 	if err != nil {
@@ -132,9 +148,14 @@ func ReadBag(path string) (result *BagReadResult) {
 
 	checksumErrors := bag.Manifest.RunChecksums()
 	if len(checksumErrors) > 0 {
-		bagReadResult.Error = errors.New("One or more checksums were invalid.")
+		errMsg += "One or more checksums are invalid."
 		bagReadResult.ChecksumErrors = make([]error, len(checksumErrors))
 		copy(bagReadResult.ChecksumErrors, checksumErrors)
 	}
+
+	if errMsg != "" {
+		bagReadResult.Error = errors.New(errMsg)
+	}
+
 	return bagReadResult
 }
