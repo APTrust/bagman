@@ -86,19 +86,19 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	// TODO: This empty tag should not be here.
 	if err := assertTagMatch(result.Tags[0], "", ""); err != nil { t.Error(err) }
 
-	err := assertTagMatch(result.Tags[1], "Source-Organization:", "virginia.edu")
+	err := assertTagMatch(result.Tags[1], "Source-Organization", "virginia.edu")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[2], "Bagging-Date:", "2014-04-14T11:55:26.17-0400")
+	err = assertTagMatch(result.Tags[2], "Bagging-Date", "2014-04-14T11:55:26.17-0400")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[3], "Bag-Count:", "1 of 1")
+	err = assertTagMatch(result.Tags[3], "Bag-Count", "1 of 1")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[4], "Bag-Group-Identifier:", "")
+	err = assertTagMatch(result.Tags[4], "Bag-Group-Identifier", "")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[5], "Internal-Sender-Description:", "")
+	err = assertTagMatch(result.Tags[5], "Internal-Sender-Description", "")
 	if err != nil { t.Error(err) }
 
 	if len(result.ChecksumErrors) != 0 {
