@@ -18,6 +18,7 @@ var sampleGood string = filepath.Join(testDataPath, "sample_good.tar")
 var sampleMissingDataFile string = filepath.Join(testDataPath, "sample_missing_data_file.tar")
 var sampleNoBagInfo string = filepath.Join(testDataPath, "sample_no_bag_info.tar")
 var sampleNoBagit string = filepath.Join(testDataPath, "sample_no_bagit.tar")
+var invalidTarFile string = filepath.Join(testDataPath, "not_a_tar_file.tar")
 var badFiles []string = []string{
 	sampleBadChecksums,
 	sampleMissingDataFile,
@@ -64,6 +65,31 @@ func assertTagMatch(tag bagins.TagField, expectedLabel string, expectedValue str
 	return nil
 }
 
+// Make sure we can untar properly formatted tar files.
+func TestUntarWorksOnGoodFiles(t *testing.T) {
+	setup()
+	defer teardown()
+	for _, tarFile := range allFiles {
+		result := bagman.Untar(tarFile)
+		if result.Error != nil {
+			t.Errorf("Error untarring %s: %v", tarFile, result.Error)
+		}
+		if len(result.FilesUnpacked) == 0 {
+			t.Errorf("Untar did not seem to unpack anything from %s", tarFile)
+		}
+	}
+}
+
+// Make sure Untar doesn't blow up when it gets an invalid
+// or corrupt tar file. It should return a TarResult with an
+// Error property.
+func TestUntarSetsErrorOnBadFile(t *testing.T) {
+	result := bagman.Untar(invalidTarFile)
+	if result.Error == nil {
+		t.Errorf("Untar should have reported an error about a bad tar file, but did not.")
+	}
+}
+
 // Make sure we can parse a bag that is known to be good, and that we
 // get the right data in the results. This is not a strict unit test,
 // since it depends on bagman.Untar succeeding.
@@ -81,16 +107,11 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	if result.Error != nil {
 		t.Errorf("Unexpected error in read result: %v", result.Error)
 	}
-	// Note that we're testing to see not only that the tags are present,
-	// but that they are in the correct order.
-	//
-	// TODO: Bagins is returning one extra empty tag as the first element in every tag list
-	// from every bag file. We need to fix that.
+
+	// All tags should be present and in the correct order
 	if len(result.Tags) != 6 {
 		t.Errorf("Expected 6 tags, got %d", len(result.Tags))
 	}
-	// TODO: This empty tag should not be here.
-	// if err := assertTagMatch(result.Tags[0], "", ""); err != nil { t.Error(err) }
 
 	err := assertTagMatch(result.Tags[0], "Source-Organization", "virginia.edu")
 	if err != nil { t.Error(err) }
@@ -116,9 +137,14 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	}
 }
 
+// Make sure each of the bad bags produces an error in the BagReadResult.
+// The underlying bagins library prints some warnings to stderr, so we
+// include a note that those are expected.
 func TestBadBagReturnsError(t *testing.T) {
 	setup()
 	defer teardown()
+	fmt.Fprintf(os.Stderr, "Warnings below about missing bag-info/bagit files are expected.\n")
+	fmt.Fprintf(os.Stderr, "Tests are checking to see if the bag reader handles these cases.\n\n")
 	for _, tarFile := range badFiles {
 		tarResult := bagman.Untar(tarFile)
 		result := bagman.ReadBag(tarResult.OutputDir)
@@ -127,4 +153,5 @@ func TestBadBagReturnsError(t *testing.T) {
 				tarResult.OutputDir)
 		}
 	}
+	fmt.Fprintf(os.Stderr, "\n")
 }

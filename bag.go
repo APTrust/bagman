@@ -126,16 +126,20 @@ func ReadBag(path string) (result *BagReadResult) {
 	bagReadResult.Files = make([]string, len(fileNames))
 	hasBagit := false
 	hasMd5Manifest := false
+	hasDataFiles := false
 	for index, fileName := range fileNames {
 		bagReadResult.Files[index] = fileName
 		if fileName == "bagit.txt" {
 			hasBagit = true
 		} else if fileName == "manifest-md5.txt" {
 			hasMd5Manifest = true
+		} else if strings.HasPrefix(fileName, "data/") {
+			hasDataFiles = true
 		}
 	}
 	if !hasBagit { errMsg += "Bag is missing bagit.txt file. " }
 	if !hasMd5Manifest { errMsg += "Bag is missing manifest-md5.txt file. " }
+	if !hasDataFiles { errMsg += "Bag's data directory is missing or empty. " }
 
 	bagInfo, err := bag.BagInfo()
 	if err != nil {
