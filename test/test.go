@@ -15,6 +15,7 @@ import (
 	"launchpad.net/goamz/s3"
 )
 
+// These are all the buckets we want to check.
 var allBuckets = []string {
 	"aptrust.receiving.columbia.edu",
 	"aptrust.receiving.iub.edu",
@@ -63,15 +64,47 @@ type BucketSummary struct {
 }
 
 
-// Global vars. Should be moved to closure in results processing function
+// Global vars.
 var config Config
 var waitGroup sync.WaitGroup
+
+// TODO: Move these out of global namespace.
+// It's probably not even safe to have multiple
+// go routines updated these vars without synchronization.
 var succeeded = int64(0)
 var failed = int64(0)
 var bytesInS3 = int64(0)
 var bytesProcessed = int64(0)
 
-
+// test.go
+//
+// Downloads and tests tarred bag files from S3.
+//
+// Usage:
+//
+// $ go run test.go -config=<some config>
+//
+// Configuration options are defined in config.json,
+// in this project's top-level directory. You can see
+// a list of available configurations by running:
+//
+// $ go run test.go
+//
+// This program does the following:
+//
+// 1. Scans all the receiving buckets in S3.
+// 2. Downloads all of the tar files in those buckets.
+// 3. Untars the files.
+// 4. Parses the untarred files, extracting tags and
+//    verifying md5 sums.
+// 5. Logs a summary for each tar file, which includes
+//    information about whether the file was successfully
+//    fetched, untarred, parsed and verified.
+// 6. Deletes all of the downloaded and untarred files.
+//
+// You'll find the log in the directory specified in
+// the configuration. See config.json for configuration
+// options.
 func main() {
 
 	config = loadRequestedConfig()
@@ -117,6 +150,11 @@ func main() {
 	printTotals()
 }
 
+// This returns the configuration that the user requested.
+// If the user did not specify any configuration (using the
+// -config flag), or if the specified configuration cannot
+// be found, this prints a help message and terminates the
+// program.
 func loadRequestedConfig() (config Config){
 	requestedConfig := flag.String("config", "", "configuration to run")
 	flag.Parse()
@@ -129,6 +167,7 @@ func loadRequestedConfig() (config Config){
 	return config
 }
 
+// This prints the current configuration to stdout.
 func printConfig(config Config, logFile string) {
 	fmt.Println("Running with the following configuration:")
 	fmt.Printf("    Tar Directory: %s\n", config.TarDirectory)
@@ -140,6 +179,8 @@ func printConfig(config Config, logFile string) {
 	fmt.Printf("Output will be logged to %s\n", logFile)
 }
 
+// This prints a message to stdout describing how to specify
+// a valid configuration.
 func printConfigHelp(requestedConfig string, configurations map[string]Config) {
 	fmt.Printf("Unrecognized config '%s'\n", requestedConfig)
 	fmt.Println("Please specify one of the following configurations:")
@@ -149,6 +190,8 @@ func printConfigHelp(requestedConfig string, configurations map[string]Config) {
 	os.Exit(1)
 }
 
+// This function reads the config.json file and returns a list of
+// available configurations.
 func loadConfigFile() (configurations map[string]Config) {
 	file, err := ioutil.ReadFile("../config.json")
 	if err != nil {
@@ -208,6 +251,8 @@ func doCleanUp(cleanUpChannel <-chan TestResult) {
 	}
 }
 
+// This prints to the log a summary of the total number of bags
+// fetched and processed. This is printed at the end of the log.
 func printTotals() {
 	bagman.LogInfo("-----------------------------------------------------------")
 	bagman.LogInfo(fmt.Sprintf("Total Bags:       %d", succeeded + failed))
@@ -217,8 +262,8 @@ func printTotals() {
 	bagman.LogInfo(fmt.Sprintf("Bytes processed:  %d", bytesProcessed))
 }
 
-// This prints the result of the program's attempt to fetch, untar, unbag
-// and verify an individual S3 tar file.
+// This prints to the log the result of the program's attempt to fetch,
+// untar, unbag and verify an individual S3 tar file.
 func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestResult) {
 	for result := range resultsChannel {
 		bytesInS3 += result.S3File.Key.Size
@@ -238,6 +283,8 @@ func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestRes
 	}
 }
 
+// This prints to the log all the information captured during the
+// attempt to retrieve a single tar file from S3.
 func printFetchResult(result *bagman.FetchResult) {
 	if result == nil {
 		bagman.LogInfo("  Could not fetch tar file from S3")
@@ -250,6 +297,8 @@ func printFetchResult(result *bagman.FetchResult) {
 	}
 }
 
+// This prints to the log all the data captured during the
+// process of untarring a single bag.
 func printTarResult(result *bagman.TarResult) {
 	if result == nil {
 		bagman.LogInfo("  Could not untar file")
@@ -273,6 +322,10 @@ func printTarResult(result *bagman.TarResult) {
 	}
 }
 
+// This prints to the log a summary of all the info we've
+// collected about a bag: whether it was retrieved,
+// unpacked, and verified. If the process failed, the printed
+// result will contain information about where the process failed.
 func printBagReadResult(result *bagman.BagReadResult) {
 	if result == nil {
 		bagman.LogInfo("  Could not read bag")
@@ -380,8 +433,8 @@ func GetMaxFileSize(keys []s3.Key) (maxsize int64) {
 	return maxsize
 }
 
-// Runs tests on the bag file at path and prints the
-// results to stdout.
+// Runs tests on the bag file at path and returns information about
+// whether it was successfully unpacked, valid and complete.
 func TestBagFile(result *TestResult) {
 	result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile)
 	if result.TarResult.Error != nil {
