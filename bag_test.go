@@ -3,7 +3,6 @@ package bagman_test
 import (
 	"testing"
 	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagins"
 	"errors"
 	"os"
 	"fmt"
@@ -57,10 +56,10 @@ func teardown() {
 // Check to see if the label and value of a tag match what
 // we're expecting. If the label or value does not match
 // what's expected, return an error. Otherwise return nil.
-func assertTagMatch(tag bagins.TagField, expectedLabel string, expectedValue string) (err error) {
-	if tag.Label() != expectedLabel || tag.Value() != expectedValue {
+func assertTagMatch(tag bagman.Tag, expectedLabel string, expectedValue string) (err error) {
+	if tag.Label != expectedLabel || tag.Value != expectedValue {
 		return errors.New(fmt.Sprintf("Expected tag '%s: %s', got '%s: %s'",
-			expectedLabel, expectedValue, tag.Label(), tag.Value()))
+			expectedLabel, expectedValue, tag.Label, tag.Value))
 	}
 	return nil
 }

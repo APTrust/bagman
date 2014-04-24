@@ -89,12 +89,19 @@ func Untar(path string) (result *TarResult) {
 	return tarResult
 }
 
+// This Tag struct is essentially the same as the bagins
+// TagField struct, but its properties are public and can
+// be easily serialized to / deserialized from JSON.
+type Tag struct {
+	Label string
+	Value string
+}
 
 type BagReadResult struct {
 	Path             string
 	Files            []string
 	Error            error
-	Tags             []bagins.TagField
+	Tags             []Tag
 	ChecksumErrors   []error
 }
 
@@ -147,8 +154,12 @@ func ReadBag(path string) (result *BagReadResult) {
 		return bagReadResult
 	}
 	tagFields := bagInfo.Data.Fields()
-	bagReadResult.Tags = make([]bagins.TagField, len(tagFields))
-	copy(bagReadResult.Tags, tagFields)
+	bagReadResult.Tags = make([]Tag, len(tagFields))
+
+	for index, tagField := range tagFields {
+		tag := Tag{ tagField.Label(), tagField.Value() }
+		bagReadResult.Tags[index] = tag
+	}
 
 	checksumErrors := bag.Manifest.RunChecksums()
 	if len(checksumErrors) > 0 {
