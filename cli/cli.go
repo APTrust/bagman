@@ -8,10 +8,11 @@ import (
 	"os"
 	"regexp"
 	"sync"
-	"io/ioutil"
+//	"io/ioutil"
 	"log"
 	"path/filepath"
 	"github.com/APTrust/bagman"
+//	"github.com/APTrust/bagman/cli"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
 )
@@ -36,14 +37,6 @@ var allBuckets = []string {
 	"aptrust.receiving.vt.edu",
 }
 
-type Config struct {
-	TarDirectory   string
-	LogDirectory   string
-	MaxFileSize    int64
-	LogLevel       bagman.LogLevel
-	Fetchers       int
-	Workers        int
-}
 
 type S3File struct {
 	BucketName     string
@@ -66,7 +59,7 @@ type BucketSummary struct {
 
 
 // Global vars.
-var config Config
+var config bagman.Config
 var waitGroup sync.WaitGroup
 var jsonLog *log.Logger
 var messageLog *log.Logger
@@ -110,9 +103,11 @@ var bytesProcessed = int64(0)
 // options.
 func main() {
 
-	config = loadRequestedConfig()
+	requestedConfig := flag.String("config", "", "configuration to run")
+	flag.Parse()
+	config = bagman.LoadRequestedConfig(requestedConfig)
 	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory)
-	printConfig(config)
+	bagman.PrintConfig(config)
 
 	fetcherBufferSize := config.Fetchers * 4
 	workerBufferSize := config.Workers * 2
@@ -153,61 +148,6 @@ func main() {
 	printTotals()
 }
 
-// This returns the configuration that the user requested.
-// If the user did not specify any configuration (using the
-// -config flag), or if the specified configuration cannot
-// be found, this prints a help message and terminates the
-// program.
-func loadRequestedConfig() (config Config){
-	requestedConfig := flag.String("config", "", "configuration to run")
-	flag.Parse()
-	configurations := loadConfigFile()
-	config, configExists := configurations[*requestedConfig]
-	if requestedConfig == nil || !configExists  {
-		printConfigHelp(*requestedConfig, configurations)
-		os.Exit(1)
-	}
-	return config
-}
-
-// This prints the current configuration to stdout.
-func printConfig(config Config) {
-	fmt.Println("Running with the following configuration:")
-	fmt.Printf("    Tar Directory: %s\n", config.TarDirectory)
-	fmt.Printf("    Log Directory: %s\n", config.LogDirectory)
-	fmt.Printf("    Log Level:     %d\n", config.LogLevel)
-	fmt.Printf("    Max File Size: %d\n", config.MaxFileSize)
-	fmt.Printf("    Fetchers:      %d\n", config.Fetchers)
-	fmt.Printf("    Workers:       %d\n", config.Workers)
-	fmt.Printf("Output will be logged to bagman_json and bagman_messages in %s\n", config.LogDirectory)
-}
-
-// This prints a message to stdout describing how to specify
-// a valid configuration.
-func printConfigHelp(requestedConfig string, configurations map[string]Config) {
-	fmt.Fprintf(os.Stderr, "Unrecognized config '%s'\n", requestedConfig)
-	fmt.Fprintln(os.Stderr, "Please specify one of the following configurations:")
-	for name, _ := range configurations {
-		fmt.Println(name)
-	}
-	os.Exit(1)
-}
-
-// This function reads the config.json file and returns a list of
-// available configurations.
-func loadConfigFile() (configurations map[string]Config) {
-	file, err := ioutil.ReadFile("../config.json")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error reading config file: %v\n", err)
-		os.Exit(1)
-	}
-	err = json.Unmarshal(file, &configurations)
-	if err != nil{
-		fmt.Fprint(os.Stderr, "Error parsing JSON from config file:", err)
-		os.Exit(1)
-	}
-	return configurations
-}
 
 // This runs as a go routine to fetch files from S3.
 func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, fetchChannel <-chan S3File) {
