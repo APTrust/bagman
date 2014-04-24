@@ -8,11 +8,9 @@ import (
 	"os"
 	"regexp"
 	"sync"
-//	"io/ioutil"
 	"log"
 	"path/filepath"
 	"github.com/APTrust/bagman"
-//	"github.com/APTrust/bagman/cli"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
 )
