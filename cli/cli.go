@@ -215,7 +215,10 @@ func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestRes
 		bytesInS3 += result.S3File.Key.Size
 		if(result.Error != nil) {
 			failed++
-			messageLog.Println("[ERROR]", result.S3File.Key.Key, "->", result.Error)
+			messageLog.Println("[ERROR]",
+				result.S3File.BucketName,
+				result.S3File.Key.Key,
+				"->", result.Error)
 		} else {
 			succeeded++
 			bytesProcessed += result.S3File.Key.Size
