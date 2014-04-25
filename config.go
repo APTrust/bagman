@@ -14,6 +14,7 @@ type Config struct {
 	LogLevel       LogLevel
 	Fetchers       int
 	Workers        int
+	FluctusURL     string
 }
 
 // This returns the configuration that the user requested.

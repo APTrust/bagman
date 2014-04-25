@@ -5,7 +5,8 @@
 		"MaxFileSize": 200000,
 		"LogLevel": 4,
 		"Fetchers": 12,
-		"Workers": 4
+		"Workers": 4,
+		"FluctusURL": "http://localhost:3000"
 	},
 	"test": {
 		"TarDirectory": "/mnt/apt_data",
@@ -13,6 +14,7 @@
 		"MaxFileSize": 20000000000,
 		"LogLevel": 4,
 		"Fetchers": 12,
-		"Workers": 4
+		"Workers": 4,
+		"FluctusURL": "http://localhost:3000"
 	}
 }
