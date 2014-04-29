@@ -3,6 +3,8 @@ package bagman
 import (
 	"archive/tar"
 	"path/filepath"
+	"crypto/md5"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"sort"
 	"strings"
 	"github.com/APTrust/bagins"
+	"github.com/nu7hatch/gouuid"
 )
 
 type TarResult struct {
@@ -97,9 +100,17 @@ type Tag struct {
 	Value string
 }
 
+type GenericFile struct {
+	Path             string
+	Md5              string
+	Sha256           string
+	Uuid             string
+}
+
 type BagReadResult struct {
 	Path             string
 	Files            []string
+	GenericFiles     []*GenericFile
 	Error            error
 	Tags             []Tag
 	ChecksumErrors   []error
@@ -141,7 +152,14 @@ func ReadBag(path string) (result *BagReadResult) {
 		} else if fileName == "manifest-md5.txt" {
 			hasMd5Manifest = true
 		} else if strings.HasPrefix(fileName, "data/") {
+			// This is a data file!
 			hasDataFiles = true
+			genericFile, err := buildGenericFile(path, fileName, bag)
+			if err != nil {
+				errMsg += fmt.Sprintf("Error creating GenericFile record for %s: %v. ", fileName, err)
+			} else {
+				bagReadResult.GenericFiles = append(bagReadResult.GenericFiles, genericFile)
+			}
 		}
 	}
 	if !hasBagit { errMsg += "Bag is missing bagit.txt file. " }
@@ -173,4 +191,39 @@ func ReadBag(path string) (result *BagReadResult) {
 	}
 
 	return bagReadResult
+}
+
+// Returns a struct with data we'll need to construct the
+// GenericFile object in Fedora later. Note that we are
+// generating an identifier here (uuid) and calculating the
+// md5 and sha256 hashes. There's some redundancy here, because
+// bagins has already calculated an md5 sum on this file when
+// it validated checksums. However, we can't capture the md5
+// sum bagins calculated, so we have to do it again.
+// TODO: Calculate md5 only once!
+func buildGenericFile(path string, fileName string, bag *bagins.Bag) (gf *GenericFile, err error) {
+	gf = &GenericFile{}
+	gf.Path, err = filepath.Abs(filepath.Join(path, fileName))
+	if err != nil {
+		return nil, err
+	}
+	uuid, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+	gf.Uuid = uuid.String()
+	md5Hash := md5.New()
+	shaHash := sha256.New()
+	multiWriter := io.MultiWriter(md5Hash, shaHash)
+	file, err := os.Open(gf.Path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	io.Copy(multiWriter, file)
+
+	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
+	gf.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
+
+	return gf, nil
 }

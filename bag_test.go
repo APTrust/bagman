@@ -100,9 +100,32 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	if result.Path != tarResult.OutputDir {
 		t.Errorf("Result path %s is incorrect, expected %s", result.Path, tarResult.OutputDir)
 	}
+
+	// Files contains a list of ALL files unpacked from the bag,
+	// including manifests and tag files.
 	if len(result.Files) != 8 {
 		t.Errorf("Unpacked %d files, expected %d", len(result.Files), 8)
 	}
+
+	// Generic files contains info about files in the /data directory
+	if len(result.GenericFiles) != 4 {
+		t.Errorf("Unpacked %d generic files, expected %d", len(result.GenericFiles), 4)
+	}
+	for _, gf := range result.GenericFiles {
+		if len(gf.Path) <= len(result.Path) {
+			t.Errorf("GenericFile path '%s' is incorrect", gf.Path)
+		}
+		if len(gf.Md5) != 32 {
+			t.Errorf("GenericFile md5 sum '%s' should be 32 characters", gf.Md5)
+		}
+		if len(gf.Sha256) != 64 {
+			t.Errorf("GenericFile sha256 sum '%s' should be 64 characters", gf.Sha256)
+		}
+		if len(gf.Uuid) != 36 {
+			t.Errorf("GenericFile UUID '%s' should be 36 characters", gf.Uuid)
+		}
+	}
+
 	if result.Error != nil {
 		t.Errorf("Unexpected error in read result: %v", result.Error)
 	}
