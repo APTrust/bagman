@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"sync"
 	"log"
+	"strings"
 	"path/filepath"
 	"github.com/APTrust/bagman"
 	"launchpad.net/goamz/aws"
@@ -108,7 +109,7 @@ func main() {
 	bagman.PrintConfig(config)
 
 	fetcherBufferSize := config.Fetchers * 4
-	workerBufferSize := config.Workers * 2
+	workerBufferSize := config.Workers * 10
 
 	fetchChannel := make(chan S3File, fetcherBufferSize)
 	unpackChannel := make(chan TestResult, workerBufferSize)
@@ -136,6 +137,11 @@ func main() {
 	for _, bucketSummary := range bucketSummaries {
 		for _, key := range bucketSummary.Keys {
 			if key.Size < config.MaxFileSize {
+				if strings.HasSuffix(key.Key, ".tar") == false {
+					messageLog.Println("[INFO]", "Ignoring non-tar file", key.Key,
+						"in", bucketSummary.BucketName)
+					continue
+				}
 				fetchChannel <- S3File{bucketSummary.BucketName, key}
 				waitGroup.Add(1)
 				messageLog.Println("[INFO]", "Put", key.Key, "into fetch queue")
@@ -157,6 +163,7 @@ func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, 
 		} else {
 			unpackChannel <- TestResult{&s3File, nil, fetchResult, nil, nil}
 		}
+		messageLog.Println("[INFO] Fetch channel: ", len(fetchChannel))
 	}
 }
 
@@ -164,13 +171,15 @@ func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, 
 // This runs as a go routine to untar files downloaded from S3.
 func doUnpack(resultsChannel chan<- TestResult, unpackChannel <-chan TestResult) {
 	for result := range unpackChannel {
-		messageLog.Println("[INFO]", "Unpacking", result.S3File.Key.Key)
-		TestBagFile(&result)
 		if result.Error != nil {
+			messageLog.Println("[INFO]", "Nothing to unpack for", result.S3File.Key.Key)
 			resultsChannel <- result
 		} else {
+			messageLog.Println("[INFO]", "Unpacking", result.S3File.Key.Key)
+			TestBagFile(&result)
 			resultsChannel <- result
 		}
+		messageLog.Println("[INFO] Unpack channel: ", len(unpackChannel))
 	}
 }
 
@@ -188,6 +197,7 @@ func doCleanUp(cleanUpChannel <-chan TestResult) {
 				}
 			}
 		}
+		messageLog.Println("[INFO] Cleanup channel: ", len(cleanUpChannel))
 		waitGroup.Done()
 	}
 }
@@ -224,6 +234,7 @@ func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestRes
 			bytesProcessed += result.S3File.Key.Size
 			messageLog.Println("[INFO]", result.S3File.Key.Key, "-> OK")
 		}
+		messageLog.Println("[INFO] Results channel: ", len(resultsChannel))
 		cleanUpChannel <- result
 	}
 }

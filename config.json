@@ -13,7 +13,7 @@
 		"LogDirectory": "/mnt/apt_logs",
 		"MaxFileSize": 20000000000,
 		"LogLevel": 4,
-		"Fetchers": 12,
+		"Fetchers": 20,
 		"Workers": 4,
 		"FluctusURL": "http://localhost:3000"
 	}
