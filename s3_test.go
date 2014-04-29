@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"github.com/APTrust/bagman"
 	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/s3"
 )
 
 var skipMessagePrinted bool = false
@@ -82,24 +83,36 @@ func TestFetchToFile(t *testing.T) {
 	if len(keys) < 1 {
 		t.Error("ListBucket returned empty list")
 	}
+
+	var keyToFetch s3.Key
+	for _, key := range(keys) {
+		if key.Key == "sample_good.tar" {
+			keyToFetch = key
+			break
+		}
+	}
+	if &keyToFetch == nil {
+		t.Error("Can't run s3 fetch test because aptrust.test/sample_good.tar is missing")
+	}
+
 	// Fetch the first file from the test bucket and store
 	// it in the testdata directory. Note that testDataPath
 	// is defined in bag_test.go, which is part of the
 	// bagman_test package.
 	outputDir := filepath.Join(testDataPath, "tmp")
 	os.MkdirAll(outputDir, 0755)
-	outputFile := filepath.Join(outputDir, keys[0].Key)
+	outputFile := filepath.Join(outputDir, keyToFetch.Key)
 	outputFileAbs, _ := filepath.Abs(outputFile)
-	result := bagman.FetchToFile(bucket, keys[0], outputFile)
-	defer os.Remove(filepath.Join(outputDir, keys[0].Key))
+	result := bagman.FetchToFile(bucket, keyToFetch, outputFile)
+	defer os.Remove(filepath.Join(outputDir, keyToFetch.Key))
 	if result.Error != nil {
 		t.Error("FetchToFile returned an error: %v", result.Error)
 	}
 	if result.BucketName != bucket.Name {
 		t.Error("Expected bucket name %s, got %s", bucket.Name, result.BucketName)
 	}
-	if result.Key != keys[0].Key {
-		t.Error("Expected key name %s, got %s", keys[0].Key, result.Key)
+	if result.Key != keyToFetch.Key {
+		t.Error("Expected key name %s, got %s", keyToFetch.Key, result.Key)
 	}
 	if result.LocalTarFile != outputFileAbs {
 		t.Error("Expected local file name %s, got %s",

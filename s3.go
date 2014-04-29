@@ -106,7 +106,15 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 	defer outputFile.Close()
 
 	multiWriter := io.MultiWriter(outputFile, md5Hash)
-	io.Copy(multiWriter, readCloser)
+	bytesWritten, err := io.Copy(multiWriter, readCloser)
+	if err != nil {
+		result.Error = err
+		return result
+	}
+	if bytesWritten != key.Size {
+		result.Error = fmt.Errorf("Wrote only %d of %d bytes for %s", bytesWritten, key.Size, key.Key)
+		return result
+	}
 
 	result.LocalMd5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
 
