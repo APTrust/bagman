@@ -83,6 +83,7 @@ Install the go packages we'll need:
 
 ```
 	go get launchpad.net/goamz
+	go get github.com/nu7hatch/gouuid
 	go get github.com/APTrust/bagins
 	go get github.com/APTrust/bagman
 ```
