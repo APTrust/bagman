@@ -192,7 +192,7 @@ func doCleanUp(cleanUpChannel <-chan TestResult) {
 			errors := CleanUp(result.FetchResult.LocalTarFile)
 			if errors != nil && len(errors) > 0 {
 				messageLog.Println("[WARNING]", "Errors cleaning up", result.FetchResult.LocalTarFile)
-				for e := range errors {
+				for _, e := range errors {
 					messageLog.Println("[ERROR]", e)
 				}
 			}
