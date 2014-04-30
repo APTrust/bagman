@@ -11,9 +11,19 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
+//	"syscall"
 	"github.com/APTrust/bagins"
 	"github.com/nu7hatch/gouuid"
+	"github.com/rakyll/magicmime"
 )
+
+// type TarFile struct {
+//	Path            string
+//	Size            int64
+//	Created         time.Time
+//	Modified        time.Time
+// }
 
 type TarResult struct {
 	InputFile       string
@@ -80,8 +90,24 @@ func Untar(path string) (result *TarResult) {
 			}
 			defer outputWriter.Close()
 			io.Copy(outputWriter, tarReader);
+
+			// Put the appropriate modified and accessed timestamps on the file
+			err = os.Chtimes(outputPath, header.AccessTime, header.ModTime)
+			if err != nil {
+				tarResult.Error = err
+				return tarResult
+			}
+
 			outputRelativePath := strings.Replace(outputPath, tarResult.OutputDir + "/", "", 1)
+
+			// tarFile := &TarFile{}
+			// tarFile.Path = outputRelativePath
+			// tarFile.Size = header.Size
+			// tarFile.Created = header.ModTime
+			// tarFile.Modified = header.ChangeTime
+			// tarResult.FilesUnpacked = append(tarResult.FilesUnpacked, tarFile)
 			tarResult.FilesUnpacked = append(tarResult.FilesUnpacked, outputRelativePath)
+
 		} else if header.Typeflag != tar.TypeDir {
 			tarResult.Warnings = append(tarResult.Warnings,
 				fmt.Sprintf("Ignoring item %s of type %c because it's neither a file nor a directory",
@@ -102,9 +128,13 @@ type Tag struct {
 
 type GenericFile struct {
 	Path             string
+	Size             int64
+	Created          time.Time  // we currently have no way of getting this
+	Modified         time.Time
 	Md5              string
 	Sha256           string
 	Uuid             string
+	MimeType         string
 }
 
 type BagReadResult struct {
@@ -212,7 +242,8 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 // TODO: Calculate md5 only once!
 func buildGenericFile(path string, fileName string, bag *bagins.Bag) (gf *GenericFile, err error) {
 	gf = &GenericFile{}
-	gf.Path, err = filepath.Abs(filepath.Join(path, fileName))
+	gf.Path = fileName
+	absPath, err := filepath.Abs(filepath.Join(path, fileName))
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +255,41 @@ func buildGenericFile(path string, fileName string, bag *bagins.Bag) (gf *Generi
 	md5Hash := md5.New()
 	shaHash := sha256.New()
 	multiWriter := io.MultiWriter(md5Hash, shaHash)
-	file, err := os.Open(gf.Path)
+
+	// Modtime is accurate only because we called os.Chtimes when
+	// we unpacked the tar archive.
+	fileStat, err := os.Stat(absPath)
+	if err != nil {
+		return nil, err
+	}
+	gf.Size = fileStat.Size()
+	gf.Modified = fileStat.ModTime()
+
+	// ------------------------------------------------------
+	// This is how you would get a file's created time, but
+	// we can't get that because it's not in the tar header.
+	// If we check it with the code below, we'll get the
+	// time the file was written to the local disk after
+	// being extracted from the tar file.
+	// ------------------------------------------------------
+	// sysStat := &syscall.Stat_t{}
+	// syscall.Stat(absPath, sysStat)
+	// ts := sysStat.Ctimespec
+	// gf.Created = time.Unix(int64(ts.Sec), int64(ts.Nsec))
+	// fmt.Println(gf.Created, gf.Modified)
+
+	magicMime, err := magicmime.New()
+	if err != nil {
+		return nil, err
+	}
+
+	mimetype, err := magicMime.TypeByFile(absPath)
+	if err != nil {
+		return nil, err
+	}
+	gf.MimeType = mimetype
+
+	file, err := os.Open(absPath)
 	if err != nil {
 		return nil, err
 	}

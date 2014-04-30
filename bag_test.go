@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"fmt"
+	"time"
 	"io/ioutil"
 	"path/filepath"
 )
@@ -108,21 +109,61 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	}
 
 	// Generic files contains info about files in the /data directory
+	expectedPath := []string{
+		"data/datastream-DC",
+		"data/datastream-MARC",
+		"data/datastream-RELS-EXT",
+		"data/datastream-descMetadata",
+	}
+	expectedMd5 := []string{
+		"44d85cf4810d6c6fe87750117633e461",
+		"93e381dfa9ad0086dbe3b92e0324bae6",
+		"ff731b9a1758618f6cc22538dede6174",
+		"4bd0ad5f85c00ce84a455466b24c8960",
+	}
+	expectedSha256 := []string{
+		"248fac506a5c46b3c760312b99827b6fb5df4698d6cf9a9cdc4c54746728ab99",
+		"8e3634d207017f3cfc8c97545b758c9bcd8a7f772448d60e196663ac4b62456a",
+		"299e1c23e398ec6699976cae63ef08167201500fa64bcf18062111e0c81d6a13",
+		"cf9cbce80062932e10ee9cd70ec05ebc24019deddfea4e54b8788decd28b4bc7",
+	}
+	expectedType := []string{
+		"text/plain",
+		"text/plain",
+		"application/xml",
+		"application/xml",
+	}
+	expectedSize := []int64{ 2388, 4663, 579, 6191 }
+	t0, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:25 -0400 EDT")
+	t1, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:26 -0400 EDT")
+	t2, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:26 -0400 EDT")
+	t3, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:25 -0400 EDT")
+	expectedModTime := []time.Time {t0, t1, t2, t3}
+
 	if len(result.GenericFiles) != 4 {
 		t.Errorf("Unpacked %d generic files, expected %d", len(result.GenericFiles), 4)
 	}
-	for _, gf := range result.GenericFiles {
-		if len(gf.Path) <= len(result.Path) {
-			t.Errorf("GenericFile path '%s' is incorrect", gf.Path)
+	for index, gf := range result.GenericFiles {
+		if gf.Path != expectedPath[index] {
+			t.Errorf("GenericFile path '%s' is incorrect, expected '%s'", gf.Path, expectedPath[index])
 		}
-		if len(gf.Md5) != 32 {
-			t.Errorf("GenericFile md5 sum '%s' should be 32 characters", gf.Md5)
+		if gf.Md5 != expectedMd5[index] {
+			t.Errorf("GenericFile md5 sum '%s' should be '%s'", gf.Md5, expectedMd5[index])
 		}
-		if len(gf.Sha256) != 64 {
-			t.Errorf("GenericFile sha256 sum '%s' should be 64 characters", gf.Sha256)
+		if gf.Sha256 != expectedSha256[index] {
+			t.Errorf("GenericFile sha256 sum '%s' should be '%s'", gf.Sha256, expectedSha256[index])
 		}
 		if len(gf.Uuid) != 36 {
 			t.Errorf("GenericFile UUID '%s' should be 36 characters", gf.Uuid)
+		}
+		if gf.Size != expectedSize[index] {
+			t.Errorf("GenericFile size %d should be %d", gf.Size, expectedSize[index])
+		}
+		if gf.MimeType != expectedType[index] {
+			t.Errorf("GenericFile type '%s' should be '%s'", gf.MimeType, expectedType[index])
+		}
+		if gf.Modified != expectedModTime[index] {
+			t.Errorf("GenericFile type '%v' should be '%v'", gf.Modified, expectedModTime[index])
 		}
 	}
 
