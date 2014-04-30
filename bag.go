@@ -166,18 +166,7 @@ func ReadBag(path string) (result *BagReadResult) {
 	if !hasMd5Manifest { errMsg += "Bag is missing manifest-md5.txt file. " }
 	if !hasDataFiles { errMsg += "Bag's data directory is missing or empty. " }
 
-	bagInfo, err := bag.BagInfo()
-	if err != nil {
-		bagReadResult.Error = err
-		return bagReadResult
-	}
-	tagFields := bagInfo.Data.Fields()
-	bagReadResult.Tags = make([]Tag, len(tagFields))
-
-	for index, tagField := range tagFields {
-		tag := Tag{ tagField.Label(), tagField.Value() }
-		bagReadResult.Tags[index] = tag
-	}
+	extractTags(bag, bagReadResult)
 
 	checksumErrors := bag.Manifest.RunChecksums()
 	if len(checksumErrors) > 0 {
@@ -191,6 +180,26 @@ func ReadBag(path string) (result *BagReadResult) {
 	}
 
 	return bagReadResult
+}
+
+// Extract all of the tags from tag files "bagit.txt", "bag-info.txt",
+// and "aptrust-info.txt", and put those tags into the Tags member
+// of the BagReadResult structure.
+func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
+	tagFiles := []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}
+	for _, file := range tagFiles {
+		tagFile, err := bag.TagFile(file)
+		if err != nil {
+			bagReadResult.Error = err
+			return
+		}
+		tagFields := tagFile.Data.Fields()
+
+		for _, tagField := range tagFields {
+			tag := Tag{ tagField.Label(), tagField.Value() }
+			bagReadResult.Tags = append(bagReadResult.Tags, tag)
+		}
+	}
 }
 
 // Returns a struct with data we'll need to construct the
