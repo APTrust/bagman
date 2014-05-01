@@ -12,18 +12,11 @@ import (
 	"sort"
 	"strings"
 	"time"
-//	"syscall"
 	"github.com/APTrust/bagins"
 	"github.com/nu7hatch/gouuid"
 	"github.com/rakyll/magicmime"
 )
 
-// type TarFile struct {
-//	Path            string
-//	Size            int64
-//	Created         time.Time
-//	Modified        time.Time
-// }
 
 type TarResult struct {
 	InputFile       string
@@ -98,15 +91,7 @@ func Untar(path string) (result *TarResult) {
 				tarResult.Error = err
 				return tarResult
 			}
-
 			outputRelativePath := strings.Replace(outputPath, tarResult.OutputDir + "/", "", 1)
-
-			// tarFile := &TarFile{}
-			// tarFile.Path = outputRelativePath
-			// tarFile.Size = header.Size
-			// tarFile.Created = header.ModTime
-			// tarFile.Modified = header.ChangeTime
-			// tarResult.FilesUnpacked = append(tarResult.FilesUnpacked, tarFile)
 			tarResult.FilesUnpacked = append(tarResult.FilesUnpacked, outputRelativePath)
 
 		} else if header.Typeflag != tar.TypeDir {
@@ -233,6 +218,8 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	}
 }
 
+var magicMime *magicmime.Magic
+
 // Returns a struct with data we'll need to construct the
 // GenericFile object in Fedora later. Note that we are
 // generating an identifier here (uuid) and calculating the
@@ -266,22 +253,12 @@ func buildGenericFile(path string, fileName string, bag *bagins.Bag) (gf *Generi
 	gf.Size = fileStat.Size()
 	gf.Modified = fileStat.ModTime()
 
-	// ------------------------------------------------------
-	// This is how you would get a file's created time, but
-	// we can't get that because it's not in the tar header.
-	// If we check it with the code below, we'll get the
-	// time the file was written to the local disk after
-	// being extracted from the tar file.
-	// ------------------------------------------------------
-	// sysStat := &syscall.Stat_t{}
-	// syscall.Stat(absPath, sysStat)
-	// ts := sysStat.Ctimespec
-	// gf.Created = time.Unix(int64(ts.Sec), int64(ts.Nsec))
-	// fmt.Println(gf.Created, gf.Modified)
-
-	magicMime, err := magicmime.New()
-	if err != nil {
-		return nil, err
+	// Open the Mime Magic DB only once.
+	if magicMime == nil {
+		magicMime, err = magicmime.New()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	mimetype, err := magicMime.TypeByFile(absPath)
