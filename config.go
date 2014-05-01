@@ -12,7 +12,6 @@ type Config struct {
 	LogDirectory   string
 	MaxFileSize    int64
 	LogLevel       LogLevel
-	Fetchers       int
 	Workers        int
 	FluctusURL     string
 }
@@ -39,7 +38,6 @@ func PrintConfig(config Config) {
 	fmt.Printf("    Log Directory: %s\n", config.LogDirectory)
 	fmt.Printf("    Log Level:     %d\n", config.LogLevel)
 	fmt.Printf("    Max File Size: %d\n", config.MaxFileSize)
-	fmt.Printf("    Fetchers:      %d\n", config.Fetchers)
 	fmt.Printf("    Workers:       %d\n", config.Workers)
 	fmt.Printf("Output will be logged to bagman_json and bagman_messages in %s\n", config.LogDirectory)
 }
