@@ -177,7 +177,6 @@ func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, 
     }
 }
 
-
 // This runs as a go routine to untar files downloaded from S3.
 func doUnpack(resultsChannel chan<- TestResult, unpackChannel <-chan TestResult) {
     for result := range unpackChannel {
