@@ -18,11 +18,12 @@ just kick back and relax.
 
 The "go get" command uses git, bazaar, and mercurial to download
 packages.  Install those, along with libmagic-dev, which we need
-for determining file mime types.
+for determining file mime types. We'll need gcc to build the
+magicmime go package later.
 
 ```
-    sudo apt-get install git bzr mercurial
-    sudo apt-get install libmagic-dev
+        sudo apt-get install git bzr mercurial
+        sudo apt-get install gcc libmagic-dev
 ```
 
 Install go, but don't use apt-get. That installs go 1.0, which blows
