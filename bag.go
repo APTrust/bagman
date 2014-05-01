@@ -92,7 +92,8 @@ func Untar(path string) (result *TarResult) {
 			io.Copy(outputWriter, tarReader);
 
 			// Put the appropriate modified and accessed timestamps on the file
-			err = os.Chtimes(outputPath, header.AccessTime, header.ModTime)
+			// Watch out - setting atime or mtime to zero on Linux causes error!
+			err = os.Chtimes(outputPath, header.ModTime, header.ModTime)
 			if err != nil {
 				tarResult.Error = err
 				return tarResult
