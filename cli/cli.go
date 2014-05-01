@@ -108,10 +108,7 @@ func main() {
 	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory)
 	bagman.PrintConfig(config)
 
-	fetcherBufferSize := config.Fetchers * 4
-	workerBufferSize := config.Workers * 10
-
-	fetchChannel := make(chan S3File, fetcherBufferSize)
+	workerBufferSize := config.Workers * 2
 	unpackChannel := make(chan TestResult, workerBufferSize)
 	cleanUpChannel := make(chan TestResult, workerBufferSize)
 	resultsChannel := make(chan TestResult, workerBufferSize)
@@ -125,9 +122,6 @@ func main() {
 	messageLog.Println("[INFO]", "Got info on", len(bucketSummaries), "buckets")
 
 
-	for i := 0; i < config.Fetchers; i++ {
-		go doFetch(unpackChannel, resultsChannel, fetchChannel)
-	}
 	for i := 0; i < config.Workers; i++ {
 		go doUnpack(resultsChannel, unpackChannel)
 		go printResult(cleanUpChannel, resultsChannel)
@@ -142,8 +136,8 @@ func main() {
 						"in", bucketSummary.BucketName)
 					continue
 				}
-				fetchChannel <- S3File{bucketSummary.BucketName, key}
 				waitGroup.Add(1)
+				go fetch(unpackChannel, resultsChannel, &S3File{bucketSummary.BucketName, key})
 				messageLog.Println("[INFO]", "Put", key.Key, "into fetch queue")
 			}
 		}
@@ -153,20 +147,17 @@ func main() {
 }
 
 
-// This runs as a go routine to fetch files from S3.
-func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, fetchChannel <-chan S3File) {
-	for s3File := range fetchChannel {
-		messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
-		fetchResult := Fetch(s3File.BucketName, s3File.Key)
-		if fetchResult.Error != nil {
-			resultsChannel <- TestResult{&s3File, fetchResult.Error, fetchResult, nil, nil}
-		} else {
-			unpackChannel <- TestResult{&s3File, nil, fetchResult, nil, nil}
-		}
-		messageLog.Println("[INFO] Fetch channel: ", len(fetchChannel))
+// Fetch tar file from S3, then put it into the unpack channel (if download
+// succeeded) or the results channel (if download failed).
+func fetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, s3File *S3File) {
+	messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
+	fetchResult := Fetch(s3File.BucketName, s3File.Key)
+	if fetchResult.Error != nil {
+		resultsChannel <- TestResult{s3File, fetchResult.Error, fetchResult, nil, nil}
+	} else {
+		unpackChannel <- TestResult{s3File, nil, fetchResult, nil, nil}
 	}
 }
-
 
 // This runs as a go routine to untar files downloaded from S3.
 func doUnpack(resultsChannel chan<- TestResult, unpackChannel <-chan TestResult) {
@@ -179,7 +170,6 @@ func doUnpack(resultsChannel chan<- TestResult, unpackChannel <-chan TestResult)
 			TestBagFile(&result)
 			resultsChannel <- result
 		}
-		messageLog.Println("[INFO] Unpack channel: ", len(unpackChannel))
 	}
 }
 
@@ -197,7 +187,6 @@ func doCleanUp(cleanUpChannel <-chan TestResult) {
 				}
 			}
 		}
-		messageLog.Println("[INFO] Cleanup channel: ", len(cleanUpChannel))
 		waitGroup.Done()
 	}
 }
@@ -220,8 +209,9 @@ func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestRes
 		json, err := json.Marshal(result)
 		if err != nil {
 			messageLog.Println("[ERROR]", err)
+		} else {
+			jsonLog.Println(string(json))
 		}
-		jsonLog.Println(string(json))
 		bytesInS3 += result.S3File.Key.Size
 		if(result.Error != nil) {
 			failed++
@@ -234,7 +224,6 @@ func printResult(cleanUpChannel chan<- TestResult, resultsChannel <-chan TestRes
 			bytesProcessed += result.S3File.Key.Size
 			messageLog.Println("[INFO]", result.S3File.Key.Key, "-> OK")
 		}
-		messageLog.Println("[INFO] Results channel: ", len(resultsChannel))
 		cleanUpChannel <- result
 	}
 }
