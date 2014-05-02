@@ -16,27 +16,6 @@ import (
     "launchpad.net/goamz/s3"
 )
 
-// These are all the buckets we want to check.
-var allBuckets = []string {
-    "aptrust.receiving.columbia.edu",
-    "aptrust.receiving.iub.edu",
-    "aptrust.receiving.jhu.edu",
-    "aptrust.receiving.ncsu.edu",
-    "aptrust.receiving.stanford.edu",
-    "aptrust.receiving.syr.edu",
-    "aptrust.receiving.uchicago.edu",
-    "aptrust.receiving.uc.edu",
-    "aptrust.receiving.uconn.edu",
-    "aptrust.receiving.umd.edu",
-    "aptrust.receiving.miami.edu",
-    "aptrust.receiving.umich.edu",
-    "aptrust.receiving.unc.edu",
-    "aptrust.receiving.und.edu",
-    "aptrust.receiving.virginia.edu",
-    "aptrust.receiving.vt.edu",
-}
-
-
 type S3File struct {
     BucketName     string
     Key            s3.Key
@@ -117,7 +96,7 @@ func main() {
     resultsChannel := make(chan TestResult, workerBufferSize)
 
     messageLog.Println("[INFO]", "Checking S3 bucket lists")
-    bucketSummaries, err := CheckAllBuckets()
+    bucketSummaries, err := CheckAllBuckets(config.Buckets)
     if err != nil {
         messageLog.Println("[ERROR]", err)
         return
@@ -281,10 +260,10 @@ func CleanUp(file string) (errors []error) {
     return errors
 }
 
-// Collects info about all of the buckets listed in allBuckets.
-func CheckAllBuckets() (bucketSummaries []*BucketSummary, err error) {
+// Collects info about all of the buckets listed in buckets.
+func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
     bucketSummaries = make([]*BucketSummary, 0)
-    for _, bucketName := range(allBuckets) {
+    for _, bucketName := range(buckets) {
         bucketSummary, err := CheckBucket(bucketName)
         if err != nil {
             return bucketSummaries, err
