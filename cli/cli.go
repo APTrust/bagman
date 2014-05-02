@@ -7,9 +7,10 @@ import (
     "encoding/json"
     "os"
     "regexp"
-    "sync"
+    "sync/atomic"
     "log"
     "strings"
+    "time"
     "path/filepath"
     "github.com/APTrust/bagman"
     "launchpad.net/goamz/aws"
@@ -38,9 +39,10 @@ type BucketSummary struct {
 
 // Global vars.
 var config bagman.Config
-var waitGroup sync.WaitGroup
 var jsonLog *log.Logger
 var messageLog *log.Logger
+var taskCounter = int64(0)
+
 
 // TODO: Move these out of global namespace.
 // It's probably not even safe to have multiple
@@ -81,12 +83,23 @@ var bytesProcessed = int64(0)
 // options.
 func main() {
 
+    // Load the config or die.
     requestedConfig := flag.String("config", "", "configuration to run")
     flag.Parse()
     config = bagman.LoadRequestedConfig(requestedConfig)
     jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory)
     bagman.PrintConfig(config)
 
+    // Set up the channels. It's essential that that the fetchChannel
+    // be limited to a relatively low number. If we are downloading
+    // 1GB tar files, we need space to store the tar file AND the
+    // untarred version. That's about 2 x 1GB. We do not want to pull
+    // down 1000 files at once, or we'll run out of disk space!
+    // If config sets fetchers to 10, we can pull down 10 files at a
+    // time. The fetch queue could hold 10 * 4 = 40 items, so we'd
+    // have max 40 tar files + untarred directories on disk at once.
+    // The number of workers should be close to the number of CPU
+    // cores.
     fetcherBufferSize := config.Fetchers * 4
     workerBufferSize := config.Workers * 10
 
@@ -95,6 +108,7 @@ func main() {
     cleanUpChannel := make(chan TestResult, workerBufferSize)
     resultsChannel := make(chan TestResult, workerBufferSize)
 
+    // Now fetch lists from S3 of what's in each bucket.
     messageLog.Println("[INFO]", "Checking S3 bucket lists")
     bucketSummaries, err := CheckAllBuckets(config.Buckets)
     if err != nil {
@@ -103,16 +117,11 @@ func main() {
     }
     messageLog.Println("[INFO]", "Got info on", len(bucketSummaries), "buckets")
 
-    // Call waitGroup.Add before starting our go routine.
-    // We'll call Done() for this before we start waiting.
-    // The problem here is that we're using WaitGroup to
-    // keep track of outstanding tasks, not outstanding
-    // go routines. We don't want to start one go routine
-    // per S3 file, because we may have 500k+ files, and
-    // the system will run out of file handles.
-    waitGroup.Add(1)  // hack
-    waitGroup.Done()  // unhack.
 
+    // Set up our go routines. We do NOT want one go routine per
+    // S3 file. If we do that, the system will run out of file handles,
+    // as we'll have tens of thousands of open connections to S3
+    // trying to write data into tens of thousands of local files.
     for i := 0; i < config.Fetchers; i++ {
         go doFetch(unpackChannel, resultsChannel, fetchChannel)
     }
@@ -123,7 +132,12 @@ func main() {
         go doCleanUp(cleanUpChannel)
     }
 
+    // Start adding S3 files into the fetch queue. Remember that this
+    // queue blocks when it fills up, so we'll never be fetching more
+    // than <queue size> files at once. That's what we want.
     for _, bucketSummary := range bucketSummaries {
+        messageLog.Println("[INFO]", "Starting bucket", bucketSummary.BucketName,
+            "which has", len(bucketSummary.Keys), "items")
         for _, key := range bucketSummary.Keys {
             if key.Size < config.MaxFileSize {
                 if strings.HasSuffix(key.Key, ".tar") == false {
@@ -131,17 +145,34 @@ func main() {
                         "in", bucketSummary.BucketName)
                     continue
                 }
-                waitGroup.Add(1)
+                atomic.AddInt64(&taskCounter, 1)
                 fetchChannel <- S3File{bucketSummary.BucketName, key}
                 messageLog.Println("[INFO]", "Put", key.Key, "into fetch queue")
             }
         }
     }
 
-    waitGroup.Wait()
+    // Let the go routines run and wait for all tasks to complete.
+    // sync.WaitGroup is the standard way of doing this, but it
+    // seems to always fail on our longer-running jobs, blocking forever.
+    // It works fine on shorting jobs. Perhaps we're using it incorrectly.
+    // WaitGroup is really for counting go routines. We have only a handful
+    // of go routines, and a huge number of tasks. We're counting the tasks.
+    waitForAllTasks()
     printTotals()
 }
 
+
+
+// This function blocks until all tasks are complete.
+func waitForAllTasks() {
+    for {
+        if atomic.LoadInt64(&taskCounter) == 0 {
+            break
+        }
+        time.Sleep(5 * time.Second)
+    }
+}
 
 // This runs as a go routine to fetch files from S3.
 func doFetch(unpackChannel chan<- TestResult, resultsChannel chan<- TestResult, fetchChannel <-chan S3File) {
@@ -184,7 +215,7 @@ func doCleanUp(cleanUpChannel <-chan TestResult) {
                 }
             }
         }
-        waitGroup.Done()
+        atomic.AddInt64(&taskCounter, -1)
     }
 }
 
