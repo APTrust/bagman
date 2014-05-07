@@ -17,13 +17,33 @@ import (
 	"github.com/rakyll/magicmime"
 )
 
+// magicMime is the MimeMagic database. We want
+// just one copy of this open at a time.
+var magicMime *magicmime.Magic
 
+// GenericFile contains information about a generic
+// data file within the data directory of bag or tar archive.
+type GenericFile struct {
+	Path             string
+	Size             int64
+	Created          time.Time  // we currently have no way of getting this
+	Modified         time.Time
+	Md5              string
+	Sha256           string
+	Uuid             string
+	MimeType         string
+	Error            error
+}
+
+// TarResult contains information about the attempt to untar
+// a bag.
 type TarResult struct {
 	InputFile       string
 	OutputDir       string
 	Error           error
 	Warnings        []string
 	FilesUnpacked   []string
+	GenericFiles    []*GenericFile
 }
 
 
@@ -76,21 +96,18 @@ func Untar(path string) (result *TarResult) {
 		// Copy the file, if it's an actual file. Otherwise, ignore it and record
 		// a warning. The bag library does not deal with items like symlinks.
 		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
-			outputWriter, err := os.OpenFile(outputPath, os.O_CREATE | os.O_WRONLY, 0644)
-			if err != nil {
-				tarResult.Error = err
-				return tarResult
+			if strings.Contains(header.Name, "data/") {
+				genericFile := buildGenericFile(tarReader, filepath.Dir(absInputFile), header.Name,
+					header.Size, header.ModTime)
+				tarResult.GenericFiles = append(tarResult.GenericFiles, genericFile)
+			} else {
+				err = saveFile(outputPath, tarReader)
+				if err != nil {
+					tarResult.Error = err
+					return tarResult
+				}
 			}
-			defer outputWriter.Close()
-			io.Copy(outputWriter, tarReader);
 
-			// Put the appropriate modified and accessed timestamps on the file
-			// Watch out - setting atime or mtime to zero on Linux causes error!
-			err = os.Chtimes(outputPath, header.ModTime, header.ModTime)
-			if err != nil {
-				tarResult.Error = err
-				return tarResult
-			}
 			outputRelativePath := strings.Replace(outputPath, tarResult.OutputDir + "/", "", 1)
 			tarResult.FilesUnpacked = append(tarResult.FilesUnpacked, outputRelativePath)
 
@@ -112,21 +129,13 @@ type Tag struct {
 	Value string
 }
 
-type GenericFile struct {
-	Path             string
-	Size             int64
-	Created          time.Time  // we currently have no way of getting this
-	Modified         time.Time
-	Md5              string
-	Sha256           string
-	Uuid             string
-	MimeType         string
-}
-
+// BagReadResult contains data describing the result of
+// processing a single bag. If there were any processing
+// errors, this structure should tell us exactly what
+// happened and where.
 type BagReadResult struct {
 	Path             string
 	Files            []string
-	GenericFiles     []*GenericFile
 	Error            error
 	Tags             []Tag
 	ChecksumErrors   []error
@@ -168,14 +177,7 @@ func ReadBag(path string) (result *BagReadResult) {
 		} else if fileName == "manifest-md5.txt" {
 			hasMd5Manifest = true
 		} else if strings.HasPrefix(fileName, "data/") {
-			// This is a data file!
 			hasDataFiles = true
-			genericFile, err := buildGenericFile(path, fileName, bag)
-			if err != nil {
-				errMsg += fmt.Sprintf("Error creating GenericFile record for %s: %v. ", fileName, err)
-			} else {
-				bagReadResult.GenericFiles = append(bagReadResult.GenericFiles, genericFile)
-			}
 		}
 	}
 	if !hasBagit { errMsg += "Bag is missing bagit.txt file. " }
@@ -218,64 +220,78 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	}
 }
 
-var magicMime *magicmime.Magic
+// Saves a file from the tar archive to local disk. This function
+// used to save non-data files (manifests, tag files, etc.)
+func saveFile(destination string, tarReader *tar.Reader) (error) {
+	outputWriter, err := os.OpenFile(destination, os.O_CREATE | os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer outputWriter.Close()
+	_, err = io.Copy(outputWriter, tarReader);
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-// Returns a struct with data we'll need to construct the
-// GenericFile object in Fedora later. Note that we are
-// generating an identifier here (uuid) and calculating the
-// md5 and sha256 hashes. There's some redundancy here, because
-// bagins has already calculated an md5 sum on this file when
-// it validated checksums. However, we can't capture the md5
-// sum bagins calculated, so we have to do it again.
-// TODO: Calculate md5 only once!
-func buildGenericFile(path string, fileName string, bag *bagins.Bag) (gf *GenericFile, err error) {
+// buildGenericFile saves a data file from the tar archive to disk,
+// then returns a struct with data we'll need to construct the
+// GenericFile object in Fedora later.
+func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size int64, modTime time.Time) (gf *GenericFile) {
 	gf = &GenericFile{}
-	gf.Path = fileName
+	gf.Path = fileName[strings.Index(fileName, "/data/") + 1:len(fileName)]
 	absPath, err := filepath.Abs(filepath.Join(path, fileName))
 	if err != nil {
-		return nil, err
+		gf.Error = fmt.Errorf("Path error: %v", err)
+		return gf
 	}
 	uuid, err := uuid.NewV4()
 	if err != nil {
-		return nil, err
+		gf.Error = fmt.Errorf("UUID error: %v", err)
+		return gf
 	}
 	gf.Uuid = uuid.String()
+	gf.Size = size
+	gf.Modified = modTime
+
+	// Set up a MultiWriter to stream data ONCE to file,
+	// md5 and sha256. We don't want to process the stream
+	// three separate times.
+	outputWriter, err := os.OpenFile(absPath, os.O_CREATE | os.O_WRONLY, 0644)
+	if err != nil {
+		gf.Error = fmt.Errorf("Error opening writing to %s: %v", absPath, err)
+		return gf
+	}
+	defer outputWriter.Close()
 	md5Hash := md5.New()
 	shaHash := sha256.New()
-	multiWriter := io.MultiWriter(md5Hash, shaHash)
+	multiWriter := io.MultiWriter(md5Hash, shaHash, outputWriter)
 
-	// Modtime is accurate only because we called os.Chtimes when
-	// we unpacked the tar archive.
-	fileStat, err := os.Stat(absPath)
-	if err != nil {
-		return nil, err
-	}
-	gf.Size = fileStat.Size()
-	gf.Modified = fileStat.ModTime()
+	io.Copy(multiWriter, tarReader)
+
+	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
+	gf.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
 
 	// Open the Mime Magic DB only once.
 	if magicMime == nil {
 		magicMime, err = magicmime.New()
 		if err != nil {
-			return nil, err
+			gf.Error = fmt.Errorf("Error opening MimeMagic database: %v", err)
+			return gf
 		}
 	}
 
 	mimetype, err := magicMime.TypeByFile(absPath)
 	if err != nil {
-		return nil, err
+		gf.Error = fmt.Errorf("Error determining mime type: %v", err)
+		return gf
 	}
-	gf.MimeType = mimetype
-
-	file, err := os.Open(absPath)
-	if err != nil {
-		return nil, err
+	if mimetype == "" {
+		gf.MimeType = "application/binary"
+	} else {
+		gf.MimeType = mimetype
 	}
-	defer file.Close()
-	io.Copy(multiWriter, file)
 
-	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
-	gf.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
-
-	return gf, nil
+	return gf
 }
