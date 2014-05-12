@@ -17,17 +17,31 @@ import (
 	"launchpad.net/goamz/s3"
 )
 
+// S3File contains information about the S3 file we're
+// trying to process from an intake bucket. BucketName
+// and Key are the S3 bucket name and key. AttemptNumber
+// describes whether this is the 1st, 2nd, 3rd,
+// etc. attempt to process this file.
 type S3File struct {
 	BucketName     string
 	Key            s3.Key
+	AttemptNumber  int
 }
 
+// Retry will be set to true if the attempt to process the file
+// failed and should be tried again. This would be case, for example,
+// if the failure was due to a network error. Retry is
+// set to false if processing failed for some reason that
+// will not change: for example, if the file cannot be
+// untarred, checksums were bad, or data files were missing.
+// If processing succeeded, Retry is irrelevant.
 type ProcessResult struct {
 	S3File         *S3File
 	Error          error
 	FetchResult    *bagman.FetchResult
 	TarResult      *bagman.TarResult
 	BagReadResult  *bagman.BagReadResult
+	Retry          bool
 }
 
 type BucketSummary struct {
@@ -146,7 +160,8 @@ func main() {
 					continue
 				}
 				atomic.AddInt64(&taskCounter, 1)
-				fetchChannel <- S3File{bucketSummary.BucketName, key}
+				// TODO: Set attempt number correctly when queue is working.
+				fetchChannel <- S3File{bucketSummary.BucketName, key, 1}
 				messageLog.Println("[INFO]", "Put", key.Key, "into fetch queue")
 			}
 		}
@@ -180,9 +195,9 @@ func doFetch(unpackChannel chan<- ProcessResult, resultsChannel chan<- ProcessRe
 		messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
 		fetchResult := Fetch(s3File.BucketName, s3File.Key)
 		if fetchResult.Error != nil {
-			resultsChannel <- ProcessResult{&s3File, fetchResult.Error, fetchResult, nil, nil}
+			resultsChannel <- ProcessResult{&s3File, fetchResult.Error, fetchResult, nil, nil, fetchResult.Retry}
 		} else {
-			unpackChannel <- ProcessResult{&s3File, nil, fetchResult, nil, nil}
+			unpackChannel <- ProcessResult{&s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
 		}
 	}
 }
@@ -343,10 +358,17 @@ func ProcessBagFile(result *ProcessResult) {
 	result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile)
 	if result.TarResult.Error != nil {
 		result.Error = result.TarResult.Error
+		// If we can't untar this, there's no reason to retry...
+		// but we'll have to revisit this. There may be cases
+		// where we do want to retry, such as if disk was full.
+		result.Retry = false
 	} else {
 		result.BagReadResult = bagman.ReadBag(result.TarResult.OutputDir)
 		if result.BagReadResult.Error != nil {
 			result.Error = result.BagReadResult.Error
+			// Something was wrong with this bag. Bad checksum,
+			// missing file, etc. Don't reprocess it.
+			result.Retry = false
 		}
 	}
 }

@@ -69,6 +69,7 @@ type FetchResult struct {
 	Md5Verifiable    bool
 	Error            error
 	Warning          string
+	Retry            bool
 }
 
 // Fetches key from bucket and saves it to path.
@@ -82,15 +83,24 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 	result.Key = key.Key
 	result.LocalTarFile = path
 
+	// In general, we want to retry if the fetch operation
+	// fails. We will override this in certain cases below.
+	result.Retry = true
+
 	// S3 etag is md5 hex string enclosed in quotes,
 	// unless file was a multipart upload. See below for that.
 	result.RemoteMd5 = strings.Replace(key.ETag, "\"", "", -1)
 
 	// Fetch the file into a reader instead of using the usual bucket.Get().
 	// Files may be up to 250GB, so we want to process them as streams.
+	// If we get an error here, it's typically a network error, and we
+	// will want to retry later.
 	readCloser, err := bucket.GetReader(key.Key)
 	if err != nil {
 		result.Error = err
+		if strings.Contains(err.Error(), "key does not exist") {
+			result.Retry = false
+		}
 		return result
 	}
 	defer readCloser.Close()
@@ -133,6 +143,8 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 			result.Error = fmt.Errorf("Our md5 sum '%x' does not match the S3 md5 sum '%s'",
 				result.LocalMd5, result.RemoteMd5)
 			result.Md5Verified = false
+			// Don't bother reprocessing this item.
+			result.Retry = false
 		}
 	}
 	return result

@@ -135,6 +135,10 @@ func TestFetchToFile(t *testing.T) {
 	if result.Warning != "" {
 		t.Error("Fetch result returned warning: %s", result.Warning)
 	}
+	// Retry should be true, unless file does not exist.
+	if result.Retry == false {
+		t.Error("Fetch result retry was false, but should be true.")
+	}
 }
 
 func TestFetchNonExistentFile(t *testing.T) {
@@ -172,4 +176,10 @@ func TestFetchNonExistentFile(t *testing.T) {
 	if result.Error.Error() != "The specified key does not exist." {
 		t.Error("Got unexpected error message: %v", result.Error)
 	}
+	// Retry should be false, because file does not exist and we don't
+	// want to waste any more time on it.
+	if result.Retry == true {
+		t.Error("Fetch result retry was true, but should be false.")
+	}
+
 }
