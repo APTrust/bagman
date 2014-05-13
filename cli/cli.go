@@ -56,6 +56,7 @@ var config bagman.Config
 var jsonLog *log.Logger
 var messageLog *log.Logger
 var taskCounter = int64(0)
+var volume *bagman.Volume
 
 
 // TODO: Move these out of global namespace.
@@ -103,6 +104,16 @@ func main() {
 	config = bagman.LoadRequestedConfig(requestedConfig)
 	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory)
 	bagman.PrintConfig(config)
+
+	// Set up the volume to keep track of how much disk space is
+	// available. We want to avoid downloading large files when
+	// we know ahead of time that the volume containing the tar
+	// directory doesn't have enough space to accomodate them.
+	var err error
+	volume, err = bagman.NewVolume(config.TarDirectory)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	// Set up the channels. It's essential that that the fetchChannel
 	// be limited to a relatively low number. If we are downloading
@@ -192,12 +203,20 @@ func waitForAllTasks() {
 // This runs as a go routine to fetch files from S3.
 func doFetch(unpackChannel chan<- ProcessResult, resultsChannel chan<- ProcessResult, fetchChannel <-chan S3File) {
 	for s3File := range fetchChannel {
-		messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
-		fetchResult := Fetch(s3File.BucketName, s3File.Key)
-		if fetchResult.Error != nil {
-			resultsChannel <- ProcessResult{&s3File, fetchResult.Error, fetchResult, nil, nil, fetchResult.Retry}
+		// Disk needs filesize * 2 disk space to accomodate tar file & untarred files
+		err := volume.Reserve(uint64(s3File.Key.Size * 2))
+		if err != nil {
+			messageLog.Println("[WARNING]", "Requeueing", s3File.Key.Key, "- not enough disk space")
+			resultsChannel <- ProcessResult{&s3File, err, nil, nil, nil, true}
 		} else {
-			unpackChannel <- ProcessResult{&s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
+			messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
+			fetchResult := Fetch(s3File.BucketName, s3File.Key)
+			if fetchResult.Error != nil {
+				resultsChannel <- ProcessResult{&s3File, fetchResult.Error, fetchResult, nil, nil,
+					fetchResult.Retry}
+			} else {
+				unpackChannel <- ProcessResult{&s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
+			}
 		}
 	}
 }
@@ -230,6 +249,7 @@ func doCleanUp(cleanUpChannel <-chan ProcessResult) {
 				}
 			}
 		}
+		volume.Release(uint64(result.S3File.Key.Size * 2))
 		atomic.AddInt64(&taskCounter, -1)
 	}
 }
@@ -266,7 +286,6 @@ func printResult(cleanUpChannel chan<- ProcessResult, resultsChannel <-chan Proc
 			bytesProcessed += result.S3File.Key.Size
 			messageLog.Println("[INFO]", result.S3File.Key.Key, "-> OK")
 		}
-		messageLog.Println("[INFO] Results channel: ", len(resultsChannel))
 		cleanUpChannel <- result
 	}
 }

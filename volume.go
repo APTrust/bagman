@@ -83,7 +83,7 @@ func (volume *Volume) AvailableSpace() (numBytes uint64) {
 func (volume *Volume) Reserve(numBytes uint64) (err error) {
 	available := volume.AvailableSpace()
 	if numBytes >= available {
-		err = errors.New("Disk does not have enough space to " +
+		err = errors.New("Volume does not have enough space to " +
 			"accomodate the requested number of bytes")
 	} else  {
 		volume.mutex.Lock()
