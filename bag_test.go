@@ -118,6 +118,8 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 	if len(tarResult.GenericFiles) != 4 {
 		t.Errorf("Unpacked %d generic files, expected %d", len(tarResult.GenericFiles), 4)
 	}
+
+	emptyTime := time.Time{}
 	for index, gf := range tarResult.GenericFiles {
 		if gf.Path != expectedPath[index] {
 			t.Errorf("GenericFile path '%s' is incorrect, expected '%s'", gf.Path, expectedPath[index])
@@ -139,6 +141,12 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 		}
 		if gf.Modified != expectedModTime[index] {
 			t.Errorf("GenericFile modtime '%v' should be '%v'", gf.Modified, expectedModTime[index])
+		}
+		if gf.Sha256Generated == emptyTime {
+			t.Error("GenericFile.Sha256Generated timestamp is missing")
+		}
+		if gf.UuidGenerated == emptyTime {
+			t.Error("GenericFile.UuidGenerated timestamp is missing")
 		}
 	}
 

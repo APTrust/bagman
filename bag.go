@@ -30,7 +30,9 @@ type GenericFile struct {
 	Modified         time.Time
 	Md5              string
 	Sha256           string
+	Sha256Generated  time.Time
 	Uuid             string
+	UuidGenerated    time.Time
 	MimeType         string
 	Error            error
 }
@@ -252,6 +254,7 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 		return gf
 	}
 	gf.Uuid = uuid.String()
+	gf.UuidGenerated = time.Now()
 	gf.Size = size
 	gf.Modified = modTime
 
@@ -272,6 +275,7 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 
 	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
 	gf.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
+	gf.Sha256Generated = time.Now()
 
 	// Open the Mime Magic DB only once.
 	if magicMime == nil {
