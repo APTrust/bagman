@@ -21,6 +21,7 @@ Install these prerequisites as well:
 ```
     go get launchpad.net/goamz
     go get github.com/nu7hatch/gouuid
+    go get github.com/bitly/go-nsq
     go get github.com/rakyll/magicmime
     go get github.com/APTrust/bagins
 ```
