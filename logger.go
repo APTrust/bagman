@@ -18,15 +18,22 @@ const (
 	Debug
 )
 
-func InitLoggers(dirname string) (jsonLog *log.Logger, messageLog *log.Logger) {
-	jsonLog = makeLogger(dirname, "json", false)
-	messageLog = makeLogger(dirname, "message", true)
+// InitLoggers creates and returns a JSON logger, which can be used to save
+// serialized JSON data, and a message logger for plain text messages, warnings,
+// errors, etc.
+//
+// Param dirname is the name of the directory in which to create the log file.
+// Param processName will be prefixed to the name of the log file.
+func InitLoggers(dirname string, processName string) (jsonLog *log.Logger, messageLog *log.Logger) {
+	jsonLog = makeLogger(dirname, processName, "json", false)
+	messageLog = makeLogger(dirname, processName, "message", true)
 	return jsonLog, messageLog
 }
 
-func makeLogger(dirname string, logType string, includeTimestamp bool) (logger *log.Logger) {
+func makeLogger(dirname string, processName string, logType string, includeTimestamp bool) (logger *log.Logger) {
 	const timeFormat = "20060102.150405"
-	filename := fmt.Sprintf("bagman_%s_%s.log", logType, time.Now().Format(timeFormat))
+	filename := fmt.Sprintf("%s_%s_%s.log", processName,
+		logType, time.Now().Format(timeFormat))
 	filename = filepath.Join(dirname, filename)
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
