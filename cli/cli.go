@@ -17,38 +17,6 @@ import (
 	"launchpad.net/goamz/s3"
 )
 
-// S3File contains information about the S3 file we're
-// trying to process from an intake bucket. BucketName
-// and Key are the S3 bucket name and key. AttemptNumber
-// describes whether this is the 1st, 2nd, 3rd,
-// etc. attempt to process this file.
-type S3File struct {
-	BucketName     string
-	Key            s3.Key
-	AttemptNumber  int
-}
-
-// Retry will be set to true if the attempt to process the file
-// failed and should be tried again. This would be case, for example,
-// if the failure was due to a network error. Retry is
-// set to false if processing failed for some reason that
-// will not change: for example, if the file cannot be
-// untarred, checksums were bad, or data files were missing.
-// If processing succeeded, Retry is irrelevant.
-type ProcessResult struct {
-	S3File         *S3File
-	Error          error
-	FetchResult    *bagman.FetchResult
-	TarResult      *bagman.TarResult
-	BagReadResult  *bagman.BagReadResult
-	Retry          bool
-}
-
-type BucketSummary struct {
-	BucketName     string
-	Keys           []s3.Key
-	MaxFileSize    int64
-}
 
 
 // Global vars.
@@ -326,8 +294,8 @@ func CleanUp(file string) (errors []error) {
 }
 
 // Collects info about all of the buckets listed in buckets.
-func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
-	bucketSummaries = make([]*BucketSummary, 0)
+func CheckAllBuckets(buckets []string) (bucketSummaries []*bagman.BucketSummary, err error) {
+	bucketSummaries = make([]*bagman.BucketSummary, 0)
 	for _, bucketName := range(buckets) {
 		bucketSummary, err := CheckBucket(bucketName)
 		if err != nil {
@@ -341,7 +309,7 @@ func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err er
 // Returns info about the contents of the bucket named bucketName.
 // BucketSummary contains the bucket name, a list of keys, and the
 // size of the largest file in the bucket.
-func CheckBucket(bucketName string) (bucketSummary *BucketSummary, err error) {
+func CheckBucket(bucketName string) (bucketSummary *bagman.BucketSummary, err error) {
 	client, err := bagman.GetClient(aws.USEast)
 	if err != nil {
 		return nil, err
@@ -351,7 +319,7 @@ func CheckBucket(bucketName string) (bucketSummary *BucketSummary, err error) {
 		err = errors.New(fmt.Sprintf("Cannot retrieve bucket: %s", bucketName))
 		return nil, err
 	}
-	bucketSummary = new(BucketSummary)
+	bucketSummary = new(bagman.BucketSummary)
 	bucketSummary.BucketName = bucketName
 	bucketSummary.Keys, err = bagman.ListBucket(bucket, 0)
 	bucketSummary.MaxFileSize = GetMaxFileSize(bucketSummary.Keys)
