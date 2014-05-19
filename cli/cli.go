@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"flag"
 	"encoding/json"
@@ -70,7 +69,7 @@ func main() {
 	requestedConfig := flag.String("config", "", "configuration to run")
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
-	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory)
+	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bagman_cli")
 	bagman.PrintConfig(config)
 
 	// Set up the volume to keep track of how much disk space is
@@ -103,7 +102,7 @@ func main() {
 
 	// Now fetch lists from S3 of what's in each bucket.
 	messageLog.Println("[INFO]", "Checking S3 bucket lists")
-	bucketSummaries, err := CheckAllBuckets(config.Buckets)
+	bucketSummaries, err := bagman.CheckAllBuckets(config.Buckets)
 	if err != nil {
 		messageLog.Println("[ERROR]", err)
 		return
@@ -293,51 +292,6 @@ func CleanUp(file string) (errors []error) {
 	return errors
 }
 
-// Collects info about all of the buckets listed in buckets.
-func CheckAllBuckets(buckets []string) (bucketSummaries []*bagman.BucketSummary, err error) {
-	bucketSummaries = make([]*bagman.BucketSummary, 0)
-	for _, bucketName := range(buckets) {
-		bucketSummary, err := CheckBucket(bucketName)
-		if err != nil {
-			return bucketSummaries, err
-		}
-		bucketSummaries = append(bucketSummaries, bucketSummary)
-	}
-	return bucketSummaries, nil
-}
-
-// Returns info about the contents of the bucket named bucketName.
-// BucketSummary contains the bucket name, a list of keys, and the
-// size of the largest file in the bucket.
-func CheckBucket(bucketName string) (bucketSummary *bagman.BucketSummary, err error) {
-	client, err := bagman.GetClient(aws.USEast)
-	if err != nil {
-		return nil, err
-	}
-	bucket := client.Bucket(bucketName)
-	if bucket == nil {
-		err = errors.New(fmt.Sprintf("Cannot retrieve bucket: %s", bucketName))
-		return nil, err
-	}
-	bucketSummary = new(bagman.BucketSummary)
-	bucketSummary.BucketName = bucketName
-	bucketSummary.Keys, err = bagman.ListBucket(bucket, 0)
-	bucketSummary.MaxFileSize = GetMaxFileSize(bucketSummary.Keys)
-	if err != nil {
-		return nil, err
-	}
-	return bucketSummary, nil
-}
-
-// Returns the size in bytes of the largest file in the list of keys.
-func GetMaxFileSize(keys []s3.Key) (maxsize int64) {
-	for _, k := range keys {
-		if k.Size > maxsize {
-			maxsize = k.Size
-		}
-	}
-	return maxsize
-}
 
 // Runs tests on the bag file at path and returns information about
 // whether it was successfully unpacked, valid and complete.
