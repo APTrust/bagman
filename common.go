@@ -39,7 +39,6 @@ type ProcessResult struct {
 type BucketSummary struct {
 	BucketName     string
 	Keys           []s3.Key
-	MaxFileSize    int64
 }
 
 // GenericFile contains information about a generic
