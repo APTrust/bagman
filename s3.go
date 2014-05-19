@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 	"crypto/md5"
-//	"io/ioutil"
+	"errors"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
 )
@@ -134,4 +134,41 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 		}
 	}
 	return result
+}
+
+// Collects info about all of the buckets listed in buckets.
+// TODO: Write unit test
+func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
+	bucketSummaries = make([]*BucketSummary, 0)
+	for _, bucketName := range(buckets) {
+		bucketSummary, err := CheckBucket(bucketName)
+		if err != nil {
+			return bucketSummaries, err
+		}
+		bucketSummaries = append(bucketSummaries, bucketSummary)
+	}
+	return bucketSummaries, nil
+}
+
+// Returns info about the contents of the bucket named bucketName.
+// BucketSummary contains the bucket name, a list of keys, and the
+// size of the largest file in the bucket.
+// TODO: Write unit test
+func CheckBucket(bucketName string) (bucketSummary *BucketSummary, err error) {
+	client, err := GetClient(aws.USEast)
+	if err != nil {
+		return nil, err
+	}
+	bucket := client.Bucket(bucketName)
+	if bucket == nil {
+		err = errors.New(fmt.Sprintf("Cannot retrieve bucket: %s", bucketName))
+		return nil, err
+	}
+	bucketSummary = new(BucketSummary)
+	bucketSummary.BucketName = bucketName
+	bucketSummary.Keys, err = ListBucket(bucket, 0)
+	if err != nil {
+		return nil, err
+	}
+	return bucketSummary, nil
 }
