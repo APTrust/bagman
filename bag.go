@@ -21,34 +21,6 @@ import (
 // just one copy of this open at a time.
 var magicMime *magicmime.Magic
 
-// GenericFile contains information about a generic
-// data file within the data directory of bag or tar archive.
-type GenericFile struct {
-	Path             string
-	Size             int64
-	Created          time.Time  // we currently have no way of getting this
-	Modified         time.Time
-	Md5              string
-	Sha256           string
-	Sha256Generated  time.Time
-	Uuid             string
-	UuidGenerated    time.Time
-	MimeType         string
-	Error            error
-}
-
-// TarResult contains information about the attempt to untar
-// a bag.
-type TarResult struct {
-	InputFile       string
-	OutputDir       string
-	Error           error
-	Warnings        []string
-	FilesUnpacked   []string
-	GenericFiles    []*GenericFile
-}
-
-
 // Untars the file at the specified path and returns a list
 // of files that were untarred from the archive. Check
 // result.Error to ensure there were no errors.
@@ -122,27 +94,6 @@ func Untar(path string) (result *TarResult) {
 	sort.Strings(tarResult.FilesUnpacked)
 	return tarResult
 }
-
-// This Tag struct is essentially the same as the bagins
-// TagField struct, but its properties are public and can
-// be easily serialized to / deserialized from JSON.
-type Tag struct {
-	Label string
-	Value string
-}
-
-// BagReadResult contains data describing the result of
-// processing a single bag. If there were any processing
-// errors, this structure should tell us exactly what
-// happened and where.
-type BagReadResult struct {
-	Path             string
-	Files            []string
-	Error            error
-	Tags             []Tag
-	ChecksumErrors   []error
-}
-
 
 // Reads an untarred bag. The path parameter should be a path to
 // a directory that contains the bag, info and manifest files.

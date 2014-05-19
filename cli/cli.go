@@ -128,10 +128,10 @@ func main() {
 	fetcherBufferSize := config.Fetchers * 4
 	workerBufferSize := config.Workers * 10
 
-	fetchChannel := make(chan S3File, fetcherBufferSize)
-	unpackChannel := make(chan ProcessResult, workerBufferSize)
-	cleanUpChannel := make(chan ProcessResult, workerBufferSize)
-	resultsChannel := make(chan ProcessResult, workerBufferSize)
+	fetchChannel := make(chan bagman.S3File, fetcherBufferSize)
+	unpackChannel := make(chan bagman.ProcessResult, workerBufferSize)
+	cleanUpChannel := make(chan bagman.ProcessResult, workerBufferSize)
+	resultsChannel := make(chan bagman.ProcessResult, workerBufferSize)
 
 	// Now fetch lists from S3 of what's in each bucket.
 	messageLog.Println("[INFO]", "Checking S3 bucket lists")
@@ -172,7 +172,7 @@ func main() {
 				}
 				atomic.AddInt64(&taskCounter, 1)
 				// TODO: Set attempt number correctly when queue is working.
-				fetchChannel <- S3File{bucketSummary.BucketName, key, 1}
+				fetchChannel <- bagman.S3File{bucketSummary.BucketName, key, 1}
 				messageLog.Println("[INFO]", "Put", key.Key, "into fetch queue")
 			}
 		}
@@ -201,28 +201,28 @@ func waitForAllTasks() {
 }
 
 // This runs as a go routine to fetch files from S3.
-func doFetch(unpackChannel chan<- ProcessResult, resultsChannel chan<- ProcessResult, fetchChannel <-chan S3File) {
+func doFetch(unpackChannel chan<- bagman.ProcessResult, resultsChannel chan<- bagman.ProcessResult, fetchChannel <-chan bagman.S3File) {
 	for s3File := range fetchChannel {
 		// Disk needs filesize * 2 disk space to accomodate tar file & untarred files
 		err := volume.Reserve(uint64(s3File.Key.Size * 2))
 		if err != nil {
 			messageLog.Println("[WARNING]", "Requeueing", s3File.Key.Key, "- not enough disk space")
-			resultsChannel <- ProcessResult{&s3File, err, nil, nil, nil, true}
+			resultsChannel <- bagman.ProcessResult{&s3File, err, nil, nil, nil, true}
 		} else {
 			messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
 			fetchResult := Fetch(s3File.BucketName, s3File.Key)
 			if fetchResult.Error != nil {
-				resultsChannel <- ProcessResult{&s3File, fetchResult.Error, fetchResult, nil, nil,
+				resultsChannel <- bagman.ProcessResult{&s3File, fetchResult.Error, fetchResult, nil, nil,
 					fetchResult.Retry}
 			} else {
-				unpackChannel <- ProcessResult{&s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
+				unpackChannel <- bagman.ProcessResult{&s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
 			}
 		}
 	}
 }
 
 // This runs as a go routine to untar files downloaded from S3.
-func doUnpack(resultsChannel chan<- ProcessResult, unpackChannel <-chan ProcessResult) {
+func doUnpack(resultsChannel chan<- bagman.ProcessResult, unpackChannel <-chan bagman.ProcessResult) {
 	for result := range unpackChannel {
 		if result.Error != nil {
 			messageLog.Println("[INFO]", "Nothing to unpack for", result.S3File.Key.Key)
@@ -237,7 +237,7 @@ func doUnpack(resultsChannel chan<- ProcessResult, unpackChannel <-chan ProcessR
 
 // This runs as a go routine to remove the files we downloaded
 // and untarred.
-func doCleanUp(cleanUpChannel <-chan ProcessResult) {
+func doCleanUp(cleanUpChannel <-chan bagman.ProcessResult) {
 	for result := range cleanUpChannel {
 		messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
 		if result.FetchResult.LocalTarFile != "" {
@@ -267,7 +267,7 @@ func printTotals() {
 
 // This prints to the log the result of the program's attempt to fetch,
 // untar, unbag and verify an individual S3 tar file.
-func printResult(cleanUpChannel chan<- ProcessResult, resultsChannel <-chan ProcessResult) {
+func printResult(cleanUpChannel chan<- bagman.ProcessResult, resultsChannel <-chan bagman.ProcessResult) {
 	for result := range resultsChannel {
 		json, err := json.Marshal(result)
 		if err != nil {
@@ -373,7 +373,7 @@ func GetMaxFileSize(keys []s3.Key) (maxsize int64) {
 
 // Runs tests on the bag file at path and returns information about
 // whether it was successfully unpacked, valid and complete.
-func ProcessBagFile(result *ProcessResult) {
+func ProcessBagFile(result *bagman.ProcessResult) {
 	result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile)
 	if result.TarResult.Error != nil {
 		result.Error = result.TarResult.Error

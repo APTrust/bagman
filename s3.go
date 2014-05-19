@@ -58,20 +58,6 @@ func ListBucket(bucket *s3.Bucket, limit int) (keys []s3.Key, err error) {
 	return contents, nil
 }
 
-
-type FetchResult struct {
-	BucketName       string
-	Key              string
-	LocalTarFile     string
-	RemoteMd5        string
-	LocalMd5         string
-	Md5Verified      bool
-	Md5Verifiable    bool
-	Error            error
-	Warning          string
-	Retry            bool
-}
-
 // Fetches key from bucket and saves it to path.
 // This validates the md5 sum of the byte stream before
 // saving to disk. If the md5 sum of the downloaded bytes
