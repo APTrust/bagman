@@ -8,6 +8,10 @@
 		"Workers": 4,
 		"FluctusURL": "http://localhost:3000",
 		"NsqdHttpAddress": "http://localhost:4151",
+		"BagProcessorTopic": "process",
+		"MetadataTopic": "metadata",
+		"FailedItemsTopic": "failed",
+		"ProcessStateTopic": "process_state",
 		"Buckets": [
 			"aptrust.receiving.columbia.edu",
 			"aptrust.receiving.iub.edu",
@@ -36,6 +40,10 @@
 		"Workers": 4,
 		"FluctusURL": "http://localhost:3000",
 		"NsqdHttpAddress": "http://localhost:4151",
+		"BagProcessorTopic": "process",
+		"MetadataTopic": "metadata",
+		"FailedItemsTopic": "failed",
+		"ProcessStateTopic": "process_state",
 		"Buckets": [
 			"aptrust.receiving.columbia.edu",
 			"aptrust.receiving.iub.edu",

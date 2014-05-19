@@ -8,15 +8,19 @@ import (
 )
 
 type Config struct {
-	TarDirectory     string
-	LogDirectory     string
-	MaxFileSize      int64
-	LogLevel         LogLevel
-	Fetchers         int
-	Workers          int
-	FluctusURL       string
-	Buckets          []string
-	NsqdHttpAddress  string
+	TarDirectory      string
+	LogDirectory      string
+	MaxFileSize       int64
+	LogLevel          LogLevel
+	Fetchers          int
+	Workers           int
+	FluctusURL        string
+	Buckets           []string
+	NsqdHttpAddress   string
+	BagProcessorTopic string
+	MetadataTopic     string
+	FailedItemsTopic  string
+	ProcessStateTopic string
 }
 
 // This returns the configuration that the user requested.
@@ -46,6 +50,12 @@ func PrintConfig(config Config) {
 	fmt.Printf("    Workers:             %d\n", config.Workers)
 	fmt.Printf("    Fluctus URL:         %s\n", config.FluctusURL)
 	fmt.Printf("    Nsqd Http Address:   %s\n", config.NsqdHttpAddress)
+
+	fmt.Printf("    Bag Processor Topic: %s\n", config.BagProcessorTopic)
+	fmt.Printf("    Metadata Topic:      %s\n", config.MetadataTopic)
+	fmt.Printf("    Failed Items Topic:  %s\n", config.FailedItemsTopic)
+	fmt.Printf("    Process State Topic: %s\n", config.ProcessStateTopic)
+
 	fmt.Println("    Buckets:")
 	for _, bucket := range config.Buckets {
 		fmt.Println("        ", bucket)
