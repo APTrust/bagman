@@ -45,10 +45,12 @@ then run bagman with that named configuration using:
 
 ```
     cd cli
-    go run cli.go -config=dev
+    go run cli.go -config=apd4n
 ```
 
-... or whatever named configuration you want.
+... or whatever named configuration you want. If you dont specify a
+configuration, the cli program will print a list of available
+configurations.
 
 You can run bagman locally with the following command. This will pull
 down files <= 200k and process them. You will likely have to change

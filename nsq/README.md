@@ -19,6 +19,15 @@ directory in your PATH.
 The primary quick start instructions are at
 http://nsq.io/overview/quick_start.html.
 
+You can also run the three main nsq services using service.go, like so:
+
+```
+    go run service.go -config=$GOPATH/src/github.com/APTrust/bagman/nsq/nsqd.apd4n.config
+```
+
+This requires a config file. You'll find examples of config files in
+this directory. The naming convention is nsqd.<name>.config.
+
 ## Config Files
 
 To be determined... See the available options for nsqd here:
