@@ -139,14 +139,14 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 		if gf.MimeType != expectedType[index] {
 			t.Errorf("GenericFile type '%s' should be '%s'", gf.MimeType, expectedType[index])
 		}
-		if gf.Modified != expectedModTime[index] {
-			t.Errorf("GenericFile modtime '%v' should be '%v'", gf.Modified, expectedModTime[index])
-		}
 		if gf.Sha256Generated == emptyTime {
 			t.Error("GenericFile.Sha256Generated timestamp is missing")
 		}
 		if gf.UuidGenerated == emptyTime {
 			t.Error("GenericFile.UuidGenerated timestamp is missing")
+		}
+		if gf.Modified.UTC() != expectedModTime[index].UTC() {
+			t.Errorf("GenericFile modtime '%v' should be '%v'", gf.Modified.UTC(), expectedModTime[index].UTC())
 		}
 	}
 
