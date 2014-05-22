@@ -5,6 +5,7 @@ package bagman
 import (
 	"time"
 	"launchpad.net/goamz/s3"
+	"github.com/bitly/go-nsq"
 )
 
 
@@ -16,7 +17,6 @@ import (
 type S3File struct {
 	BucketName     string
 	Key            s3.Key
-	AttemptNumber  int
 }
 
 // Retry will be set to true if the attempt to process the file
@@ -27,12 +27,14 @@ type S3File struct {
 // untarred, checksums were bad, or data files were missing.
 // If processing succeeded, Retry is irrelevant.
 type ProcessResult struct {
-	S3File         *S3File
-	Error          error
-	FetchResult    *FetchResult
-	TarResult      *TarResult
-	BagReadResult  *BagReadResult
-	Retry          bool
+	NsqMessage       *nsq.Message               `json:"-"`  // Don't serialize
+	NsqOutputChannel chan *nsq.FinishedMessage  `json:"-"`  // Don't serialize
+	S3File           *S3File
+	Error            error
+	FetchResult      *FetchResult
+	TarResult        *TarResult
+	BagReadResult    *BagReadResult
+	Retry            bool
 }
 
 // BucketSummary contains information about an S3 bucket and its contents.
