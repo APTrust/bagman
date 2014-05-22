@@ -13,7 +13,7 @@ Install an editor if you don't like working with vim. If you like vim,
 just kick back and relax.
 
 ```
-    sudo apt-get install emacs23-nox golang-mode
+	sudo apt-get install emacs23-nox golang-mode
 ```
 
 The "go get" command uses git, bazaar, and mercurial to download
@@ -22,8 +22,8 @@ for determining file mime types. We'll need gcc to build the
 magicmime go package later.
 
 ```
-        sudo apt-get install git bzr mercurial
-        sudo apt-get install gcc libmagic-dev
+		sudo apt-get install git bzr mercurial
+		sudo apt-get install gcc libmagic-dev
 ```
 
 Install go, but don't use apt-get. That installs go 1.0, which blows
@@ -33,42 +33,42 @@ on an EC2 small instance. If you're running on a 64-bit instance, use
 the package go1.2.1.linux-amd64.tar.gz instead.
 
 ```
-    curl "https://go.googlecode.com/files/go1.2.1.linux-386.tar.gz" > go1.2.1.linux-386.tar.gz
-    sudo tar -C /usr/local -xzf go1.2.1.linux-386.tar.gz
+	curl "https://go.googlecode.com/files/go1.2.1.linux-386.tar.gz" > go1.2.1.linux-386.tar.gz
+	sudo tar -C /usr/local -xzf go1.2.1.linux-386.tar.gz
 ```
 
 Create a GOHOME directory:
 
 ```
-    mkdir ~/go
+	mkdir ~/go
 ```
 
 Create ~/.bash_profile with the following:
 
 ```
-    export EDITOR=emacs
-    export AWS_ACCESS_KEY_ID="Our access key id"
-    export AWS_SECRET_ACCESS_KEY="Our secret key"
-    export GOPATH=$HOME/go
-    export PATH="$GOPATH/bin:$PATH:/usr/local/go/bin"
+	export EDITOR=emacs
+	export AWS_ACCESS_KEY_ID="Our access key id"
+	export AWS_SECRET_ACCESS_KEY="Our secret key"
+	export GOPATH=$HOME/go
+	export PATH="$GOPATH/bin:$PATH:/usr/local/go/bin"
 ```
 
 Run this to load the bash profile:
 
 ```
-    source ~/.bash_profile
+	source ~/.bash_profile
 ```
 
 Now if you run this:
 
 ```
-    go version
+	go version
 ```
 
 You should see this output:
 
 ```
-    go version go1.2.1 linux/386
+	go version go1.2.1 linux/386
 ```
 
 Make a directory to hold the tar/bag files we're going to
@@ -76,40 +76,40 @@ download. Most EC2 instances include a volume attached at /mnt. A
 small instance's /mnt has 160GB of disk space.
 
 ```
-    sudo mkdir /mnt/apt_data
-    sudo mkdir /mnt/apt_logs
-    sudo chown ubuntu.ubuntu /mnt/apt_data/
-    sudo chown ubuntu.ubuntu /mnt/apt_logs/
+	sudo mkdir /mnt/apt_data
+	sudo mkdir /mnt/apt_logs
+	sudo chown ubuntu.ubuntu /mnt/apt_data/
+	sudo chown ubuntu.ubuntu /mnt/apt_logs/
 ```
 
 Install the go packages we'll need:
 
 ```
-    go get launchpad.net/goamz
-    go get github.com/nu7hatch/gouuid
-    go get github.com/rakyll/magicmime
-    go get github.com/APTrust/bagins
-    go get github.com/APTrust/bagman
+	go get launchpad.net/goamz
+	go get github.com/nu7hatch/gouuid
+	go get github.com/rakyll/magicmime
+	go get github.com/APTrust/bagins
+	go get github.com/APTrust/bagman
 ```
 
 You can also copy a version of bagman from your local machine, like
 so:
 
 ```
-    scp -r ~/go/src/github.com/APTrust/bagman/ ubuntu@apt-util:go/src/github.com/APTrust/
+	scp -r ~/go/src/github.com/APTrust/bagman/ ubuntu@apt-util:go/src/github.com/APTrust/
 ```
 
 Note that this assumes you have an entry in your local ~/.ssh/config
 like this:
 
 ```
-    Host apt-util
-        User ubuntu
-        Port 22
-        IdentityFile ~/.ssh/MyPrivateKey.pem
-        TCPKeepAlive yes
-        IdentitiesOnly yes
-        HostName ec2-54-85-73-179.compute-1.amazonaws.com
+	Host apt-util
+		User ubuntu
+		Port 22
+		IdentityFile ~/.ssh/MyPrivateKey.pem
+		TCPKeepAlive yes
+		IdentitiesOnly yes
+		HostName ec2-54-85-73-179.compute-1.amazonaws.com
 ```
 
 And remember to check the AWS console for the *actual* public IP
@@ -124,8 +124,8 @@ files in all the S3 buckets.
 You can now run the test code like this:
 
 ```
-    cd ~/go/src/github.com/APTrust/apmanager/test
-    go run test.go -config=test
+	cd ~/go/src/github.com/APTrust/apmanager/test
+	go run test.go -config=test
 ```
 
 Bagman will print out some information about its configuration and it
@@ -146,10 +146,63 @@ fluctus.
 After running the test program, make sure it cleaned up after itself:
 
 ```
-    ls /mnt/apt_data/
+	ls /mnt/apt_data/
 ```
 
 That listing should show an empty directory.
 
 The log should be in /mnt/apt_logs. You will have to delete that
 manually.
+
+## Setting up NSQ
+
+If you're running NSQ on a 64-bit machine, you can get pre-built
+binaries at http://nsq.io/deployment/installing.html. Just untar the
+latest package and copy the executables onto your path.
+
+If you're running on a 32-bit machine, you'll need to follow these steps
+to build the nsq files.
+
+```
+go get github.com/tools/godep
+go get github.com/bmizerany/assert
+godep get github.com/bitly/nsq/...
+cd /home/ubuntu/go/src/github.com/bitly/nsq
+./test.sh
+```
+
+The last step builds all of the necessary nsq components before
+it tests them.
+
+## Avoiding S3 Connection Reset Errors
+
+Large S3 file downloads fail often with the message "Connection reset
+by peer." A desciption of the problem, along with a solution appears
+here:
+
+http://scie.nti.st/2008/3/14/amazon-s3-and-connection-reset-by-peer/
+
+__Note that as of May 22, 2014, these fixes have not yet been applied
+to the server, since they slow throughput. We will wait and see if
+they are needed.__
+
+Here's a quick summary of the fix, in case the link dies. Make sure
+the following lines are in /etc/sysctl.conf:
+
+```
+# Workaround for TCP Window Scaling bugs in other ppl's equipment:
+net.ipv4.tcp_wmem = 4096 16384 512000
+net.ipv4.tcp_rmem = 4096 87380 512000
+```
+
+Then run this:
+
+```
+sudo sysctl -p
+```
+
+You may also have to run this:
+
+```
+sudo service procps start
+```
