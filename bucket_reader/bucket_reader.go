@@ -27,7 +27,6 @@ func initialize() {
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
 	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bucket_reader")
-	bagman.PrintConfig(config)
 }
 
 
@@ -43,8 +42,7 @@ func run() {
 	for _, bucketSummary := range bucketSummaries {
 		for _, key := range bucketSummary.Keys {
 			if key.Size < config.MaxFileSize {
-				// TODO: Set attempt number correctly when queue is working.
-				s3File := bagman.S3File{bucketSummary.BucketName, key, nil}
+				s3File := bagman.S3File{bucketSummary.BucketName, key}
 				enqueue(url, s3File)
 			}
 		}
