@@ -282,7 +282,8 @@ func doCleanUp() {
 			requeueDelayMs,
 			succeeded}
 		result.NsqOutputChannel <- finishedMessage
-		//cmd := nsq.Finish(result.NsqMessage.Id)
+
+		// TODO: Send ProcessResult to nsq metadata topic
 	}
 }
 
