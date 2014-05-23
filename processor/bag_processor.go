@@ -37,6 +37,34 @@ var bytesInS3 = int64(0)
 var bytesProcessed = int64(0)
 
 
+// bag_processor receives messages from nsqd describing
+// items in the S3 receiving buckets. Each item/message
+// follows this flow:
+//
+// 1. Fetch channel: fetches the file from S3.
+// 2. Unpack channel: untars the bag files, parses and validates
+//    the bag, reads tags, generates checksums and generic file
+//    UUIDs.
+// 3. **** TODO **** Copy files to S3 permanent storage.
+// 4. Results channel: tells the queue whether processing
+//    succeeded, and if not, whether the item should be requeued.
+//    Also logs results to json and message logs.
+// 5. Cleanup channe: cleans up the files after processing
+//    completes.
+//
+// If a failure occurs anywhere in the first three steps,
+// processing goes directly to the Results Channel, which
+// records the error and the disposition (retry/give up).
+//
+// As long as the message from nsq contains valid JSON,
+// steps 4 and 5 ALWAYS run.
+//
+// The bag processor has so many responsibilities because
+// downloading, untarring and running checksums on
+// multi-gigabyte files takes a lot of time. We want to
+// avoid having separate processes repeatedly download and
+// untar the files, so bag_processor performs all operations
+// that require local access to the raw contents of the bags.
 func main() {
 
 	loadConfig()
@@ -44,14 +72,21 @@ func main() {
 	initChannels()
 	initGoRoutines(channels)
 
-	// ----------------------------------------------------------------
-	// START HERE
-	// Bind message handler here!!!
-	// See https://github.com/APTrust/bagman/blob/develop/nsqtest/nsqtest.go
-	// ----------------------------------------------------------------
 
+	reader, err := nsq.NewReader(config.BagProcessorTopic, config.BagProcessorChannel)
+	if err != nil {
+		messageLog.Fatalf(err.Error())
+	}
 
-	waitForAllTasks()
+	handler := &BagProcessor{}
+	reader.SetMaxInFlight(100)
+	reader.AddAsyncHandler(handler)
+	reader.ConnectToLookupd(config.NsqLookupd)
+
+	// This reader blocks until we get an interrupt, so our program does not exit.
+	<-reader.ExitChan
+
+	//waitForAllTasks()
 }
 
 
@@ -60,7 +95,7 @@ func loadConfig() {
 	requestedConfig := flag.String("config", "", "configuration to run")
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
-	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bagman_cli")
+	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bag_processor")
 }
 
 // Set up the volume to keep track of how much disk space is
@@ -112,7 +147,14 @@ func initGoRoutines(channels *Channels) {
 	}
 }
 
-func HandleMessage(message *nsq.Message, outputChannel chan *nsq.FinishedMessage) {
+type BagProcessor struct {
+
+}
+
+// MessageHandler handles messages from the queue, putting each
+// item into the pipleline.
+func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq.FinishedMessage) {
+
 	fmt.Println(string(message.Body))
 	message.Attempts++
 	atomic.AddInt64(&taskCounter, 1)
@@ -120,9 +162,11 @@ func HandleMessage(message *nsq.Message, outputChannel chan *nsq.FinishedMessage
 	var s3File bagman.S3File
 	err := json.Unmarshal(message.Body, &s3File)
 	if err != nil {
-		messageLog.Println("[ERROR] Could not unmarshal JSON data from nsq")
-		finishedMessage := &nsq.FinishedMessage{message.Id, 1000, false}
+		messageLog.Println("[ERROR] Could not unmarshal JSON data from nsq:",
+			string(message.Body))
+		finishedMessage := &nsq.FinishedMessage{message.Id, 0, true}
 		outputChannel <- finishedMessage
+		return
 	}
 
 	// Create the result struct and pass it down the pipeline
@@ -209,7 +253,7 @@ func doUnpack() {
 func doCleanUp() {
 	for result := range channels.CleanUpChannel {
 		messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
-		if result.FetchResult.LocalTarFile != "" {
+		if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
 			// Clean up any files we downloaded and unpacked
 			errors := CleanUp(result.FetchResult.LocalTarFile)
 			if errors != nil && len(errors) > 0 {
@@ -238,6 +282,7 @@ func doCleanUp() {
 			requeueDelayMs,
 			succeeded}
 		result.NsqOutputChannel <- finishedMessage
+		//cmd := nsq.Finish(result.NsqMessage.Id)
 	}
 }
 
