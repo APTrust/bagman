@@ -70,7 +70,6 @@ func main() {
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
 	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bagman_cli")
-	bagman.PrintConfig(config)
 
 	// Set up the volume to keep track of how much disk space is
 	// available. We want to avoid downloading large files when
@@ -139,7 +138,7 @@ func main() {
 				}
 				atomic.AddInt64(&taskCounter, 1)
 				// TODO: Set attempt number correctly when queue is working.
-				fetchChannel <- bagman.S3File{bucketSummary.BucketName, key, 1}
+				fetchChannel <- bagman.S3File{bucketSummary.BucketName, key}
 				messageLog.Println("[INFO]", "Put", key.Key, "into fetch queue")
 			}
 		}
@@ -174,15 +173,15 @@ func doFetch(unpackChannel chan<- bagman.ProcessResult, resultsChannel chan<- ba
 		err := volume.Reserve(uint64(s3File.Key.Size * 2))
 		if err != nil {
 			messageLog.Println("[WARNING]", "Requeueing", s3File.Key.Key, "- not enough disk space")
-			resultsChannel <- bagman.ProcessResult{&s3File, err, nil, nil, nil, true}
+			resultsChannel <- bagman.ProcessResult{nil, nil, &s3File, err, nil, nil, nil, true}
 		} else {
 			messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
 			fetchResult := Fetch(s3File.BucketName, s3File.Key)
 			if fetchResult.Error != nil {
-				resultsChannel <- bagman.ProcessResult{&s3File, fetchResult.Error, fetchResult, nil, nil,
+				resultsChannel <- bagman.ProcessResult{nil, nil, &s3File, fetchResult.Error, fetchResult, nil, nil,
 					fetchResult.Retry}
 			} else {
-				unpackChannel <- bagman.ProcessResult{&s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
+				unpackChannel <- bagman.ProcessResult{nil, nil, &s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
 			}
 		}
 	}
