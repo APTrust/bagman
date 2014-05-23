@@ -8,19 +8,23 @@ import (
 )
 
 type Config struct {
-	TarDirectory      string
-	LogDirectory      string
-	MaxFileSize       int64
-	LogLevel          LogLevel
-	Fetchers          int
-	Workers           int
-	FluctusURL        string
-	Buckets           []string
-	NsqdHttpAddress   string
-	BagProcessorTopic string
-	MetadataTopic     string
-	FailedItemsTopic  string
-	ProcessStateTopic string
+	ActiveConfig         string
+	TarDirectory         string
+	LogDirectory         string
+	MaxFileSize          int64
+	LogLevel             LogLevel
+	Fetchers             int
+	Workers              int
+	FluctusURL           string
+	Buckets              []string
+	NsqdHttpAddress      string
+	NsqLookupd           string
+	BagProcessorTopic    string
+	BagProcessorChannel  string
+	MetadataTopic        string
+	MetadataChannel      string
+	ProcessStateTopic    string
+	StateChannel         string
 }
 
 // This returns the configuration that the user requested.
@@ -35,33 +39,10 @@ func LoadRequestedConfig(requestedConfig *string) (config Config) {
 		printConfigHelp(*requestedConfig, configurations)
 		os.Exit(1)
 	}
+	config.ActiveConfig = *requestedConfig
 	return config
 }
 
-// This prints the current configuration to stdout.
-// TODO: Add io writer param, so we can print to any io stream.
-func PrintConfig(config Config) {
-	fmt.Println("Running with the following configuration:")
-	fmt.Printf("    Tar Directory:       %s\n", config.TarDirectory)
-	fmt.Printf("    Log Directory:       %s\n", config.LogDirectory)
-	fmt.Printf("    Log Level:           %d\n", config.LogLevel)
-	fmt.Printf("    Max File Size:       %d\n", config.MaxFileSize)
-	fmt.Printf("    Fetchers:            %d\n", config.Fetchers)
-	fmt.Printf("    Workers:             %d\n", config.Workers)
-	fmt.Printf("    Fluctus URL:         %s\n", config.FluctusURL)
-	fmt.Printf("    Nsqd Http Address:   %s\n", config.NsqdHttpAddress)
-
-	fmt.Printf("    Bag Processor Topic: %s\n", config.BagProcessorTopic)
-	fmt.Printf("    Metadata Topic:      %s\n", config.MetadataTopic)
-	fmt.Printf("    Failed Items Topic:  %s\n", config.FailedItemsTopic)
-	fmt.Printf("    Process State Topic: %s\n", config.ProcessStateTopic)
-
-	fmt.Println("    Buckets:")
-	for _, bucket := range config.Buckets {
-		fmt.Println("        ", bucket)
-	}
-	fmt.Printf("Output will be logged to bagman_json and bagman_messages in %s\n", config.LogDirectory)
-}
 
 // This prints a message to stdout describing how to specify
 // a valid configuration.
