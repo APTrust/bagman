@@ -7,23 +7,23 @@ Server side code for managing BagIt bags sent to and managed by APTrust.
 Install libmagic first. If you're on a Mac, do it this way:
 
 ```
-    brew install libmagic
+	brew install libmagic
 ```
 
 If you're on Linux, use apt-get or yum to install libmagic-dev:
 
 ```
-    sudo apt-get install libmagic-dev
+	sudo apt-get install libmagic-dev
 ```
 
 Install these prerequisites as well:
 
 ```
-    go get launchpad.net/goamz
-    go get github.com/nu7hatch/gouuid
-    go get github.com/bitly/go-nsq
-    go get github.com/rakyll/magicmime
-    go get github.com/APTrust/bagins
+	go get launchpad.net/goamz
+	go get github.com/nu7hatch/gouuid
+	go get github.com/bitly/go-nsq
+	go get github.com/rakyll/magicmime
+	go get github.com/APTrust/bagins
 ```
 
 ## Installation
@@ -31,7 +31,7 @@ Install these prerequisites as well:
 It's as easy as:
 
 ```
-    go get github.com/APTrust/bagman
+	go get github.com/APTrust/bagman
 ```
 
 ## Configuration
@@ -44,8 +44,8 @@ You can create a named custom configuration in config.json, and
 then run bagman with that named configuration using:
 
 ```
-    cd cli
-    go run cli.go -config=apd4n
+	cd cli
+	go run cli.go -config=apd4n
 ```
 
 ... or whatever named configuration you want. If you dont specify a
@@ -64,10 +64,37 @@ APTrust AWS account.
 ## Testing
 
 ```
-    go test
+	go test
 ```
 
 Bagman will skip the S3 integration tests if it can't find your AWS
 keys in your environment. The S3 tests should succeed if you have any
 AWS keys in your environment, since the integration tests read from a
 public bucket.
+
+## Running with NSQ
+
+This is currently in its earliest stages. You'll need few terminal
+sessions for this. In one terminal, run this with the correct config
+path:
+
+```
+cd nsq
+go run service.go -config=/path/to/bagman/nsq/nsqd.apd4n.config
+```
+
+In another terminal, run this, to put a few items in the queue:
+
+```
+cd bucket_reader
+go run bucket_reader.go -config=apd4n
+```
+
+In a third terminal, run this:
+
+```
+cd processor
+go run bag_processor.go -config=apd4n
+```
+
+Results will be in the log files.
