@@ -171,14 +171,15 @@ func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq
 
 	// Create the result struct and pass it down the pipeline
 	result := bagman.ProcessResult{
-		message,
-		outputChannel,
-		&s3File,
-		nil,
-		nil,
-		nil,
-		nil,
-		true}
+		message,         // NsqMessage
+		outputChannel,   // NsqOutputChannel
+		&s3File,         // S3File: the tarred bag that was uploaded to receiving bucket
+		nil,             // Error: no processing error yet
+		nil,             // FetchResult: could we get the bag?
+		nil,             // TarResult: could we untar and validate the bag?
+		nil,             // BagReadResult
+		"",              // Current stage of processing
+		true}            // Retry if processing fails? Default to yes.
 	channels.FetchChannel <- result
 	messageLog.Println("[INFO]", "Put", s3File.Key.Key, "into fetch queue")
 }
@@ -200,6 +201,7 @@ func waitForAllTasks() {
 // This runs as a go routine to fetch files from S3.
 func doFetch() {
 	for result := range channels.FetchChannel {
+		result.Stage = "Fetch"
 		s3Key := result.S3File.Key
 		// Disk needs filesize * 2 disk space to accomodate tar file & untarred files
 		err := volume.Reserve(uint64(s3Key.Size * 2))
@@ -352,6 +354,7 @@ func CleanUp(file string) (errors []error) {
 // Runs tests on the bag file at path and returns information about
 // whether it was successfully unpacked, valid and complete.
 func ProcessBagFile(result *bagman.ProcessResult) {
+	result.Stage = "Unpack"
 	result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile)
 	if result.TarResult.Error != nil {
 		result.Error = result.TarResult.Error
@@ -360,6 +363,7 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 		// where we do want to retry, such as if disk was full.
 		result.Retry = false
 	} else {
+		result.Stage = "Validate"
 		result.BagReadResult = bagman.ReadBag(result.TarResult.OutputDir)
 		if result.BagReadResult.Error != nil {
 			result.Error = result.BagReadResult.Error

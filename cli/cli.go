@@ -173,15 +173,41 @@ func doFetch(unpackChannel chan<- bagman.ProcessResult, resultsChannel chan<- ba
 		err := volume.Reserve(uint64(s3File.Key.Size * 2))
 		if err != nil {
 			messageLog.Println("[WARNING]", "Requeueing", s3File.Key.Key, "- not enough disk space")
-			resultsChannel <- bagman.ProcessResult{nil, nil, &s3File, err, nil, nil, nil, true}
+			resultsChannel <- bagman.ProcessResult{
+				nil,
+				nil,
+				&s3File,
+				err,
+				nil,
+				nil,
+				nil,
+				"",
+				true}
 		} else {
 			messageLog.Println("[INFO]", "Fetching", s3File.Key.Key)
 			fetchResult := Fetch(s3File.BucketName, s3File.Key)
 			if fetchResult.Error != nil {
-				resultsChannel <- bagman.ProcessResult{nil, nil, &s3File, fetchResult.Error, fetchResult, nil, nil,
+				resultsChannel <- bagman.ProcessResult{
+					nil,
+					nil,
+					&s3File,
+					fetchResult.Error,
+					fetchResult,
+					nil,
+					nil,
+					"",
 					fetchResult.Retry}
 			} else {
-				unpackChannel <- bagman.ProcessResult{nil, nil, &s3File, nil, fetchResult, nil, nil, fetchResult.Retry}
+				unpackChannel <- bagman.ProcessResult{
+					nil,
+					nil,
+					&s3File,
+					nil,
+					fetchResult,
+					nil,
+					nil,
+					"",
+					fetchResult.Retry}
 			}
 		}
 	}

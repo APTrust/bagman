@@ -4,8 +4,14 @@ package bagman
 
 import (
 	"time"
+	"strings"
 	"launchpad.net/goamz/s3"
 	"github.com/bitly/go-nsq"
+)
+
+const (
+	ReceiveBucketPrefix = "aptrust.receiving."
+	RestoreBucketPrefix = "aptrust.restore."
 )
 
 
@@ -17,6 +23,39 @@ import (
 type S3File struct {
 	BucketName     string
 	Key            s3.Key
+}
+
+// ProcessStatus contains summary information describing
+// the status of a bag in process. This data goes to Fluctus,
+// so that APTrust partners can see which of their bags have
+// been processed successfully, and why failed bags failed.
+// See http://bit.ly/1pf7qxD for details.
+//
+// Type may have one of the following values: Ingest, Delete,
+// Restore
+//
+// Stage may have one of the following values: Fetch (fetch
+// tarred bag file from S3 receiving bucket), Unpack (unpack
+// the tarred bag), Validate (make sure all data files are present,
+// checksums are correct, required tags are present), Store (copy
+// generic files to permanent S3 bucket for archiving), Record
+// (save record of intellectual object, generic files and events
+// to Fedora).
+//
+// Status may have one of the following values: Processing,
+// Succeeded, Failed.
+type ProcessStatus struct {
+	Name         string      `json:"name"`
+	Bucket       string      `json:"bucket"`
+	ETag         string      `json:"etag"`
+	UserId       int         `json:"user_id"`
+	Institution  string      `json:"institution"`
+	Date         time.Time   `json:"date"`
+	Note         string      `json:"note"`
+	Type         string      `json:"type"`
+	Stage        string      `json:"stage"`
+	Status       string      `json:"status"`
+	Outcome      string      `json:"outcome"`
 }
 
 // Retry will be set to true if the attempt to process the file
@@ -34,7 +73,34 @@ type ProcessResult struct {
 	FetchResult      *FetchResult
 	TarResult        *TarResult
 	BagReadResult    *BagReadResult
+	Stage            string
 	Retry            bool
+}
+
+// IngestStatus returns a lightweight Status object suitable for reporting
+// to the Fluctus results table, so that APTrust partners can view
+// the status of their submitted bags.
+func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
+	status = &ProcessStatus{}
+	status.Date = time.Now()
+	status.Type = "Ingest"
+	status.Name = result.S3File.Key.Key
+	status.Bucket = result.S3File.BucketName
+	status.ETag = result.S3File.Key.ETag
+	status.Stage = result.Stage
+	status.Status = "Processing"
+	if result.Error != nil {
+		status.Note = result.Error.Error()
+		status.Status = "Failed"
+	} else {
+		if result.Stage == "Record" {
+			// We made it through last stage with no erros
+			status.Status = "Succeeded"
+		}
+	}
+	status.Institution = OwnerOf(result.S3File.BucketName)
+	status.Outcome = ""
+	return status
 }
 
 // BucketSummary contains information about an S3 bucket and its contents.
@@ -103,4 +169,28 @@ type FetchResult struct {
 	Error            error
 	Warning          string
 	Retry            bool
+}
+
+// Returns the domain name of the institution that owns the specified bucket.
+// For example, if bucketName is 'aptrust.receiving.unc.edu' the return value
+// will be 'unc.edu'.
+func OwnerOf (bucketName string) (institution string) {
+	if strings.HasPrefix(bucketName, ReceiveBucketPrefix) {
+		institution = strings.Replace(bucketName, ReceiveBucketPrefix, "", 1)
+	} else if strings.HasPrefix(bucketName, RestoreBucketPrefix) {
+		institution = strings.Replace(bucketName, RestoreBucketPrefix, "", 1)
+	}
+	return institution
+}
+
+// Returns the name of the specified institution's receiving bucket.
+// E.g. institution 'unc.edu' returns bucketName 'aptrust.receiving.unc.edu'
+func ReceivingBucketFor (institution string) (bucketName string) {
+	return ReceiveBucketPrefix + institution
+}
+
+// Returns the name of the specified institution's restoration bucket.
+// E.g. institution 'unc.edu' returns bucketName 'aptrust.restore.unc.edu'
+func RestorationBucketFor (institution string) (bucketName string) {
+	return RestoreBucketPrefix + institution
 }
