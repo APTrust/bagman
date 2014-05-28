@@ -39,8 +39,7 @@ func baseResult() (result *bagman.ProcessResult) {
 	result.S3File.Key = s3.Key{}
 	result.S3File.Key.Key = "sample.tar"
 	result.S3File.Key.ETag = "\"0123456789ABCDEF\""
-//	fmt.Println(result.S3File)
-//	fmt.Println(result.S3File.Key)
+	result.S3File.Key.LastModified = "2014-05-28T16:22:24.016Z"
 	return result
 }
 
@@ -97,6 +96,7 @@ func TestIngestStatus(t *testing.T) {
 func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedStatus string) {
 	status := result.IngestStatus()
 	emptyTime := time.Time{}
+	expectedBagDate := "2014-05-28 16:22:24.016 +0000 UTC"
 	if status.Date == emptyTime {
 		t.Error("ProcessStatus.Date was not set")
 	}
@@ -112,6 +112,11 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 		t.Errorf("ProcessStatus.Bucket: Expected %s, got %s",
 			result.S3File.BucketName,
 			status.Bucket)
+	}
+	if status.BagDate.String() != expectedBagDate {
+		t.Errorf("ProcessStatus.BagDate: Expected %s, got %s",
+			expectedBagDate,
+			status.BagDate)
 	}
 	if status.ETag != result.S3File.Key.ETag {
 		t.Errorf("ProcessStatus.ETag: Expected %s, got %s",
@@ -144,5 +149,4 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 			expectedStatus,
 			status.Status)
 	}
-
 }

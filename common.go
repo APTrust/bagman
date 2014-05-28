@@ -12,6 +12,7 @@ import (
 const (
 	ReceiveBucketPrefix = "aptrust.receiving."
 	RestoreBucketPrefix = "aptrust.restore."
+	S3DateFormat = "2006-01-02T15:04:05.000Z"
 )
 
 
@@ -48,6 +49,7 @@ type ProcessStatus struct {
 	Name         string      `json:"name"`
 	Bucket       string      `json:"bucket"`
 	ETag         string      `json:"etag"`
+	BagDate      time.Time   `json:"bag_date"`
 	UserId       int         `json:"user_id"`
 	Institution  string      `json:"institution"`
 	Date         time.Time   `json:"date"`
@@ -85,6 +87,8 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	status.Date = time.Now()
 	status.Type = "Ingest"
 	status.Name = result.S3File.Key.Key
+	bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)
+	status.BagDate = bagDate
 	status.Bucket = result.S3File.BucketName
 	status.ETag = result.S3File.Key.ETag
 	status.Stage = result.Stage
