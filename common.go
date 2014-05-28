@@ -110,7 +110,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 // BucketSummary contains information about an S3 bucket and its contents.
 type BucketSummary struct {
 	BucketName     string
-	Keys           []s3.Key
+	Keys           []s3.Key // TODO: Change to slice of pointers!
 }
 
 // GenericFile contains information about a generic

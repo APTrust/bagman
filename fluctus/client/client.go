@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"fmt"
 	"bytes"
+	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/models"
 )
 
@@ -43,11 +44,8 @@ func New(hostUrl string, apiEmail string, apiPassword string) (*Client, error) {
 // implementation of API secret key authentication.
 func (client *Client)InitSession() (error) {
 	// Get the CSRF token... we can't submit the login form without this.
-	loginUrl, err := url.Parse(client.hostUrl + "/users/sign_in?json")
-	if err != nil {
-		return fmt.Errorf("Can't parse URL '%s': %v", loginUrl, err)
-	}
-	err = client.requestCsrfToken(loginUrl.String())
+	loginUrl := client.BuildUrl("/users/sign_in?json")
+	err := client.RequestCsrfToken(loginUrl.String())
 	if err != nil {
 		return fmt.Errorf("Error fetching CSRF token: %v", err)
 	}
@@ -73,11 +71,26 @@ func (client *Client)InitSession() (error) {
 	return nil
 }
 
+// BuildUrl combines the host and protocol in client.hostUrl with
+// relativeUrl to create an absolute URL. For example, if client.hostUrl
+// is "http://localhost:3456", then client.BuildUrl("/path/to/action.json")
+// would return "http://localhost:3456/path/to/action.json".
+func (client *Client) BuildUrl (relativeUrl string) (absoluteUrl *url.URL) {
+	absoluteUrl, err := url.Parse(client.hostUrl + relativeUrl)
+	if err != nil {
+		// TODO: Check validity of Fluctus url on app init,
+		// so we don't have to panic here.
+		panic(fmt.Sprintf("Can't parse URL '%s': %v", absoluteUrl, err))
+	}
+	return absoluteUrl
+}
+
+
 // Get the CSRF token from the login page. Simply requesting the
 // login form will return an HTML page containing the CSRF token.
 // (Even though we are requesting JSON, Rails returns an HTML
 // form.)
-func (client *Client) requestCsrfToken(url string) (error) {
+func (client *Client) RequestCsrfToken(url string) (error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("Error building GET request to fluctus: %v", err)
@@ -92,7 +105,7 @@ func (client *Client) requestCsrfToken(url string) (error) {
 	if err != nil {
 		return fmt.Errorf("Error reading body of fluctus HTTP response: %v", err)
 	}
-	csrfToken, err := extractCsrfToken(string(body))
+	csrfToken, err := ExtractCsrfToken(string(body))
 	if err != nil {
 		return err
 	}
@@ -106,7 +119,7 @@ func (client *Client) requestCsrfToken(url string) (error) {
 // The Rails app should not be returning HTML for a JSON request,
 // and should not require the CSRF token for JSON API requests.
 // Until those issues are fixed, this function is the band-aid.
-func extractCsrfToken(html string) (string, error) {
+func ExtractCsrfToken(html string) (string, error) {
 	// <meta content="vI9rpwFSa1xn4DQjkPAW/AxZxt8QAw7Cf28x4YrMfQY=" name="csrf-token" />
 	re, err := regexp.Compile(`<meta\s+content="([^"]+)"\s+name="csrf-token"\s+/>`)
 	if err != nil {
@@ -117,6 +130,26 @@ func extractCsrfToken(html string) (string, error) {
 		return matches[0][1], err
 	}
 	return "", err
+}
+
+// GetBagStatus returns the status of a bag from a prior round of processing.
+// We can get 0..n records for a bag: Zero records if we've never
+// tried to process it before; one record if we processed a single
+// uploaded version of a bag; multiple records if we've processed
+// multiple identical uploaded versions of the bag.
+func (client *Client) GetBagStatus(name, etag string) (status []*bagman.ProcessStatus, err error) {
+	// url := client.BuildUrl("/itemstatus")
+	// TODO: GET with name and etag, parse & return result
+	return status, nil
+}
+
+// UpdateBagStatus sends a message to Fluctus describing whether bag
+// processing succeeded or failed. If it failed, the ProcessStatus
+// object includes some details of what went wrong.
+func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) {
+	// url := client.BuildUrl("/itemstatus")
+	// TODO: POST data. Parse and return result.
+	return nil
 }
 
 /*
