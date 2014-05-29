@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"bytes"
 	"log"
+	"time"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/models"
 )
@@ -37,7 +38,7 @@ func New(hostUrl string, apiEmail string, apiPassword string, logger *log.Logger
 		return nil, fmt.Errorf("Can't create cookie jar for HTTP client: %v", err)
 	}
 	httpClient := &http.Client{ Jar: cookieJar }
-	apiUser := &models.User{apiEmail, apiPassword, ""}
+	apiUser := &models.User{apiEmail, apiPassword, "", ""}
 	return &Client{hostUrl, apiUser, "", httpClient, logger}, nil
 }
 
@@ -46,7 +47,7 @@ func New(hostUrl string, apiEmail string, apiPassword string, logger *log.Logger
 // implementation of API secret key authentication.
 func (client *Client)InitSession() (error) {
 	// Get the CSRF token... we can't submit the login form without this.
-	loginUrl := client.BuildUrl("/users/sign_in?json")
+	loginUrl := client.BuildUrl("/users/sign_in")
 	err := client.RequestCsrfToken(loginUrl.String())
 	if err != nil {
 		return fmt.Errorf("[ERROR] Error fetching CSRF token: %v\n", err)
@@ -88,16 +89,27 @@ func (client *Client) BuildUrl (relativeUrl string) (absoluteUrl *url.URL) {
 }
 
 
+// newJsonGet returns a new request with headers indicating
+// JSON request and response formats.
+func (client *Client) NewJsonGet(url string) (*http.Request, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	return req, nil
+}
+
 // Get the CSRF token from the login page. Simply requesting the
 // login form will return an HTML page containing the CSRF token.
 // (Even though we are requesting JSON, Rails returns an HTML
-// form.)
+// form.) This request must be HTML, not JSON.
 func (client *Client) RequestCsrfToken(url string) (error) {
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("Error building GET request to fluctus: %v", err)
 	}
-	req.Header.Add("Content-Type", "application/json")
 	response, err := client.httpClient.Do(req)
 	if err != nil {
 		return err
@@ -112,6 +124,7 @@ func (client *Client) RequestCsrfToken(url string) (error) {
 		return err
 	}
 	client.logger.Println("[INFO]", "CSRF Token =", csrfToken)
+	client.apiUser.AuthToken = csrfToken
 	client.csrfToken = csrfToken
 	return nil
 }
@@ -138,10 +151,36 @@ func ExtractCsrfToken(html string) (string, error) {
 // We can get 0..n records for a bag: Zero records if we've never
 // tried to process it before; one record if we processed a single
 // uploaded version of a bag; multiple records if we've processed
-// multiple identical uploaded versions of the bag.
-func (client *Client) GetBagStatus(name, etag string) (status []*bagman.ProcessStatus, err error) {
-	// url := client.BuildUrl("/itemstatus")
-	// TODO: GET with name and etag, parse & return result
+// multiple identical uploaded versions of the bag. Param bag_date
+// comes from the LastModified property of the S3 key.
+func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status []*bagman.ProcessStatus, err error) {
+	// TODO: Add bag_date to url
+	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/", etag, name)) //, bag_date.String()))
+	req, err := client.NewJsonGet(url.String())
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	// body, err := ioutil.ReadAll(response.Body)
+	// response.Body.Close()
+	// if err != nil {
+	//	return nil, err
+	// }
+
+	// client.logger.Println(string(body))
+	client.logger.Println("[INFO]", "Request cookies")
+	for _, cookie := range req.Cookies() {
+		client.logger.Println("[INFO]", "Cookie", cookie)
+	}
+	client.logger.Println("[INFO]", "Status Code", response.StatusCode)
+	client.logger.Println("[INFO]", "URL", url.String())
+
+	// TODO: Parse & return result
+
 	return status, nil
 }
 

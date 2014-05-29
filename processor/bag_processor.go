@@ -185,6 +185,10 @@ func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq
 }
 
 
+// -------------------------------------------------------------------
+// TODO: GET RID OF TASK COUNTER!!
+// -------------------------------------------------------------------
+
 // This function blocks until all tasks are complete.
 // sync.WaitGroup is the standard way of doing this, but
 // WaitGroup is really for counting go routines. We have only a handful
