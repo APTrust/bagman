@@ -84,7 +84,7 @@ type ProcessResult struct {
 // the status of their submitted bags.
 func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	status = &ProcessStatus{}
-	status.Date = time.Now()
+	status.Date = time.Now().UTC()
 	status.Type = "Ingest"
 	status.Name = result.S3File.Key.Key
 	bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)

@@ -205,7 +205,7 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 		return gf
 	}
 	gf.Uuid = uuid.String()
-	gf.UuidGenerated = time.Now()
+	gf.UuidGenerated = time.Now().UTC()
 	gf.Size = size
 	gf.Modified = modTime
 
@@ -226,7 +226,7 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 
 	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
 	gf.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
-	gf.Sha256Generated = time.Now()
+	gf.Sha256Generated = time.Now().UTC()
 
 	// Open the Mime Magic DB only once.
 	if magicMime == nil {

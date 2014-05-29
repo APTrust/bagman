@@ -33,7 +33,7 @@ func InitLoggers(dirname string, processName string) (jsonLog *log.Logger, messa
 func makeLogger(dirname string, processName string, logType string, includeTimestamp bool) (logger *log.Logger) {
 	const timeFormat = "20060102.150405"
 	filename := fmt.Sprintf("%s_%s_%s.log", processName,
-		logType, time.Now().Format(timeFormat))
+		logType, time.Now().UTC().Format(timeFormat))
 	filename = filepath.Join(dirname, filename)
 	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
