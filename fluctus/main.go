@@ -11,8 +11,8 @@ import (
 func main() {
 	logger := log.New(os.Stdout, "", 0)
 	client, err := client.New("http://localhost:3000",
-		"andrew.diamond@aptrust.org",
-		"85a284ca0f69b50a4fe9f490733f2cebeb09d06f",
+		os.Getenv("FLUCTUS_API_USER"),
+		os.Getenv("FLUCTUS_API_KEY"),
 		logger)
 	if err != nil {
 		fmt.Println(err)
