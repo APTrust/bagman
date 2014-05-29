@@ -10,6 +10,7 @@ import (
 	"regexp"
 	"fmt"
 	"bytes"
+	"log"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/models"
 )
@@ -19,6 +20,7 @@ type Client struct {
 	apiUser        *models.User
 	csrfToken      string
 	httpClient     *http.Client
+	logger         *log.Logger
 }
 
 // Creates a new fluctus client. Param hostUrl should come from
@@ -27,7 +29,7 @@ type Client struct {
 // for fluctus. This will change in future, when the API key
 // auth method is fixed in fluctus. At that point, we'll use the
 // API key instead of the password.
-func New(hostUrl string, apiEmail string, apiPassword string) (*Client, error) {
+func New(hostUrl string, apiEmail string, apiPassword string, logger *log.Logger) (*Client, error) {
 	// see security warning on nil PublicSuffixList here:
 	// http://gotour.golang.org/src/pkg/net/http/cookiejar/jar.go?s=1011:1492#L24
 	cookieJar, err := cookiejar.New(nil)
@@ -36,7 +38,7 @@ func New(hostUrl string, apiEmail string, apiPassword string) (*Client, error) {
 	}
 	httpClient := &http.Client{ Jar: cookieJar }
 	apiUser := &models.User{apiEmail, apiPassword, ""}
-	return &Client{hostUrl, apiUser, "", httpClient}, nil
+	return &Client{hostUrl, apiUser, "", httpClient, logger}, nil
 }
 
 // Initializes a new API session. As of 4/28/2014, the Fluctus API
@@ -47,7 +49,7 @@ func (client *Client)InitSession() (error) {
 	loginUrl := client.BuildUrl("/users/sign_in?json")
 	err := client.RequestCsrfToken(loginUrl.String())
 	if err != nil {
-		return fmt.Errorf("Error fetching CSRF token: %v", err)
+		return fmt.Errorf("[ERROR] Error fetching CSRF token: %v\n", err)
 	}
 	// Now submit the login form with our token.
 	req, err := http.NewRequest("POST", loginUrl.String(), nil)
@@ -66,7 +68,7 @@ func (client *Client)InitSession() (error) {
 
 
 	for _, c := range client.httpClient.Jar.Cookies(loginUrl) {
-		fmt.Println(c)
+		client.logger.Println("[INFO]", c)
 	}
 	return nil
 }
@@ -109,7 +111,7 @@ func (client *Client) RequestCsrfToken(url string) (error) {
 	if err != nil {
 		return err
 	}
-	fmt.Println("CSRF Token =", csrfToken)
+	client.logger.Println("[INFO]", "CSRF Token =", csrfToken)
 	client.csrfToken = csrfToken
 	return nil
 }

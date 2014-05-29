@@ -3,13 +3,16 @@ package main
 import (
 	"fmt"
 	"os"
+	"log"
 	"github.com/APTrust/bagman/fluctus/client"
 )
 
 func main() {
+	logger := log.New(os.Stdout, "", 0)
 	client, err := client.New("http://localhost:3000",
 		os.Getenv("FLUCTUS_API_USER"),
-		os.Getenv("FLUCTUS_PASSWORD"))
+		os.Getenv("FLUCTUS_PASSWORD"),
+		logger)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
