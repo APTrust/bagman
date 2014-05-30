@@ -5,6 +5,7 @@ package bagman
 import (
 	"time"
 	"strings"
+	"encoding/json"
 	"launchpad.net/goamz/s3"
 	"github.com/bitly/go-nsq"
 )
@@ -60,6 +61,24 @@ type ProcessStatus struct {
 	Outcome      string      `json:"outcome"`
 }
 
+// Convert ProcessStatus to JSON, omitting id, which Rails won't permit.
+// For internal use, json.Marshal() works fine.
+func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"name": status.Name,
+		"bucket": status.Bucket,
+		"etag": status.ETag,
+		"bag_date": status.BagDate,
+		"institution": status.Institution,
+		"date": status.Date,
+		"note": status.Note,
+		"action": status.Action,
+		"stage": status.Stage,
+		"status": status.Status,
+		"outcome": status.Outcome,
+	})
+}
+
 // Retry will be set to true if the attempt to process the file
 // failed and should be tried again. This would be case, for example,
 // if the failure was due to a network error. Retry is
@@ -90,20 +109,21 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)
 	status.BagDate = bagDate
 	status.Bucket = result.S3File.BucketName
-	status.ETag = result.S3File.Key.ETag
+	status.ETag = strings.Replace(result.S3File.Key.ETag, "\"", "", 2)
 	status.Stage = result.Stage
 	status.Status = "Processing"
 	if result.Error != nil {
 		status.Note = result.Error.Error()
 		status.Status = "Failed"
 	} else {
+		status.Note = "No problems"
 		if result.Stage == "Record" {
 			// We made it through last stage with no erros
 			status.Status = "Succeeded"
 		}
 	}
 	status.Institution = OwnerOf(result.S3File.BucketName)
-	status.Outcome = ""
+	status.Outcome = status.Status
 	return status
 }
 

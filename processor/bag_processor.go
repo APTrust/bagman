@@ -11,6 +11,7 @@ import (
 //	"time"
 	"path/filepath"
 	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/fluctus/client"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/s3"
 	"github.com/bitly/go-nsq"
@@ -48,7 +49,7 @@ var bytesProcessed = int64(0)
 // 4. Results channel: tells the queue whether processing
 //    succeeded, and if not, whether the item should be requeued.
 //    Also logs results to json and message logs.
-// 5. Cleanup channe: cleans up the files after processing
+// 5. Cleanup channel: cleans up the files after processing
 //    completes.
 //
 // If a failure occurs anywhere in the first three steps,
@@ -277,11 +278,14 @@ func doCleanUp() {
 // untar, unbag and verify an individual S3 tar file.
 func logResult() {
 	for result := range channels.ResultsChannel {
+		// Log full results to the JSON log
 		json, err := json.Marshal(result)
 		if err != nil {
 			messageLog.Println("[ERROR]", err)
 		}
 		jsonLog.Println(string(json))
+
+		// Add a message to the message log
 		atomic.AddInt64(&bytesInS3, int64(result.S3File.Key.Size))
 		if(result.Error != nil) {
 			atomic.AddInt64(&failed, 1)
@@ -294,6 +298,21 @@ func logResult() {
 			atomic.AddInt64(&bytesProcessed, int64(result.S3File.Key.Size))
 			messageLog.Println("[INFO]", result.S3File.Key.Key, "-> finished OK")
 		}
+
+		// Add some stats to the message log
+		messageLog.Printf("[STATS] Succeeded: %d, Failed: %d, Bytes Processed: %d\n",
+			succeeded, failed, bytesProcessed)
+
+		// Tell Fluctus what happened
+		go func() {
+			err := SendProcessedItemToFluctus(&result)
+			if err != nil {
+				messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
+					err)
+			}
+		}()
+
+		// Clean up the bag/tar files
 		channels.CleanUpChannel <- result
 	}
 }
@@ -355,4 +374,40 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 			result.Retry = false
 		}
 	}
+}
+
+// SendProcessedItemToFluctus sends information about the status of
+// processing this item to Fluctus.
+func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
+	if config.FluctusURL == "" {
+		return fmt.Errorf("FluctusUrl is not set in config file")
+	}
+	if os.Getenv("FLUCTUS_API_USER") == "" {
+		return fmt.Errorf("Environment variable FLUCTUS_API_USER is not set")
+	}
+	if os.Getenv("FLUCTUS_API_KEY") == "" {
+		return fmt.Errorf("Environment variable FLUCTUS_API_KEY is not set")
+	}
+	client, err := client.New(
+		config.FluctusURL,
+		os.Getenv("FLUCTUS_API_USER"),
+		os.Getenv("FLUCTUS_API_KEY"),
+		messageLog)
+	if err != nil {
+		return err
+	}
+	localStatus := result.IngestStatus()
+	remoteStatus, err := client.GetBagStatus(
+		localStatus.ETag, localStatus.Name, localStatus.BagDate)
+	if err != nil {
+		return err
+	}
+	if remoteStatus != nil {
+		localStatus.Id = remoteStatus.Id
+	}
+	err = client.UpdateBagStatus(localStatus)
+	if err != nil {
+		return err
+	}
+	return nil
 }

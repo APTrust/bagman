@@ -70,11 +70,7 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 
 
 // GetBagStatus returns the status of a bag from a prior round of processing.
-// We can get 0..n records for a bag: Zero records if we've never
-// tried to process it before; one record if we processed a single
-// uploaded version of a bag; multiple records if we've processed
-// multiple identical uploaded versions of the bag. Param bag_date
-// comes from the LastModified property of the S3 key.
+// This function will return nil if Fluctus has no record of this bag.
 func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
 	// TODO: Add bag_date to url
 	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name, bag_date.Format(time.RFC3339)))
@@ -100,7 +96,7 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 	}
 	client.logger.Println(relativeUrl)
 	url := client.BuildUrl(relativeUrl)
-	postData, err := json.Marshal(status)
+	postData, err := status.SerializeForFluctus()
 	if err != nil {
 		return err
 	}
@@ -109,6 +105,10 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 		return err
 	}
 	status, err = client.doStatusRequest(req, 201)
+	if err != nil {
+		client.logger.Printf("[ERROR] JSON for failed Fluctus request: %s",
+			string(postData))
+	}
 	return err
 }
 
@@ -117,8 +117,16 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	if err != nil {
 		return nil, err
 	}
+
+	// OK to return 404 on a status check. It just means the bag has not
+	// been processed before.
+	if response.StatusCode == 404 && request.Method == "GET" {
+		return nil, nil
+	}
+
 	if response.StatusCode != expectedStatus {
-		err = fmt.Errorf("Expected status code %d but got %d.", expectedStatus, response.StatusCode)
+		err = fmt.Errorf("Expected status code %d but got %d. URL: %s",
+			expectedStatus, response.StatusCode, request.URL)
 		return nil, err
 	}
 	body, err := ioutil.ReadAll(response.Body)
