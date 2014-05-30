@@ -3,7 +3,7 @@ package client
 
 import (
 	"io/ioutil"
-//	"encoding/json"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"net/http/cookiejar"
@@ -74,14 +74,17 @@ func (client *Client) NewJsonGet(url string) (*http.Request, error) {
 // uploaded version of a bag; multiple records if we've processed
 // multiple identical uploaded versions of the bag. Param bag_date
 // comes from the LastModified property of the S3 key.
-func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status []*bagman.ProcessStatus, err error) {
+func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
 	// TODO: Add bag_date to url
 	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/", etag, name)) //, bag_date.String()))
+
+	// Build the request
 	req, err := client.NewJsonGet(url.String())
 	if err != nil {
 		return nil, err
 	}
 
+	// Make the request & make sure response is OK
 	response, err := client.httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -92,16 +95,11 @@ func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (statu
 		return nil, err
 	}
 
-	client.logger.Println(string(body))
-	client.logger.Println("[INFO]", "Request cookies")
-	for _, cookie := range req.Cookies() {
-		client.logger.Println("[INFO]", "Cookie", cookie)
+	// Build and return the data structure
+	err = json.Unmarshal(body, &status)
+	if err != nil {
+		return nil, err
 	}
-	client.logger.Println("[INFO]", "Status Code", response.StatusCode)
-	client.logger.Println("[INFO]", "URL", url.String())
-
-	// TODO: Parse & return result
-
 	return status, nil
 }
 
