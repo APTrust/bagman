@@ -109,6 +109,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)
 	status.BagDate = bagDate
 	status.Bucket = result.S3File.BucketName
+	// Strip the quotes off the ETag
 	status.ETag = strings.Replace(result.S3File.Key.ETag, "\"", "", 2)
 	status.Stage = result.Stage
 	status.Status = "Processing"
@@ -117,8 +118,11 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 		status.Status = "Failed"
 	} else {
 		status.Note = "No problems"
-		if result.Stage == "Record" {
-			// We made it through last stage with no erros
+		if result.Stage == "Validate" {
+			// We made it through last stage with no errors
+			// TODO: Change back to "Record" after demo.
+			// *** NOTE: THE LAST STAGE SHOULD BE "Record", BUT FOR DEMO
+			// WE'LL CONSIDER "Validate" TO BE SUCCESS ***
 			status.Status = "Succeeded"
 		}
 	}
