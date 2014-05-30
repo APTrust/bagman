@@ -46,6 +46,7 @@ type S3File struct {
 // Status may have one of the following values: Processing,
 // Succeeded, Failed.
 type ProcessStatus struct {
+	Id           int         `json:"id"`
 	Name         string      `json:"name"`
 	Bucket       string      `json:"bucket"`
 	ETag         string      `json:"etag"`

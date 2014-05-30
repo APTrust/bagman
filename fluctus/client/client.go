@@ -77,11 +77,12 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 // comes from the LastModified property of the S3 key.
 func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
 	// TODO: Add bag_date to url
-	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/", etag, name)) //, bag_date.String()))
+	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name, bag_date.Format(time.RFC3339)))
 	req, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
+	client.logger.Println(url.String())
 	status, err = client.doStatusRequest(req, 200)
 	return status, err
 }
@@ -90,12 +91,20 @@ func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (statu
 // processing succeeded or failed. If it failed, the ProcessStatus
 // object includes some details of what went wrong.
 func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) {
-	url := client.BuildUrl("/itemresults")
+	relativeUrl := "/itemresults"
+	httpMethod := "POST"
+	if status.Id > 0 {
+		relativeUrl = fmt.Sprintf("/itemresults/%s/%s/%s",
+			status.ETag, status.Name, status.BagDate.Format(time.RFC3339))
+		httpMethod = "PUT"
+	}
+	client.logger.Println(relativeUrl)
+	url := client.BuildUrl(relativeUrl)
 	postData, err := json.Marshal(status)
 	if err != nil {
 		return err
 	}
-	req, err := client.NewJsonRequest("POST", url.String(), bytes.NewBuffer(postData))
+	req, err := client.NewJsonRequest(httpMethod, url.String(), bytes.NewBuffer(postData))
 	if err != nil {
 		return err
 	}
