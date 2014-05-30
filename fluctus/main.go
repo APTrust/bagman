@@ -20,12 +20,22 @@ func main() {
 	}
 
 	bag_date, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-05-01T12:00:00.000Z")
-	result, err := client.GetBagStatus("SAMPLE_ETAG", "SAMPLE_NAME", bag_date)
+	status, err := client.GetBagStatus("SAMPLE_ETAG", "SAMPLE_NAME", bag_date)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	fmt.Println(result)
+	fmt.Println(status)
+	status.Date = time.Now().UTC()
+	status.Action = "Ingest"
+	err = client.UpdateBagStatus(status)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	} else {
+		fmt.Println("Bag status update succeeded")
+	}
+
 	// http://localhost:3000/catalog?utf8=%E2%9C%93&controller=institutions&action=show&search_field=all_fields&q=
 
 }

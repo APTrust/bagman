@@ -50,11 +50,10 @@ type ProcessStatus struct {
 	Bucket       string      `json:"bucket"`
 	ETag         string      `json:"etag"`
 	BagDate      time.Time   `json:"bag_date"`
-	UserId       int         `json:"user_id"`
 	Institution  string      `json:"institution"`
 	Date         time.Time   `json:"date"`
 	Note         string      `json:"note"`
-	Type         string      `json:"type"`
+	Action       string      `json:"action"`
 	Stage        string      `json:"stage"`
 	Status       string      `json:"status"`
 	Outcome      string      `json:"outcome"`
@@ -85,7 +84,7 @@ type ProcessResult struct {
 func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	status = &ProcessStatus{}
 	status.Date = time.Now().UTC()
-	status.Type = "Ingest"
+	status.Action = "Ingest"
 	status.Name = result.S3File.Key.Key
 	bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)
 	status.BagDate = bagDate

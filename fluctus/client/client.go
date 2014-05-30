@@ -2,14 +2,15 @@
 package client
 
 import (
-	"io/ioutil"
-	"encoding/json"
 	"net/http"
 	"net/url"
 	"net/http/cookiejar"
+	"io"
+	"io/ioutil"
+	"encoding/json"
 //	"regexp"
 	"fmt"
-//	"bytes"
+	"bytes"
 	"log"
 	"time"
 	"github.com/APTrust/bagman"
@@ -55,8 +56,8 @@ func (client *Client) BuildUrl (relativeUrl string) (absoluteUrl *url.URL) {
 
 // newJsonGet returns a new request with headers indicating
 // JSON request and response formats.
-func (client *Client) NewJsonGet(url string) (*http.Request, error) {
-	req, err := http.NewRequest("GET", url, nil)
+func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +78,38 @@ func (client *Client) NewJsonGet(url string) (*http.Request, error) {
 func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
 	// TODO: Add bag_date to url
 	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/", etag, name)) //, bag_date.String()))
-
-	// Build the request
-	req, err := client.NewJsonGet(url.String())
+	req, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
+	status, err = client.doStatusRequest(req, 200)
+	return status, err
+}
 
-	// Make the request & make sure response is OK
-	response, err := client.httpClient.Do(req)
+// UpdateBagStatus sends a message to Fluctus describing whether bag
+// processing succeeded or failed. If it failed, the ProcessStatus
+// object includes some details of what went wrong.
+func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) {
+	url := client.BuildUrl("/itemresults")
+	postData, err := json.Marshal(status)
 	if err != nil {
+		return err
+	}
+	req, err := client.NewJsonRequest("POST", url.String(), bytes.NewBuffer(postData))
+	if err != nil {
+		return err
+	}
+	status, err = client.doStatusRequest(req, 201)
+	return err
+}
+
+func (client *Client) doStatusRequest(request *http.Request, expectedStatus int) (status *bagman.ProcessStatus, err error) {
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != expectedStatus {
+		err = fmt.Errorf("Expected status code %d but got %d.", expectedStatus, response.StatusCode)
 		return nil, err
 	}
 	body, err := ioutil.ReadAll(response.Body)
@@ -95,21 +118,14 @@ func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (statu
 		return nil, err
 	}
 
+	client.logger.Println(string(body))
+
 	// Build and return the data structure
 	err = json.Unmarshal(body, &status)
 	if err != nil {
 		return nil, err
 	}
 	return status, nil
-}
-
-// UpdateBagStatus sends a message to Fluctus describing whether bag
-// processing succeeded or failed. If it failed, the ProcessStatus
-// object includes some details of what went wrong.
-func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) {
-	// url := client.BuildUrl("/itemstatus")
-	// TODO: POST data. Parse and return result.
-	return nil
 }
 
 /*
