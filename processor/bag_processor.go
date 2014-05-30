@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"sync/atomic"
 	"log"
-	"time"
+//	"time"
 	"path/filepath"
 	"github.com/APTrust/bagman"
 	"launchpad.net/goamz/aws"
@@ -29,7 +29,6 @@ var channels *Channels
 var config bagman.Config
 var jsonLog *log.Logger
 var messageLog *log.Logger
-var taskCounter = int64(0)
 var volume *bagman.Volume
 var succeeded = int64(0)
 var failed = int64(0)
@@ -157,7 +156,6 @@ func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq
 
 	fmt.Println(string(message.Body))
 	message.Attempts++
-	atomic.AddInt64(&taskCounter, 1)
 
 	var s3File bagman.S3File
 	err := json.Unmarshal(message.Body, &s3File)
@@ -184,23 +182,6 @@ func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq
 	messageLog.Println("[INFO]", "Put", s3File.Key.Key, "into fetch queue")
 }
 
-
-// -------------------------------------------------------------------
-// TODO: GET RID OF TASK COUNTER!!
-// -------------------------------------------------------------------
-
-// This function blocks until all tasks are complete.
-// sync.WaitGroup is the standard way of doing this, but
-// WaitGroup is really for counting go routines. We have only a handful
-// of go routines, and a huge number of tasks. We're counting the tasks.
-func waitForAllTasks() {
-	for {
-		if atomic.LoadInt64(&taskCounter) == 0 {
-			break
-		}
-		time.Sleep(5 * time.Second)
-	}
-}
 
 // This runs as a go routine to fetch files from S3.
 func doFetch() {
@@ -272,8 +253,6 @@ func doCleanUp() {
 		}
 		// Let our volumn tracker know we just freed up some disk space.
 		volume.Release(uint64(result.S3File.Key.Size * 2))
-		// Reduce outstanding task count.
-		atomic.AddInt64(&taskCounter, -1)
 
 		// Build and send message back to NSQ, indicating whether
 		// processing succeeded.
