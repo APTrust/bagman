@@ -78,7 +78,6 @@ func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (statu
 	if err != nil {
 		return nil, err
 	}
-	client.logger.Println(url.String())
 	status, err = client.doStatusRequest(req, 200)
 	return status, err
 }
@@ -94,7 +93,6 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 			status.ETag, status.Name, status.BagDate.Format(time.RFC3339))
 		httpMethod = "PUT"
 	}
-	client.logger.Println(relativeUrl)
 	url := client.BuildUrl(relativeUrl)
 	postData, err := status.SerializeForFluctus()
 	if err != nil {
@@ -134,8 +132,6 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	if err != nil {
 		return nil, err
 	}
-
-	client.logger.Println(string(body))
 
 	// Build and return the data structure
 	err = json.Unmarshal(body, &status)

@@ -154,10 +154,7 @@ type BagProcessor struct {
 // MessageHandler handles messages from the queue, putting each
 // item into the pipleline.
 func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq.FinishedMessage) {
-
-	fmt.Println(string(message.Body))
 	message.Attempts++
-
 	var s3File bagman.S3File
 	err := json.Unmarshal(message.Body, &s3File)
 	if err != nil {
@@ -172,7 +169,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq
 	result := bagman.ProcessResult{
 		message,         // NsqMessage
 		outputChannel,   // NsqOutputChannel
-		&s3File,         // S3File: the tarred bag that was uploaded to receiving bucket
+		&s3File,         // S3File: tarred bag that was uploaded to receiving bucket
 		nil,             // Error: no processing error yet
 		nil,             // FetchResult: could we get the bag?
 		nil,             // TarResult: could we untar and validate the bag?
@@ -409,5 +406,7 @@ func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
 	if err != nil {
 		return err
 	}
+	messageLog.Printf("[INFO] Updated status in Fluctus for %s: %s/%s\n",
+		result.S3File.Key.Key, localStatus.Status, localStatus.Stage)
 	return nil
 }
