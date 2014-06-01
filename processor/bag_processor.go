@@ -256,9 +256,9 @@ func doCleanUp() {
 		// processing succeeded.
 		succeeded := true
 		requeueDelayMs := 0
-		if result.Error != nil {
+		if result.Error != nil && result.Retry == true {
 			succeeded = false
-			requeueDelayMs = 60000
+			requeueDelayMs = 3000
 		}
 		finishedMessage := &nsq.FinishedMessage{
 			result.NsqMessage.Id,
