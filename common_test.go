@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 	"errors"
-//	"fmt"
+	"strings"
 	"launchpad.net/goamz/s3"
 	"github.com/APTrust/bagman"
 )
@@ -100,7 +100,7 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 	if status.Date == emptyTime {
 		t.Error("ProcessStatus.Date was not set")
 	}
-	if status.Type != "Ingest" {
+	if status.Action != "Ingest" {
 		t.Error("ProcessStatus.Type is incorrect. Should be Ingest.")
 	}
 	if status.Name != result.S3File.Key.Key {
@@ -118,7 +118,7 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 			expectedBagDate,
 			status.BagDate)
 	}
-	if status.ETag != result.S3File.Key.ETag {
+	if status.ETag != strings.Replace(result.S3File.Key.ETag, "\"", "", 2) {
 		t.Errorf("ProcessStatus.ETag: Expected %s, got %s",
 			result.S3File.Key.ETag,
 			status.ETag)
@@ -133,8 +133,9 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 			bagman.OwnerOf(result.S3File.BucketName),
 			status.Institution)
 	}
-	if result.Error == nil && status.Note != "" {
-		t.Error("ProcessStatus.Note should be empty, but it's not.")
+	if result.Error == nil && status.Note != "No problems" {
+		t.Error("ProcessStatus.Note should be '%s', but it's '%s'.",
+			"No problems", status.Note)
 	}
 	if result.Error != nil && status.Note == "" {
 		t.Error("ProcessStatus.Note should have a value, but it's empty.")
@@ -148,5 +149,6 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 		t.Errorf("ProcessStatus.Status: Expected %s, got %s",
 			expectedStatus,
 			status.Status)
+		t.Errorf("This failure may be due to a temporary demo setting that considers Validation the final step.")
 	}
 }
