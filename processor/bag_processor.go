@@ -35,7 +35,7 @@ var succeeded = int64(0)
 var failed = int64(0)
 var bytesInS3 = int64(0)
 var bytesProcessed = int64(0)
-
+var fluctusClient *client.Client
 
 // bag_processor receives messages from nsqd describing
 // items in the S3 receiving buckets. Each item/message
@@ -373,6 +373,22 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 	}
 }
 
+// Returns a reusable HTTP client for communicating with Fluctus.
+func getFluctusClient() (fClient *client.Client, err error) {
+	if fluctusClient == nil {
+		fClient, err := client.New(
+			config.FluctusURL,
+			os.Getenv("FLUCTUS_API_USER"),
+			os.Getenv("FLUCTUS_API_KEY"),
+			messageLog)
+		if err != nil {
+			return nil, err
+		}
+		fluctusClient = fClient
+	}
+	return fluctusClient, nil
+}
+
 // SendProcessedItemToFluctus sends information about the status of
 // processing this item to Fluctus.
 func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
@@ -385,11 +401,7 @@ func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
 	if os.Getenv("FLUCTUS_API_KEY") == "" {
 		return fmt.Errorf("Environment variable FLUCTUS_API_KEY is not set")
 	}
-	client, err := client.New(
-		config.FluctusURL,
-		os.Getenv("FLUCTUS_API_USER"),
-		os.Getenv("FLUCTUS_API_KEY"),
-		messageLog)
+	client, err := getFluctusClient()
 	if err != nil {
 		return err
 	}
