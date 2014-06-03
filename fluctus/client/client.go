@@ -65,6 +65,7 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("X-Fluctus-API-User", client.apiUser)
 	req.Header.Add("X-Fluctus-API-Key", client.apiKey)
+	req.Close = true // Leaving connections open causes system to run out of file handles
 	return req, nil
 }
 
@@ -127,8 +128,8 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 			expectedStatus, response.StatusCode, request.URL)
 		return nil, err
 	}
+	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
 	if err != nil {
 		return nil, err
 	}
