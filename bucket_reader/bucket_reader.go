@@ -72,7 +72,7 @@ func run() {
 	// SkipAlreadyProcessed will almost always be true.
 	// The exception is when we want to reprocess items to test new code.
 	if config.SkipAlreadyProcessed == true {
-		filesToProcess := filterProcessedFiles(s3Files)
+		filesToProcess = filterProcessedFiles(s3Files)
 	}
 	start := 0
 	end := min(len(filesToProcess), batchSize)

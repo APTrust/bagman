@@ -51,7 +51,7 @@
 		"MetadataTopic": "metadata_topic",
 		"MetadataChannel": "metadata_channel",
 		"ProcessStateTopic": "state_topic",
-		"StateChannel": "state_channel"
+		"StateChannel": "state_channel",
 		"SkipAlreadyProcessed": true,
 		"Buckets": [
 			"aptrust.receiving.columbia.edu",
