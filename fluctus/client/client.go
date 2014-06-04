@@ -22,7 +22,9 @@ type Client struct {
 	apiUser        string
 	apiKey         string
 	httpClient     *http.Client
+	transport      *http.Transport
 	logger         *log.Logger
+	requestCount   int
 }
 
 // Creates a new fluctus client. Param hostUrl should come from
@@ -36,7 +38,7 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 	}
 	transport := &http.Transport{ MaxIdleConnsPerHost: 12 }
 	httpClient := &http.Client{ Jar: cookieJar, Transport: transport }
-	return &Client{hostUrl, apiUser, apiKey, httpClient, logger}, nil
+	return &Client{hostUrl, apiUser, apiKey, httpClient, transport, logger, 0}, nil
 }
 
 
@@ -113,6 +115,13 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 }
 
 func (client *Client) doStatusRequest(request *http.Request, expectedStatus int) (status *bagman.ProcessStatus, err error) {
+	// Trying to fix problem with too many connections in CLOSE_WAIT state.
+	client.requestCount++
+	if client.requestCount % 100 == 0 {
+		client.logger.Println("[INFO] Fluctus client is forcibly closing idle HTTP connections")
+		client.transport.CloseIdleConnections()
+	}
+
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, err
