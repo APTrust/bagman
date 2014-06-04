@@ -34,7 +34,8 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Can't create cookie jar for HTTP client: %v", err)
 	}
-	httpClient := &http.Client{ Jar: cookieJar }
+	transport := &http.Transport{ MaxIdleConnsPerHost: 12 }
+	httpClient := &http.Client{ Jar: cookieJar, Transport: transport }
 	return &Client{hostUrl, apiUser, apiKey, httpClient, logger}, nil
 }
 
@@ -65,7 +66,7 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("X-Fluctus-API-User", client.apiUser)
 	req.Header.Add("X-Fluctus-API-Key", client.apiKey)
-	req.Close = true // Leaving connections open causes system to run out of file handles
+	//req.Close = true // Leaving connections open causes system to run out of file handles
 	return req, nil
 }
 
