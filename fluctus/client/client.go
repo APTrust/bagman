@@ -68,7 +68,6 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("X-Fluctus-API-User", client.apiUser)
 	req.Header.Add("X-Fluctus-API-Key", client.apiKey)
-	//req.Close = true // Leaving connections open causes system to run out of file handles
 	return req, nil
 }
 
@@ -76,7 +75,6 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 // GetBagStatus returns the status of a bag from a prior round of processing.
 // This function will return nil if Fluctus has no record of this bag.
 func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
-	// TODO: Add bag_date to url
 	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name, bag_date.Format(time.RFC3339)))
 	req, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
@@ -116,6 +114,10 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 
 func (client *Client) doStatusRequest(request *http.Request, expectedStatus int) (status *bagman.ProcessStatus, err error) {
 	// Trying to fix problem with too many connections in CLOSE_WAIT state.
+	// If we don't forcibly close idle connections, they'll pile up
+	// and the system fails with "too many open files" error.
+	// The call to CloseIdleConnections will close some idle connections
+	// that are in TIME_WAIT / keepalive, but we can pay that price.
 	client.requestCount++
 	if client.requestCount % 100 == 0 {
 		client.logger.Println("[INFO] Fluctus client is forcibly closing idle HTTP connections")
