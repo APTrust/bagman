@@ -15,6 +15,7 @@
 		"MetadataChannel": "metadata_channel",
 		"ProcessStateTopic": "state_topic",
 		"StateChannel": "state_channel",
+		"SkipAlreadyProcessed": true,
 		"Buckets": [
 			"aptrust.receiving.columbia.edu",
 			"aptrust.receiving.iub.edu",
@@ -50,7 +51,8 @@
 		"MetadataTopic": "metadata_topic",
 		"MetadataChannel": "metadata_channel",
 		"ProcessStateTopic": "state_topic",
-		"StateChannel": "state_channel",
+		"StateChannel": "state_channel"
+		"SkipAlreadyProcessed": true,
 		"Buckets": [
 			"aptrust.receiving.columbia.edu",
 			"aptrust.receiving.iub.edu",
@@ -87,6 +89,7 @@
 		"MetadataChannel": "metadata_channel",
 		"ProcessStateTopic": "state_topic",
 		"StateChannel": "state_channel",
+		"SkipAlreadyProcessed": true,
 		"Buckets": [
 			"aptrust.receiving.columbia.edu",
 			"aptrust.receiving.iub.edu",

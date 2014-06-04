@@ -68,17 +68,22 @@ func run() {
 	s3Files := filterLargeFiles(bucketSummaries)
 	messageLog.Printf("[INFO] %d S3 Files are within our size limit\n",
 		len(s3Files))
-	unprocessedFiles := filterProcessedFiles(s3Files)
+	filesToProcess := s3Files
+	// SkipAlreadyProcessed will almost always be true.
+	// The exception is when we want to reprocess items to test new code.
+	if config.SkipAlreadyProcessed == true {
+		filesToProcess := filterProcessedFiles(s3Files)
+	}
 	start := 0
-	end := min(len(unprocessedFiles), batchSize)
-	messageLog.Printf("[INFO] %d Unprocessed files\n", len(unprocessedFiles))
+	end := min(len(filesToProcess), batchSize)
+	messageLog.Printf("[INFO] %d Unprocessed files\n", len(filesToProcess))
 	for start <= end {
-		batch := unprocessedFiles[start:end]
+		batch := filesToProcess[start:end]
 		messageLog.Printf("[INFO] Queuing batch of %d items\n", len(batch))
 		enqueue(url, batch)
 		start = end + 1
-		if start < len(unprocessedFiles) {
-			end = min(len(unprocessedFiles), start + batchSize)
+		if start < len(filesToProcess) {
+			end = min(len(filesToProcess), start + batchSize)
 		}
 		// Sleep so we don't max out connections on EC2 small.
 		// The utility server is running a lot of other network I/O
@@ -118,14 +123,14 @@ func filterLargeFiles (bucketSummaries []*bagman.BucketSummary) (s3Files []*bagm
 
 // Remove S3 files that have been processed successfully.
 // No need to reprocess those!
-func filterProcessedFiles (s3Files []*bagman.S3File) (unprocessedFiles []*bagman.S3File) {
+func filterProcessedFiles (s3Files []*bagman.S3File) (filesToProcess []*bagman.S3File) {
 	for _, s3File := range s3Files {
 		bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
 		if err != nil {
 			messageLog.Printf("[ERROR] Cannot parse S3File mod date '%s'. " +
 				"File %s will be re-processed.",
 				s3File.Key.LastModified, s3File.Key.Key)
-			unprocessedFiles = append(unprocessedFiles, s3File)
+			filesToProcess = append(filesToProcess, s3File)
 			continue
 		}
 		etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
@@ -133,7 +138,7 @@ func filterProcessedFiles (s3Files []*bagman.S3File) (unprocessedFiles []*bagman
 		if err != nil {
 			messageLog.Printf("[ERROR] Cannot get Fluctus bag status for %s. " +
 				"Will re-process bag. Error was %v", s3File.Key.Key, err)
-			unprocessedFiles = append(unprocessedFiles, s3File)
+			filesToProcess = append(filesToProcess, s3File)
 		} else if status == nil || status.Status == "Failed" {
 			actualStatus := "nil"
 			if status != nil {
@@ -141,12 +146,12 @@ func filterProcessedFiles (s3Files []*bagman.S3File) (unprocessedFiles []*bagman
 			}
 			messageLog.Printf("[INFO] Fluctus bag status for %s is %s. " +
 				"Will process bag.", s3File.Key.Key, actualStatus)
-			unprocessedFiles = append(unprocessedFiles, s3File)
+			filesToProcess = append(filesToProcess, s3File)
 		} else {
 			messageLog.Printf("[INFO] Skipping %s: already processed successfully.", s3File.Key.Key)
 		}
 	}
-	return unprocessedFiles
+	return filesToProcess
 }
 
 
