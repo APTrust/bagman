@@ -170,7 +170,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq
 		message,         // NsqMessage
 		outputChannel,   // NsqOutputChannel
 		&s3File,         // S3File: tarred bag that was uploaded to receiving bucket
-		nil,             // Error: no processing error yet
+		"",              // ErrorMessage: no processing error yet
 		nil,             // FetchResult: could we get the bag?
 		nil,             // TarResult: could we untar and validate the bag?
 		nil,             // BagReadResult
@@ -192,7 +192,7 @@ func doFetch() {
 			// Not enough room on disk
 			messageLog.Println("[WARNING]", "Requeueing",
 				s3Key.Key, "- not enough disk space")
-			result.Error = err
+			result.ErrorMessage = err.Error()
 			result.Retry = true
 			channels.ResultsChannel <- result
 		} else {
@@ -200,9 +200,9 @@ func doFetch() {
 			fetchResult := Fetch(result.S3File.BucketName, s3Key)
 			result.FetchResult = fetchResult
 			result.Retry = fetchResult.Retry
-			if fetchResult.Error != nil {
+			if fetchResult.ErrorMessage != "" {
 				// Fetch from S3 failed. Requeue.
-				result.Error = fetchResult.Error
+				result.ErrorMessage = fetchResult.ErrorMessage
 				channels.ResultsChannel <- result
 			} else {
 				// Got S3 file. Untar it.
@@ -217,7 +217,7 @@ func doFetch() {
 // This runs as a go routine to untar files downloaded from S3.
 func doUnpack() {
 	for result := range channels.UnpackChannel {
-		if result.Error != nil {
+		if result.ErrorMessage != "" {
 			// Unpack failed. Go to end.
 			messageLog.Println("[INFO]", "Nothing to unpack for",
 				result.S3File.Key.Key)
@@ -256,7 +256,7 @@ func doCleanUp() {
 		// processing succeeded.
 		succeeded := true
 		requeueDelayMs := 0
-		if result.Error != nil && result.Retry == true {
+		if result.ErrorMessage != "" && result.Retry == true {
 			succeeded = false
 			requeueDelayMs = 3000
 		}
@@ -284,12 +284,12 @@ func logResult() {
 
 		// Add a message to the message log
 		atomic.AddInt64(&bytesInS3, int64(result.S3File.Key.Size))
-		if(result.Error != nil) {
+		if(result.ErrorMessage != "") {
 			atomic.AddInt64(&failed, 1)
 			messageLog.Println("[ERROR]",
 				result.S3File.BucketName,
 				result.S3File.Key.Key,
-				"->", result.Error)
+				"->", result.ErrorMessage)
 		} else {
 			atomic.AddInt64(&succeeded, 1)
 			atomic.AddInt64(&bytesProcessed, int64(result.S3File.Key.Size))
@@ -320,7 +320,7 @@ func Fetch(bucketName string, key s3.Key) (result *bagman.FetchResult) {
 	client, err := bagman.GetClient(aws.USEast)
 	if err != nil {
 		fetchResult := new(bagman.FetchResult)
-		fetchResult.Error = err
+		fetchResult.ErrorMessage = err.Error()
 		return fetchResult
 	}
 	// TODO: We fetched this bucket before. Do we need to fetch it again?
@@ -355,8 +355,8 @@ func CleanUp(file string) (errors []error) {
 func ProcessBagFile(result *bagman.ProcessResult) {
 	result.Stage = "Unpack"
 	result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile)
-	if result.TarResult.Error != nil {
-		result.Error = result.TarResult.Error
+	if result.TarResult.ErrorMessage != "" {
+		result.ErrorMessage = result.TarResult.ErrorMessage
 		// If we can't untar this, there's no reason to retry...
 		// but we'll have to revisit this. There may be cases
 		// where we do want to retry, such as if disk was full.
@@ -364,8 +364,8 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 	} else {
 		result.Stage = "Validate"
 		result.BagReadResult = bagman.ReadBag(result.TarResult.OutputDir)
-		if result.BagReadResult.Error != nil {
-			result.Error = result.BagReadResult.Error
+		if result.BagReadResult.ErrorMessage != "" {
+			result.ErrorMessage = result.BagReadResult.ErrorMessage
 			// Something was wrong with this bag. Bad checksum,
 			// missing file, etc. Don't reprocess it.
 			result.Retry = false
