@@ -60,6 +60,7 @@ type ProcessStatus struct {
 	Stage        string      `json:"stage"`
 	Status       string      `json:"status"`
 	Outcome      string      `json:"outcome"`
+	Retry        bool        `json:"retry"`
 }
 
 // Convert ProcessStatus to JSON, omitting id, which Rails won't permit.
@@ -77,6 +78,7 @@ func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
 		"stage": status.Stage,
 		"status": status.Status,
 		"outcome": status.Outcome,
+		"retry": status.Retry,
 	})
 }
 
@@ -149,6 +151,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	}
 	status.Institution = OwnerOf(result.S3File.BucketName)
 	status.Outcome = status.Status
+	status.Retry = result.Retry
 	return status
 }
 
