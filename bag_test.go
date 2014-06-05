@@ -217,7 +217,7 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	err = assertTagMatch(result.Tags[8], "Title", "Strabo De situ orbis.")
 	if err != nil { t.Error(err) }
 
-	err = assertTagMatch(result.Tags[9], "Rights", "Institution")
+	err = assertTagMatch(result.Tags[9], "Access", "Institution")
 	if err != nil { t.Error(err) }
 
 	if len(result.ChecksumErrors) != 0 {

@@ -36,12 +36,12 @@ func (premisEvent *PremisEvent) EventTypeValid() bool {
 	return false
 }
 
-// RightsValid returns true or false to indicate whether the
-// structure's Rights property contains a valid value.
-func (intellectualObject *IntellectualObject) RightsValid() bool {
-	lcRights := strings.ToLower(intellectualObject.Rights)
+// AccessValid returns true or false to indicate whether the
+// structure's Access property contains a valid value.
+func (intellectualObject *IntellectualObject) AccessValid() bool {
+	lcAccess := strings.ToLower(intellectualObject.Access)
 	for _, value := range rights {
-		if value == lcRights {
+		if value == lcAccess {
 			return true
 		}
 	}
@@ -112,7 +112,7 @@ Description is a free-text description of the object.
 Identifier is the object's unique identifier. (Whose assigned
 this id? APTrust or the owner?)
 
-Rights indicate who can acess the object. Valid values are
+Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
@@ -120,7 +120,7 @@ type IntellectualObject struct {
 	Title              string  `json:"title"`
 	Description        string  `json:"description"`
 	Identifier         string  `json:"identifier"`
-	Rights             string  `json:"rights"`
+	Access             string  `json:"access"`
 }
 
 /*

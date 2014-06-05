@@ -106,18 +106,21 @@ type ProcessResult struct {
 // structure matches Fluctus' IntellectualObject model, and can be sent
 // directly to Fluctus for recording.
 func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObject) {
+	// TODO: Implement me!
 	return nil
 }
 
 // GenericFiles returns a list of GenericFile objects that were found
 // in the bag.
 func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
+	// TODO: Implement me!
 	return nil
 }
 
 // PremisEvents returns a list of Premis events generated during bag
 // processing.
 func (result *ProcessResult) PremisEvents() (events []*models.PremisEvent) {
+	// TODO: Implement me!
 	return nil
 }
 
@@ -206,6 +209,18 @@ type BagReadResult struct {
 	ErrorMessage     string
 	Tags             []Tag
 	ChecksumErrors   []error
+}
+
+// TagValue returns the value of the tag with the specified label.
+func (result *BagReadResult) TagValue(tagLabel string) (tagValue string) {
+	lcTagLabel := strings.ToLower(tagLabel)
+	for _, tag := range result.Tags {
+		if strings.ToLower(tag.Label) == lcTagLabel {
+			tagValue = tag.Value
+			break
+		}
+	}
+	return tagValue
 }
 
 // FetchResult descibes the results of fetching a bag from S3
