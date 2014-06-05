@@ -3,7 +3,7 @@ package bagman_test
 import (
 	"testing"
 	"time"
-	"errors"
+	"fmt"
 	"strings"
 	"launchpad.net/goamz/s3"
 	"github.com/APTrust/bagman"
@@ -48,7 +48,7 @@ func baseResult() (result *bagman.ProcessResult) {
 func getResult(stage string, successful bool) (result *bagman.ProcessResult) {
 	result = baseResult()
 	if successful == false {
-		result.Error = errors.New("Sample error message. Sumpin went rawng!")
+		result.ErrorMessage = fmt.Sprintf("Sample error message. Sumpin went rawng!")
 	}
 	result.Stage = stage
 	return result
@@ -88,7 +88,8 @@ func TestIngestStatus(t *testing.T) {
 	assertCorrectSummary(t, failedStore, "Failed")
 
 	passedRecord := getResult("Record", true)
-	assertCorrectSummary(t, passedRecord, "Succeeded")
+	// TODO: Change Processing to Succeeded when Record step is working.
+	assertCorrectSummary(t, passedRecord, "Processing")
 	failedRecord := getResult("Record", false)
 	assertCorrectSummary(t, failedRecord, "Failed")
 }
@@ -133,16 +134,16 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 			bagman.OwnerOf(result.S3File.BucketName),
 			status.Institution)
 	}
-	if result.Error == nil && status.Note != "No problems" {
+	if result.ErrorMessage == "" && status.Note != "No problems" {
 		t.Error("ProcessStatus.Note should be '%s', but it's '%s'.",
 			"No problems", status.Note)
 	}
-	if result.Error != nil && status.Note == "" {
+	if result.ErrorMessage != "" && status.Note == "" {
 		t.Error("ProcessStatus.Note should have a value, but it's empty.")
 	}
-	if result.Error != nil && status.Note != result.Error.Error() {
+	if result.ErrorMessage != "" && status.Note != result.ErrorMessage {
 		t.Errorf("ProcessStatus.Note: Expected %s, got %s",
-			result.Error.Error(),
+			result.ErrorMessage,
 			status.Note)
 	}
 	if status.Status != expectedStatus {

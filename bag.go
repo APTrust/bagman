@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"crypto/md5"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -30,7 +29,7 @@ func Untar(path string) (result *TarResult) {
 	tarResult := new(TarResult)
 	absInputFile, err := filepath.Abs(path)
 	if err != nil {
-		tarResult.Error = fmt.Errorf("Before untarring, could not determine " +
+		tarResult.ErrorMessage = fmt.Sprintf("Before untarring, could not determine " +
 			"absolute path to downloaded file: %v", err)
 		return tarResult
 	}
@@ -39,7 +38,7 @@ func Untar(path string) (result *TarResult) {
 	// Open the tar file for reading.
 	file, err := os.Open(path)
 	if err != nil {
-		tarResult.Error = fmt.Errorf("Could not open file %s for untarring: %v",
+		tarResult.ErrorMessage = fmt.Sprintf("Could not open file %s for untarring: %v",
 			path, err)
 		return tarResult
 	}
@@ -53,7 +52,7 @@ func Untar(path string) (result *TarResult) {
 			break  // end of archive
 		}
 		if err != nil {
-			tarResult.Error = fmt.Errorf("Error reading tar file header: %v", err)
+			tarResult.ErrorMessage = fmt.Sprintf("Error reading tar file header: %v", err)
 			return tarResult
 		}
 		outputPath := filepath.Join(filepath.Dir(absInputFile), header.Name)
@@ -65,7 +64,7 @@ func Untar(path string) (result *TarResult) {
 		// Make sure the directory that we're about to write into exists.
 		err = os.MkdirAll(filepath.Dir(outputPath), 0755)
 		if err != nil {
-			tarResult.Error = fmt.Errorf("Could not create destination file '%s' " +
+			tarResult.ErrorMessage = fmt.Sprintf("Could not create destination file '%s' " +
 				"while unpacking tar archive: %v", outputPath, err)
 			return tarResult
 		}
@@ -80,7 +79,7 @@ func Untar(path string) (result *TarResult) {
 			} else {
 				err = saveFile(outputPath, tarReader)
 				if err != nil {
-					tarResult.Error = fmt.Errorf("Error copying file from tar archive " +
+					tarResult.ErrorMessage = fmt.Sprintf("Error copying file from tar archive " +
 						"to '%s': %v", outputPath, err)
 					return tarResult
 				}
@@ -112,13 +111,13 @@ func ReadBag(path string) (result *BagReadResult) {
 	// should be for bags we're fetching from the S3 receiving buckets.
 	bag, err := bagins.ReadBag(path, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}, "")
 	if err != nil {
-		bagReadResult.Error = fmt.Errorf("Error unpacking bag: %v", err)
+		bagReadResult.ErrorMessage = fmt.Sprintf("Error unpacking bag: %v", err)
 		return bagReadResult
 	}
 
 	fileNames, err := bag.ListFiles()
 	if err!= nil {
-		bagReadResult.Error = fmt.Errorf("Could not list bag files: %v", err)
+		bagReadResult.ErrorMessage = fmt.Sprintf("Could not list bag files: %v", err)
 		return bagReadResult
 	}
 
@@ -147,14 +146,14 @@ func ReadBag(path string) (result *BagReadResult) {
 	if len(checksumErrors) > 0 {
 		errMsg += "The following checksums could not be verified: "
 		bagReadResult.ChecksumErrors = make([]error, len(checksumErrors))
-		copy(bagReadResult.ChecksumErrors, checksumErrors)
-		for _, err := range checksumErrors {
-			errMsg += err.Error() + " ... "
+		for i, err := range checksumErrors {
+			bagReadResult.ChecksumErrors[i] = err
+			errMsg += err.Error() + ". "
 		}
 	}
 
 	if errMsg != "" {
-		bagReadResult.Error = errors.New(errMsg)
+		bagReadResult.ErrorMessage = fmt.Sprintf(errMsg)
 	}
 
 	return bagReadResult
@@ -168,7 +167,7 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	for _, file := range tagFiles {
 		tagFile, err := bag.TagFile(file)
 		if err != nil {
-			bagReadResult.Error = fmt.Errorf("Error reading tags from bag: %v", err)
+			bagReadResult.ErrorMessage = fmt.Sprintf("Error reading tags from bag: %v", err)
 			return
 		}
 		tagFields := tagFile.Data.Fields()
@@ -203,12 +202,12 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 	gf.Path = fileName[strings.Index(fileName, "/data/") + 1:len(fileName)]
 	absPath, err := filepath.Abs(filepath.Join(path, fileName))
 	if err != nil {
-		gf.Error = fmt.Errorf("Path error: %v", err)
+		gf.ErrorMessage = fmt.Sprintf("Path error: %v", err)
 		return gf
 	}
 	uuid, err := uuid.NewV4()
 	if err != nil {
-		gf.Error = fmt.Errorf("UUID error: %v", err)
+		gf.ErrorMessage = fmt.Sprintf("UUID error: %v", err)
 		return gf
 	}
 	gf.Uuid = uuid.String()
@@ -221,7 +220,7 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 	// three separate times.
 	outputWriter, err := os.OpenFile(absPath, os.O_CREATE | os.O_WRONLY, 0644)
 	if err != nil {
-		gf.Error = fmt.Errorf("Error opening writing to %s: %v", absPath, err)
+		gf.ErrorMessage = fmt.Sprintf("Error opening writing to %s: %v", absPath, err)
 		return gf
 	}
 	defer outputWriter.Close()
@@ -239,14 +238,14 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 	if magicMime == nil {
 		magicMime, err = magicmime.New()
 		if err != nil {
-			gf.Error = fmt.Errorf("Error opening MimeMagic database: %v", err)
+			gf.ErrorMessage = fmt.Sprintf("Error opening MimeMagic database: %v", err)
 			return gf
 		}
 	}
 
 	mimetype, err := magicMime.TypeByFile(absPath)
 	if err != nil {
-		gf.Error = fmt.Errorf("Error determining mime type: %v", err)
+		gf.ErrorMessage = fmt.Sprintf("Error determining mime type: %v", err)
 		return gf
 	}
 	if mimetype == "" {

@@ -71,8 +71,8 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 	defer teardown()
 	for _, tarFile := range allFiles {
 		result := bagman.Untar(tarFile)
-		if result.Error != nil {
-			t.Errorf("Error untarring %s: %v", tarFile, result.Error)
+		if result.ErrorMessage != "" {
+			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
 		}
 		if len(result.FilesUnpacked) == 0 {
 			t.Errorf("Untar did not seem to unpack anything from %s", tarFile)
@@ -157,7 +157,7 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 // Error property.
 func TestUntarSetsErrorOnBadFile(t *testing.T) {
 	result := bagman.Untar(invalidTarFile)
-	if result.Error == nil {
+	if result.ErrorMessage == "" {
 		t.Errorf("Untar should have reported an error about a bad tar file, but did not.")
 	}
 }
@@ -181,8 +181,8 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	}
 
 
-	if result.Error != nil {
-		t.Errorf("Unexpected error in read result: %v", result.Error)
+	if result.ErrorMessage != "" {
+		t.Errorf("Unexpected error in read result: %v", result.ErrorMessage)
 	}
 
 	// All tags should be present and in the correct order
@@ -237,7 +237,7 @@ func TestBadBagReturnsError(t *testing.T) {
 	for _, tarFile := range badFiles {
 		tarResult := bagman.Untar(tarFile)
 		result := bagman.ReadBag(tarResult.OutputDir)
-		if result.Error == nil {
+		if result.ErrorMessage == "" {
 			t.Errorf("Bag unpacked from %s should have produced an error, but did not",
 				tarResult.OutputDir)
 		}

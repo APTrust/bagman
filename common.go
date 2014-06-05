@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"launchpad.net/goamz/s3"
 	"github.com/bitly/go-nsq"
+	"github.com/APTrust/bagman/fluctus/models"
 )
 
 const (
@@ -90,12 +91,32 @@ type ProcessResult struct {
 	NsqMessage       *nsq.Message               `json:"-"`  // Don't serialize
 	NsqOutputChannel chan *nsq.FinishedMessage  `json:"-"`  // Don't serialize
 	S3File           *S3File
-	Error            error
+	ErrorMessage     string
 	FetchResult      *FetchResult
 	TarResult        *TarResult
 	BagReadResult    *BagReadResult
 	Stage            string
 	Retry            bool
+}
+
+// IntellectualObject returns an instance of models.IntellectualObject
+// which describes what was unpacked from the bag. The IntellectualObject
+// structure matches Fluctus' IntellectualObject model, and can be sent
+// directly to Fluctus for recording.
+func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObject) {
+	return nil
+}
+
+// GenericFiles returns a list of GenericFile objects that were found
+// in the bag.
+func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
+	return nil
+}
+
+// PremisEvents returns a list of Premis events generated during bag
+// processing.
+func (result *ProcessResult) PremisEvents() (events []*models.PremisEvent) {
+	return nil
 }
 
 // IngestStatus returns a lightweight Status object suitable for reporting
@@ -113,8 +134,8 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	status.ETag = strings.Replace(result.S3File.Key.ETag, "\"", "", 2)
 	status.Stage = result.Stage
 	status.Status = "Processing"
-	if result.Error != nil {
-		status.Note = result.Error.Error()
+	if result.ErrorMessage != "" {
+		status.Note = result.ErrorMessage
 		status.Status = "Failed"
 	} else {
 		status.Note = "No problems"
@@ -150,7 +171,7 @@ type GenericFile struct {
 	Uuid             string
 	UuidGenerated    time.Time
 	MimeType         string
-	Error            error
+	ErrorMessage     string
 }
 
 // TarResult contains information about the attempt to untar
@@ -158,7 +179,7 @@ type GenericFile struct {
 type TarResult struct {
 	InputFile       string
 	OutputDir       string
-	Error           error
+	ErrorMessage    string
 	Warnings        []string
 	FilesUnpacked   []string
 	GenericFiles    []*GenericFile
@@ -179,7 +200,7 @@ type Tag struct {
 type BagReadResult struct {
 	Path             string
 	Files            []string
-	Error            error
+	ErrorMessage     string
 	Tags             []Tag
 	ChecksumErrors   []error
 }
@@ -194,7 +215,7 @@ type FetchResult struct {
 	LocalMd5         string
 	Md5Verified      bool
 	Md5Verifiable    bool
-	Error            error
+	ErrorMessage     string
 	Warning          string
 	Retry            bool
 }

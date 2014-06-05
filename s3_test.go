@@ -105,8 +105,8 @@ func TestFetchToFile(t *testing.T) {
 	outputFileAbs, _ := filepath.Abs(outputFile)
 	result := bagman.FetchToFile(bucket, keyToFetch, outputFile)
 	defer os.Remove(filepath.Join(outputDir, keyToFetch.Key))
-	if result.Error != nil {
-		t.Error("FetchToFile returned an error: %v", result.Error)
+	if result.ErrorMessage != "" {
+		t.Error("FetchToFile returned an error: %s", result.ErrorMessage)
 	}
 	if result.BucketName != bucket.Name {
 		t.Error("Expected bucket name %s, got %s", bucket.Name, result.BucketName)
@@ -170,11 +170,11 @@ func TestFetchNonExistentFile(t *testing.T) {
 	if result.Key != keys[0].Key {
 		t.Error("Expected key name %s, got %s", keys[0].Key, result.Key)
 	}
-	if result.Error == nil {
+	if result.ErrorMessage == "" {
 		t.Error("FetchToFile should have returned a 'not found' error, but did not.")
 	}
-	if result.Error.Error() != "The specified key does not exist." {
-		t.Error("Got unexpected error message: %v", result.Error)
+	if result.ErrorMessage != "Error retrieving file from receiving bucket: The specified key does not exist." {
+		t.Error("Got unexpected error message: %v", result.ErrorMessage)
 	}
 	// Retry should be false, because file does not exist and we don't
 	// want to waste any more time on it.
