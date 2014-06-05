@@ -30,7 +30,8 @@ func Untar(path string) (result *TarResult) {
 	tarResult := new(TarResult)
 	absInputFile, err := filepath.Abs(path)
 	if err != nil {
-		tarResult.Error = err
+		tarResult.Error = fmt.Errorf("Before untarring, could not determine " +
+			"absolute path to downloaded file: %v", err)
 		return tarResult
 	}
 	tarResult.InputFile = absInputFile
@@ -38,7 +39,8 @@ func Untar(path string) (result *TarResult) {
 	// Open the tar file for reading.
 	file, err := os.Open(path)
 	if err != nil {
-		tarResult.Error = err
+		tarResult.Error = fmt.Errorf("Could not open file %s for untarring: %v",
+			path, err)
 		return tarResult
 	}
 	defer file.Close()
@@ -51,7 +53,7 @@ func Untar(path string) (result *TarResult) {
 			break  // end of archive
 		}
 		if err != nil {
-			tarResult.Error = err
+			tarResult.Error = fmt.Errorf("Error reading tar file header: %v", err)
 			return tarResult
 		}
 		outputPath := filepath.Join(filepath.Dir(absInputFile), header.Name)
@@ -63,7 +65,8 @@ func Untar(path string) (result *TarResult) {
 		// Make sure the directory that we're about to write into exists.
 		err = os.MkdirAll(filepath.Dir(outputPath), 0755)
 		if err != nil {
-			tarResult.Error = err
+			tarResult.Error = fmt.Errorf("Could not create destination file '%s' " +
+				"while unpacking tar archive: %v", outputPath, err)
 			return tarResult
 		}
 
@@ -77,7 +80,8 @@ func Untar(path string) (result *TarResult) {
 			} else {
 				err = saveFile(outputPath, tarReader)
 				if err != nil {
-					tarResult.Error = err
+					tarResult.Error = fmt.Errorf("Error copying file from tar archive " +
+						"to '%s': %v", outputPath, err)
 					return tarResult
 				}
 			}
@@ -108,13 +112,13 @@ func ReadBag(path string) (result *BagReadResult) {
 	// should be for bags we're fetching from the S3 receiving buckets.
 	bag, err := bagins.ReadBag(path, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}, "")
 	if err != nil {
-		bagReadResult.Error = err
+		bagReadResult.Error = fmt.Errorf("Error unpacking bag: %v", err)
 		return bagReadResult
 	}
 
 	fileNames, err := bag.ListFiles()
 	if err!= nil {
-		bagReadResult.Error = err
+		bagReadResult.Error = fmt.Errorf("Could not list bag files: %v", err)
 		return bagReadResult
 	}
 
@@ -141,9 +145,12 @@ func ReadBag(path string) (result *BagReadResult) {
 
 	checksumErrors := bag.Manifest.RunChecksums()
 	if len(checksumErrors) > 0 {
-		errMsg += "One or more checksums are invalid."
+		errMsg += "The following checksums could not be verified: "
 		bagReadResult.ChecksumErrors = make([]error, len(checksumErrors))
 		copy(bagReadResult.ChecksumErrors, checksumErrors)
+		for _, err := range checksumErrors {
+			errMsg += err.Error() + " ... "
+		}
 	}
 
 	if errMsg != "" {
@@ -161,7 +168,7 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	for _, file := range tagFiles {
 		tagFile, err := bag.TagFile(file)
 		if err != nil {
-			bagReadResult.Error = err
+			bagReadResult.Error = fmt.Errorf("Error reading tags from bag: %v", err)
 			return
 		}
 		tagFields := tagFile.Data.Fields()

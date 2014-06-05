@@ -83,7 +83,7 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 	// will want to retry later.
 	readCloser, err := bucket.GetReader(key.Key)
 	if err != nil {
-		result.Error = err
+		result.Error = fmt.Errorf("Error retrieving file from receiving bucket: %v", err)
 		if strings.Contains(err.Error(), "key does not exist") {
 			result.Retry = false
 		}
@@ -96,7 +96,7 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 	md5Hash := md5.New()
 	outputFile, err := os.Create(path)
 	if err != nil {
-		result.Error = err
+		result.Error = fmt.Errorf("Could not create local file %s: %v", path, err)
 		return result
 	}
 	defer outputFile.Close()
@@ -104,11 +104,12 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 	multiWriter := io.MultiWriter(outputFile, md5Hash)
 	bytesWritten, err := io.Copy(multiWriter, readCloser)
 	if err != nil {
-		result.Error = err
+		result.Error = fmt.Errorf("Error copying file from receiving bucket: %v", err)
 		return result
 	}
 	if bytesWritten != key.Size {
-		result.Error = fmt.Errorf("Wrote only %d of %d bytes for %s", bytesWritten, key.Size, key.Key)
+		result.Error = fmt.Errorf("While downloading from receiving bucket, " +
+			"copied only %d of %d bytes for %s", bytesWritten, key.Size, key.Key)
 		return result
 	}
 
