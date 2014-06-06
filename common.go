@@ -91,7 +91,6 @@ func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
 // If processing succeeded, Retry is irrelevant.
 type ProcessResult struct {
 	NsqMessage       *nsq.Message               `json:"-"`  // Don't serialize
-	NsqOutputChannel chan *nsq.FinishedMessage  `json:"-"`  // Don't serialize
 	S3File           *S3File
 	ErrorMessage     string
 	FetchResult      *FetchResult

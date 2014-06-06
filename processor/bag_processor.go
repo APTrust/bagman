@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"sync/atomic"
 	"log"
-//	"time"
 	"path/filepath"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/client"
@@ -73,20 +72,20 @@ func main() {
 	initGoRoutines(channels)
 
 
-	reader, err := nsq.NewReader(config.BagProcessorTopic, config.BagProcessorChannel)
+	nsqConfig := nsq.NewConfig()
+	nsqConfig.Set("max_in_flight", 100)
+	nsqConfig.Set("heartbeat_interval", "0m15s")
+	consumer, err := nsq.NewConsumer(config.BagProcessorTopic, config.BagProcessorChannel, nsqConfig)
 	if err != nil {
 		messageLog.Fatalf(err.Error())
 	}
 
 	handler := &BagProcessor{}
-	reader.SetMaxInFlight(100)
-	reader.AddAsyncHandler(handler)
-	reader.ConnectToLookupd(config.NsqLookupd)
+	consumer.SetHandler(handler)
+	consumer.ConnectToNSQLookupd(config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
-	<-reader.ExitChan
-
-	//waitForAllTasks()
+	<-consumer.StopChan
 }
 
 
@@ -153,22 +152,20 @@ type BagProcessor struct {
 
 // MessageHandler handles messages from the queue, putting each
 // item into the pipleline.
-func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq.FinishedMessage) {
+func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 	message.Attempts++
 	var s3File bagman.S3File
 	err := json.Unmarshal(message.Body, &s3File)
 	if err != nil {
 		messageLog.Println("[ERROR] Could not unmarshal JSON data from nsq:",
 			string(message.Body))
-		finishedMessage := &nsq.FinishedMessage{message.Id, 0, true}
-		outputChannel <- finishedMessage
-		return
+		message.Finish()
+		return nil
 	}
 
 	// Create the result struct and pass it down the pipeline
 	result := bagman.ProcessResult{
 		message,         // NsqMessage
-		outputChannel,   // NsqOutputChannel
 		&s3File,         // S3File: tarred bag that was uploaded to receiving bucket
 		"",              // ErrorMessage: no processing error yet
 		nil,             // FetchResult: could we get the bag?
@@ -178,6 +175,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message, outputChannel chan *nsq
 		true}            // Retry if processing fails? Default to yes.
 	channels.FetchChannel <- result
 	messageLog.Println("[INFO]", "Put", s3File.Key.Key, "into fetch queue")
+	return nil
 }
 
 
@@ -254,17 +252,11 @@ func doCleanUp() {
 
 		// Build and send message back to NSQ, indicating whether
 		// processing succeeded.
-		succeeded := true
-		requeueDelayMs := 0
 		if result.ErrorMessage != "" && result.Retry == true {
-			succeeded = false
-			requeueDelayMs = 3000
+			result.NsqMessage.Requeue(3000)
+		} else {
+			result.NsqMessage.Finish()
 		}
-		finishedMessage := &nsq.FinishedMessage{
-			result.NsqMessage.Id,
-			requeueDelayMs,
-			succeeded}
-		result.NsqOutputChannel <- finishedMessage
 
 		// TODO: Send ProcessResult to nsq metadata topic
 	}

@@ -173,7 +173,12 @@ func enqueue(url string, s3Files []*bagman.S3File) {
 	if err != nil {
 		messageLog.Printf("[ERROR] nsqd returned an error: %v", err)
 	}
-	if resp.StatusCode != 200 {
+	if resp == nil {
+		msg := "[ERROR] No response from nsqd. Is it running? bucket_reader is quitting."
+		messageLog.Printf(msg)
+		fmt.Println(msg)
+		os.Exit(1)
+	} else if  resp.StatusCode != 200 {
 		messageLog.Printf("[ERROR] nsqd returned status code %d on last mput", resp.StatusCode)
 	}
 }
