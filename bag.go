@@ -46,7 +46,7 @@ func Untar(path string) (result *TarResult) {
 
 	// Untar the file and record the results.
 	tarReader := tar.NewReader(file)
-	defer tarReader.Close()
+
 	for {
 		header, err := tarReader.Next();
 		if err != nil && err.Error() == "EOF" {
@@ -228,7 +228,6 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 	md5Hash := md5.New()
 	shaHash := sha256.New()
 	multiWriter := io.MultiWriter(md5Hash, shaHash, outputWriter)
-	defer multiWriter.Close()
 	io.Copy(multiWriter, tarReader)
 
 	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
