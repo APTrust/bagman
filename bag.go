@@ -37,15 +37,16 @@ func Untar(path string) (result *TarResult) {
 
 	// Open the tar file for reading.
 	file, err := os.Open(path)
+	defer file.Close()
 	if err != nil {
 		tarResult.ErrorMessage = fmt.Sprintf("Could not open file %s for untarring: %v",
 			path, err)
 		return tarResult
 	}
-	defer file.Close()
 
 	// Untar the file and record the results.
 	tarReader := tar.NewReader(file)
+	defer tarReader.Close()
 	for {
 		header, err := tarReader.Next();
 		if err != nil && err.Error() == "EOF" {
@@ -219,15 +220,15 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 	// md5 and sha256. We don't want to process the stream
 	// three separate times.
 	outputWriter, err := os.OpenFile(absPath, os.O_CREATE | os.O_WRONLY, 0644)
+	defer outputWriter.Close()
 	if err != nil {
 		gf.ErrorMessage = fmt.Sprintf("Error opening writing to %s: %v", absPath, err)
 		return gf
 	}
-	defer outputWriter.Close()
 	md5Hash := md5.New()
 	shaHash := sha256.New()
 	multiWriter := io.MultiWriter(md5Hash, shaHash, outputWriter)
-
+	defer multiWriter.Close()
 	io.Copy(multiWriter, tarReader)
 
 	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))

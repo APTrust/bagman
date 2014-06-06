@@ -120,8 +120,9 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	// that are in TIME_WAIT / keepalive, but we can pay that price.
 	client.requestCount++
 	if client.requestCount % 100 == 0 {
-		client.logger.Println("[INFO] Fluctus client is forcibly closing idle HTTP connections")
-		client.transport.CloseIdleConnections()
+		client.logger.Println("[INFO] Used to force-close connections here...")
+		// client.logger.Println("[INFO] Fluctus client is forcibly closing idle HTTP connections")
+		// client.transport.CloseIdleConnections()
 	}
 
 	response, err := client.httpClient.Do(request)

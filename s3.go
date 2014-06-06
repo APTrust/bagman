@@ -82,6 +82,7 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 	// If we get an error here, it's typically a network error, and we
 	// will want to retry later.
 	readCloser, err := bucket.GetReader(key.Key)
+	defer readCloser.Close()
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error retrieving file from receiving bucket: %v", err)
 		if strings.Contains(err.Error(), "key does not exist") {
@@ -89,19 +90,19 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 		}
 		return result
 	}
-	defer readCloser.Close()
 
 	// Write the contents of the stream into both our md5 hasher
 	// and the file.
 	md5Hash := md5.New()
 	outputFile, err := os.Create(path)
+	defer outputFile.Close()
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Could not create local file %s: %v", path, err)
 		return result
 	}
-	defer outputFile.Close()
 
 	multiWriter := io.MultiWriter(outputFile, md5Hash)
+	defer multiWriter.Close()
 	bytesWritten, err := io.Copy(multiWriter, readCloser)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error copying file from receiving bucket: %v", err)

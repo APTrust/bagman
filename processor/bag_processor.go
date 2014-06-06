@@ -207,8 +207,7 @@ func doFetch() {
 			} else {
 				// Got S3 file. Untar it.
 				// And touch the message, so nsqd knows we're making progress.
-				// TOUCH IS OFF TEMPORARILY TO TEST A TCP CONNECTION PROBLEM
-				// result.NsqMessage.Touch()
+				result.NsqMessage.Touch()
 				channels.UnpackChannel <- result
 			}
 		}
@@ -227,8 +226,7 @@ func doUnpack() {
 			// Unpacked! Now process the bag and touch message
 			// so nsqd knows we're making progress.
 			messageLog.Println("[INFO]", "Unpacking", result.S3File.Key.Key)
-			// TOUCH IS OFF TEMPORARILY TO TEST A TCP CONNECTION PROBLEM
-			// result.NsqMessage.Touch()
+			result.NsqMessage.Touch()
 			ProcessBagFile(&result)
 			channels.ResultsChannel <- result
 		}
