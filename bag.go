@@ -37,7 +37,9 @@ func Untar(path string) (result *TarResult) {
 
 	// Open the tar file for reading.
 	file, err := os.Open(path)
-	defer file.Close()
+	if file != nil {
+		defer file.Close()
+	}
 	if err != nil {
 		tarResult.ErrorMessage = fmt.Sprintf("Could not open file %s for untarring: %v",
 			path, err)
@@ -184,10 +186,12 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 // used to save non-data files (manifests, tag files, etc.)
 func saveFile(destination string, tarReader *tar.Reader) (error) {
 	outputWriter, err := os.OpenFile(destination, os.O_CREATE | os.O_WRONLY, 0644)
+	if outputWriter != nil {
+		defer outputWriter.Close()
+	}
 	if err != nil {
 		return err
 	}
-	defer outputWriter.Close()
 	_, err = io.Copy(outputWriter, tarReader);
 	if err != nil {
 		return err
@@ -220,7 +224,9 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 	// md5 and sha256. We don't want to process the stream
 	// three separate times.
 	outputWriter, err := os.OpenFile(absPath, os.O_CREATE | os.O_WRONLY, 0644)
-	defer outputWriter.Close()
+	if outputWriter != nil {
+		defer outputWriter.Close()
+	}
 	if err != nil {
 		gf.ErrorMessage = fmt.Sprintf("Error opening writing to %s: %v", absPath, err)
 		return gf

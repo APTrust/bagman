@@ -97,7 +97,9 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 	// and the file.
 	md5Hash := md5.New()
 	outputFile, err := os.Create(path)
-	defer outputFile.Close()
+	if outputFile != nil {
+		defer outputFile.Close()
+	}
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Could not create local file %s: %v", path, err)
 		return result
