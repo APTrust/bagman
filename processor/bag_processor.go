@@ -75,6 +75,12 @@ func main() {
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 100)
 	nsqConfig.Set("heartbeat_interval", "0m15s")
+
+	// Try setting this to max allowed (5m) because nsqd thinks
+	// client is gone when it spends a long time processing
+	// a multi-GB file.
+	nsqConfig.Set("read_timeout", "5m")
+
 	consumer, err := nsq.NewConsumer(config.BagProcessorTopic, config.BagProcessorChannel, nsqConfig)
 	if err != nil {
 		messageLog.Fatalf(err.Error())
