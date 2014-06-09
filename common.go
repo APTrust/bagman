@@ -130,8 +130,30 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
 // GenericFiles returns a list of GenericFile objects that were found
 // in the bag.
 func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
-    // TODO: Implement me!
-    return nil
+    intellectualObject := result.IntellectualObject()
+    files = make([]*models.GenericFile, len(result.TarResult.GenericFiles))
+    for i, file := range(result.TarResult.GenericFiles) {
+        checksumAttributes := make([]*models.ChecksumAttribute, 2)
+        checksumAttributes[0] = &models.ChecksumAttribute{
+            Algorithm: "md5",
+            DateTime: file.Modified,
+            Digest: file.Md5,
+        }
+        checksumAttributes[1] = &models.ChecksumAttribute{
+            Algorithm: "sha256",
+            DateTime: file.Sha256Generated,
+            Digest: file.Sha256,
+        }
+        files[i] = &models.GenericFile{
+            IntellectualObject: intellectualObject,
+            URI: file.StorageURL,
+            Size: file.Size,
+            Created: file.Modified,
+            Modified: file.Modified,
+            ChecksumAttributes: checksumAttributes,
+        }
+    }
+    return files
 }
 
 // PremisEvents returns a list of Premis events generated during bag
@@ -195,6 +217,7 @@ type GenericFile struct {
     UuidGenerated    time.Time
     MimeType         string
     ErrorMessage     string
+    StorageURL       string
 }
 
 // TarResult contains information about the attempt to untar

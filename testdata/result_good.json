@@ -54,7 +54,8 @@
                 "Uuid": "b21fdb34-1f79-4101-62c5-56918f4782fc",
                 "UuidGenerated": "2014-06-09T14:12:45.574023166Z",
                 "MimeType": "application/xml",
-                "ErrorMessage": ""
+                "ErrorMessage": "",
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc"
             },
             {
                 "Path": "data/object.properties",
@@ -67,7 +68,8 @@
                 "Uuid": "cba60bd7-1d46-4d53-705f-2298e173bbf9",
                 "UuidGenerated": "2014-06-09T14:12:45.574558786Z",
                 "MimeType": "text/plain",
-                "ErrorMessage": ""
+                "ErrorMessage": "",
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/cba60bd7-1d46-4d53-705f-2298e173bbf9"
             },
             {
                 "Path": "data/ORIGINAL/1",
@@ -80,7 +82,8 @@
                 "Uuid": "18299764-f623-489e-5171-b9f7e37675a1",
                 "UuidGenerated": "2014-06-09T14:12:45.576285246Z",
                 "MimeType": "application/pdf",
-                "ErrorMessage": ""
+                "ErrorMessage": "",
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/18299764-f623-489e-5171-b9f7e37675a1"
             },
             {
                 "Path": "data/ORIGINAL/1-metadata.xml",
@@ -93,7 +96,8 @@
                 "Uuid": "59ce7814-cba5-4898-62d2-9541b2b28295",
                 "UuidGenerated": "2014-06-09T14:12:45.73140604Z",
                 "MimeType": "application/xml",
-                "ErrorMessage": ""
+                "ErrorMessage": "",
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/59ce7814-cba5-4898-62d2-9541b2b28295"
             }
         ]
     },

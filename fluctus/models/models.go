@@ -3,49 +3,50 @@
 package models
 
 import (
-	"strings"
+    "strings"
+    "time"
 )
 
 // List of valid APTrust IntellectualObject rights.
 var rights []string = []string {
-	"consortial",
-	"institutional",
-	"restricted"}
+    "consortial",
+    "institutional",
+    "restricted"}
 
 // List of valid Premis Event types.
 var eventTypes []string = []string {
-	"ingest",
-	"validation",
-	"fixity_generation",
-	"fixity_check",
-	"identifier_assignment",
-	"quarentine",
-	"delete_action",
+    "ingest",
+    "validation",
+    "fixity_generation",
+    "fixity_check",
+    "identifier_assignment",
+    "quarentine",
+    "delete_action",
 }
 
 // EventTypeValid returns true/false, indicating whether the
 // structure's EventType property contains the name of a
 // valid premis event.
 func (premisEvent *PremisEvent) EventTypeValid() bool {
-	lcEventType := strings.ToLower(premisEvent.EventType)
-	for _, value := range eventTypes {
-		if value == lcEventType {
-			return true
-		}
-	}
-	return false
+    lcEventType := strings.ToLower(premisEvent.EventType)
+    for _, value := range eventTypes {
+        if value == lcEventType {
+            return true
+        }
+    }
+    return false
 }
 
 // AccessValid returns true or false to indicate whether the
 // structure's Access property contains a valid value.
 func (intellectualObject *IntellectualObject) AccessValid() bool {
-	lcAccess := strings.ToLower(intellectualObject.Access)
-	for _, value := range rights {
-		if value == lcAccess {
-			return true
-		}
-	}
-	return false
+    lcAccess := strings.ToLower(intellectualObject.Access)
+    for _, value := range rights {
+        if value == lcAccess {
+            return true
+        }
+    }
+    return false
 }
 
 /*
@@ -79,14 +80,14 @@ OutcomeInformation contains the text of an error message, if
 Outcome was failure.
 */
 type PremisEvent struct {
-	EventType          string  `json:"type"`
-	DateTime           string  `json:"date_time"`
-	Detail             string  `json:"detail"`
-	Outcome            string  `json:"outcome"`
-	OutcomeDetail      string  `json:"outcome_detail"`
-	Object             string  `json:"object"`
-	Agent              string  `json:"agent"`
-	OutcomeInformation string  `json:"outcome_information"`
+    EventType          string  `json:"type"`
+    DateTime           string  `json:"date_time"`
+    Detail             string  `json:"detail"`
+    Outcome            string  `json:"outcome"`
+    OutcomeDetail      string  `json:"outcome_detail"`
+    Object             string  `json:"object"`
+    Agent              string  `json:"agent"`
+    OutcomeInformation string  `json:"outcome_information"`
 }
 
 /*
@@ -94,8 +95,8 @@ Institution represents an institution in fluctus. Name is the
 institution's full name. BriefName is a shortened name.
 */
 type Institution struct {
-	Name               string  `json:"name"`
-	BriefName          string  `json:"brief_name"`
+    Name               string  `json:"name"`
+    BriefName          string  `json:"brief_name"`
 }
 
 
@@ -116,11 +117,11 @@ Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
-	Institution        *Institution  `json:"institution"`
-	Title              string  `json:"title"`
-	Description        string  `json:"description"`
-	Identifier         string  `json:"identifier"`
-	Access             string  `json:"access"`
+    Institution        *Institution  `json:"institution"`
+    Title              string  `json:"title"`
+    Description        string  `json:"description"`
+    Identifier         string  `json:"identifier"`
+    Access             string  `json:"access"`
 }
 
 /*
@@ -134,9 +135,9 @@ For example:
 1994-11-05T08:15:30Z          (UTC)
 */
 type ChecksumAttribute struct {
-	Algorithm          string  `json:"algorithm"`
-	DateTime           string  `json:"datetime"`
-	Digest             string  `json:"digest"`
+    Algorithm          string     `json:"algorithm"`
+    DateTime           time.Time  `json:"datetime"`
+    Digest             string     `json:"digest"`
 }
 
 /*
@@ -165,20 +166,20 @@ such as:
 1994-11-05T08:15:30Z          (UTC)
 */
 type GenericFile struct {
-	IntellectualObject IntellectualObject `json:"intellectual_object"`
-	Format             string  `json:"format"`
-	URI                string  `json:"uri"`
-	Size               int64   `json:"size"`
-	Created            string  `json:"created"`
-	Modified           string  `json:"modified"`
-	ChecksumAttributes []ChecksumAttribute  `json:"checksum_attributes"`
+    IntellectualObject *IntellectualObject `json:"intellectual_object"`
+    Format             string     `json:"format"`
+    URI                string     `json:"uri"`
+    Size               int64      `json:"size"`
+    Created            time.Time  `json:"created"`
+    Modified           time.Time  `json:"modified"`
+    ChecksumAttributes []*ChecksumAttribute  `json:"checksum_attributes"`
 }
 
 
 // User struct is used for logging in to fluctus.
 type User struct {
-	Email              string  `json:"email"`
-	Password           string  `json:"password,omitempty"`
-	ApiKey             string  `json:"api_secret_key,omitempty"`
-	AuthToken          string  `json:"authenticity_token,omitempty"`
+    Email              string  `json:"email"`
+    Password           string  `json:"password,omitempty"`
+    ApiKey             string  `json:"api_secret_key,omitempty"`
+    AuthToken          string  `json:"authenticity_token,omitempty"`
 }

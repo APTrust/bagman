@@ -226,3 +226,104 @@ func TestIntellectualObject(t *testing.T) {
             "Consortial")
     }
 }
+
+func TestGenericFiles(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+    emptyTime := time.Time{}
+    genericFiles := result.GenericFiles()
+
+    for _, gf := range(genericFiles) {
+        if gf.IntellectualObject == nil {
+            t.Error("GenericFile.IntellectualObject should not be nil")
+        }
+        if gf.URI == "" {
+            t.Error("GenericFile.URI should not be nil")
+        }
+        if gf.Size <= 0 {
+            t.Error("GenericFile.Size should be greater than zero")
+        }
+        if gf.Created == emptyTime {
+            t.Error("GenericFile.Created should not be nil")
+        }
+        if gf.Modified == emptyTime {
+            t.Error("GenericFile.Modified should not be nil")
+        }
+        for _, cs := range gf.ChecksumAttributes {
+            if cs.Algorithm != "md5" && cs.Algorithm != "sha256" {
+                t.Error("ChecksumAttribute.Algorithm should be either 'md5' or 'sha256'")
+            }
+            if cs.DateTime == emptyTime {
+                t.Error("ChecksumAttribute.DateTime should not be nil")
+            }
+            if len(cs.Digest) == 0 {
+                t.Error("ChecksumAttribute.Digest is empty")
+            }
+
+        }
+    }
+
+    // Look more closely at one GenericFile
+    gf1 := genericFiles[0]
+    if gf1.IntellectualObject.Title != "Title of an Intellectual Object" {
+        t.Errorf("GenericFile.IntellectualObject.Title is '%s', expected '%s'.",
+            gf1.IntellectualObject.Title,
+            "Title of an Intellectual Object")
+    }
+    if gf1.URI != "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc" {
+        t.Errorf("GenericFile.URI is '%s', expected '%s'",
+            gf1.URI,
+            "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc")
+    }
+    if gf1.Size != 5105 {
+        t.Errorf("GenericFile.Size is %d, expected %d", gf1.Size, 5105)
+    }
+    // We can't get created time, so we're using modifed timstamp
+    // for both created and modified
+    modified, _ := time.Parse("2006-01-02T15:04:05Z", "2014-04-25T18:05:51Z")
+    if gf1.Created != modified {
+        t.Errorf("GenericFile.Created is %s, expected %d",
+            gf1.Created,
+            "0001-01-01T00:00:00Z")
+    }
+    if gf1.Modified != modified {
+        t.Errorf("GenericFile.Modified is %s, expected %s",
+            gf1.Modified,
+            "2014-04-25T18:05:51Z")
+    }
+
+    // Test the checksums
+    if gf1.ChecksumAttributes[0].Algorithm != "md5" {
+        t.Errorf("ChecksumAttribute.Algorithm should be either 'md5'")
+    }
+    if gf1.ChecksumAttributes[0].Digest != "84586caa94ff719e93b802720501fcc7" {
+        t.Errorf("ChecksumAttribute.Digest is %s, expected %s",
+            gf1.ChecksumAttributes[0].Digest,
+            "84586caa94ff719e93b802720501fcc7")
+    }
+    // MD5 checksum date is the modified date, since S3 calculates it
+    // when the tar file is uploaded to the receiving bucket
+    if gf1.ChecksumAttributes[0].DateTime != modified {
+        t.Errorf("ChecksumAttributes.Date is %s, expected %s",
+            gf1.ChecksumAttributes[0].DateTime,
+            "2014-04-25T19:01:20.000Z")
+    }
+
+    if gf1.ChecksumAttributes[1].Algorithm != "sha256" {
+        t.Errorf("ChecksumAttribute.Algorithm should be either 'md5'")
+    }
+    if gf1.ChecksumAttributes[1].Digest != "ab807222abc85eb3be8c4d5b754c1a5d89d53642d05232f9eade3a539e7f1784" {
+        t.Errorf("ChecksumAttribute.Digest is %s, expected %s",
+            gf1.ChecksumAttributes[1].Digest,
+            "84586caa94ff719e93b802720501fcc7")
+    }
+    shaTime, _ := time.Parse("2006-01-02T15:04:05Z", "2014-06-09T14:12:45.574358959Z")
+    if gf1.ChecksumAttributes[1].DateTime != shaTime {
+        t.Errorf("ChecksumAttributes.Date is %s, expected %s",
+            gf1.ChecksumAttributes[1].DateTime,
+            "2014-06-09T14:12:45.574358959Z")
+    }
+}
