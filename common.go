@@ -3,6 +3,7 @@
 package bagman
 
 import (
+    "fmt"
     "time"
     "strings"
     "encoding/json"
@@ -112,11 +113,16 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
     institution := &models.Institution{
         BriefName: OwnerOf(result.S3File.BucketName),
     }
+    // For now, object identifier is institution domain, plus the name
+    // of the tar file, with ".tar" truncated.
+    identifier := fmt.Sprintf("%s.%s",
+        institution.BriefName,
+        result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
     return &models.IntellectualObject{
         Institution: institution,
         Title: result.BagReadResult.TagValue("Title"),
         Description: result.BagReadResult.TagValue("Description"),
-        Identifier: "",
+        Identifier: identifier,
         Access: accessRights,
     }
 }

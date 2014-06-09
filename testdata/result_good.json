@@ -134,7 +134,11 @@
             },
             {
                 "Label": "Title",
-                "Value": "Preparation and characterization of a ruthenium(II) catalyst for radical polymerization of olefins."
+                "Value": "Title of an Intellectual Object"
+            },
+            {
+                "Label": "Description",
+                "Value": "Description of intellectual object."
             },
             {
                 "Label": "Access",

@@ -179,7 +179,7 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 
 // Loads a result from the test data directory.
 func loadResult(filename string) (result *bagman.ProcessResult, err error) {
-    file, err := ioutil.ReadFile(filepath.Join("testdata", "result_good.json"))
+    file, err := ioutil.ReadFile(filename)
     if err != nil {
         return nil, err
     }
@@ -188,4 +188,41 @@ func loadResult(filename string) (result *bagman.ProcessResult, err error) {
         return nil, err
     }
     return result, nil
+}
+
+func TestIntellectualObject(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+    obj := result.IntellectualObject()
+    if obj.Institution == nil {
+        t.Errorf("IntellectualObject.Institution should not be nil.")
+    }
+    if obj.Institution.BriefName != "ncsu.edu" {
+        t.Errorf("IntellectualObject.Institution.BriefName is '%s', expected '%s'.",
+            obj.Institution.BriefName,
+            "ncsu.edu")
+    }
+    if obj.Title != "Title of an Intellectual Object" {
+        t.Errorf("IntellectualObject.Title is '%s', expected '%s'.",
+            obj.Title,
+            "Title of an Intellectual Object")
+    }
+    if obj.Description != "Description of intellectual object." {
+        t.Errorf("IntellectualObject.Description is '%s', expected '%s'.",
+            obj.Description,
+            "Description of intellectual object.")
+    }
+    if obj.Identifier != "ncsu.edu.ncsu.1840.16-2928" {
+        t.Errorf("IntellectualObject.Identifier is '%s', expected '%s'.",
+            obj.Identifier,
+            "ncsu.edu.ncsu.1840.16-2928")
+    }
+    if obj.Access != "Consortial" {
+        t.Errorf("IntellectualObject.Access is '%s', expected '%s'.",
+            obj.Access,
+            "Consortial")
+    }
 }
