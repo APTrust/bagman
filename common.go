@@ -3,18 +3,18 @@
 package bagman
 
 import (
-	"time"
-	"strings"
-	"encoding/json"
-	"launchpad.net/goamz/s3"
-	"github.com/bitly/go-nsq"
-	"github.com/APTrust/bagman/fluctus/models"
+    "time"
+    "strings"
+    "encoding/json"
+    "launchpad.net/goamz/s3"
+    "github.com/bitly/go-nsq"
+    "github.com/APTrust/bagman/fluctus/models"
 )
 
 const (
-	ReceiveBucketPrefix = "aptrust.receiving."
-	RestoreBucketPrefix = "aptrust.restore."
-	S3DateFormat = "2006-01-02T15:04:05.000Z"
+    ReceiveBucketPrefix = "aptrust.receiving."
+    RestoreBucketPrefix = "aptrust.restore."
+    S3DateFormat = "2006-01-02T15:04:05.000Z"
 )
 
 
@@ -24,8 +24,8 @@ const (
 // describes whether this is the 1st, 2nd, 3rd,
 // etc. attempt to process this file.
 type S3File struct {
-	BucketName     string
-	Key            s3.Key
+    BucketName     string
+    Key            s3.Key
 }
 
 // ProcessStatus contains summary information describing
@@ -48,38 +48,38 @@ type S3File struct {
 // Status may have one of the following values: Processing,
 // Succeeded, Failed.
 type ProcessStatus struct {
-	Id           int         `json:"id"`
-	Name         string      `json:"name"`
-	Bucket       string      `json:"bucket"`
-	ETag         string      `json:"etag"`
-	BagDate      time.Time   `json:"bag_date"`
-	Institution  string      `json:"institution"`
-	Date         time.Time   `json:"date"`
-	Note         string      `json:"note"`
-	Action       string      `json:"action"`
-	Stage        string      `json:"stage"`
-	Status       string      `json:"status"`
-	Outcome      string      `json:"outcome"`
-	Retry        bool        `json:"retry"`
+    Id           int         `json:"id"`
+    Name         string      `json:"name"`
+    Bucket       string      `json:"bucket"`
+    ETag         string      `json:"etag"`
+    BagDate      time.Time   `json:"bag_date"`
+    Institution  string      `json:"institution"`
+    Date         time.Time   `json:"date"`
+    Note         string      `json:"note"`
+    Action       string      `json:"action"`
+    Stage        string      `json:"stage"`
+    Status       string      `json:"status"`
+    Outcome      string      `json:"outcome"`
+    Retry        bool        `json:"retry"`
 }
 
 // Convert ProcessStatus to JSON, omitting id, which Rails won't permit.
 // For internal use, json.Marshal() works fine.
 func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
-	return json.Marshal(map[string]interface{}{
-		"name": status.Name,
-		"bucket": status.Bucket,
-		"etag": status.ETag,
-		"bag_date": status.BagDate,
-		"institution": status.Institution,
-		"date": status.Date,
-		"note": status.Note,
-		"action": status.Action,
-		"stage": status.Stage,
-		"status": status.Status,
-		"outcome": status.Outcome,
-		"retry": status.Retry,
-	})
+    return json.Marshal(map[string]interface{}{
+        "name": status.Name,
+        "bucket": status.Bucket,
+        "etag": status.ETag,
+        "bag_date": status.BagDate,
+        "institution": status.Institution,
+        "date": status.Date,
+        "note": status.Note,
+        "action": status.Action,
+        "stage": status.Stage,
+        "status": status.Status,
+        "outcome": status.Outcome,
+        "retry": status.Retry,
+    })
 }
 
 // Retry will be set to true if the attempt to process the file
@@ -90,14 +90,14 @@ func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
 // untarred, checksums were bad, or data files were missing.
 // If processing succeeded, Retry is irrelevant.
 type ProcessResult struct {
-	NsqMessage       *nsq.Message               `json:"-"`  // Don't serialize
-	S3File           *S3File
-	ErrorMessage     string
-	FetchResult      *FetchResult
-	TarResult        *TarResult
-	BagReadResult    *BagReadResult
-	Stage            string
-	Retry            bool
+    NsqMessage       *nsq.Message               `json:"-"`  // Don't serialize
+    S3File           *S3File
+    ErrorMessage     string
+    FetchResult      *FetchResult
+    TarResult        *TarResult
+    BagReadResult    *BagReadResult
+    Stage            string
+    Retry            bool
 }
 
 // IntellectualObject returns an instance of models.IntellectualObject
@@ -105,97 +105,109 @@ type ProcessResult struct {
 // structure matches Fluctus' IntellectualObject model, and can be sent
 // directly to Fluctus for recording.
 func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObject) {
-	// TODO: Implement me!
-	return nil
+    accessRights := result.BagReadResult.TagValue("Access")
+    if accessRights == "" {
+        accessRights = result.BagReadResult.TagValue("Rights")
+    }
+    institution := &models.Institution{
+        BriefName: OwnerOf(result.S3File.BucketName),
+    }
+    return &models.IntellectualObject{
+        Institution: institution,
+        Title: result.BagReadResult.TagValue("Title"),
+        Description: result.BagReadResult.TagValue("Description"),
+        Identifier: "",
+        Access: accessRights,
+    }
 }
 
 // GenericFiles returns a list of GenericFile objects that were found
 // in the bag.
 func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
-	// TODO: Implement me!
-	return nil
+    // TODO: Implement me!
+    return nil
 }
 
 // PremisEvents returns a list of Premis events generated during bag
 // processing.
 func (result *ProcessResult) PremisEvents() (events []*models.PremisEvent) {
-	// TODO: Implement me!
-	return nil
+    // TODO: Implement me!
+    return nil
 }
 
 // IngestStatus returns a lightweight Status object suitable for reporting
 // to the Fluctus results table, so that APTrust partners can view
 // the status of their submitted bags.
 func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
-	status = &ProcessStatus{}
-	status.Date = time.Now().UTC()
-	status.Action = "Ingest"
-	status.Name = result.S3File.Key.Key
-	bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)
-	status.BagDate = bagDate
-	status.Bucket = result.S3File.BucketName
-	// Strip the quotes off the ETag
-	status.ETag = strings.Replace(result.S3File.Key.ETag, "\"", "", 2)
-	status.Stage = result.Stage
-	status.Status = "Processing"
-	if result.ErrorMessage != "" {
-		status.Note = result.ErrorMessage
-		status.Status = "Failed"
-	} else {
-		status.Note = "No problems"
-		if result.Stage == "Validate" {
-			// We made it through last stage with no errors
-			// TODO: Change back to "Record" after demo.
-			// *** NOTE: THE LAST STAGE SHOULD BE "Record", BUT FOR DEMO
-			// WE'LL CONSIDER "Validate" TO BE SUCCESS ***
-			status.Status = "Succeeded"
-		}
-	}
-	status.Institution = OwnerOf(result.S3File.BucketName)
-	status.Outcome = status.Status
-	status.Retry = result.Retry
-	return status
+    status = &ProcessStatus{}
+    status.Date = time.Now().UTC()
+    status.Action = "Ingest"
+    status.Name = result.S3File.Key.Key
+    bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)
+    status.BagDate = bagDate
+    status.Bucket = result.S3File.BucketName
+    // Strip the quotes off the ETag
+    status.ETag = strings.Replace(result.S3File.Key.ETag, "\"", "", 2)
+    status.Stage = result.Stage
+    status.Status = "Processing"
+    if result.ErrorMessage != "" {
+        status.Note = result.ErrorMessage
+        status.Status = "Failed"
+    } else {
+        status.Note = "No problems"
+        if result.Stage == "Validate" {
+            // We made it through last stage with no errors
+            // TODO: Change back to "Record" after demo.
+            // *** NOTE: THE LAST STAGE SHOULD BE "Record", BUT FOR DEMO
+            // WE'LL CONSIDER "Validate" TO BE SUCCESS ***
+            status.Status = "Succeeded"
+        }
+    }
+    status.Institution = OwnerOf(result.S3File.BucketName)
+    status.Outcome = status.Status
+    status.Retry = result.Retry
+    return status
 }
 
 // BucketSummary contains information about an S3 bucket and its contents.
 type BucketSummary struct {
-	BucketName     string
-	Keys           []s3.Key // TODO: Change to slice of pointers!
+    BucketName     string
+    Keys           []s3.Key // TODO: Change to slice of pointers!
 }
 
 // GenericFile contains information about a generic
 // data file within the data directory of bag or tar archive.
 type GenericFile struct {
-	Path             string
-	Size             int64
-	Created          time.Time  // we currently have no way of getting this
-	Modified         time.Time
-	Md5              string
-	Sha256           string
-	Sha256Generated  time.Time
-	Uuid             string
-	UuidGenerated    time.Time
-	MimeType         string
-	ErrorMessage     string
+    Path             string
+    Size             int64
+    Created          time.Time  // we currently have no way of getting this
+    Modified         time.Time
+    Md5              string
+    Sha256           string
+    Sha256Generated  time.Time
+    Uuid             string
+    UuidGenerated    time.Time
+    MimeType         string
+    ErrorMessage     string
 }
 
 // TarResult contains information about the attempt to untar
 // a bag.
 type TarResult struct {
-	InputFile       string
-	OutputDir       string
-	ErrorMessage    string
-	Warnings        []string
-	FilesUnpacked   []string
-	GenericFiles    []*GenericFile
+    InputFile       string
+    OutputDir       string
+    ErrorMessage    string
+    Warnings        []string
+    FilesUnpacked   []string
+    GenericFiles    []*GenericFile
 }
 
 // This Tag struct is essentially the same as the bagins
 // TagField struct, but its properties are public and can
 // be easily serialized to / deserialized from JSON.
 type Tag struct {
-	Label string
-	Value string
+    Label string
+    Value string
 }
 
 // BagReadResult contains data describing the result of
@@ -203,60 +215,60 @@ type Tag struct {
 // errors, this structure should tell us exactly what
 // happened and where.
 type BagReadResult struct {
-	Path             string
-	Files            []string
-	ErrorMessage     string
-	Tags             []Tag
-	ChecksumErrors   []error
+    Path             string
+    Files            []string
+    ErrorMessage     string
+    Tags             []Tag
+    ChecksumErrors   []error
 }
 
 // TagValue returns the value of the tag with the specified label.
 func (result *BagReadResult) TagValue(tagLabel string) (tagValue string) {
-	lcTagLabel := strings.ToLower(tagLabel)
-	for _, tag := range result.Tags {
-		if strings.ToLower(tag.Label) == lcTagLabel {
-			tagValue = tag.Value
-			break
-		}
-	}
-	return tagValue
+    lcTagLabel := strings.ToLower(tagLabel)
+    for _, tag := range result.Tags {
+        if strings.ToLower(tag.Label) == lcTagLabel {
+            tagValue = tag.Value
+            break
+        }
+    }
+    return tagValue
 }
 
 // FetchResult descibes the results of fetching a bag from S3
 // and verification of that bag.
 type FetchResult struct {
-	BucketName       string
-	Key              string
-	LocalTarFile     string
-	RemoteMd5        string
-	LocalMd5         string
-	Md5Verified      bool
-	Md5Verifiable    bool
-	ErrorMessage     string
-	Warning          string
-	Retry            bool
+    BucketName       string
+    Key              string
+    LocalTarFile     string
+    RemoteMd5        string
+    LocalMd5         string
+    Md5Verified      bool
+    Md5Verifiable    bool
+    ErrorMessage     string
+    Warning          string
+    Retry            bool
 }
 
 // Returns the domain name of the institution that owns the specified bucket.
 // For example, if bucketName is 'aptrust.receiving.unc.edu' the return value
 // will be 'unc.edu'.
 func OwnerOf (bucketName string) (institution string) {
-	if strings.HasPrefix(bucketName, ReceiveBucketPrefix) {
-		institution = strings.Replace(bucketName, ReceiveBucketPrefix, "", 1)
-	} else if strings.HasPrefix(bucketName, RestoreBucketPrefix) {
-		institution = strings.Replace(bucketName, RestoreBucketPrefix, "", 1)
-	}
-	return institution
+    if strings.HasPrefix(bucketName, ReceiveBucketPrefix) {
+        institution = strings.Replace(bucketName, ReceiveBucketPrefix, "", 1)
+    } else if strings.HasPrefix(bucketName, RestoreBucketPrefix) {
+        institution = strings.Replace(bucketName, RestoreBucketPrefix, "", 1)
+    }
+    return institution
 }
 
 // Returns the name of the specified institution's receiving bucket.
 // E.g. institution 'unc.edu' returns bucketName 'aptrust.receiving.unc.edu'
 func ReceivingBucketFor (institution string) (bucketName string) {
-	return ReceiveBucketPrefix + institution
+    return ReceiveBucketPrefix + institution
 }
 
 // Returns the name of the specified institution's restoration bucket.
 // E.g. institution 'unc.edu' returns bucketName 'aptrust.restore.unc.edu'
 func RestorationBucketFor (institution string) (bucketName string) {
-	return RestoreBucketPrefix + institution
+    return RestoreBucketPrefix + institution
 }
