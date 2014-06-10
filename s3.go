@@ -1,14 +1,13 @@
 package bagman
 
 import (
-	"fmt"
-	"io"
-	"os"
-	"strings"
-	"crypto/md5"
-	"errors"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/s3"
+    "fmt"
+    "io"
+    "os"
+    "strings"
+    "crypto/md5"
+    "launchpad.net/goamz/aws"
+    "launchpad.net/goamz/s3"
 )
 
 
@@ -18,11 +17,11 @@ import (
 // else and load them into environment variables AWS_ACCESS_KEY_ID
 // and AWS_SECRET_ACCESS_KEY.
 func GetClient(region aws.Region) (*s3.S3, error) {
-	auth, err := aws.EnvAuth()
-	if err != nil {
-		return nil, err
-	}
-	return s3.New(auth, region), nil
+    auth, err := aws.EnvAuth()
+    if err != nil {
+        return nil, err
+    }
+    return s3.New(auth, region), nil
 }
 
 
@@ -32,30 +31,30 @@ func GetClient(region aws.Region) (*s3.S3, error) {
 // Note that listing all keys may result in the underlying client
 // issuing multiple requests.
 func ListBucket(bucket *s3.Bucket, limit int) (keys []s3.Key, err error) {
-	actualLimit := limit
-	if limit == 0 {
-		actualLimit = 1000
-	}
-	bucketList, err := bucket.List("", "/", "", actualLimit)
-	if err != nil {
-		return nil, err
-	}
-	contents := bucketList.Contents
-	if len(contents) == 0 {
-		return contents, nil
-	}
-	for limit == 0 {
-		lastKey := contents[len(contents) - 1].Key
-		bucketList, err := bucket.List("", "/", lastKey, actualLimit)
-		if err != nil {
-			return nil, err
-		}
-		contents = append(contents, bucketList.Contents ...)
-		if !bucketList.IsTruncated {
-			break
-		}
-	}
-	return contents, nil
+    actualLimit := limit
+    if limit == 0 {
+        actualLimit = 1000
+    }
+    bucketList, err := bucket.List("", "/", "", actualLimit)
+    if err != nil {
+        return nil, err
+    }
+    contents := bucketList.Contents
+    if len(contents) == 0 {
+        return contents, nil
+    }
+    for limit == 0 {
+        lastKey := contents[len(contents) - 1].Key
+        bucketList, err := bucket.List("", "/", lastKey, actualLimit)
+        if err != nil {
+            return nil, err
+        }
+        contents = append(contents, bucketList.Contents ...)
+        if !bucketList.IsTruncated {
+            break
+        }
+    }
+    return contents, nil
 }
 
 // Fetches key from bucket and saves it to path.
@@ -64,95 +63,95 @@ func ListBucket(bucket *s3.Bucket, limit int) (keys []s3.Key, err error) {
 // does not match the md5 sum in the key, this will not
 // save the file. It will just return an error.
 func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *FetchResult) {
-	result := new(FetchResult)
-	result.BucketName = bucket.Name
-	result.Key = key.Key
-	result.LocalTarFile = path
+    result := new(FetchResult)
+    result.BucketName = bucket.Name
+    result.Key = key.Key
+    result.LocalTarFile = path
 
-	// In general, we want to retry if the fetch operation
-	// fails. We will override this in certain cases below.
-	result.Retry = true
+    // In general, we want to retry if the fetch operation
+    // fails. We will override this in certain cases below.
+    result.Retry = true
 
-	// S3 etag is md5 hex string enclosed in quotes,
-	// unless file was a multipart upload. See below for that.
-	result.RemoteMd5 = strings.Replace(key.ETag, "\"", "", -1)
+    // S3 etag is md5 hex string enclosed in quotes,
+    // unless file was a multipart upload. See below for that.
+    result.RemoteMd5 = strings.Replace(key.ETag, "\"", "", -1)
 
-	// Fetch the file into a reader instead of using the usual bucket.Get().
-	// Files may be up to 250GB, so we want to process them as streams.
-	// If we get an error here, it's typically a network error, and we
-	// will want to retry later.
-	readCloser, err := bucket.GetReader(key.Key)
-	if readCloser != nil {
-		defer readCloser.Close()
-	}
-	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Error retrieving file from receiving bucket: %v", err)
-		if strings.Contains(err.Error(), "key does not exist") {
-			result.Retry = false
-		}
-		return result
-	}
+    // Fetch the file into a reader instead of using the usual bucket.Get().
+    // Files may be up to 250GB, so we want to process them as streams.
+    // If we get an error here, it's typically a network error, and we
+    // will want to retry later.
+    readCloser, err := bucket.GetReader(key.Key)
+    if readCloser != nil {
+        defer readCloser.Close()
+    }
+    if err != nil {
+        result.ErrorMessage = fmt.Sprintf("Error retrieving file from receiving bucket: %v", err)
+        if strings.Contains(err.Error(), "key does not exist") {
+            result.Retry = false
+        }
+        return result
+    }
 
-	// Write the contents of the stream into both our md5 hasher
-	// and the file.
-	md5Hash := md5.New()
-	outputFile, err := os.Create(path)
-	if outputFile != nil {
-		defer outputFile.Close()
-	}
-	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Could not create local file %s: %v", path, err)
-		return result
-	}
+    // Write the contents of the stream into both our md5 hasher
+    // and the file.
+    md5Hash := md5.New()
+    outputFile, err := os.Create(path)
+    if outputFile != nil {
+        defer outputFile.Close()
+    }
+    if err != nil {
+        result.ErrorMessage = fmt.Sprintf("Could not create local file %s: %v", path, err)
+        return result
+    }
 
-	multiWriter := io.MultiWriter(outputFile, md5Hash)
-	bytesWritten, err := io.Copy(multiWriter, readCloser)
-	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Error copying file from receiving bucket: %v", err)
-		return result
-	}
-	if bytesWritten != key.Size {
-		result.ErrorMessage = fmt.Sprintf("While downloading from receiving bucket, " +
-			"copied only %d of %d bytes for %s", bytesWritten, key.Size, key.Key)
-		return result
-	}
+    multiWriter := io.MultiWriter(outputFile, md5Hash)
+    bytesWritten, err := io.Copy(multiWriter, readCloser)
+    if err != nil {
+        result.ErrorMessage = fmt.Sprintf("Error copying file from receiving bucket: %v", err)
+        return result
+    }
+    if bytesWritten != key.Size {
+        result.ErrorMessage = fmt.Sprintf("While downloading from receiving bucket, " +
+            "copied only %d of %d bytes for %s", bytesWritten, key.Size, key.Key)
+        return result
+    }
 
-	result.LocalMd5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
+    result.LocalMd5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
 
-	// ETag for S3 multi-part upload is not an accurate md5 sum.
-	// If the ETag ends with a dash and some number, it's a
-	// multi-part upload.
-	if strings.Contains(result.RemoteMd5, "-") {
-		result.Warning = fmt.Sprintf("Skipping md5 check on %s: this was a multi-part upload", key.Key)
-		result.Md5Verified = false
-		result.Md5Verifiable = false
-	} else {
-		result.Md5Verifiable = true
-		result.Md5Verified = true
-		if result.LocalMd5 != result.RemoteMd5 {
-			os.Remove(path)
-			result.ErrorMessage = fmt.Sprintf("Our md5 sum '%x' does not match the S3 md5 sum '%s'",
-				result.LocalMd5, result.RemoteMd5)
-			result.Md5Verified = false
-			// Don't bother reprocessing this item.
-			result.Retry = false
-		}
-	}
-	return result
+    // ETag for S3 multi-part upload is not an accurate md5 sum.
+    // If the ETag ends with a dash and some number, it's a
+    // multi-part upload.
+    if strings.Contains(result.RemoteMd5, "-") {
+        result.Warning = fmt.Sprintf("Skipping md5 check on %s: this was a multi-part upload", key.Key)
+        result.Md5Verified = false
+        result.Md5Verifiable = false
+    } else {
+        result.Md5Verifiable = true
+        result.Md5Verified = true
+        if result.LocalMd5 != result.RemoteMd5 {
+            os.Remove(path)
+            result.ErrorMessage = fmt.Sprintf("Our md5 sum '%x' does not match the S3 md5 sum '%s'",
+                result.LocalMd5, result.RemoteMd5)
+            result.Md5Verified = false
+            // Don't bother reprocessing this item.
+            result.Retry = false
+        }
+    }
+    return result
 }
 
 // Collects info about all of the buckets listed in buckets.
 // TODO: Write unit test
 func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
-	bucketSummaries = make([]*BucketSummary, 0)
-	for _, bucketName := range(buckets) {
-		bucketSummary, err := CheckBucket(bucketName)
-		if err != nil {
-			return bucketSummaries, err
-		}
-		bucketSummaries = append(bucketSummaries, bucketSummary)
-	}
-	return bucketSummaries, nil
+    bucketSummaries = make([]*BucketSummary, 0)
+    for _, bucketName := range(buckets) {
+        bucketSummary, err := CheckBucket(bucketName)
+        if err != nil {
+            return bucketSummaries, err
+        }
+        bucketSummaries = append(bucketSummaries, bucketSummary)
+    }
+    return bucketSummaries, nil
 }
 
 // Returns info about the contents of the bucket named bucketName.
@@ -160,20 +159,66 @@ func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err er
 // size of the largest file in the bucket.
 // TODO: Write unit test
 func CheckBucket(bucketName string) (bucketSummary *BucketSummary, err error) {
-	client, err := GetClient(aws.USEast)
-	if err != nil {
-		return nil, err
-	}
-	bucket := client.Bucket(bucketName)
-	if bucket == nil {
-		err = errors.New(fmt.Sprintf("Cannot retrieve bucket: %s", bucketName))
-		return nil, err
-	}
-	bucketSummary = new(BucketSummary)
-	bucketSummary.BucketName = bucketName
-	bucketSummary.Keys, err = ListBucket(bucket, 0)
-	if err != nil {
-		return nil, err
-	}
-	return bucketSummary, nil
+    client, err := GetClient(aws.USEast)
+    if err != nil {
+        return nil, err
+    }
+    bucket := client.Bucket(bucketName)
+    if bucket == nil {
+        err = fmt.Errorf("Cannot retrieve bucket: %s", bucketName)
+        return nil, err
+    }
+    bucketSummary = new(BucketSummary)
+    bucketSummary.BucketName = bucketName
+    bucketSummary.Keys, err = ListBucket(bucket, 0)
+    if err != nil {
+        return nil, err
+    }
+    return bucketSummary, nil
+}
+
+// Saves a file to S3 with default access of Private
+func SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64) (err error) {
+    client, err := GetClient(aws.USEast)
+    if err != nil {
+        return err
+    }
+    bucket := client.Bucket(bucketName)
+    if bucket == nil {
+        err = fmt.Errorf("Cannot find bucket: %s", bucketName)
+        return err
+    }
+    putErr := bucket.PutReader(fileName, reader, byteCount, contentType, s3.Private)
+    if putErr != nil {
+        err = fmt.Errorf("Error saving file '%s' to bucket '%s': %v",
+            fileName, bucketName, err)
+    }
+    return err
+}
+
+// Returns an S3 key object for the specified file in the
+// specified bucket. The key object has the ETag, last mod
+// date, size and other useful info.
+func GetKey(bucketName, fileName string) (*s3.Key, error) {
+    client, err := GetClient(aws.USEast)
+    if err != nil {
+        return nil, err
+    }
+    bucket := client.Bucket(bucketName)
+    if bucket == nil {
+        err = fmt.Errorf("Cannot find bucket: %s", bucketName)
+        return nil, err
+    }
+    listResp, err := bucket.List(fileName, "", "", 1)
+    if err != nil {
+        err = fmt.Errorf("Error checking key '%s' in bucket '%s': '%v'",
+            fileName, bucketName, err)
+        return nil, err
+    }
+    if listResp == nil || len(listResp.Contents) < 1 {
+        err = fmt.Errorf("Key '%s' not found in bucket '%s'",
+            fileName, bucketName)
+        return nil, err
+    }
+    return &listResp.Contents[0], nil
 }
