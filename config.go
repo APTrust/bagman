@@ -94,6 +94,10 @@ type Config struct {
     // The exception is when we deliberately want to reprocess
     // items to test code changes.
     SkipAlreadyProcessed bool
+
+    // The name of the preservation bucket to which we should
+    // copy files for long-term storage.
+    PreservationBucket   string
 }
 
 // This returns the configuration that the user requested.
