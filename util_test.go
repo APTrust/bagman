@@ -9,9 +9,9 @@ import (
 
 func TestBagmanHome(t *testing.T) {
     bagmanHome := os.Getenv("BAGMAN_HOME")
-    goHome := os.Getenv("GO_HOME")
+    goHome := os.Getenv("GOPATH")
     defer os.Setenv("BAGMAN_HOME", bagmanHome)
-    defer os.Setenv("GO_HOME", goHome)
+    defer os.Setenv("GOPATH", goHome)
 
     // Should use BAGMAN_HOME, if it's set...
     os.Setenv("BAGMAN_HOME", "/bagman_home")
@@ -26,8 +26,8 @@ func TestBagmanHome(t *testing.T) {
     }
     os.Setenv("BAGMAN_HOME", "")
 
-    // Otherwise, should use GO_HOME
-    os.Setenv("GO_HOME", "/go_home")
+    // Otherwise, should use GOPATH
+    os.Setenv("GOPATH", "/go_home")
     bagmanHome, err = bagman.BagmanHome()
     if err != nil {
         t.Error(err)
@@ -37,9 +37,9 @@ func TestBagmanHome(t *testing.T) {
             bagmanHome,
             "/go_home")
     }
-    os.Setenv("GO_HOME", "")
+    os.Setenv("GOPATH", "")
 
-    // Without BAGMAN_HOME and GO_HOME, we should get an error
+    // Without BAGMAN_HOME and GOPATH, we should get an error
     bagmanHome, err = bagman.BagmanHome()
     if err == nil {
         t.Error("BagmanHome should have an thrown exception.")

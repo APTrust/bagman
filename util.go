@@ -12,17 +12,17 @@ import (
 // something like /home/xxx/go/src/github.com/APTrust/bagman. You can
 // set this explicitly by defining an environment variable called
 // BAGMAN_HOME. Otherwise, this function will try to infer the value
-// by appending to the environment variable GO_HOME. If neither of
+// by appending to the environment variable GOPATH. If neither of
 // those variables is set, this returns an error.
 func BagmanHome() (bagmanHome string, err error) {
     bagmanHome = os.Getenv("BAGMAN_HOME")
     if bagmanHome == "" {
-        goHome := os.Getenv("GO_HOME")
+        goHome := os.Getenv("GOPATH")
         if goHome != "" {
             bagmanHome = filepath.Join(goHome, "src", "github.com", "APTrust", "bagman")
         } else {
             err = fmt.Errorf("Cannot determine bagman home because neither " +
-                "BAGMAN_HOME nor GO_HOME is set in environment.")
+                "BAGMAN_HOME nor GOPATH is set in environment.")
         }
     }
     if bagmanHome != "" {
