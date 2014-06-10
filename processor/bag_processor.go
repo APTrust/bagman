@@ -309,16 +309,14 @@ func logResult() {
 
 // This fetches a file from S3 and stores it locally.
 func Fetch(bucketName string, key s3.Key) (result *bagman.FetchResult) {
-    client, err := bagman.GetClient(aws.USEast)
+    s3Client, err := bagman.NewS3Client(aws.USEast)
     if err != nil {
         fetchResult := new(bagman.FetchResult)
         fetchResult.ErrorMessage = err.Error()
         return fetchResult
     }
-    // TODO: We fetched this bucket before. Do we need to fetch it again?
-    bucket := client.Bucket(bucketName)
     tarFilePath := filepath.Join(config.TarDirectory, key.Key)
-    return bagman.FetchToFile(bucket, key, tarFilePath)
+    return s3Client.FetchToFile(bucketName, key, tarFilePath)
 }
 
 // This deletes the tar file and all of the files that were

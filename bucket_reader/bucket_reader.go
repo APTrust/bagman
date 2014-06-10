@@ -3,17 +3,18 @@
 package main
 
 import (
-	"bytes"
-	"flag"
-	"log"
-	"fmt"
-	"strings"
-	"time"
-	"os"
-	"encoding/json"
-	"net/http"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
+    "bytes"
+    "flag"
+    "log"
+    "fmt"
+    "strings"
+    "time"
+    "os"
+    "encoding/json"
+    "net/http"
+    "launchpad.net/goamz/aws"
+    "github.com/APTrust/bagman"
+    "github.com/APTrust/bagman/fluctus/client"
 )
 
 // Send S3 files to queue in batches of 500.
@@ -22,84 +23,89 @@ import (
 // instance, where the number of open network connections is
 // severely restricted.
 const (
-	batchSize = 500
-	waitMilliseconds = 5000
+    batchSize = 500
+    waitMilliseconds = 5000
 )
 var (
-	config bagman.Config
-	jsonLog *log.Logger
-	messageLog *log.Logger
-	fluctusClient *client.Client
+    config bagman.Config
+    jsonLog *log.Logger
+    messageLog *log.Logger
+    fluctusClient *client.Client
 )
 
 func main() {
-	err := initialize()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Initialization failed for bucket_reader: %v", err)
-		os.Exit(1)
-	}
-	run()
+    err := initialize()
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Initialization failed for bucket_reader: %v", err)
+        os.Exit(1)
+    }
+    run()
 }
 
 func initialize() (err error) {
-	// Load the config or die.
-	requestedConfig := flag.String("config", "", "configuration to run")
-	flag.Parse()
-	config = bagman.LoadRequestedConfig(requestedConfig)
-	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bucket_reader")
-	fluctusClient, err = client.New(
-		config.FluctusURL,
-		os.Getenv("FLUCTUS_API_USER"),
-		os.Getenv("FLUCTUS_API_KEY"),
-		messageLog)
-	return err
+    // Load the config or die.
+    requestedConfig := flag.String("config", "", "configuration to run")
+    flag.Parse()
+    config = bagman.LoadRequestedConfig(requestedConfig)
+    jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bucket_reader")
+    fluctusClient, err = client.New(
+        config.FluctusURL,
+        os.Getenv("FLUCTUS_API_USER"),
+        os.Getenv("FLUCTUS_API_KEY"),
+        messageLog)
+    return err
 }
 
 
 func run() {
-	bucketSummaries, err := bagman.CheckAllBuckets(config.Buckets)
-	if err != nil {
-		messageLog.Println("[ERROR]", err)
-		return
-	}
-	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
-		config.BagProcessorTopic)
-	messageLog.Printf("[INFO] Sending S3 file info to %s \n", url)
-	s3Files := filterLargeFiles(bucketSummaries)
-	messageLog.Printf("[INFO] %d S3 Files are within our size limit\n",
-		len(s3Files))
-	filesToProcess := s3Files
-	// SkipAlreadyProcessed will almost always be true.
-	// The exception is when we want to reprocess items to test new code.
-	if config.SkipAlreadyProcessed == true {
-		filesToProcess = filterProcessedFiles(s3Files)
-	}
-	start := 0
-	end := min(len(filesToProcess), batchSize)
-	messageLog.Printf("[INFO] %d Unprocessed files\n", len(filesToProcess))
-	for start <= end {
-		batch := filesToProcess[start:end]
-		messageLog.Printf("[INFO] Queuing batch of %d items\n", len(batch))
-		enqueue(url, batch)
-		start = end + 1
-		if start < len(filesToProcess) {
-			end = min(len(filesToProcess), start + batchSize)
-		}
-		// Sleep so we don't max out connections on EC2 small.
-		// The utility server is running a lot of other network I/O
-		// in addition to our queue.
-		time.Sleep(time.Millisecond * waitMilliseconds)
-	}
+    s3Client, err := bagman.NewS3Client(aws.USEast)
+    if err != nil {
+        messageLog.Println("[ERROR]", err)
+        return
+    }
+    bucketSummaries, err := s3Client.CheckAllBuckets(config.Buckets)
+    if err != nil {
+        messageLog.Println("[ERROR]", err)
+        return
+    }
+    url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
+        config.BagProcessorTopic)
+    messageLog.Printf("[INFO] Sending S3 file info to %s \n", url)
+    s3Files := filterLargeFiles(bucketSummaries)
+    messageLog.Printf("[INFO] %d S3 Files are within our size limit\n",
+        len(s3Files))
+    filesToProcess := s3Files
+    // SkipAlreadyProcessed will almost always be true.
+    // The exception is when we want to reprocess items to test new code.
+    if config.SkipAlreadyProcessed == true {
+        filesToProcess = filterProcessedFiles(s3Files)
+    }
+    start := 0
+    end := min(len(filesToProcess), batchSize)
+    messageLog.Printf("[INFO] %d Unprocessed files\n", len(filesToProcess))
+    for start <= end {
+        batch := filesToProcess[start:end]
+        messageLog.Printf("[INFO] Queuing batch of %d items\n", len(batch))
+        enqueue(url, batch)
+        start = end + 1
+        if start < len(filesToProcess) {
+            end = min(len(filesToProcess), start + batchSize)
+        }
+        // Sleep so we don't max out connections on EC2 small.
+        // The utility server is running a lot of other network I/O
+        // in addition to our queue.
+        time.Sleep(time.Millisecond * waitMilliseconds)
+    }
 }
 
 // min returns the minimum of x or y. The Math package has this function
 // but you have to cast to floats.
 func min (x, y int) (int) {
-	if x < y {
-		return x
-	} else {
-		return y
-	}
+    if x < y {
+        return x
+    } else {
+        return y
+    }
 }
 
 
@@ -111,74 +117,74 @@ func min (x, y int) (int) {
 // just running local tests. In production, set maxFileSize to
 // zero, or to some huge value to get all files.
 func filterLargeFiles (bucketSummaries []*bagman.BucketSummary) (s3Files []*bagman.S3File) {
-	for _, bucketSummary := range bucketSummaries {
-		for _, key := range bucketSummary.Keys {
-			if config.MaxFileSize == 0 || key.Size < config.MaxFileSize {
-				s3Files = append(s3Files, &bagman.S3File{bucketSummary.BucketName, key})
-			}
-		}
-	}
-	return s3Files
+    for _, bucketSummary := range bucketSummaries {
+        for _, key := range bucketSummary.Keys {
+            if config.MaxFileSize == 0 || key.Size < config.MaxFileSize {
+                s3Files = append(s3Files, &bagman.S3File{bucketSummary.BucketName, key})
+            }
+        }
+    }
+    return s3Files
 }
 
 // Remove S3 files that have been processed successfully.
 // No need to reprocess those!
 func filterProcessedFiles (s3Files []*bagman.S3File) (filesToProcess []*bagman.S3File) {
-	for _, s3File := range s3Files {
-		bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
-		if err != nil {
-			messageLog.Printf("[ERROR] Cannot parse S3File mod date '%s'. " +
-				"File %s will be re-processed.",
-				s3File.Key.LastModified, s3File.Key.Key)
-			filesToProcess = append(filesToProcess, s3File)
-			continue
-		}
-		etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
-		status, err := fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
-		if err != nil {
-			messageLog.Printf("[ERROR] Cannot get Fluctus bag status for %s. " +
-				"Will re-process bag. Error was %v", s3File.Key.Key, err)
-			filesToProcess = append(filesToProcess, s3File)
-		} else if status == nil || status.Status == "Failed" {
-			actualStatus := "nil"
-			if status != nil {
-				actualStatus = status.Status
-			}
-			messageLog.Printf("[INFO] Fluctus bag status for %s is %s. " +
-				"Will process bag.", s3File.Key.Key, actualStatus)
-			filesToProcess = append(filesToProcess, s3File)
-		} else {
-			messageLog.Printf("[INFO] Skipping %s: already processed successfully.", s3File.Key.Key)
-		}
-	}
-	return filesToProcess
+    for _, s3File := range s3Files {
+        bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
+        if err != nil {
+            messageLog.Printf("[ERROR] Cannot parse S3File mod date '%s'. " +
+                "File %s will be re-processed.",
+                s3File.Key.LastModified, s3File.Key.Key)
+            filesToProcess = append(filesToProcess, s3File)
+            continue
+        }
+        etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
+        status, err := fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+        if err != nil {
+            messageLog.Printf("[ERROR] Cannot get Fluctus bag status for %s. " +
+                "Will re-process bag. Error was %v", s3File.Key.Key, err)
+            filesToProcess = append(filesToProcess, s3File)
+        } else if status == nil || status.Status == "Failed" {
+            actualStatus := "nil"
+            if status != nil {
+                actualStatus = status.Status
+            }
+            messageLog.Printf("[INFO] Fluctus bag status for %s is %s. " +
+                "Will process bag.", s3File.Key.Key, actualStatus)
+            filesToProcess = append(filesToProcess, s3File)
+        } else {
+            messageLog.Printf("[INFO] Skipping %s: already processed successfully.", s3File.Key.Key)
+        }
+    }
+    return filesToProcess
 }
 
 
 // enqueue adds a batch of items to the nsqd work queue
 func enqueue(url string, s3Files []*bagman.S3File) {
-	jsonData := make([]string, len(s3Files))
-	for i, s3File := range s3Files {
-		json, err := json.Marshal(s3File)
-		if err != nil {
-			messageLog.Printf("[ERROR] Error marshalling s3 file to JSON: %v", err)
-		} else {
-			jsonData[i] = string(json)
-			messageLog.Println("[INFO]", "Put", s3File.Key.Key, "into fetch queue")
-			//fmt.Println(s3File.Key.Key)
-		}
-	}
-	batch := strings.Join(jsonData, "\n")
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
-	if err != nil {
-		messageLog.Printf("[ERROR] nsqd returned an error: %v", err)
-	}
-	if resp == nil {
-		msg := "[ERROR] No response from nsqd. Is it running? bucket_reader is quitting."
-		messageLog.Printf(msg)
-		fmt.Println(msg)
-		os.Exit(1)
-	} else if  resp.StatusCode != 200 {
-		messageLog.Printf("[ERROR] nsqd returned status code %d on last mput", resp.StatusCode)
-	}
+    jsonData := make([]string, len(s3Files))
+    for i, s3File := range s3Files {
+        json, err := json.Marshal(s3File)
+        if err != nil {
+            messageLog.Printf("[ERROR] Error marshalling s3 file to JSON: %v", err)
+        } else {
+            jsonData[i] = string(json)
+            messageLog.Println("[INFO]", "Put", s3File.Key.Key, "into fetch queue")
+            //fmt.Println(s3File.Key.Key)
+        }
+    }
+    batch := strings.Join(jsonData, "\n")
+    resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
+    if err != nil {
+        messageLog.Printf("[ERROR] nsqd returned an error: %v", err)
+    }
+    if resp == nil {
+        msg := "[ERROR] No response from nsqd. Is it running? bucket_reader is quitting."
+        messageLog.Printf(msg)
+        fmt.Println(msg)
+        os.Exit(1)
+    } else if  resp.StatusCode != 200 {
+        messageLog.Printf("[ERROR] nsqd returned status code %d on last mput", resp.StatusCode)
+    }
 }
