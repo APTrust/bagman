@@ -12,6 +12,8 @@ import (
     "github.com/APTrust/bagman"
 )
 
+var emptyTime time.Time = time.Time{}
+
 func TestOwnerOf(t *testing.T) {
     if bagman.OwnerOf("aptrust.receiving.unc.edu") != "unc.edu" {
         t.Error("OwnerOf misidentified receiving bucket owner")
@@ -119,7 +121,6 @@ func TestIngestStatus(t *testing.T) {
 
 func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedStatus string) {
     status := result.IngestStatus()
-    emptyTime := time.Time{}
     expectedBagDate := "2014-05-28 16:22:24.016 +0000 UTC"
     if status.Date == emptyTime {
         t.Error("ProcessStatus.Date was not set")
@@ -325,5 +326,57 @@ func TestGenericFiles(t *testing.T) {
         t.Errorf("ChecksumAttributes.Date is %s, expected %s",
             gf1.ChecksumAttributes[1].DateTime,
             "2014-06-09T14:12:45.574358959Z")
+    }
+}
+
+func TestPremisEvents(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+    emptyTime := time.Time{}
+    genericFiles := result.GenericFiles()
+    for i, file := range(genericFiles) {
+        if file.Events[0].EventType != "Ingest" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[0].EventType,
+                "Ingest")
+        }
+        if file.Events[0].DateTime != emptyTime {
+            t.Errorf("DateTime is %v, expected %v",
+                file.Events[0].DateTime,
+                emptyTime)
+        }
+        if file.Events[1].EventType != "Fixity Generation" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[1].EventType,
+                "Ingest")
+        }
+        if file.Events[1].DateTime != result.TarResult.GenericFiles[i].Sha256Generated {
+            t.Errorf("DateTime is %v, expected %v",
+                file.Events[1].DateTime,
+                result.TarResult.GenericFiles[i].Sha256Generated)
+        }
+        if file.Events[1].OutcomeDetail != result.TarResult.GenericFiles[i].Sha256 {
+            t.Errorf("OutcomeDetail is '%s', expected '%s'",
+                file.Events[1].OutcomeDetail,
+                result.TarResult.GenericFiles[i].Sha256)
+        }
+        if file.Events[2].EventType != "Identifier Assignment" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[2].EventType,
+                "Identifier Assignment")
+        }
+        if file.Events[2].DateTime != result.TarResult.GenericFiles[i].UuidGenerated {
+            t.Errorf("DateTime is %v, expected %v",
+                file.Events[2].DateTime,
+                result.TarResult.GenericFiles[i].UuidGenerated)
+        }
+        if file.Events[2].OutcomeDetail != result.TarResult.GenericFiles[i].Uuid {
+            t.Errorf("OutcomeDetail is '%s', expected '%s'",
+                file.Events[2].OutcomeDetail,
+                result.TarResult.GenericFiles[i].Uuid)
+        }
     }
 }

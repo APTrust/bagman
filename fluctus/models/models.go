@@ -80,14 +80,14 @@ OutcomeInformation contains the text of an error message, if
 Outcome was failure.
 */
 type PremisEvent struct {
-    EventType          string  `json:"type"`
-    DateTime           string  `json:"date_time"`
-    Detail             string  `json:"detail"`
-    Outcome            string  `json:"outcome"`
-    OutcomeDetail      string  `json:"outcome_detail"`
-    Object             string  `json:"object"`
-    Agent              string  `json:"agent"`
-    OutcomeInformation string  `json:"outcome_information"`
+    EventType          string     `json:"type"`
+    DateTime           time.Time  `json:"date_time"`
+    Detail             string     `json:"detail"`
+    Outcome            string     `json:"outcome"`
+    OutcomeDetail      string     `json:"outcome_detail"`
+    Object             string     `json:"object"`
+    Agent              string     `json:"agent"`
+    OutcomeInformation string     `json:"outcome_information"`
 }
 
 /*
@@ -173,6 +173,7 @@ type GenericFile struct {
     Created            time.Time  `json:"created"`
     Modified           time.Time  `json:"modified"`
     ChecksumAttributes []*ChecksumAttribute  `json:"checksum_attributes"`
+    Events             []*PremisEvent        `json:"premisEvents"`
 }
 
 

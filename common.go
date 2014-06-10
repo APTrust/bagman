@@ -151,16 +151,52 @@ func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
             Created: file.Modified,
             Modified: file.Modified,
             ChecksumAttributes: checksumAttributes,
+            Events: PremisEvents(file),
         }
     }
     return files
 }
 
 // PremisEvents returns a list of Premis events generated during bag
-// processing.
-func (result *ProcessResult) PremisEvents() (events []*models.PremisEvent) {
-    // TODO: Implement me!
-    return nil
+// processing. Ingest, Fixity Generation (sha256), identifier
+// assignment.
+func PremisEvents(gf *GenericFile) (events []*models.PremisEvent) {
+    events = make([]*models.PremisEvent, 3)
+    // Ingest
+    // TODO: Actual timestamp and handle success/failure
+    events[0] = &models.PremisEvent{
+        EventType: "Ingest",
+        DateTime: time.Time{},
+        Detail: "Completed copy to S3",
+        Outcome: "Success",
+        OutcomeDetail: "s3 md5 digest here",
+        Object: "bagman + goamz s3 client",
+        Agent: "https://github.com/APTrust/bagman",
+        OutcomeInformation: "Put using md5 checksum",
+    }
+    // Fixity Generation (sha256)
+    events[1] = &models.PremisEvent{
+        EventType: "Fixity Generation",
+        DateTime: gf.Sha256Generated,
+        Detail: "Calculated new fixity value",
+        Outcome: "Success",
+        OutcomeDetail: gf.Sha256,
+        Object: "Go language crypto/sha256",
+        Agent: "http://golang.org/pkg/crypto/sha256/",
+        OutcomeInformation: "",
+    }
+    // Identifier assignment
+    events[2] = &models.PremisEvent{
+        EventType: "Identifier Assignment",
+        DateTime: gf.UuidGenerated,
+        Detail: "Assigned new identifier",
+        Outcome: "Success",
+        OutcomeDetail: gf.Uuid,
+        Object: "Go language UUID generator",
+        Agent: "http://github.com/nu7hatch/gouuid",
+        OutcomeInformation: "",
+    }
+    return events
 }
 
 // IngestStatus returns a lightweight Status object suitable for reporting
