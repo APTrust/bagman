@@ -34,12 +34,12 @@ func printSkipMessage() {
 }
 
 // Test that we can get an S3 client.
-func TestGetClient(t *testing.T) {
+func TestNewS3Client(t *testing.T) {
     if !awsEnvAvailable() {
         printSkipMessage()
         return
     }
-    _, err := bagman.GetClient(aws.APNortheast)
+    _, err := bagman.NewS3Client(aws.APNortheast)
     if err != nil {
         t.Error("Cannot create S3 client: %v\n", err)
     }
@@ -52,12 +52,11 @@ func TestListBucket(t *testing.T) {
         printSkipMessage()
         return
     }
-    s3Client, err := bagman.GetClient(aws.USEast)
+    s3Client, err := bagman.NewS3Client(aws.USEast)
     if err != nil {
         t.Error("Cannot create S3 client: %v\n", err)
     }
-    bucket := s3Client.Bucket(testBucket)
-    keys, err := bagman.ListBucket(bucket, 20)
+    keys, err := s3Client.ListBucket(testBucket, 20)
     if err != nil {
         t.Error("Cannot get list of S3 bucket contents: %v\n", err)
     }
@@ -75,12 +74,11 @@ func TestFetchToFile(t *testing.T) {
         printSkipMessage()
         return
     }
-    s3Client, err := bagman.GetClient(aws.USEast)
+    s3Client, err := bagman.NewS3Client(aws.USEast)
     if err != nil {
         t.Error("Cannot create S3 client: %v\n", err)
     }
-    bucket := s3Client.Bucket(testBucket)
-    keys, err := bagman.ListBucket(bucket, 20)
+    keys, err := s3Client.ListBucket(testBucket, 20)
     if len(keys) < 1 {
         t.Error("ListBucket returned empty list")
     }
@@ -104,13 +102,13 @@ func TestFetchToFile(t *testing.T) {
     os.MkdirAll(outputDir, 0755)
     outputFile := filepath.Join(outputDir, keyToFetch.Key)
     outputFileAbs, _ := filepath.Abs(outputFile)
-    result := bagman.FetchToFile(bucket, keyToFetch, outputFile)
+    result := s3Client.FetchToFile(testBucket, keyToFetch, outputFile)
     defer os.Remove(filepath.Join(outputDir, keyToFetch.Key))
     if result.ErrorMessage != "" {
         t.Error("FetchToFile returned an error: %s", result.ErrorMessage)
     }
-    if result.BucketName != bucket.Name {
-        t.Error("Expected bucket name %s, got %s", bucket.Name, result.BucketName)
+    if result.BucketName != testBucket {
+        t.Error("Expected bucket name %s, got %s", testBucket, result.BucketName)
     }
     if result.Key != keyToFetch.Key {
         t.Error("Expected key name %s, got %s", keyToFetch.Key, result.Key)
@@ -147,12 +145,11 @@ func TestFetchNonExistentFile(t *testing.T) {
         printSkipMessage()
         return
     }
-    s3Client, err := bagman.GetClient(aws.USEast)
+    s3Client, err := bagman.NewS3Client(aws.USEast)
     if err != nil {
         t.Error("Cannot create S3 client: %v\n", err)
     }
-    bucket := s3Client.Bucket(testBucket)
-    keys, err := bagman.ListBucket(bucket, 20)
+    keys, err := s3Client.ListBucket(testBucket, 20)
     if len(keys) < 1 {
         t.Error("ListBucket returned empty list")
     }
@@ -161,12 +158,12 @@ func TestFetchNonExistentFile(t *testing.T) {
     outputDir := filepath.Join(testDataPath, "tmp")
     os.MkdirAll(outputDir, 0755)
     outputFile := filepath.Join(outputDir, keys[0].Key)
-    result := bagman.FetchToFile(bucket, keys[0], outputFile)
+    result := s3Client.FetchToFile(testBucket, keys[0], outputFile)
 
     // Make sure we have the bucket name and file name, because we
     // want to know what we failed to fetch.
-    if result.BucketName != bucket.Name {
-        t.Error("Expected bucket name %s, got %s", bucket.Name, result.BucketName)
+    if result.BucketName != testBucket {
+        t.Error("Expected bucket name %s, got %s", testBucket, result.BucketName)
     }
     if result.Key != keys[0].Key {
         t.Error("Expected key name %s, got %s", keys[0].Key, result.Key)
@@ -185,6 +182,14 @@ func TestFetchNonExistentFile(t *testing.T) {
 }
 
 func TestSaveToS3(t *testing.T) {
+    if !awsEnvAvailable() {
+        printSkipMessage()
+        return
+    }
+    s3Client, err := bagman.NewS3Client(aws.USEast)
+    if err != nil {
+        t.Error("Cannot create S3 client: %v\n", err)
+    }
     bagmanHome, err := bagman.BagmanHome()
     if err != nil {
         t.Error(err)
@@ -199,7 +204,7 @@ func TestSaveToS3(t *testing.T) {
     if err != nil {
         t.Errorf("Can't stat local test file: %v", err)
     }
-    err = bagman.SaveToS3(testPreservationBucket, "test_file.tar",
+    err = s3Client.SaveToS3(testPreservationBucket, "test_file.tar",
         "application/binary", file, fileInfo.Size())
     if err != nil {
         t.Error(err)
@@ -207,7 +212,15 @@ func TestSaveToS3(t *testing.T) {
 }
 
 func TestGetKey(t *testing.T) {
-    key, err := bagman.GetKey(testPreservationBucket, "test_file.tar")
+    if !awsEnvAvailable() {
+        printSkipMessage()
+        return
+    }
+    s3Client, err := bagman.NewS3Client(aws.USEast)
+    if err != nil {
+        t.Error("Cannot create S3 client: %v\n", err)
+    }
+    key, err := s3Client.GetKey(testPreservationBucket, "test_file.tar")
     if err != nil {
         t.Error(err)
     }

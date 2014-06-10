@@ -10,18 +10,22 @@ import (
     "launchpad.net/goamz/s3"
 )
 
+type S3Client struct {
+    S3    *s3.S3
+}
 
-// Returns an S3 client for the specified region, using
+// Returns an S3Client for the specified region, using
 // AWS credentials from the environment. Please keep your AWS
 // keys out of the source code repos! Store them somewhere
 // else and load them into environment variables AWS_ACCESS_KEY_ID
 // and AWS_SECRET_ACCESS_KEY.
-func GetClient(region aws.Region) (*s3.S3, error) {
+func NewS3Client(region aws.Region) (*S3Client, error) {
     auth, err := aws.EnvAuth()
     if err != nil {
         return nil, err
     }
-    return s3.New(auth, region), nil
+    S3 := s3.New(auth, region)
+    return &S3Client{S3}, nil
 }
 
 
@@ -30,7 +34,12 @@ func GetClient(region aws.Region) (*s3.S3, error) {
 // otherwise, it will return only the number of keys specifed.
 // Note that listing all keys may result in the underlying client
 // issuing multiple requests.
-func ListBucket(bucket *s3.Bucket, limit int) (keys []s3.Key, err error) {
+func (client *S3Client)ListBucket(bucketName string, limit int) (keys []s3.Key, err error) {
+    bucket := client.S3.Bucket(bucketName)
+    if bucket == nil {
+        err = fmt.Errorf("Cannot retrieve bucket: %s", bucketName)
+        return nil, err
+    }
     actualLimit := limit
     if limit == 0 {
         actualLimit = 1000
@@ -62,9 +71,10 @@ func ListBucket(bucket *s3.Bucket, limit int) (keys []s3.Key, err error) {
 // saving to disk. If the md5 sum of the downloaded bytes
 // does not match the md5 sum in the key, this will not
 // save the file. It will just return an error.
-func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *FetchResult) {
+func (client *S3Client)FetchToFile(bucketName string, key s3.Key, path string) (fetchResult *FetchResult) {
+    bucket := client.S3.Bucket(bucketName)
     result := new(FetchResult)
-    result.BucketName = bucket.Name
+    result.BucketName = bucketName
     result.Key = key.Key
     result.LocalTarFile = path
 
@@ -142,10 +152,10 @@ func FetchToFile(bucket *s3.Bucket, key s3.Key, path string) (fetchResult *Fetch
 
 // Collects info about all of the buckets listed in buckets.
 // TODO: Write unit test
-func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
+func (client *S3Client) CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
     bucketSummaries = make([]*BucketSummary, 0)
     for _, bucketName := range(buckets) {
-        bucketSummary, err := CheckBucket(bucketName)
+        bucketSummary, err := client.CheckBucket(bucketName)
         if err != nil {
             return bucketSummaries, err
         }
@@ -158,19 +168,15 @@ func CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err er
 // BucketSummary contains the bucket name, a list of keys, and the
 // size of the largest file in the bucket.
 // TODO: Write unit test
-func CheckBucket(bucketName string) (bucketSummary *BucketSummary, err error) {
-    client, err := GetClient(aws.USEast)
-    if err != nil {
-        return nil, err
-    }
-    bucket := client.Bucket(bucketName)
+func (client *S3Client) CheckBucket(bucketName string) (bucketSummary *BucketSummary, err error) {
+    bucket := client.S3.Bucket(bucketName)
     if bucket == nil {
         err = fmt.Errorf("Cannot retrieve bucket: %s", bucketName)
         return nil, err
     }
     bucketSummary = new(BucketSummary)
     bucketSummary.BucketName = bucketName
-    bucketSummary.Keys, err = ListBucket(bucket, 0)
+    bucketSummary.Keys, err = client.ListBucket(bucketName, 0)
     if err != nil {
         return nil, err
     }
@@ -178,16 +184,8 @@ func CheckBucket(bucketName string) (bucketSummary *BucketSummary, err error) {
 }
 
 // Saves a file to S3 with default access of Private
-func SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64) (err error) {
-    client, err := GetClient(aws.USEast)
-    if err != nil {
-        return err
-    }
-    bucket := client.Bucket(bucketName)
-    if bucket == nil {
-        err = fmt.Errorf("Cannot find bucket: %s", bucketName)
-        return err
-    }
+func (client *S3Client) SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64) (err error) {
+    bucket := client.S3.Bucket(bucketName)
     putErr := bucket.PutReader(fileName, reader, byteCount, contentType, s3.Private)
     if putErr != nil {
         err = fmt.Errorf("Error saving file '%s' to bucket '%s': %v",
@@ -199,16 +197,8 @@ func SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCo
 // Returns an S3 key object for the specified file in the
 // specified bucket. The key object has the ETag, last mod
 // date, size and other useful info.
-func GetKey(bucketName, fileName string) (*s3.Key, error) {
-    client, err := GetClient(aws.USEast)
-    if err != nil {
-        return nil, err
-    }
-    bucket := client.Bucket(bucketName)
-    if bucket == nil {
-        err = fmt.Errorf("Cannot find bucket: %s", bucketName)
-        return nil, err
-    }
+func (client *S3Client) GetKey(bucketName, fileName string) (*s3.Key, error) {
+    bucket := client.S3.Bucket(bucketName)
     listResp, err := bucket.List(fileName, "", "", 1)
     if err != nil {
         err = fmt.Errorf("Error checking key '%s' in bucket '%s': '%v'",
