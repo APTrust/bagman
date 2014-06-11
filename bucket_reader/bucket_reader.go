@@ -78,8 +78,11 @@ func run() {
     // SkipAlreadyProcessed will almost always be true.
     // The exception is when we want to reprocess items to test new code.
     if config.SkipAlreadyProcessed == true {
+		messageLog.Println("[INFO] Skipping already processed files, because config says so")
         filesToProcess = filterProcessedFiles(s3Files)
-    }
+    } else {
+		messageLog.Println("[INFO] Reprocessing already processed files, because config says so")
+	}
     start := 0
     end := min(len(filesToProcess), batchSize)
     messageLog.Printf("[INFO] %d Unprocessed files\n", len(filesToProcess))
@@ -145,17 +148,18 @@ func filterProcessedFiles (s3Files []*bagman.S3File) (filesToProcess []*bagman.S
             messageLog.Printf("[ERROR] Cannot get Fluctus bag status for %s. " +
                 "Will re-process bag. Error was %v", s3File.Key.Key, err)
             filesToProcess = append(filesToProcess, s3File)
-        } else if status == nil || status.Status == "Failed" {
-            actualStatus := "nil"
+        } else if status == nil || (status.Status == "Failed" && status.Retry == true) {
+			reason := "Bag has never been processed."
             if status != nil {
-                actualStatus = status.Status
+                reason = "Bag failed prior processing attempt, and retry flag is true."
             }
-            messageLog.Printf("[INFO] Fluctus bag status for %s is %s. " +
-                "Will process bag.", s3File.Key.Key, actualStatus)
+            messageLog.Printf("[INFO] Will process bag %s: %s",s3File.Key.Key, reason)
             filesToProcess = append(filesToProcess, s3File)
-        } else {
+        } else if status.Status != "Failed" {
             messageLog.Printf("[INFO] Skipping %s: already processed successfully.", s3File.Key.Key)
-        }
+        } else if status.Retry == false {
+            messageLog.Printf("[INFO] Skipping %s: retry flag is set to false.", s3File.Key.Key)
+		}
     }
     return filesToProcess
 }

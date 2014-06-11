@@ -302,8 +302,8 @@ func saveToStorage() {
 					"to long-term storage:",
 					err.Error())
 			} else {
-				messageLog.Println("[INFO]", "Successfully sent",
-					result.S3File.Key.Key, "to long-term storage bucket.")
+				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
+					"to long-term storage bucket.", gf.Path, gf.Uuid)
 			}
 		}
 		channels.ResultsChannel <- result

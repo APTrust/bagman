@@ -216,6 +216,10 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
     if result.ErrorMessage != "" {
         status.Note = result.ErrorMessage
         status.Status = "Failed"
+		// Indicate whether we want to try re-processing this bag.
+		// For transient errors (e.g. network problems), we retry.
+		// For permanent errors (e.g. invalid bag), we do not retry.
+		status.Retry = result.Retry
     } else {
         status.Note = "No problems"
         if result.Stage == "Validate" {
@@ -225,10 +229,12 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
             // WE'LL CONSIDER "Validate" TO BE SUCCESS ***
             status.Status = "Succeeded"
         }
+		// If there were no errors, bag was processed sucessfully,
+		// and there is no need to retry.
+		status.Retry = false
     }
     status.Institution = OwnerOf(result.S3File.BucketName)
     status.Outcome = status.Status
-    status.Retry = result.Retry
     return status
 }
 
