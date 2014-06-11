@@ -19,6 +19,7 @@ import (
 type Channels struct {
     FetchChannel     chan bagman.ProcessResult
     UnpackChannel    chan bagman.ProcessResult
+	StorageChannel    chan bagman.ProcessResult
     CleanUpChannel   chan bagman.ProcessResult
     ResultsChannel   chan bagman.ProcessResult
 }
@@ -30,6 +31,7 @@ var config bagman.Config
 var jsonLog *log.Logger
 var messageLog *log.Logger
 var volume *bagman.Volume
+var s3Client *bagman.S3Client
 var succeeded = int64(0)
 var failed = int64(0)
 var bytesInS3 = int64(0)
@@ -44,7 +46,7 @@ var fluctusClient *client.Client
 // 2. Unpack channel: untars the bag files, parses and validates
 //    the bag, reads tags, generates checksums and generic file
 //    UUIDs.
-// 3. **** TODO **** Copy files to S3 permanent storage.
+// 3. Storage channel: copies files to S3 permanent storage.
 // 4. Results channel: tells the queue whether processing
 //    succeeded, and if not, whether the item should be requeued.
 //    Also logs results to json and message logs.
@@ -71,6 +73,10 @@ func main() {
     initChannels()
     initGoRoutines(channels)
 
+	err := initS3Client()
+    if err != nil {
+        messageLog.Fatalf("Cannot initialize S3Client: %v", err)
+    }
 
     nsqConfig := nsq.NewConfig()
     nsqConfig.Set("max_in_flight", 20)
@@ -109,6 +115,12 @@ func initVolume() {
     }
 }
 
+// Initialize the reusable S3 client.
+func initS3Client() (err error) {
+    s3Client, err = bagman.NewS3Client(aws.USEast)
+	return err
+}
+
 // Set up the channels. It's essential that that the fetchChannel
 // be limited to a relatively low number. If we are downloading
 // 1GB tar files, we need space to store the tar file AND the
@@ -126,6 +138,7 @@ func initChannels() {
     channels = &Channels{}
     channels.FetchChannel = make(chan bagman.ProcessResult, fetcherBufferSize)
     channels.UnpackChannel = make(chan bagman.ProcessResult, workerBufferSize)
+    channels.StorageChannel = make(chan bagman.ProcessResult, workerBufferSize)
     channels.CleanUpChannel = make(chan bagman.ProcessResult, workerBufferSize)
     channels.ResultsChannel = make(chan bagman.ProcessResult, workerBufferSize)
 }
@@ -141,6 +154,7 @@ func initGoRoutines(channels *Channels) {
 
     for i := 0; i < config.Workers; i++ {
         go doUnpack()
+		go saveToStorage()
         go logResult()
         go doCleanUp()
     }
@@ -179,6 +193,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 }
 
 
+// -- Step 1 of 5 --
 // This runs as a go routine to fetch files from S3.
 func doFetch() {
     for result := range channels.FetchChannel {
@@ -212,7 +227,10 @@ func doFetch() {
     }
 }
 
+// -- Step 2 of 5 --
 // This runs as a go routine to untar files downloaded from S3.
+// We calculate checksums and create generic files during the unpack
+// stage to avoid having to reprocess large streams of data several times.
 func doUnpack() {
     for result := range channels.UnpackChannel {
         if result.ErrorMessage != "" {
@@ -226,43 +244,73 @@ func doUnpack() {
             messageLog.Println("[INFO]", "Unpacking", result.S3File.Key.Key)
             result.NsqMessage.Touch()
             ProcessBagFile(&result)
-            channels.ResultsChannel <- result
+			if result.ErrorMessage == "" {
+				// Move to permanent storage if bag processing succeeded
+				channels.StorageChannel <- result
+			} else {
+				channels.ResultsChannel <- result
+			}
         }
     }
 }
 
-// This runs as a go routine to remove the files we downloaded
-// and untarred.
-func doCleanUp() {
-    for result := range channels.CleanUpChannel {
-        messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
-        if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
-            // Clean up any files we downloaded and unpacked
-            errors := CleanUp(result.FetchResult.LocalTarFile)
-            if errors != nil && len(errors) > 0 {
-                messageLog.Println("[WARNING]", "Errors cleaning up",
-                    result.FetchResult.LocalTarFile)
-                for _, e := range errors {
-                    messageLog.Println("[ERROR]", e)
-                }
-            }
-        }
-        // Let our volumn tracker know we just freed up some disk space.
-        volume.Release(uint64(result.S3File.Key.Size * 2))
-
-        // Build and send message back to NSQ, indicating whether
-        // processing succeeded.
-        if result.ErrorMessage != "" && result.Retry == true {
-            result.NsqMessage.Requeue(3000)
-        } else {
-            result.NsqMessage.Finish()
-        }
-
-        // TODO: Send ProcessResult to nsq metadata topic
+// -- Step 3 of 5 --
+// This runs as a go routine to save generic files to the permanent
+// S3 storage bucket.
+func saveToStorage() {
+    for result := range channels.StorageChannel {
+		messageLog.Println("[INFO] Storing",result.S3File.Key.Key)
+		result.NsqMessage.Touch()
+		result.Stage = "Store"
+		re := regexp.MustCompile("\\.tar$")
+		// Copy each generic file to S3
+		for _, gf := range result.TarResult.GenericFiles {
+			bagDir := re.ReplaceAllString(result.S3File.Key.Key, "")
+			file := filepath.Join(
+				config.TarDirectory,
+				bagDir,
+				gf.Path)
+			absPath, err := filepath.Abs(file)
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf("Cannot get absolute " +
+					"path to file '%s'. " +
+					"File cannot be copied to long-term storage: %v",
+					file, err)
+				continue
+			}
+			reader, err := os.Open(absPath)
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf("Error opening file '%s'" +
+					". File cannot be copied to long-term storage: %v",
+					absPath, err)
+				continue
+			}
+			defer reader.Close()
+			messageLog.Printf("[INFO] Sending %d bytes to S3 for file %s (UUID %s)",
+				gf.Size, gf.Path, gf.Uuid)
+			err = s3Client.SaveToS3(
+				config.PreservationBucket,
+				gf.Uuid,
+				gf.MimeType,
+				reader,
+				gf.Size)
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf("Error copying file '%s'" +
+					"to long-term storage: %v ", absPath, err)
+				messageLog.Println("[ERROR]", "Failed to send",
+					result.S3File.Key.Key,
+					"to long-term storage:",
+					err.Error())
+			} else {
+				messageLog.Println("[INFO]", "Successfully sent",
+					result.S3File.Key.Key, "to long-term storage bucket.")
+			}
+		}
+		channels.ResultsChannel <- result
     }
 }
 
-
+// -- Step 4 of 5 --
 // This prints to the log the result of the program's attempt to fetch,
 // untar, unbag and verify an individual S3 tar file.
 func logResult() {
@@ -301,20 +349,49 @@ func logResult() {
             }
         }()
 
+		// TODO: Add item to metadata_topic for recording in fluctus.
+
         // Clean up the bag/tar files
         channels.CleanUpChannel <- result
     }
 }
 
+// -- Step 5 of 5 --
+// This runs as a go routine to remove the files we downloaded
+// and untarred.
+func doCleanUp() {
+    for result := range channels.CleanUpChannel {
+        messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
+        if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
+            // Clean up any files we downloaded and unpacked
+            errors := CleanUp(result.FetchResult.LocalTarFile)
+            if errors != nil && len(errors) > 0 {
+                messageLog.Println("[WARNING]", "Errors cleaning up",
+                    result.FetchResult.LocalTarFile)
+                for _, e := range errors {
+                    messageLog.Println("[ERROR]", e)
+                }
+            }
+        }
+        // Let our volumn tracker know we just freed up some disk space.
+        volume.Release(uint64(result.S3File.Key.Size * 2))
+
+        // Build and send message back to NSQ, indicating whether
+        // processing succeeded.
+        if result.ErrorMessage != "" && result.Retry == true {
+            result.NsqMessage.Requeue(3000)
+        } else {
+            result.NsqMessage.Finish()
+        }
+
+        // TODO: Send ProcessResult to nsq metadata topic
+    }
+}
+
+
 
 // This fetches a file from S3 and stores it locally.
 func Fetch(bucketName string, key s3.Key) (result *bagman.FetchResult) {
-    s3Client, err := bagman.NewS3Client(aws.USEast)
-    if err != nil {
-        fetchResult := new(bagman.FetchResult)
-        fetchResult.ErrorMessage = err.Error()
-        return fetchResult
-    }
     tarFilePath := filepath.Join(config.TarDirectory, key.Key)
     return s3Client.FetchToFile(bucketName, key, tarFilePath)
 }

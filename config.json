@@ -15,7 +15,7 @@
         "MetadataChannel": "metadata_channel",
         "ProcessStateTopic": "state_topic",
         "StateChannel": "state_channel",
-        "SkipAlreadyProcessed": true,
+        "SkipAlreadyProcessed": false,
         "PreservationBucket": "aptrust.test.preservation",
         "Buckets": [
             "aptrust.receiving.columbia.edu",
