@@ -238,9 +238,6 @@ func TestGenericFiles(t *testing.T) {
     genericFiles := result.GenericFiles()
 
     for _, gf := range(genericFiles) {
-        if gf.IntellectualObject == nil {
-            t.Error("GenericFile.IntellectualObject should not be nil")
-        }
         if gf.URI == "" {
             t.Error("GenericFile.URI should not be nil")
         }
@@ -269,11 +266,6 @@ func TestGenericFiles(t *testing.T) {
 
     // Look more closely at one GenericFile
     gf1 := genericFiles[0]
-    if gf1.IntellectualObject.Title != "Title of an Intellectual Object" {
-        t.Errorf("GenericFile.IntellectualObject.Title is '%s', expected '%s'.",
-            gf1.IntellectualObject.Title,
-            "Title of an Intellectual Object")
-    }
     if gf1.URI != "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc" {
         t.Errorf("GenericFile.URI is '%s', expected '%s'",
             gf1.URI,

@@ -117,11 +117,12 @@ Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
-    Institution        *Institution  `json:"institution"`
-    Title              string  `json:"title"`
-    Description        string  `json:"description"`
-    Identifier         string  `json:"identifier"`
-    Access             string  `json:"access"`
+    Institution        *Institution   `json:"institution"`
+    Title              string         `json:"title"`
+    Description        string         `json:"description"`
+    Identifier         string         `json:"identifier"`
+    Access             string         `json:"access"`
+	GenericFiles       []*GenericFile `json:"generic_files"`
 }
 
 /*
@@ -166,7 +167,6 @@ such as:
 1994-11-05T08:15:30Z          (UTC)
 */
 type GenericFile struct {
-    IntellectualObject *IntellectualObject `json:"intellectual_object"`
     Format             string     `json:"format"`
     URI                string     `json:"uri"`
     Size               int64      `json:"size"`

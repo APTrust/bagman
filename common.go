@@ -124,13 +124,13 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
         Description: result.BagReadResult.TagValue("Description"),
         Identifier: identifier,
         Access: accessRights,
+		GenericFiles: result.GenericFiles(),
     }
 }
 
 // GenericFiles returns a list of GenericFile objects that were found
 // in the bag.
 func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
-    intellectualObject := result.IntellectualObject()
     files = make([]*models.GenericFile, len(result.TarResult.GenericFiles))
     for i, file := range(result.TarResult.GenericFiles) {
         checksumAttributes := make([]*models.ChecksumAttribute, 2)
@@ -145,7 +145,6 @@ func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
             Digest: file.Sha256,
         }
         files[i] = &models.GenericFile{
-            IntellectualObject: intellectualObject,
             URI: file.StorageURL,
             Size: file.Size,
             Created: file.Modified,
