@@ -198,14 +198,6 @@ func TestIntellectualObject(t *testing.T) {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
     obj := result.IntellectualObject()
-    if obj.Institution == nil {
-        t.Errorf("IntellectualObject.Institution should not be nil.")
-    }
-    if obj.Institution.BriefName != "ncsu.edu" {
-        t.Errorf("IntellectualObject.Institution.BriefName is '%s', expected '%s'.",
-            obj.Institution.BriefName,
-            "ncsu.edu")
-    }
     if obj.Title != "Title of an Intellectual Object" {
         t.Errorf("IntellectualObject.Title is '%s', expected '%s'.",
             obj.Title,

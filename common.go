@@ -119,7 +119,8 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
         institution.BriefName,
         result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
     return &models.IntellectualObject{
-        Institution: institution,
+		// TODO: Use proper institution id
+        InstitutionId: institution.BriefName,
         Title: result.BagReadResult.TagValue("Title"),
         Description: result.BagReadResult.TagValue("Description"),
         Identifier: identifier,

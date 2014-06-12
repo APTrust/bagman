@@ -37,17 +37,6 @@ func (premisEvent *PremisEvent) EventTypeValid() bool {
     return false
 }
 
-// AccessValid returns true or false to indicate whether the
-// structure's Access property contains a valid value.
-func (intellectualObject *IntellectualObject) AccessValid() bool {
-    lcAccess := strings.ToLower(intellectualObject.Access)
-    for _, value := range rights {
-        if value == lcAccess {
-            return true
-        }
-    }
-    return false
-}
 
 /*
 PremisEvent contains information about events that occur during
@@ -117,13 +106,26 @@ Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
-    Institution        *Institution   `json:"institution"`
+    InstitutionId      string         `json:"institution_id"`
     Title              string         `json:"title"`
     Description        string         `json:"description"`
     Identifier         string         `json:"identifier"`
     Access             string         `json:"access"`
 	GenericFiles       []*GenericFile `json:"generic_files"`
 }
+
+// AccessValid returns true or false to indicate whether the
+// structure's Access property contains a valid value.
+func (obj *IntellectualObject) AccessValid() bool {
+    lcAccess := strings.ToLower(obj.Access)
+    for _, value := range rights {
+        if value == lcAccess {
+            return true
+        }
+    }
+    return false
+}
+
 
 /*
 ChecksumAttribute contains information about a checksum that
