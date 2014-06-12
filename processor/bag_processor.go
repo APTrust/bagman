@@ -209,7 +209,7 @@ func doFetch() {
             result.Retry = true
             channels.ResultsChannel <- result
         } else {
-            messageLog.Println("[INFO]", "Fetching", s3Key)
+            messageLog.Println("[INFO]", "Fetching", s3Key.Key)
             fetchResult := Fetch(result.S3File.BucketName, s3Key)
             result.FetchResult = fetchResult
             result.Retry = fetchResult.Retry
@@ -288,7 +288,7 @@ func saveToStorage() {
 			defer reader.Close()
 			messageLog.Printf("[INFO] Sending %d bytes to S3 for file %s (UUID %s)",
 				gf.Size, gf.Path, gf.Uuid)
-			err = s3Client.SaveToS3(
+			url, err := s3Client.SaveToS3(
 				config.PreservationBucket,
 				gf.Uuid,
 				gf.MimeType,
@@ -302,6 +302,7 @@ func saveToStorage() {
 					"to long-term storage:",
 					err.Error())
 			} else {
+				gf.StorageURL = url
 				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
 					"to long-term storage bucket.", gf.Path, gf.Uuid)
 			}
