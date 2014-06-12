@@ -26,15 +26,11 @@ magicmime go package later.
         sudo apt-get install gcc libmagic-dev
 ```
 
-Install go, but don't use apt-get. That installs go 1.0, which blows
-up when you try to run go get. Do an manual install instead. Note that
-the command below is for a 32-bit Linux OS, which is all you can run
-on an EC2 small instance. If you're running on a 64-bit instance, use
-the package go1.2.1.linux-amd64.tar.gz instead.
+Install go, but don't use apt-get.
 
 ```
-    curl "https://go.googlecode.com/files/go1.2.1.linux-386.tar.gz" > go1.2.1.linux-386.tar.gz
-    sudo tar -C /usr/local -xzf go1.2.1.linux-386.tar.gz
+    curl "https://storage.googleapis.com/golang/go1.2.2.linux-amd64.tar.gz" > go1.2.2.linux-amd64.tar.gz
+    sudo tar -C /usr/local -xzf go1.2.2.linux-amd64.tar.gz
 ```
 
 Create a GOHOME directory:
