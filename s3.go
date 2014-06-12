@@ -184,14 +184,16 @@ func (client *S3Client) CheckBucket(bucketName string) (bucketSummary *BucketSum
 }
 
 // Saves a file to S3 with default access of Private
-func (client *S3Client) SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64) (err error) {
+func (client *S3Client) SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64) (url string, err error) {
     bucket := client.S3.Bucket(bucketName)
     putErr := bucket.PutReader(fileName, reader, byteCount, contentType, s3.Private)
     if putErr != nil {
         err = fmt.Errorf("Error saving file '%s' to bucket '%s': %v",
             fileName, bucketName, err)
+		return "", err
     }
-    return err
+	url = fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, fileName)
+    return url, nil
 }
 
 // Returns an S3 key object for the specified file in the

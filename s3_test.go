@@ -204,11 +204,16 @@ func TestSaveToS3(t *testing.T) {
     if err != nil {
         t.Errorf("Can't stat local test file: %v", err)
     }
-    err = s3Client.SaveToS3(testPreservationBucket, "test_file.tar",
+    url, err := s3Client.SaveToS3(testPreservationBucket, "test_file.tar",
         "application/binary", file, fileInfo.Size())
     if err != nil {
         t.Error(err)
     }
+	expectedUrl := fmt.Sprintf("https://s3.amazonaws.com/%s/test_file.tar",
+		testPreservationBucket)
+	if url != expectedUrl {
+		t.Errorf("Expected url '%s' but got '%s'", url)
+	}
 }
 
 func TestGetKey(t *testing.T) {
