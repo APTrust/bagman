@@ -3,13 +3,18 @@ package bagman_test
 import (
 	"testing"
 	"runtime"
+	"log"
+	"io/ioutil"
 	"github.com/APTrust/bagman"
 )
 
+func nullLogger() (*log.Logger) {
+	return log.New(ioutil.Discard, "", 0)
+}
 
 func TestInitialFreeSpace(t *testing.T) {
 	_, filename, _, _ := runtime.Caller(0)
-	volume, err := bagman.NewVolume(filename)
+	volume, err := bagman.NewVolume(filename, nullLogger())
 	if err != nil {
 		t.Errorf("Cannot get file system's available space: %v\n", err)
 	}
@@ -21,7 +26,7 @@ func TestInitialFreeSpace(t *testing.T) {
 
 func TestClaimedReserveRelease(t *testing.T) {
 	_, filename, _, _ := runtime.Caller(0)
-	volume, err := bagman.NewVolume(filename)
+	volume, err := bagman.NewVolume(filename, nullLogger())
 	if err != nil {
 		t.Errorf("Cannot get file system's available space: %v\n", err)
 	}
@@ -45,7 +50,7 @@ func TestClaimedReserveRelease(t *testing.T) {
 // usage scenarios.
 func TestVolume(t *testing.T) {
 	_, filename, _, _ := runtime.Caller(0)
-	volume, err := bagman.NewVolume(filename)
+	volume, err := bagman.NewVolume(filename, nullLogger())
 	if err != nil {
 		t.Errorf("Cannot get file system's available space: %v\n", err)
 	}

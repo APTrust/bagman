@@ -109,7 +109,7 @@ func loadConfig() {
 // directory doesn't have enough space to accomodate them.
 func initVolume() {
     var err error
-    volume, err = bagman.NewVolume(config.TarDirectory)
+    volume, err = bagman.NewVolume(config.TarDirectory, messageLog)
     if err != nil {
         panic(err.Error())
     }
@@ -199,6 +199,7 @@ func doFetch() {
     for result := range channels.FetchChannel {
         result.Stage = "Fetch"
         s3Key := result.S3File.Key
+		result.FetchResult = &bagman.FetchResult{}
         // Disk needs filesize * 2 disk space to accomodate tar file & untarred files
         err := volume.Reserve(uint64(s3Key.Size * 2))
         if err != nil {
