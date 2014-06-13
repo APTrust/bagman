@@ -374,9 +374,16 @@ func doCleanUp() {
                     messageLog.Println("[ERROR]", e)
                 }
             }
+			// Let our volume tracker know we just freed up some disk space.
+			// Free space used by tar file.
+			volume.Release(uint64(result.S3File.Key.Size))
+			// If anything was untarred, Cleanup() deleted it. Let the volume
+			// manager know that space is free too.
+			if result.TarResult != nil && result.TarResult.FilesUnpacked != nil &&
+				len(result.TarResult.FilesUnpacked) > 0 {
+				volume.Release(uint64(result.S3File.Key.Size))
+			}
         }
-        // Let our volumn tracker know we just freed up some disk space.
-        volume.Release(uint64(result.S3File.Key.Size * 2))
 
         // Build and send message back to NSQ, indicating whether
         // processing succeeded.
