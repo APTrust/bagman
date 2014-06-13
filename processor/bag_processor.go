@@ -286,7 +286,6 @@ func saveToStorage() {
 					absPath, err)
 				continue
 			}
-			defer reader.Close()
 			messageLog.Printf("[INFO] Sending %d bytes to S3 for file %s (UUID %s)",
 				gf.Size, gf.Path, gf.Uuid)
 			url, err := s3Client.SaveToS3(
@@ -295,6 +294,7 @@ func saveToStorage() {
 				gf.MimeType,
 				reader,
 				gf.Size)
+			reader.Close()
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Error copying file '%s'" +
 					"to long-term storage: %v ", absPath, err)
@@ -375,14 +375,8 @@ func doCleanUp() {
                 }
             }
 			// Let our volume tracker know we just freed up some disk space.
-			// Free space used by tar file.
-			volume.Release(uint64(result.S3File.Key.Size))
-			// If anything was untarred, Cleanup() deleted it. Let the volume
-			// manager know that space is free too.
-			if result.TarResult != nil && result.TarResult.FilesUnpacked != nil &&
-				len(result.TarResult.FilesUnpacked) > 0 {
-				volume.Release(uint64(result.S3File.Key.Size))
-			}
+			// Free the same amount we reserved.
+			volume.Release(uint64(result.S3File.Key.Size * 2))
         }
 
         // Build and send message back to NSQ, indicating whether
