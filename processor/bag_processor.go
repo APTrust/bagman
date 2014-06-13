@@ -382,7 +382,8 @@ func doCleanUp() {
         // Build and send message back to NSQ, indicating whether
         // processing succeeded.
         if result.ErrorMessage != "" && result.Retry == true {
-            result.NsqMessage.Requeue(3000)
+			messageLog.Printf("[INFO] Requeueing %s", result.S3File.Key.Key)
+            result.NsqMessage.Requeue(30000)
         } else {
             result.NsqMessage.Finish()
         }
