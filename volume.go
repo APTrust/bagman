@@ -3,8 +3,8 @@ package bagman
 import (
 	"syscall"
 	"sync"
-	"errors"
 	"log"
+	"fmt"
 )
 
 // Volume tracks the amount of available space on a volume (disk),
@@ -92,7 +92,7 @@ func (volume *Volume) AvailableSpace() (numBytes uint64) {
 func (volume *Volume) Reserve(numBytes uint64) (err error) {
 	available := volume.AvailableSpace()
 	if numBytes >= available {
-		err = errors.New("Requested %d bytes on volume, " +
+		err = fmt.Errorf("Requested %d bytes on volume, " +
 			"but only %d are available", numBytes, available)
 	} else  {
 		volume.mutex.Lock()
