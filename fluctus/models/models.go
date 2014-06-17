@@ -5,6 +5,7 @@ package models
 import (
     "strings"
     "time"
+	"encoding/json"
 )
 
 // List of valid APTrust IntellectualObject rights.
@@ -106,6 +107,8 @@ Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
+	// TODO: Resolve duplication between Id and Identifier
+    Id                 string         `json:"id"`
     InstitutionId      string         `json:"institution_id"`
     Title              string         `json:"title"`
     Description        string         `json:"description"`
@@ -125,6 +128,19 @@ func (obj *IntellectualObject) AccessValid() bool {
     }
     return false
 }
+
+// Serialize the subset of IntellectualObject data that fluctus
+// will accept.
+func (obj *IntellectualObject) SerializeForFluctus() ([]byte, error) {
+    return json.Marshal(map[string]interface{}{
+		"identifier": obj.Id,
+		"title": obj.Title,
+		"institution_id": obj.InstitutionId,
+		"description": obj.Description,
+		"access": obj.Access,
+    })
+}
+
 
 
 /*

@@ -159,6 +159,7 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 // exists in Fluctus.
 func (client *Client) IntellectualObjectGet (identifier string) (*models.IntellectualObject, error) {
 	url := client.BuildUrl(fmt.Sprintf("/objects/%s", identifier))
+	client.logger.Printf("[INFO] Requesting IntellectualObject from fluctus: %s", url)
 	request, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
 		return nil, err
@@ -203,7 +204,8 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 		url = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Identifier))
 		method = "PUT"
 	}
-	request, err := client.NewJsonRequest(method, url.String(), nil)
+	data, err := obj.SerializeForFluctus()
+	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}

@@ -11,23 +11,19 @@ import (
 )
 
 var fluctusUrl string = "http://localhost:3000"
+var objId string = "changeme:28082"
 
 func runFluctusTests() (bool) {
 	_, err := http.Get(fluctusUrl)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Printf("Skipping fluctus integration tests: " +
+			"fluctus server is not running at %s", fluctusUrl)
 		return false
 	}
 	return true
 }
 
-func TestIntellectualObjectGet(t *testing.T) {
-	if runFluctusTests() == false {
-		fmt.Printf("Skipping fluctus integration tests: " +
-			"fluctus server is not running at %s", fluctusUrl)
-		return
-	}
-
+func getClient(t *testing.T) (*client.Client) {
 	logger := log.New(os.Stdout, "", 0)
 	client, err := client.New(fluctusUrl,
 		os.Getenv("FLUCTUS_API_USER"),
@@ -36,8 +32,16 @@ func TestIntellectualObjectGet(t *testing.T) {
 	if err != nil {
         t.Errorf("Error constructing fluctus client: %v", err)
     }
+	return client
+}
 
-	obj, err := client.IntellectualObjectGet("changeme:28082")
+
+func TestIntellectualObjectGet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+	obj, err := client.IntellectualObjectGet(objId)
 	if err != nil {
         t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
     }
@@ -53,4 +57,25 @@ func TestIntellectualObjectGet(t *testing.T) {
         t.Errorf("IntellectualObjectGet returned something that shouldn't be there: %v", obj)
     }
 
+}
+
+func TestIntellectualObjectSave(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+	obj, err := client.IntellectualObjectGet(objId)
+	if err != nil {
+        t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
+    }
+	if obj == nil {
+        t.Error("IntellectualObjectGet did not return the expected object")
+	}
+
+	newObj, err := client.IntellectualObjectSave(obj)
+	if err != nil {
+        t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
+    }
+	fmt.Println(obj)
+	fmt.Println(newObj)
 }
