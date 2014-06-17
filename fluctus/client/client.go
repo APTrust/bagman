@@ -14,7 +14,7 @@ import (
 	"log"
 	"time"
 	"github.com/APTrust/bagman"
-//	"github.com/APTrust/bagman/fluctus/models"
+	"github.com/APTrust/bagman/fluctus/models"
 )
 
 type Client struct {
@@ -120,7 +120,7 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	// that are in TIME_WAIT / keepalive, but we can pay that price.
 	client.requestCount++
 	if client.requestCount % 100 == 0 {
-		client.logger.Println("[INFO] Used to force-close connections here...")
+		// client.logger.Println("[INFO] Used to force-close connections here...")
 		// client.logger.Println("[INFO] Fluctus client is forcibly closing idle HTTP connections")
 		// client.transport.CloseIdleConnections()
 	}
@@ -154,6 +154,68 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	}
 	return status, nil
 }
+
+// Returns true/false indicating whether an IntellectualObject
+// exists in Fluctus.
+func (client *Client) IntellectualObjectExists (identifier string) (exists bool, err error) {
+	url := client.BuildUrl(fmt.Sprintf("/objects/%s", identifier))
+	req, err := client.NewJsonRequest("GET", url.String(), nil)
+	if err != nil {
+		return false, err
+	}
+	response, err := client.httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	if response.StatusCode == 200 {
+		return true, nil
+	}
+	return false, nil
+}
+
+
+// Saves an IntellectualObject to fluctus.
+func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
+	exists, err := client.IntellectualObjectExists(obj.Identifier)
+	if err != nil {
+		return nil, err
+	}
+	url := client.BuildUrl(fmt.Sprintf("/institutions/%s/objects.json", obj.InstitutionId))
+	method := "POST"
+	if exists {
+		url = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Identifier))
+		method = "PUT"
+	}
+	req, err := client.NewJsonRequest(method, url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	// 200 = OK, 201 = Created, 202 = Accepted
+	if response.StatusCode < 200 || response.StatusCode > 202 {
+		err = fmt.Errorf("Expected status code 200-201 but got %d. URL: %s",
+			response.StatusCode, req.URL)
+		return nil, err
+	}
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	newObj = &models.IntellectualObject{}
+	err = json.Unmarshal(body, newObj)
+	if err != nil {
+		return nil, err
+	}
+	return newObj, nil
+
+}
+
 
 /*
 POST: http://localhost:3000/institutions/changeme:3/objects.json
