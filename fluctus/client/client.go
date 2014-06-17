@@ -157,40 +157,57 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 
 // Returns true/false indicating whether an IntellectualObject
 // exists in Fluctus.
-func (client *Client) IntellectualObjectExists (identifier string) (exists bool, err error) {
+func (client *Client) IntellectualObjectGet (identifier string) (*models.IntellectualObject, error) {
 	url := client.BuildUrl(fmt.Sprintf("/objects/%s", identifier))
-	req, err := client.NewJsonRequest("GET", url.String(), nil)
+	request, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	response, err := client.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	if response.StatusCode == 200 {
-		return true, nil
+	// 404 for object not found
+	if response.StatusCode != 200 {
+		return nil, nil
 	}
-	return false, nil
+
+	// Read the json response
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build and return the data structure
+	obj := &models.IntellectualObject{}
+	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }
 
 
 // Saves an IntellectualObject to fluctus.
 func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
-	exists, err := client.IntellectualObjectExists(obj.Identifier)
+	existingObj, err := client.IntellectualObjectGet(obj.Identifier)
 	if err != nil {
 		return nil, err
 	}
+	// URL & method for create
 	url := client.BuildUrl(fmt.Sprintf("/institutions/%s/objects.json", obj.InstitutionId))
 	method := "POST"
-	if exists {
+	// URL & method for update
+	if existingObj != nil {
 		url = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Identifier))
 		method = "PUT"
 	}
-	req, err := client.NewJsonRequest(method, url.String(), nil)
+	request, err := client.NewJsonRequest(method, url.String(), nil)
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(req)
+	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +215,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	// 200 = OK, 201 = Created, 202 = Accepted
 	if response.StatusCode < 200 || response.StatusCode > 202 {
 		err = fmt.Errorf("Expected status code 200-201 but got %d. URL: %s",
-			response.StatusCode, req.URL)
+			response.StatusCode, request.URL)
 		return nil, err
 	}
 	defer response.Body.Close()

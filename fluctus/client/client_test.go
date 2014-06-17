@@ -21,9 +21,10 @@ func runFluctusTests() (bool) {
 	return true
 }
 
-func TestIntellectualObjectExists(t *testing.T) {
+func TestIntellectualObjectGet(t *testing.T) {
 	if runFluctusTests() == false {
-		fmt.Println("Skipping fluctus integration tests: local fluctus server not found.")
+		fmt.Printf("Skipping fluctus integration tests: " +
+			"fluctus server is not running at %s", fluctusUrl)
 		return
 	}
 
@@ -36,20 +37,20 @@ func TestIntellectualObjectExists(t *testing.T) {
         t.Errorf("Error constructing fluctus client: %v", err)
     }
 
-	exists, err := client.IntellectualObjectExists("changeme:28082")
+	obj, err := client.IntellectualObjectGet("changeme:28082")
 	if err != nil {
         t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
     }
-	if exists == false {
-        t.Error("Object should exist, but IntellectualObjectExists returned false.")
+	if obj == nil {
+        t.Error("IntellectualObjectGet did not return the expected object")
 	}
 
-	exists, err = client.IntellectualObjectExists("changeme:99999")
+	obj, err = client.IntellectualObjectGet("changeme:99999")
 	if err != nil {
         t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
     }
-	if exists == true {
-        t.Error("Object should not exist, but IntellectualObjectExists returned true.")
-	}
+	if obj != nil {
+        t.Errorf("IntellectualObjectGet returned something that shouldn't be there: %v", obj)
+    }
 
 }
