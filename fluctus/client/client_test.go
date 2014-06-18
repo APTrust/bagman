@@ -13,12 +13,16 @@ import (
 
 var fluctusUrl string = "http://localhost:3000"
 var objId string = "changeme:28082"
+var skipMessagePrinted bool = false
 
 func runFluctusTests() (bool) {
 	_, err := http.Get(fluctusUrl)
 	if err != nil {
-		fmt.Printf("Skipping fluctus integration tests: " +
-			"fluctus server is not running at %s", fluctusUrl)
+		if skipMessagePrinted == false {
+			skipMessagePrinted = true
+			fmt.Printf("Skipping fluctus integration tests: " +
+				"fluctus server is not running at %s\n", fluctusUrl)
+		}
 		return false
 	}
 	return true
