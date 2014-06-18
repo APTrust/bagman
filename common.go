@@ -123,7 +123,7 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
         InstitutionId: institution.BriefName,
         Title: result.BagReadResult.TagValue("Title"),
         Description: result.BagReadResult.TagValue("Description"),
-        Identifier: identifier,
+        Id: identifier,
         Access: accessRights,
 		GenericFiles: result.GenericFiles(),
     }

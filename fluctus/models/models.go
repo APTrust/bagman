@@ -107,12 +107,10 @@ Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
-	// TODO: Resolve duplication between Id and Identifier
-    Id                 string         `json:"id"`
+    Id                 string         `json:"pid"`
     InstitutionId      string         `json:"institution_id"`
     Title              string         `json:"title"`
     Description        string         `json:"description"`
-    Identifier         string         `json:"identifier"`
     Access             string         `json:"access"`
 	GenericFiles       []*GenericFile `json:"generic_files"`
 }
@@ -132,7 +130,9 @@ func (obj *IntellectualObject) AccessValid() bool {
 // Serialize the subset of IntellectualObject data that fluctus
 // will accept.
 func (obj *IntellectualObject) SerializeForFluctus() ([]byte, error) {
+	// TODO: Why does fluctus require both pid and identifier?
     return json.Marshal(map[string]interface{}{
+		"pid": obj.Id,
 		"identifier": obj.Id,
 		"title": obj.Title,
 		"institution_id": obj.InstitutionId,

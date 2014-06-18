@@ -159,13 +159,15 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 // exists in Fluctus.
 func (client *Client) IntellectualObjectGet (identifier string) (*models.IntellectualObject, error) {
 	url := client.BuildUrl(fmt.Sprintf("/objects/%s", identifier))
-	client.logger.Printf("[INFO] Requesting IntellectualObject from fluctus: %s", url)
+	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", url)
 	request, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
+		fmt.Println(err)
 		return nil, err
 	}
 	// 404 for object not found
@@ -192,7 +194,7 @@ func (client *Client) IntellectualObjectGet (identifier string) (*models.Intelle
 
 // Saves an IntellectualObject to fluctus.
 func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
-	existingObj, err := client.IntellectualObjectGet(obj.Identifier)
+	existingObj, err := client.IntellectualObjectGet(obj.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +203,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
-		url = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Identifier))
+		url = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Id))
 		method = "PUT"
 	}
 	data, err := obj.SerializeForFluctus()
@@ -214,25 +216,30 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 		return nil, err
 	}
 
-	// 200 = OK, 201 = Created, 202 = Accepted
-	if response.StatusCode < 200 || response.StatusCode > 202 {
-		err = fmt.Errorf("Expected status code 200-201 but got %d. URL: %s",
+	// Fluctus returns 201 (Created) on create, 204 (No content) on update
+	if response.StatusCode != 201 && response.StatusCode != 204 {
+		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s",
 			response.StatusCode, request.URL)
 		return nil, err
 	}
+
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	newObj = &models.IntellectualObject{}
-	err = json.Unmarshal(body, newObj)
-	if err != nil {
-		return nil, err
+	// On create, Fluctus returns the new object. On update, it returns nothing.
+	if len(body) > 0 {
+		newObj = &models.IntellectualObject{}
+		err = json.Unmarshal(body, newObj)
+		if err != nil {
+			return nil, err
+		}
+		return newObj, nil
+	} else {
+		return obj, nil
 	}
-	return newObj, nil
-
 }
 
 

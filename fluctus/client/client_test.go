@@ -5,8 +5,9 @@ import (
 	"fmt"
     "log"
 	"os"
+	"io/ioutil"
 	"net/http"
-//    "github.com/APTrust/bagman"
+	"time"
     "github.com/APTrust/bagman/fluctus/client"
 )
 
@@ -24,7 +25,9 @@ func runFluctusTests() (bool) {
 }
 
 func getClient(t *testing.T) (*client.Client) {
-	logger := log.New(os.Stdout, "", 0)
+	// If you want to debug, change ioutil.Discard to os.Stdout
+	// to see log output from the client.
+	logger := log.New(ioutil.Discard, "", 0)
 	client, err := client.New(fluctusUrl,
 		os.Getenv("FLUCTUS_API_USER"),
 		os.Getenv("FLUCTUS_API_KEY"),
@@ -72,10 +75,22 @@ func TestIntellectualObjectSave(t *testing.T) {
         t.Error("IntellectualObjectGet did not return the expected object")
 	}
 
+	// Update an existing object
 	newObj, err := client.IntellectualObjectSave(obj)
 	if err != nil {
         t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
     }
-	fmt.Println(obj)
-	fmt.Println(newObj)
+	if newObj.Id != obj.Id || newObj.Title != obj.Title || newObj.Description != obj.Description {
+		t.Error("New object attributes don't match what was submitted.")
+	}
+
+	// Save a new object... just change the id, so Fluctus thinks it's new
+	obj.Id = fmt.Sprintf("test:%d", time.Now().Unix())
+	newObj, err = client.IntellectualObjectSave(obj)
+	if err != nil {
+        t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
+    }
+	if newObj.Id != obj.Id || newObj.Title != obj.Title || newObj.Description != obj.Description {
+		t.Error("New object attributes don't match what was submitted.")
+	}
 }

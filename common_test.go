@@ -208,9 +208,9 @@ func TestIntellectualObject(t *testing.T) {
             obj.Description,
             "Description of intellectual object.")
     }
-    if obj.Identifier != "ncsu.edu.ncsu.1840.16-2928" {
+    if obj.Id != "ncsu.edu.ncsu.1840.16-2928" {
         t.Errorf("IntellectualObject.Identifier is '%s', expected '%s'.",
-            obj.Identifier,
+            obj.Id,
             "ncsu.edu.ncsu.1840.16-2928")
     }
     if obj.Access != "Consortial" {
