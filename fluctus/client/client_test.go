@@ -11,8 +11,10 @@ import (
     "github.com/APTrust/bagman/fluctus/client"
 )
 
+// TODO: Fix tests so they don't depend on these hard-coded ids!
 var fluctusUrl string = "http://localhost:3000"
 var objId string = "changeme:28082"
+var gfId string = "changeme:28062"
 var skipMessagePrinted bool = false
 
 func runFluctusTests() (bool) {
@@ -128,4 +130,56 @@ func TestIntellectualObjectSave(t *testing.T) {
 	if newObj.Id != obj.Id || newObj.Title != obj.Title || newObj.Description != obj.Description {
 		t.Error("New object attributes don't match what was submitted.")
 	}
+}
+
+func TestGenericFileGet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+
+	// Get the lightweight version of an existing object
+	gf, err := client.GenericFileGet(gfId, false)
+	if err != nil {
+        t.Errorf("Error asking fluctus for GenericFile: %v", err)
+    }
+	if gf == nil {
+        t.Error("GenericFileGet did not return the expected object")
+	}
+	if gf != nil && len(gf.Events) > 0 {
+        t.Error("GenericFile has Events. It shouldn't.")
+	}
+	if gf != nil && len(gf.ChecksumAttributes) > 0 {
+        t.Error("GenericFile has ChecksumAttributes. It shouldn't.")
+	}
+
+
+	// Get the heavyweight version of an existing generic file,
+	// and make sure the related fields are actually there.
+	gf, err = client.GenericFileGet(gfId, true)
+	if err != nil {
+        t.Errorf("Error asking fluctus for GenericFile: %v", err)
+    }
+	if gf == nil {
+        t.Error("GenericFile did not return the expected object")
+	}
+	if gf != nil {
+		if len(gf.Events) == 0 {
+			t.Error("GenericFile from Fluctus is missing events.")
+		}
+		if len(gf.ChecksumAttributes) == 0 {
+			t.Error("GenericFile from Fluctus is missing checksums.")
+		}
+	}
+
+
+	// Make sure we don't blow up when fetching an object that does not exist.
+	gf, err = client.GenericFileGet("changeme:99999", false)
+	if err != nil {
+        t.Errorf("Error asking fluctus for GenericFile: %v", err)
+    }
+	if gf != nil {
+        t.Errorf("GenericFile returned something that shouldn't be there: %v", gf)
+    }
+
 }

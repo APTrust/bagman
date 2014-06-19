@@ -252,6 +252,45 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 }
 
 
+func (client *Client) GenericFileGet (identifier string, includeRelations bool) (*models.GenericFile, error) {
+	queryString := ""
+	if includeRelations == true {
+		queryString = "include_relations=true"
+	}
+	url := client.BuildUrl(fmt.Sprintf("/files/%s?%s", identifier, queryString))
+	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", url)
+	request, err := client.NewJsonRequest("GET", url.String(), nil)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+	// 404 for object not found
+	if response.StatusCode != 200 {
+		return nil, nil
+	}
+
+	// Read the json response
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Build and return the data structure
+	obj := &models.GenericFile{}
+	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+
 /*
 POST: http://localhost:3000/institutions/changeme:3/objects.json
 {
