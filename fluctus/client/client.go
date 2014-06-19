@@ -155,10 +155,16 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	return status, nil
 }
 
-// Returns true/false indicating whether an IntellectualObject
-// exists in Fluctus.
-func (client *Client) IntellectualObjectGet (identifier string) (*models.IntellectualObject, error) {
-	url := client.BuildUrl(fmt.Sprintf("/objects/%s", identifier))
+// Returns the IntellectualObject with the specified id, or nil of no
+// such object exists. If includeRelations is false, this returns only
+// the IntellectualObject. If includeRelations is true, this returns
+// the IntellectualObject with all of its GenericFiles and Events.
+func (client *Client) IntellectualObjectGet (identifier string, includeRelations bool) (*models.IntellectualObject, error) {
+	queryString := ""
+	if includeRelations == true {
+		queryString = "include_relations=true"
+	}
+	url := client.BuildUrl(fmt.Sprintf("/objects/%s?%s", identifier, queryString))
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", url)
 	request, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
@@ -192,9 +198,11 @@ func (client *Client) IntellectualObjectGet (identifier string) (*models.Intelle
 }
 
 
-// Saves an IntellectualObject to fluctus.
+// Saves an IntellectualObject to fluctus. This function
+// figures out whether the save is a create or an update.
+// It returns the IntellectualObject.
 func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
-	existingObj, err := client.IntellectualObjectGet(obj.Id)
+	existingObj, err := client.IntellectualObjectGet(obj.Id, false)
 	if err != nil {
 		return nil, err
 	}

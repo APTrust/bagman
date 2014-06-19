@@ -48,15 +48,45 @@ func TestIntellectualObjectGet(t *testing.T) {
 		return
 	}
 	client := getClient(t)
-	obj, err := client.IntellectualObjectGet(objId)
+
+	// Get the lightweight version of an existing object
+	obj, err := client.IntellectualObjectGet(objId, false)
 	if err != nil {
         t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
     }
 	if obj == nil {
         t.Error("IntellectualObjectGet did not return the expected object")
 	}
+	if obj != nil && len(obj.GenericFiles) > 0 {
+        t.Error("IntellectualObject has GenericFiles. It shouldn't.")
+	}
 
-	obj, err = client.IntellectualObjectGet("changeme:99999")
+	// Get the heavyweight version of an existing object,
+	// and make sure the related fields are actually there.
+	obj, err = client.IntellectualObjectGet(objId, true)
+	if err != nil {
+        t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
+    }
+	if obj == nil {
+        t.Error("IntellectualObjectGet did not return the expected object")
+	}
+	if obj != nil {
+		if len(obj.GenericFiles) == 0 {
+			t.Error("IntellectualObject has no GenericFiles, but it should.")
+		}
+		for _, gf := range obj.GenericFiles {
+			if len(gf.Events) == 0 {
+				t.Error("GenericFile from Fluctus is missing events.")
+			}
+			if len(gf.ChecksumAttributes) == 0 {
+				t.Error("GenericFile from Fluctus is missing checksums.")
+			}
+		}
+	}
+
+
+	// Make sure we don't blow up when fetching an object that does not exist.
+	obj, err = client.IntellectualObjectGet("changeme:99999", false)
 	if err != nil {
         t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
     }
@@ -71,7 +101,7 @@ func TestIntellectualObjectSave(t *testing.T) {
 		return
 	}
 	client := getClient(t)
-	obj, err := client.IntellectualObjectGet(objId)
+	obj, err := client.IntellectualObjectGet(objId, false)
 	if err != nil {
         t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
     }
