@@ -146,6 +146,8 @@ func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
             Digest: file.Sha256,
         }
         files[i] = &models.GenericFile{
+			Id: file.Uuid,
+			Identifier: file.Path,
             URI: file.StorageURL,
             Size: file.Size,
             Created: file.Modified,

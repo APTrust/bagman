@@ -242,6 +242,12 @@ func TestGenericFiles(t *testing.T) {
         if gf.Modified == emptyTime {
             t.Error("GenericFile.Modified should not be nil")
         }
+        if gf.Id == "" {
+            t.Errorf("GenericFile.Id should not be empty")
+        }
+        if strings.HasPrefix(gf.Identifier, "data/") == false {
+            t.Errorf("GenericFile.Identifier should be '%s', got '%s'", gf.Identifier)
+        }
         for _, cs := range gf.ChecksumAttributes {
             if cs.Algorithm != "md5" && cs.Algorithm != "sha256" {
                 t.Error("ChecksumAttribute.Algorithm should be either 'md5' or 'sha256'")

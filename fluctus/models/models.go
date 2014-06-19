@@ -185,6 +185,8 @@ such as:
 1994-11-05T08:15:30Z          (UTC)
 */
 type GenericFile struct {
+	Id                 string     `json:"id"`
+	Identifier         string     `json:"identifier"`
     Format             string     `json:"format"`
     URI                string     `json:"uri"`
     Size               int64      `json:"size"`
@@ -192,6 +194,19 @@ type GenericFile struct {
     Modified           time.Time  `json:"modified"`
     ChecksumAttributes []*ChecksumAttribute  `json:"checksum_attributes"`
     Events             []*PremisEvent        `json:"premisEvents"`
+}
+
+func (gf *GenericFile) SerializeForFluctus()([]byte, error) {
+    return json.Marshal(map[string]interface{}{
+		"id": gf.Id,
+		"identifier": gf.Identifier,
+		"format": gf.Format,
+		"uri": gf.URI,
+		"size": gf.Size,
+		"created": gf.Created,
+		"modified": gf.Modified,
+		"checksum_attributes": gf.ChecksumAttributes,
+    })
 }
 
 
