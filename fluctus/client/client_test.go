@@ -84,7 +84,8 @@ func TestIntellectualObjectSave(t *testing.T) {
 	if err != nil {
         t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
     }
-	if newObj.Id != obj.Id || newObj.Title != obj.Title || newObj.Description != obj.Description {
+	if newObj.Id != obj.Id || newObj.Title != obj.Title ||
+		newObj.Description != obj.Description {
 		t.Error("New object attributes don't match what was submitted.")
 	}
 

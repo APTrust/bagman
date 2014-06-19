@@ -216,21 +216,22 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 		return nil, err
 	}
 
-	// Fluctus returns 201 (Created) on create, 204 (No content) on update
-	if response.StatusCode != 201 && response.StatusCode != 204 {
-		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s",
-			response.StatusCode, request.URL)
-		return nil, err
-	}
-
 	defer response.Body.Close()
 	body, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
 	}
 
+	// Fluctus returns 201 (Created) on create, 204 (No content) on update
+	if response.StatusCode != 201 && response.StatusCode != 204 {
+		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s, Response Body: %s\n",
+			response.StatusCode, request.URL, body)
+		return nil, err
+	}
+
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
+		//client.logger.Println(string(body))
 		newObj = &models.IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {

@@ -107,7 +107,7 @@ Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
-    Id                 string         `json:"pid"`
+    Id                 string         `json:"id"`
     InstitutionId      string         `json:"institution_id"`
     Title              string         `json:"title"`
     Description        string         `json:"description"`
