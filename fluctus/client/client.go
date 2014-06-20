@@ -234,6 +234,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	if response.StatusCode != 201 && response.StatusCode != 204 {
 		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s, Response Body: %s\n",
 			response.StatusCode, request.URL, body)
+		client.logger.Println("[ERROR]", err)
 		return nil, err
 	}
 
@@ -289,6 +290,64 @@ func (client *Client) GenericFileGet (identifier string, includeRelations bool) 
 	}
 	return obj, nil
 }
+
+
+// Saves an GenericFile to fluctus. This function
+// figures out whether the save is a create or an update.
+// Param objId is the Id of the IntellectualObject to which
+// the file belongs. This returns the GenericFile.
+func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (newGf *models.GenericFile, err error) {
+	existingObj, err := client.GenericFileGet(gf.Id, false)
+	if err != nil {
+		return nil, err
+	}
+	// URL & method for create
+	url := client.BuildUrl(fmt.Sprintf("/objects/%s/files.json", objId))
+	method := "POST"
+	// URL & method for update
+	if existingObj != nil {
+		url = client.BuildUrl(fmt.Sprintf("/files/%s", gf.Id))
+		method = "PUT"
+	}
+	data, err := gf.SerializeForFluctus()
+	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	// Fluctus returns 201 (Created) on create, 204 (No content) on update
+	if response.StatusCode != 201 && response.StatusCode != 204 {
+		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s, Response Body: %s\n",
+			response.StatusCode, request.URL, body)
+		client.logger.Println("[ERROR]", err)
+		return nil, err
+	}
+
+	// On create, Fluctus returns the new object. On update, it returns nothing.
+	if len(body) > 0 {
+		//client.logger.Println(string(body))
+		newGf = &models.GenericFile{}
+		err = json.Unmarshal(body, newGf)
+		if err != nil {
+			return nil, err
+		}
+		return newGf, nil
+	} else {
+		return gf, nil
+	}
+}
+
+
 
 
 /*

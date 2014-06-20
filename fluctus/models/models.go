@@ -196,9 +196,9 @@ type GenericFile struct {
     Events             []*PremisEvent        `json:"premisEvents"`
 }
 
+// Serializes a version of GenericFile that Fluctus will accept as post/put input.
 func (gf *GenericFile) SerializeForFluctus()([]byte, error) {
     return json.Marshal(map[string]interface{}{
-		"id": gf.Id,
 		"identifier": gf.Identifier,
 		"format": gf.Format,
 		"uri": gf.URI,

@@ -14,7 +14,7 @@ import (
 // TODO: Fix tests so they don't depend on these hard-coded ids!
 var fluctusUrl string = "http://localhost:3000"
 var objId string = "changeme:28082"
-var gfId string = "changeme:28062"
+var gfId string = "changeme:28083"
 var skipMessagePrinted bool = false
 
 func runFluctusTests() (bool) {
@@ -182,4 +182,44 @@ func TestGenericFileGet(t *testing.T) {
         t.Errorf("GenericFile returned something that shouldn't be there: %v", gf)
     }
 
+}
+
+func TestGenericFileSave(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+	gf, err := client.GenericFileGet(gfId, true)
+	if err != nil {
+        t.Errorf("Error asking fluctus for GenericFile: %v", err)
+    }
+	if gf == nil {
+        t.Error("GenericFileGet did not return the expected file")
+	}
+
+	// Fluctus pukes when there's no identifier.
+	if gf.Identifier == "" {
+		gf.Identifier = "/data/blah/blah/blah.xml"
+	}
+
+	// Update an existing file
+	newGf, err := client.GenericFileSave(objId, gf)
+	if err != nil {
+        t.Errorf("Error updating existing GenericFile in fluctus: %v", err)
+    }
+	if newGf.Identifier != gf.Identifier || newGf.URI != gf.URI ||
+		newGf.Size != gf.Size {
+		t.Error("New file attributes don't match what was submitted.")
+	}
+
+	// Save a new file... just change the id, so Fluctus thinks it's new
+	gf.Id = fmt.Sprintf("test:%d", time.Now().Unix())
+	newGf, err = client.GenericFileSave(objId, gf)
+	if err != nil {
+        t.Errorf("Error saving new GenericFile to fluctus: %v", err)
+    }
+	if newGf.Identifier != gf.Identifier || newGf.URI != gf.URI ||
+		newGf.Size != gf.Size {
+		t.Error("New file attributes don't match what was submitted.")
+	}
 }
