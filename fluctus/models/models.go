@@ -113,6 +113,7 @@ type IntellectualObject struct {
     Description        string         `json:"description"`
     Access             string         `json:"access"`
 	GenericFiles       []*GenericFile `json:"generic_files"`
+	Events             []*PremisEvent `json:"events"`
 }
 
 // AccessValid returns true or false to indicate whether the

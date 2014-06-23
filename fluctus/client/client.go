@@ -24,7 +24,6 @@ type Client struct {
 	httpClient     *http.Client
 	transport      *http.Transport
 	logger         *log.Logger
-	requestCount   int
 }
 
 // Creates a new fluctus client. Param hostUrl should come from
@@ -38,7 +37,7 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 	}
 	transport := &http.Transport{ MaxIdleConnsPerHost: 12 }
 	httpClient := &http.Client{ Jar: cookieJar, Transport: transport }
-	return &Client{hostUrl, apiUser, apiKey, httpClient, transport, logger, 0}, nil
+	return &Client{hostUrl, apiUser, apiKey, httpClient, transport, logger}, nil
 }
 
 
@@ -113,18 +112,6 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 }
 
 func (client *Client) doStatusRequest(request *http.Request, expectedStatus int) (status *bagman.ProcessStatus, err error) {
-	// Trying to fix problem with too many connections in CLOSE_WAIT state.
-	// If we don't forcibly close idle connections, they'll pile up
-	// and the system fails with "too many open files" error.
-	// The call to CloseIdleConnections will close some idle connections
-	// that are in TIME_WAIT / keepalive, but we can pay that price.
-	client.requestCount++
-	if client.requestCount % 100 == 0 {
-		// client.logger.Println("[INFO] Used to force-close connections here...")
-		// client.logger.Println("[INFO] Fluctus client is forcibly closing idle HTTP connections")
-		// client.transport.CloseIdleConnections()
-	}
-
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, err
@@ -202,6 +189,9 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 // figures out whether the save is a create or an update.
 // It returns the IntellectualObject.
 func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
+	if obj == nil {
+		return nil, fmt.Errorf("Param obj cannot be nil")
+	}
 	existingObj, err := client.IntellectualObjectGet(obj.Id, false)
 	if err != nil {
 		return nil, err
@@ -335,7 +325,7 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		//client.logger.Println(string(body))
+		client.logger.Println(string(body))
 		newGf = &models.GenericFile{}
 		err = json.Unmarshal(body, newGf)
 		if err != nil {
@@ -346,51 +336,3 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		return gf, nil
 	}
 }
-
-
-
-
-/*
-POST: http://localhost:3000/institutions/changeme:3/objects.json
-{
-"title": "Sample Postman Object",
-"description": "This object was posted from Postman.",
-"identifier": "fe986240-cf11-11e3-9c1a-0800200c9a66",
-"rights": "consortial",
-"authenticity_token": "i5tOg3jccd8XQm49SfdMiCb6S9QeZm3GrGVDsCJuGxs="
-}
-Response: {"title":["Sample Postman Object"],"description":["This object was posted from Postman."],"rights":["consortial"]}
-
-Retrieve object by searching on identifier, like this (html, json):
-
-http://localhost:3000/institutions/changeme:3/objects?utf8=%E2%9C%93&q=fe986240-cf11-11e3-9c1a-0800200c9a66
-http://localhost:3000/institutions/changeme:3/objects.json?utf8=%E2%9C%93&q=fe986240-cf11-11e3-9c1a-0800200c9a66
-
-Would be nice if Rails returned the internal id of the new object. That id is in the Location Header, e.g.:
-http://localhost:3000/catalog/changeme:96
-
-Response code should be 201.
-
-Get events for this object:
-
-GET http://localhost:3000/objects/changeme:95/events.json
-
-Post a new event:
-
-POST http://localhost:3000/objects/changeme:96/events.json
-
-{
-  "type": "fixodent-6765",
-  "date_time": "",
-  "detail": "Glued dentures to gums",
-  "outcome": "success",
-  "outcome_detail": "MD5:012345678ABCDEF01234",
-  "outcome_information": "Multipart Put using md5 checksum",
-  "object": "ruby aws-s3 gem",
-  "agent": "https://github.com/marcel/aws-s3/tree/master",
-  "authenticity_token": "i5tOg3jccd8XQm49SfdMiCb6S9QeZm3GrGVDsCJuGxs="
-}
-
-This endpoint is returning HTML. Should be returning JSON.
-
-*/

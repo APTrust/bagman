@@ -7,14 +7,15 @@ import (
 	"os"
 	"io/ioutil"
 	"net/http"
+//	"encoding/json"
 	"time"
     "github.com/APTrust/bagman/fluctus/client"
 )
 
 // TODO: Fix tests so they don't depend on these hard-coded ids!
 var fluctusUrl string = "http://localhost:3000"
-var objId string = "changeme:28082"
-var gfId string = "changeme:28083"
+var objId string = "changeme:28586"
+var gfId string = "changeme:28587"
 var skipMessagePrinted bool = false
 
 func runFluctusTests() (bool) {
@@ -76,14 +77,17 @@ func TestIntellectualObjectGet(t *testing.T) {
 		if len(obj.GenericFiles) == 0 {
 			t.Error("IntellectualObject has no GenericFiles, but it should.")
 		}
-		for _, gf := range obj.GenericFiles {
+		gf := obj.GenericFiles[0]
+//		for _, gf := range obj.GenericFiles {
+//			j, _ := json.MarshalIndent(gf, "", "  ")
+//			fmt.Println(string(j))
 			if len(gf.Events) == 0 {
 				t.Error("GenericFile from Fluctus is missing events.")
 			}
 			if len(gf.ChecksumAttributes) == 0 {
 				t.Error("GenericFile from Fluctus is missing checksums.")
 			}
-		}
+//		}
 	}
 
 
@@ -109,6 +113,7 @@ func TestIntellectualObjectSave(t *testing.T) {
     }
 	if obj == nil {
         t.Error("IntellectualObjectGet did not return the expected object")
+		return // Can't finish remaining tests
 	}
 
 	// Update an existing object
@@ -116,7 +121,9 @@ func TestIntellectualObjectSave(t *testing.T) {
 	if err != nil {
         t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
     }
-	if newObj.Id != obj.Id || newObj.Title != obj.Title ||
+	if newObj == nil {
+		t.Error("New object should be an object, but it's nil.")
+	} else if newObj.Id != obj.Id || newObj.Title != obj.Title ||
 		newObj.Description != obj.Description {
 		t.Error("New object attributes don't match what was submitted.")
 	}
@@ -195,6 +202,7 @@ func TestGenericFileSave(t *testing.T) {
     }
 	if gf == nil {
         t.Error("GenericFileGet did not return the expected file")
+		return // Can't finish remaining tests
 	}
 
 	// Fluctus pukes when there's no identifier.
@@ -206,6 +214,7 @@ func TestGenericFileSave(t *testing.T) {
 	newGf, err := client.GenericFileSave(objId, gf)
 	if err != nil {
         t.Errorf("Error updating existing GenericFile in fluctus: %v", err)
+		return // Can't proceed with other tests if this didn't work
     }
 	if newGf.Identifier != gf.Identifier || newGf.URI != gf.URI ||
 		newGf.Size != gf.Size {
@@ -217,6 +226,7 @@ func TestGenericFileSave(t *testing.T) {
 	newGf, err = client.GenericFileSave(objId, gf)
 	if err != nil {
         t.Errorf("Error saving new GenericFile to fluctus: %v", err)
+		return // Can't proceed with next test
     }
 	if newGf.Identifier != gf.Identifier || newGf.URI != gf.URI ||
 		newGf.Size != gf.Size {
