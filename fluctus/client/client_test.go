@@ -9,13 +9,15 @@ import (
 	"net/http"
 //	"encoding/json"
 	"time"
-    "github.com/APTrust/bagman/fluctus/client"
+	"github.com/nu7hatch/gouuid"
+	"github.com/APTrust/bagman/fluctus/client"
+    "github.com/APTrust/bagman/fluctus/models"
 )
 
 // TODO: Fix tests so they don't depend on these hard-coded ids!
 var fluctusUrl string = "http://localhost:3000"
-var objId string = "changeme:28586"
-var gfId string = "changeme:28587"
+var objId string = "changeme:29323"
+var gfId string = "changeme:29324"
 var skipMessagePrinted bool = false
 
 func runFluctusTests() (bool) {
@@ -78,16 +80,12 @@ func TestIntellectualObjectGet(t *testing.T) {
 			t.Error("IntellectualObject has no GenericFiles, but it should.")
 		}
 		gf := obj.GenericFiles[0]
-//		for _, gf := range obj.GenericFiles {
-//			j, _ := json.MarshalIndent(gf, "", "  ")
-//			fmt.Println(string(j))
-			if len(gf.Events) == 0 {
-				t.Error("GenericFile from Fluctus is missing events.")
-			}
-			if len(gf.ChecksumAttributes) == 0 {
-				t.Error("GenericFile from Fluctus is missing checksums.")
-			}
-//		}
+		if len(gf.Events) == 0 {
+			t.Error("GenericFile from Fluctus is missing events.")
+		}
+		if len(gf.ChecksumAttributes) == 0 {
+			t.Error("GenericFile from Fluctus is missing checksums.")
+		}
 	}
 
 
@@ -232,4 +230,73 @@ func TestGenericFileSave(t *testing.T) {
 		newGf.Size != gf.Size {
 		t.Error("New file attributes don't match what was submitted.")
 	}
+}
+
+
+func TestEventSave(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+
+	eventId, err := uuid.NewV4()
+	if err != nil {
+		t.Errorf("Error generating UUID: %v", err)
+	}
+	ingestEvent := &models.PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "Ingest",
+		DateTime: time.Now(),
+		Detail: "Completed copy to perservation bucket",
+		Outcome: "Success",
+		OutcomeDetail: "md5: 000000001234567890",
+		Object: "goamz S3 client",
+		Agent: "https://launchpad.net/goamz",
+		OutcomeInformation: "Multipart put using md5 checksum",
+	}
+
+	// Make sure we can save an IntellectualObject event
+	obj, err := client.PremisEventSave(objId, "IntellectualObject", ingestEvent)
+	if err != nil {
+        t.Errorf("Error saving IntellectualObject ingest event to Fluctus: %v", err)
+    }
+	if obj == nil {
+        t.Error("PremisEventSave did not return the expected event object")
+		return // Can't finish remaining tests
+	}
+	if obj.Identifier != ingestEvent.Identifier {
+        t.Error("PremisEventSave returned object with wrong id")
+	}
+
+
+	eventId, err = uuid.NewV4()
+	if err != nil {
+		t.Errorf("Error generating UUID: %v", err)
+	}
+	identifierEvent := &models.PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "identifier_assignment",
+		DateTime: time.Now(),
+		Detail: "S3 key generated for file",
+		Outcome: "Success",
+		OutcomeDetail: "00000000-0000-0000-0000-000000000000",
+		Object: "GoUUID",
+		Agent: "https://github.com/nu7hatch/gouuid",
+		OutcomeInformation: "Generated with uuid.NewV4()",
+	}
+
+	// Make sure we can save an IntellectualObject event
+	obj, err = client.PremisEventSave(gfId, "GenericFile", identifierEvent)
+	if err != nil {
+        t.Errorf("Error saving GenericFile identifier assignment event to Fluctus: %v", err)
+    }
+	if obj == nil {
+        t.Error("PremisEventSave did not return the expected event object")
+		return // Can't finish remaining tests
+	}
+	if obj.Identifier != identifierEvent.Identifier {
+        t.Error("PremisEventSave returned object with wrong id")
+	}
+
+
 }

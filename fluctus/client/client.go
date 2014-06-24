@@ -335,7 +335,7 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		client.logger.Println(string(body))
+		// client.logger.Println(string(body))
 		newGf = &models.GenericFile{}
 		err = json.Unmarshal(body, newGf)
 		if err != nil {
@@ -399,15 +399,12 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 		client.logger.Printf("[INFO] %s PremisEvent %s for objId %s succeeded", method, event.EventType, objId)
 	}
 
-	if len(body) > 0 {
-		client.logger.Println(string(body))
-		newEvent = &models.PremisEvent{}
-		err = json.Unmarshal(body, newEvent)
-		if err != nil {
-			return nil, err
-		}
-		return newEvent, nil
-	} else {
-		return event, nil
+	// Fluctus should always return the newly created event
+	// client.logger.Println(string(body))
+	newEvent = &models.PremisEvent{}
+	err = json.Unmarshal(body, newEvent)
+	if err != nil {
+		return nil, err
 	}
+	return newEvent, nil
 }
