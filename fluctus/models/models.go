@@ -70,6 +70,7 @@ OutcomeInformation contains the text of an error message, if
 Outcome was failure.
 */
 type PremisEvent struct {
+	Identifier         string     `json:"identifier"`
     EventType          string     `json:"type"`
     DateTime           time.Time  `json:"date_time"`
     Detail             string     `json:"detail"`
@@ -79,6 +80,23 @@ type PremisEvent struct {
     Agent              string     `json:"agent"`
     OutcomeInformation string     `json:"outcome_information"`
 }
+
+// // Serialize the subset of PremisEvent data that fluctus
+// // will accept. We're serializing everything but the id.
+// func (event *PremisEvent) SerializeForFluctus() ([]byte, error) {
+//     return json.Marshal(map[string]interface{}{
+// 		"event_type": event.EventType,
+// 		"date_time": event.DateTime,
+// 		"detail": event.Detail,
+// 		"outcome": event.Outcome,
+// 		"outcome_detail": event.OutcomeDetail,
+// 		"object": event.Object,
+// 		"agent": event.Agent,
+// 		"outcome_information": event.OutcomeInformation,
+//     })
+// }
+
+
 
 /*
 Institution represents an institution in fluctus. Name is the

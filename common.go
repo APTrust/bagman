@@ -9,6 +9,7 @@ import (
     "encoding/json"
     "launchpad.net/goamz/s3"
     "github.com/bitly/go-nsq"
+	"github.com/nu7hatch/gouuid"
     "github.com/APTrust/bagman/fluctus/models"
 )
 
@@ -105,7 +106,7 @@ type ProcessResult struct {
 // which describes what was unpacked from the bag. The IntellectualObject
 // structure matches Fluctus' IntellectualObject model, and can be sent
 // directly to Fluctus for recording.
-func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObject) {
+func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObject, err error) {
     accessRights := result.BagReadResult.TagValue("Access")
     if accessRights == "" {
         accessRights = result.BagReadResult.TagValue("Rights")
@@ -118,20 +119,25 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
     identifier := fmt.Sprintf("%s.%s",
         institution.BriefName,
         result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
-    return &models.IntellectualObject{
+	files, err := result.GenericFiles()
+	if err != nil {
+		return nil, err
+	}
+    obj = &models.IntellectualObject{
 		// TODO: Use proper institution id
         InstitutionId: institution.BriefName,
         Title: result.BagReadResult.TagValue("Title"),
         Description: result.BagReadResult.TagValue("Description"),
         Id: identifier,
         Access: accessRights,
-		GenericFiles: result.GenericFiles(),
+		GenericFiles: files,
     }
+	return obj, nil
 }
 
 // GenericFiles returns a list of GenericFile objects that were found
 // in the bag.
-func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
+func (result *ProcessResult) GenericFiles() (files []*models.GenericFile, err error) {
     files = make([]*models.GenericFile, len(result.TarResult.GenericFiles))
     for i, file := range(result.TarResult.GenericFiles) {
         checksumAttributes := make([]*models.ChecksumAttribute, 2)
@@ -145,6 +151,10 @@ func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
             DateTime: file.Sha256Generated,
             Digest: file.Sha256,
         }
+		events, err := PremisEvents(file)
+		if err != nil {
+			return nil, err
+		}
         files[i] = &models.GenericFile{
 			Id: file.Uuid,
 			Identifier: file.Path,
@@ -153,20 +163,26 @@ func (result *ProcessResult) GenericFiles() (files []*models.GenericFile) {
             Created: file.Modified,
             Modified: file.Modified,
             ChecksumAttributes: checksumAttributes,
-            Events: PremisEvents(file),
+            Events: events,
         }
     }
-    return files
+    return files, nil
 }
 
 // PremisEvents returns a list of Premis events generated during bag
 // processing. Ingest, Fixity Generation (sha256), identifier
 // assignment.
-func PremisEvents(gf *GenericFile) (events []*models.PremisEvent) {
+func PremisEvents(gf *GenericFile) (events []*models.PremisEvent, err error) {
     events = make([]*models.PremisEvent, 3)
     // Ingest
-    // TODO: Actual timestamp and handle success/failure
+    ingestEventUuid, err := uuid.NewV4()
+	if err != nil {
+		detailedErr := fmt.Errorf("Error generating UUID for ingest event: %v", err)
+		return nil, detailedErr
+	}
+	// TODO: Use actual timestamp instead of blank time struct
     events[0] = &models.PremisEvent{
+		Identifier: ingestEventUuid.String(),
         EventType: "Ingest",
         DateTime: time.Time{},
         Detail: "Completed copy to S3",
@@ -177,7 +193,13 @@ func PremisEvents(gf *GenericFile) (events []*models.PremisEvent) {
         OutcomeInformation: "Put using md5 checksum",
     }
     // Fixity Generation (sha256)
+    fixityGenUuid, err := uuid.NewV4()
+	if err != nil {
+		detailedErr := fmt.Errorf("Error generating UUID for fixity generation event: %v", err)
+		return nil, detailedErr
+	}
     events[1] = &models.PremisEvent{
+		Identifier: fixityGenUuid.String(),
         EventType: "Fixity Generation",
         DateTime: gf.Sha256Generated,
         Detail: "Calculated new fixity value",
@@ -188,7 +210,13 @@ func PremisEvents(gf *GenericFile) (events []*models.PremisEvent) {
         OutcomeInformation: "",
     }
     // Identifier assignment
+    idAssignmentUuid, err := uuid.NewV4()
+	if err != nil {
+		detailedErr := fmt.Errorf("Error generating UUID for identifier assignment event: %v", err)
+		return nil, detailedErr
+	}
     events[2] = &models.PremisEvent{
+		Identifier: idAssignmentUuid.String(),
         EventType: "Identifier Assignment",
         DateTime: gf.UuidGenerated,
         Detail: "Assigned new identifier",
@@ -198,7 +226,7 @@ func PremisEvents(gf *GenericFile) (events []*models.PremisEvent) {
         Agent: "http://github.com/nu7hatch/gouuid",
         OutcomeInformation: "",
     }
-    return events
+    return events, nil
 }
 
 // IngestStatus returns a lightweight Status object suitable for reporting

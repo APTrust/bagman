@@ -197,7 +197,10 @@ func TestIntellectualObject(t *testing.T) {
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
-    obj := result.IntellectualObject()
+    obj, err := result.IntellectualObject()
+	if err != nil {
+		t.Errorf("Error creating intellectual object from result: %v", err)
+	}
     if obj.Title != "Title of an Intellectual Object" {
         t.Errorf("IntellectualObject.Title is '%s', expected '%s'.",
             obj.Title,
@@ -227,8 +230,10 @@ func TestGenericFiles(t *testing.T) {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
     emptyTime := time.Time{}
-    genericFiles := result.GenericFiles()
-
+    genericFiles, err := result.GenericFiles()
+	if err != nil {
+		t.Errorf("Error creating generic files from result: %v", err)
+	}
     for _, gf := range(genericFiles) {
         if gf.URI == "" {
             t.Error("GenericFile.URI should not be nil")
@@ -326,7 +331,10 @@ func TestPremisEvents(t *testing.T) {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
     emptyTime := time.Time{}
-    genericFiles := result.GenericFiles()
+    genericFiles, err := result.GenericFiles()
+	if err != nil {
+		t.Errorf("Error creating generic files from result: %v", err)
+	}
     for i, file := range(genericFiles) {
         if file.Events[0].EventType != "Ingest" {
             t.Errorf("EventType is '%s', expected '%s'",
@@ -338,6 +346,10 @@ func TestPremisEvents(t *testing.T) {
                 file.Events[0].DateTime,
                 emptyTime)
         }
+        if file.Events[0].Identifier == "" {
+            t.Errorf("Ingest event identifier is missing")
+        }
+
         if file.Events[1].EventType != "Fixity Generation" {
             t.Errorf("EventType is '%s', expected '%s'",
                 file.Events[1].EventType,
@@ -353,6 +365,10 @@ func TestPremisEvents(t *testing.T) {
                 file.Events[1].OutcomeDetail,
                 result.TarResult.GenericFiles[i].Sha256)
         }
+        if file.Events[1].Identifier == "" {
+            t.Errorf("Fixity generation event identifier is missing")
+        }
+
         if file.Events[2].EventType != "Identifier Assignment" {
             t.Errorf("EventType is '%s', expected '%s'",
                 file.Events[2].EventType,
@@ -368,5 +384,9 @@ func TestPremisEvents(t *testing.T) {
                 file.Events[2].OutcomeDetail,
                 result.TarResult.GenericFiles[i].Uuid)
         }
+        if file.Events[2].Identifier == "" {
+            t.Errorf("Identifier assignement event id is missing")
+        }
+
     }
 }

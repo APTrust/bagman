@@ -204,6 +204,9 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 		url = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Id))
 		method = "PUT"
 	}
+
+	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Id)
+
 	data, err := obj.SerializeForFluctus()
 	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
 	if err != nil {
@@ -226,6 +229,8 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 			response.StatusCode, request.URL, body)
 		client.logger.Println("[ERROR]", err)
 		return nil, err
+	} else {
+		client.logger.Printf("[INFO] %s IntellectualObject %s succeeded", method, obj.Id)
 	}
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
@@ -299,6 +304,9 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		url = client.BuildUrl(fmt.Sprintf("/files/%s", gf.Id))
 		method = "PUT"
 	}
+
+	client.logger.Printf("[INFO] About to %s GenericFile %s to Fluctus", method, gf.Identifier)
+
 	data, err := gf.SerializeForFluctus()
 	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
 	if err != nil {
@@ -321,6 +329,8 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 			response.StatusCode, request.URL, body)
 		client.logger.Println("[ERROR]", err)
 		return nil, err
+	} else {
+		client.logger.Printf("[INFO] %s GenericFile %s succeeded", method, gf.Identifier)
 	}
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
@@ -334,5 +344,70 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		return newGf, nil
 	} else {
 		return gf, nil
+	}
+}
+
+
+// Saves a PremisEvent to Fedora. Param objId should be the IntellectualObject id
+// if you're recording an object-related event, such as ingest; or a GenericFile id
+// if you're recording a file-related event, such as fixity generation.
+// Param objType must be either "IntellectualObject" or "GenericFile".
+// Param event is the event you wish to save. This returns the event that comes
+// back from Fluctus. Note that you can create events, but you cannot update them.
+// All saves will create new events!
+func (client *Client) PremisEventSave (objId, objType string, event *models.PremisEvent) (newEvent *models.PremisEvent, err error) {
+	if objId == "" {
+		return nil, fmt.Errorf("Param objId cannot be empty")
+	}
+	if objType != "IntellectualObject" && objType != "GenericFile" {
+		return nil, fmt.Errorf("Param objType must be either 'IntellectualObject' or 'GenericFile'")
+	}
+	if event == nil {
+		return nil, fmt.Errorf("Param event cannot be nil")
+	}
+
+	method := "POST"
+	url := client.BuildUrl(fmt.Sprintf("/files/%s/events.json", objId))
+	if objType == "IntellectualObject" {
+		url = client.BuildUrl(fmt.Sprintf("/objects/%s/events.json", objId))
+	}
+
+	client.logger.Printf("[INFO] Creating %s PremisEvent %s for objId %s", objType, event.EventType, objId)
+
+	data, err := json.Marshal(event)
+	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 201  {
+		err = fmt.Errorf("Expected status code 201 but got %d. URL: %s, Response Body: %s\n",
+			response.StatusCode, request.URL, body)
+		client.logger.Println("[ERROR]", err)
+		return nil, err
+	} else {
+		client.logger.Printf("[INFO] %s PremisEvent %s for objId %s succeeded", method, event.EventType, objId)
+	}
+
+	if len(body) > 0 {
+		client.logger.Println(string(body))
+		newEvent = &models.PremisEvent{}
+		err = json.Unmarshal(body, newEvent)
+		if err != nil {
+			return nil, err
+		}
+		return newEvent, nil
+	} else {
+		return event, nil
 	}
 }
