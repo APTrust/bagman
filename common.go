@@ -408,9 +408,11 @@ type MetadataRecord struct {
 	// It will be empty if there was no error, or if we have not yet
 	// attempted to save the item.
 	ErrorMessage string
-	// If true, this indicates the data was saved successfully in
-	// Fluctus/Fedora. Default is false.
-	Succeeded    bool
+}
+
+// Returns true if this bit of metadata was successfully saved to Fluctus/Fedora.
+func (record *MetadataRecord) Succeeded() (bool) {
+	return record.ErrorMessage == ""
 }
 
 // FedoraResult is a collection of MetadataRecords, each indicating
@@ -429,16 +431,27 @@ func NewFedoraResult(objectIdentifier string, genericFilePaths []string)(*Fedora
 }
 
 // AddRecord adds a new MetadataRecord to the Fedora result.
-func (result *FedoraResult) AddRecord (recordType, action, eventObject, errorMessage string, succeeded bool) (error) {
+func (result *FedoraResult) AddRecord (recordType, action, eventObject, errorMessage string) (error) {
 	if recordType != "IntellectualObject" && recordType != "GenericFile" && recordType !=  "PremisEvent" {
 		return fmt.Errorf("Param recordType must be one of 'IntellectualObject', 'GenericFile', or 'PremisEvent'")
+	}
+	if recordType == "PremisEvent" && action != "ingest" &&
+		action != "identifier_assignment" && action != "fixity_generation" {
+		return fmt.Errorf("'%s' is not a valid action for PremisEvent", action)
+	} else if recordType == "IntellectualObject" && action != "object_registered" {
+		return fmt.Errorf("'%s' is not a valid action for IntellectualObject", action)
+	} else if recordType == "GenericFile" && action != "file_registered" {
+		return fmt.Errorf("'%s' is not a valid action for GenericFile", action)
+	}
+	if eventObject == "" {
+		return fmt.Errorf("Param eventObject cannot be empty")
 	}
 	record := &MetadataRecord{
 		Type: recordType,
 		Action: action,
 		EventObject: eventObject,
 		ErrorMessage: errorMessage,
-		Succeeded: succeeded}
+	}
 	result.MetadataRecords = append(result.MetadataRecords, record)
 	return nil
 }
@@ -466,9 +479,9 @@ func (result *FedoraResult) FindRecord(recordType, action, eventObject string) (
 
 // Returns true/false to indicate whether the specified bit of
 // metadata was recorded successfully in Fluctus/Fedora.
-func (result *FedoraResult) Succeeded(recordType, action, eventObject string) (bool) {
+func (result *FedoraResult) RecordSucceeded(recordType, action, eventObject string) (bool) {
 	record := result.FindRecord(recordType, action, eventObject)
-	return record != nil && record.Succeeded
+	return record != nil && record.Succeeded()
 }
 
 // Returns true if all metadata was recorded successfully in Fluctus/Fedora.
@@ -495,9 +508,4 @@ func (result *FedoraResult) AllRecordsSucceeded() (bool) {
 		}
 	}
 	return true
-}
-
-func (result *FedoraResult) RecordSucceeded(recordType, action, eventObject string) (bool) {
-	record := result.FindRecord(recordType, action, eventObject)
-	return record != nil && record.Succeeded
 }

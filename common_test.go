@@ -415,3 +415,83 @@ func TestGenericFilePaths(t *testing.T) {
 		}
 	}
 }
+
+
+func TestMetadataRecordSucceeded(t *testing.T) {
+	record := &bagman.MetadataRecord{
+		Type: "PremisEvent",
+		Action: "fixity_generation",
+		EventObject: "data/ORIGINAL/1",
+		ErrorMessage: "",
+	}
+	if record.Succeeded() == false {
+		t.Error("MetadataRecord.Succeeded() returned false when it should return true")
+	}
+	record.ErrorMessage = "Server returned status code 403: forbidden"
+	if record.Succeeded() == true {
+		t.Error("MetadataRecord.Succeeded() returned true when it should return false")
+	}
+}
+
+func TestFedoraResultAddRecord (t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+	intellectualObject, err := result.IntellectualObject()
+	if err != nil {
+		t.Error(err)
+	}
+	genericFilePaths := result.TarResult.GenericFilePaths()
+	fedoraResult := bagman.NewFedoraResult(intellectualObject.Id, genericFilePaths)
+
+	// Add some invalid MetadataRecords, and make sure we get errors
+	// Bad type
+	err = fedoraResult.AddRecord("BadType", "some action", "some object", "")
+	if err == nil {
+		t.Errorf("FedoraResult.AddRecord did not reject record with bad type")
+	}
+	if len(fedoraResult.MetadataRecords) > 0 {
+		t.Errorf("FedoraResult.AddRecord added record with bad type to its collection")
+	}
+
+	// Good type, bad action
+	err = fedoraResult.AddRecord("PremisEvent", "some action", "some object", "")
+	if err == nil {
+		t.Errorf("FedoraResult.AddRecord did not reject record with bad action")
+	}
+	if len(fedoraResult.MetadataRecords) > 0 {
+		t.Errorf("FedoraResult.AddRecord added record with bad action to its collection")
+	}
+
+	// Good type, good action, missing eventObject
+	err = fedoraResult.AddRecord("PremisEvent", "some action", "", "")
+	if err == nil {
+		t.Errorf("FedoraResult.AddRecord did not reject record with missing event object")
+	}
+	if len(fedoraResult.MetadataRecords) > 0 {
+		t.Errorf("FedoraResult.AddRecord added record with missing event object to its collection")
+	}
+
+	// Good records
+	err = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
+	if err != nil {
+		t.Errorf("FedoraResult.AddRecord rejected a valid IntellectualObject record: %v", err)
+	}
+	err = fedoraResult.AddRecord("GenericFile", "file_registered", "data/ORIGINAL/1", "")
+	if err != nil {
+		t.Errorf("FedoraResult.AddRecord rejected a valid GenericFile record: %v", err)
+	}
+	err = fedoraResult.AddRecord("PremisEvent", "fixity_generation", "data/ORIGINAL/1", "")
+	if err != nil {
+		t.Errorf("FedoraResult.AddRecord rejected a valid PremisEvent record for fixity_generation: %v", err)
+	}
+	err = fedoraResult.AddRecord("PremisEvent", "identifier_assignment", "data/ORIGINAL/1", "")
+	if err != nil {
+		t.Errorf("FedoraResult.AddRecord rejected a valid PremisEvent record for identifier_assignment: %v", err)
+	}
+	if len(fedoraResult.MetadataRecords) != 4 {
+		t.Errorf("FedoraResult should have 4 MetadataRecords, but it has %d", len(fedoraResult.MetadataRecords))
+	}
+}
