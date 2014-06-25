@@ -12,7 +12,17 @@ import (
     "github.com/APTrust/bagman"
 )
 
+// Empty timestamp
 var emptyTime time.Time = time.Time{}
+
+// Our test fixture describes a bag that includes the following file paths
+var	expectedPaths [4]string = [4]string{
+		"data/metadata.xml",
+		"data/object.properties",
+		"data/ORIGINAL/1",
+		"data/ORIGINAL/1-metadata.xml",
+	}
+
 
 func TestOwnerOf(t *testing.T) {
     if bagman.OwnerOf("aptrust.receiving.unc.edu") != "unc.edu" {
@@ -403,12 +413,6 @@ func TestGenericFilePaths(t *testing.T) {
 		t.Error("TarResult.GenericFilePaths returned no file paths")
 		return
 	}
-	expectedPaths := [...]string{
-		"data/metadata.xml",
-		"data/object.properties",
-		"data/ORIGINAL/1",
-		"data/ORIGINAL/1-metadata.xml",
-	}
 	for i, path := range(filepaths) {
 		if path != expectedPaths[i] {
 			t.Errorf("Expected filepath '%s', got '%s'", expectedPaths[i], path)
@@ -433,7 +437,8 @@ func TestMetadataRecordSucceeded(t *testing.T) {
 	}
 }
 
-func TestFedoraResultAddRecord (t *testing.T) {
+
+func getFedoraResult(t *testing.T) (*bagman.FedoraResult) {
     filepath := filepath.Join("testdata", "result_good.json")
     result, err := loadResult(filepath)
     if err != nil {
@@ -444,11 +449,16 @@ func TestFedoraResultAddRecord (t *testing.T) {
 		t.Error(err)
 	}
 	genericFilePaths := result.TarResult.GenericFilePaths()
-	fedoraResult := bagman.NewFedoraResult(intellectualObject.Id, genericFilePaths)
+	return bagman.NewFedoraResult(intellectualObject.Id, genericFilePaths)
+}
+
+func TestFedoraResultAddRecord (t *testing.T) {
+
+	fedoraResult := getFedoraResult(t)
 
 	// Add some invalid MetadataRecords, and make sure we get errors
 	// Bad type
-	err = fedoraResult.AddRecord("BadType", "some action", "some object", "")
+	err := fedoraResult.AddRecord("BadType", "some action", "some object", "")
 	if err == nil {
 		t.Errorf("FedoraResult.AddRecord did not reject record with bad type")
 	}
@@ -497,17 +507,8 @@ func TestFedoraResultAddRecord (t *testing.T) {
 }
 
 func TestFedoraResultFindRecord(t *testing.T) {
-    filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
-    if err != nil {
-        t.Errorf("Error loading test data file '%s': %v", filepath, err)
-    }
-	intellectualObject, err := result.IntellectualObject()
-	if err != nil {
-		t.Error(err)
-	}
-	genericFilePaths := result.TarResult.GenericFilePaths()
-	fedoraResult := bagman.NewFedoraResult(intellectualObject.Id, genericFilePaths)
+
+	fedoraResult := getFedoraResult(t)
 
 	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
 	_ = fedoraResult.AddRecord("GenericFile", "file_registered", "data/ORIGINAL/1", "")
@@ -530,4 +531,49 @@ func TestFedoraResultFindRecord(t *testing.T) {
 		t.Error("FedoraResult.FindRecord returned a record when it shouldn't have")
 	}
 
+}
+
+func TestFedoraResultRecordSucceeded(t *testing.T) {
+
+	fedoraResult := getFedoraResult(t)
+
+	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
+	_ = fedoraResult.AddRecord("GenericFile", "file_registered", "data/ORIGINAL/1", "Internet blew up")
+
+	succeeded := fedoraResult.RecordSucceeded("IntellectualObject", "object_registered",
+		fedoraResult.ObjectIdentifer)
+	if false == succeeded {
+		t.Error("FedoraResult.RecordSucceeded returned false when it should have returned true")
+	}
+	succeeded = fedoraResult.RecordSucceeded("GenericFile", "file_registered", "data/ORIGINAL/1")
+	if true == succeeded {
+		t.Error("FedoraResult.RecordSucceeded returned true when it should have returned false")
+	}
+}
+
+func TestAllRecordsSucceeded(t *testing.T) {
+
+	fedoraResult := getFedoraResult(t)
+
+	// Add successful events for the intellectual object
+	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
+	_ = fedoraResult.AddRecord("PremisEvent", "ingest", fedoraResult.ObjectIdentifer, "")
+	// Add successful events for each generic file
+	for _, path := range(expectedPaths) {
+		_ = fedoraResult.AddRecord("GenericFile", "file_registered", path, "")
+		_ = fedoraResult.AddRecord("PremisEvent", "identifier_assignment", path, "")
+		_ = fedoraResult.AddRecord("PremisEvent", "fixity_generation", path, "")
+	}
+
+	if fedoraResult.AllRecordsSucceeded() == false {
+		t.Error("FedoraResult.AllRecordsSucceeded() returned false when it should have returned true")
+	}
+
+	// Alter one record so it fails...
+	record := fedoraResult.FindRecord("PremisEvent", "fixity_generation", "data/ORIGINAL/1")
+	record.ErrorMessage = "Fluctus got drunk and dropped all punch cards in the toilet"
+
+	if fedoraResult.AllRecordsSucceeded() == true {
+		t.Error("FedoraResult.AllRecordsSucceeded() returned true when it should have returned false")
+	}
 }

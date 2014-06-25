@@ -417,12 +417,16 @@ func (record *MetadataRecord) Succeeded() (bool) {
 
 // FedoraResult is a collection of MetadataRecords, each indicating
 // whether or not some bit of metadata has been recorded in Fluctus/Fedora.
+// The bag processor needs to keep track of this information to ensure
+// it successfully records all metadata in Fedora.
 type FedoraResult struct {
 	ObjectIdentifer  string
 	GenericFilePaths []string
 	MetadataRecords  []*MetadataRecord
 }
 
+// Creates a new FedoraResult object with the specified IntellectualObject
+// identifier and list of GenericFile paths.
 func NewFedoraResult(objectIdentifier string, genericFilePaths []string)(*FedoraResult) {
 	return &FedoraResult{
 		ObjectIdentifer: objectIdentifier,
@@ -467,16 +471,6 @@ func (result *FedoraResult) FindRecord(recordType, action, eventObject string) (
 	return nil
 }
 
-// // Returns all MetadataRecords of the specified type.
-// func (result *FedoraResult) FindRecordsByType(recordType string) (records []*MetadataRecord) {
-// 	for _, record := range result.MetadataRecords {
-// 		if record.Type == recordType && record.Action == action {
-// 			records = append(records, record)
-// 		}
-// 	}
-// 	return records
-// }
-
 // Returns true/false to indicate whether the specified bit of
 // metadata was recorded successfully in Fluctus/Fedora.
 func (result *FedoraResult) RecordSucceeded(recordType, action, eventObject string) (bool) {
@@ -485,6 +479,25 @@ func (result *FedoraResult) RecordSucceeded(recordType, action, eventObject stri
 }
 
 // Returns true if all metadata was recorded successfully in Fluctus/Fedora.
+// A true result means that all of the following were successfully recorded:
+//
+// 1) Registration of the IntellectualObject. This may mean creating a new
+// IntellectualObject or updating an existing one.
+//
+// 2) Recording the ingest PremisEvent for the IntellectualObject.
+//
+// 3) Registration of EACH of the object's GenericFiles. This may mean
+// creating a new GenericFile or updating an existing one.
+//
+// 4) Recording the intentifier_assignment for EACH GenericFile. The
+// identifier is typically a UUID.
+//
+// 5) Recording the fixity_generation for EACH GenericFile. Although most
+// files already come with md5 checksums from S3, we always generate a
+// sha256 as well.
+//
+// A successful FedoraResult will have (2 + (3 * len(GenericFilePaths)))
+// successful MetadataRecords.
 func (result *FedoraResult) AllRecordsSucceeded() (bool) {
 	// Make sure the IntellectualObject was created
 	if false == result.RecordSucceeded("IntellectualObject", "object_registered", result.ObjectIdentifer) {
