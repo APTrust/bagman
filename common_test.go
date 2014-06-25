@@ -390,3 +390,28 @@ func TestPremisEvents(t *testing.T) {
 
     }
 }
+
+
+func TestGenericFilePaths(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+	filepaths := result.TarResult.GenericFilePaths()
+	if len(filepaths) == 0 {
+		t.Error("TarResult.GenericFilePaths returned no file paths")
+		return
+	}
+	expectedPaths := [...]string{
+		"data/metadata.xml",
+		"data/object.properties",
+		"data/ORIGINAL/1",
+		"data/ORIGINAL/1-metadata.xml",
+	}
+	for i, path := range(filepaths) {
+		if path != expectedPaths[i] {
+			t.Errorf("Expected filepath '%s', got '%s'", expectedPaths[i], path)
+		}
+	}
+}
