@@ -303,6 +303,17 @@ type TarResult struct {
     GenericFiles    []*GenericFile
 }
 
+// GenericFilePaths returns a list of all the GenericFile paths
+// that were untarred from the bag. The list will look something
+// like "data/file1.gif", "data/file2.pdf", etc.
+func (result *TarResult) GenericFilePaths() ([]string) {
+	paths := make([]string, len(result.GenericFiles))
+	for index, gf := range(result.GenericFiles) {
+		paths[index] = gf.Path
+	}
+	return paths
+}
+
 // This Tag struct is essentially the same as the bagins
 // TagField struct, but its properties are public and can
 // be easily serialized to / deserialized from JSON.
@@ -372,4 +383,121 @@ func ReceivingBucketFor (institution string) (bucketName string) {
 // E.g. institution 'unc.edu' returns bucketName 'aptrust.restore.unc.edu'
 func RestorationBucketFor (institution string) (bucketName string) {
     return RestoreBucketPrefix + institution
+}
+
+// MetadataRecord describes the result of an attempt to record metadata
+// in Fluctus/Fedora.
+type MetadataRecord struct {
+	// Type describes what we're trying to record in Fedora. It can
+	// be "IntellectualObject", "GenericFile", or "PremisEvent"
+	Type         string
+	// Action contains information about what was in Fedora.
+	// For Type IntellectualObject, this will be "object_registered".
+	// For Type GenericFile, this will be "file_registered".
+	// For Type PremisEvent, this will be the name of the event:
+	// "ingest", "identifier_assignment", or "fixity_generation".
+	Action       string
+	// For actions or events pertaining to a GenericFile this will be the path
+	// of the file the action pertains to. For example, for fixity_generation
+	// on the file "data/images/aerial.jpg", the EventObject would be
+	// "data/images/aerial.jpg". For actions or events pertaining to the
+	// IntellectualObject, this will be the IntellectualObject identifier.
+	EventObject  string
+	// ErrorMessage contains a description of the error that occurred
+	// when we tried to save this bit of metadata in Fluctus/Fedora.
+	// It will be empty if there was no error, or if we have not yet
+	// attempted to save the item.
+	ErrorMessage string
+	// If true, this indicates the data was saved successfully in
+	// Fluctus/Fedora. Default is false.
+	Succeeded    bool
+}
+
+// FedoraResult is a collection of MetadataRecords, each indicating
+// whether or not some bit of metadata has been recorded in Fluctus/Fedora.
+type FedoraResult struct {
+	ObjectIdentifer  string
+	GenericFilePaths []string
+	MetadataRecords  []*MetadataRecord
+}
+
+func NewFedoraResult(objectIdentifier string, genericFilePaths []string)(*FedoraResult) {
+	return &FedoraResult{
+		ObjectIdentifer: objectIdentifier,
+		GenericFilePaths: genericFilePaths,
+	}
+}
+
+// AddRecord adds a new MetadataRecord to the Fedora result.
+func (result *FedoraResult) AddRecord (recordType, action, eventObject, errorMessage string, succeeded bool) (error) {
+	if recordType != "IntellectualObject" && recordType != "GenericFile" && recordType !=  "PremisEvent" {
+		return fmt.Errorf("Param recordType must be one of 'IntellectualObject', 'GenericFile', or 'PremisEvent'")
+	}
+	record := &MetadataRecord{
+		Type: recordType,
+		Action: action,
+		EventObject: eventObject,
+		ErrorMessage: errorMessage,
+		Succeeded: succeeded}
+	result.MetadataRecords = append(result.MetadataRecords, record)
+	return nil
+}
+
+// FindRecord returns the MetadataRecord with the specified type,
+// action and event object.
+func (result *FedoraResult) FindRecord(recordType, action, eventObject string) (*MetadataRecord) {
+	for _, record := range result.MetadataRecords {
+		if record.Type == recordType && record.Action == action && record.EventObject == eventObject {
+			return record
+		}
+	}
+	return nil
+}
+
+// // Returns all MetadataRecords of the specified type.
+// func (result *FedoraResult) FindRecordsByType(recordType string) (records []*MetadataRecord) {
+// 	for _, record := range result.MetadataRecords {
+// 		if record.Type == recordType && record.Action == action {
+// 			records = append(records, record)
+// 		}
+// 	}
+// 	return records
+// }
+
+// Returns true/false to indicate whether the specified bit of
+// metadata was recorded successfully in Fluctus/Fedora.
+func (result *FedoraResult) Succeeded(recordType, action, eventObject string) (bool) {
+	record := result.FindRecord(recordType, action, eventObject)
+	return record != nil && record.Succeeded
+}
+
+// Returns true if all metadata was recorded successfully in Fluctus/Fedora.
+func (result *FedoraResult) AllRecordsSucceeded() (bool) {
+	// Make sure the IntellectualObject was created
+	if false == result.RecordSucceeded("IntellectualObject", "object_registered", result.ObjectIdentifer) {
+		return false
+	}
+	// Make sure the ingest event was recorded
+	if false == result.RecordSucceeded("PremisEvent", "ingest", result.ObjectIdentifer) {
+		return false
+	}
+	// Make sure we recorded fixity generation and identifier assignment
+	// for each generic file.
+	for _, filePath := range(result.GenericFilePaths) {
+		if false == result.RecordSucceeded("GenericFile", "file_registered", filePath) {
+			return false
+		}
+		if false == result.RecordSucceeded("PremisEvent", "identifier_assignment", filePath) {
+			return false
+		}
+		if false == result.RecordSucceeded("PremisEvent", "fixity_generation", filePath) {
+			return false
+		}
+	}
+	return true
+}
+
+func (result *FedoraResult) RecordSucceeded(recordType, action, eventObject string) (bool) {
+	record := result.FindRecord(recordType, action, eventObject)
+	return record != nil && record.Succeeded
 }
