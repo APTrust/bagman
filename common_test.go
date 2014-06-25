@@ -495,3 +495,39 @@ func TestFedoraResultAddRecord (t *testing.T) {
 		t.Errorf("FedoraResult should have 4 MetadataRecords, but it has %d", len(fedoraResult.MetadataRecords))
 	}
 }
+
+func TestFedoraResultFindRecord(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+	intellectualObject, err := result.IntellectualObject()
+	if err != nil {
+		t.Error(err)
+	}
+	genericFilePaths := result.TarResult.GenericFilePaths()
+	fedoraResult := bagman.NewFedoraResult(intellectualObject.Id, genericFilePaths)
+
+	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
+	_ = fedoraResult.AddRecord("GenericFile", "file_registered", "data/ORIGINAL/1", "")
+	_ = fedoraResult.AddRecord("PremisEvent", "fixity_generation", "data/ORIGINAL/1", "")
+
+	record := fedoraResult.FindRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer)
+	if record == nil {
+		t.Error("FedoraResult.FindRecord did not return expected record")
+	}
+	record = fedoraResult.FindRecord("GenericFile", "file_registered", "data/ORIGINAL/1")
+	if record == nil {
+		t.Error("FedoraResult.FindRecord did not return expected record")
+	}
+	record = fedoraResult.FindRecord("PremisEvent", "fixity_generation", "data/ORIGINAL/1")
+	if record == nil {
+		t.Error("FedoraResult.FindRecord did not return expected record")
+	}
+	record = fedoraResult.FindRecord("No such record", "", "")
+	if record != nil {
+		t.Error("FedoraResult.FindRecord returned a record when it shouldn't have")
+	}
+
+}
