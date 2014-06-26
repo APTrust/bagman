@@ -286,8 +286,8 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
 	if response.StatusCode != 201 && response.StatusCode != 204 {
-		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s, Response Body: %s\n",
-			response.StatusCode, request.URL, body)
+		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s\n",
+			response.StatusCode, request.URL)
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
@@ -386,8 +386,8 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
 	if response.StatusCode != 201 && response.StatusCode != 204 {
-		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s, Response Body: %s\n",
-			response.StatusCode, request.URL, body)
+		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s\n",
+			response.StatusCode, request.URL)
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
@@ -452,8 +452,8 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 	}
 
 	if response.StatusCode != 201  {
-		err = fmt.Errorf("Expected status code 201 but got %d. URL: %s, Response Body: %s\n",
-			response.StatusCode, request.URL, body)
+		err = fmt.Errorf("Expected status code 201 but got %d. URL: %s\n",
+			response.StatusCode, request.URL)
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
