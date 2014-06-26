@@ -8,18 +8,22 @@ import (
     "regexp"
     "sync/atomic"
     "log"
+	"time"
     "path/filepath"
     "github.com/APTrust/bagman"
     "github.com/APTrust/bagman/fluctus/client"
+    "github.com/APTrust/bagman/fluctus/models"
     "launchpad.net/goamz/aws"
     "launchpad.net/goamz/s3"
     "github.com/bitly/go-nsq"
+	"github.com/nu7hatch/gouuid"
 )
 
 type Channels struct {
     FetchChannel     chan bagman.ProcessResult
     UnpackChannel    chan bagman.ProcessResult
-	StorageChannel    chan bagman.ProcessResult
+	StorageChannel   chan bagman.ProcessResult
+	FedoraChannel    chan bagman.ProcessResult
     CleanUpChannel   chan bagman.ProcessResult
     ResultsChannel   chan bagman.ProcessResult
 }
@@ -47,10 +51,12 @@ var fluctusClient *client.Client
 //    the bag, reads tags, generates checksums and generic file
 //    UUIDs.
 // 3. Storage channel: copies files to S3 permanent storage.
-// 4. Results channel: tells the queue whether processing
+// 4. Fedora channel: saves intellectual objects, generic files
+//    and Premis event metadata to Fedora.
+// 5. Results channel: tells the queue whether processing
 //    succeeded, and if not, whether the item should be requeued.
 //    Also logs results to json and message logs.
-// 5. Cleanup channel: cleans up the files after processing
+// 6. Cleanup channel: cleans up the files after processing
 //    completes.
 //
 // If a failure occurs anywhere in the first three steps,
@@ -58,7 +64,7 @@ var fluctusClient *client.Client
 // records the error and the disposition (retry/give up).
 //
 // As long as the message from nsq contains valid JSON,
-// steps 4 and 5 ALWAYS run.
+// steps 5 and 6 ALWAYS run.
 //
 // The bag processor has so many responsibilities because
 // downloading, untarring and running checksums on
@@ -69,11 +75,16 @@ var fluctusClient *client.Client
 func main() {
 
     loadConfig()
+	err := ensureFluctusConfig()
+    if err != nil {
+        messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
+    }
+
     initVolume()
     initChannels()
     initGoRoutines(channels)
 
-	err := initS3Client()
+	err = initS3Client()
     if err != nil {
         messageLog.Fatalf("Cannot initialize S3Client: %v", err)
     }
@@ -101,6 +112,19 @@ func loadConfig() {
     flag.Parse()
     config = bagman.LoadRequestedConfig(requestedConfig)
     jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bag_processor")
+}
+
+func ensureFluctusConfig() (error) {
+    if config.FluctusURL == "" {
+        return fmt.Errorf("FluctusUrl is not set in config file")
+    }
+    if os.Getenv("FLUCTUS_API_USER") == "" {
+        return fmt.Errorf("Environment variable FLUCTUS_API_USER is not set")
+    }
+    if os.Getenv("FLUCTUS_API_KEY") == "" {
+        return fmt.Errorf("Environment variable FLUCTUS_API_KEY is not set")
+    }
+	return nil
 }
 
 // Set up the volume to keep track of how much disk space is
@@ -139,6 +163,7 @@ func initChannels() {
     channels.FetchChannel = make(chan bagman.ProcessResult, fetcherBufferSize)
     channels.UnpackChannel = make(chan bagman.ProcessResult, workerBufferSize)
     channels.StorageChannel = make(chan bagman.ProcessResult, workerBufferSize)
+	channels.FedoraChannel = make(chan bagman.ProcessResult, workerBufferSize)
     channels.CleanUpChannel = make(chan bagman.ProcessResult, workerBufferSize)
     channels.ResultsChannel = make(chan bagman.ProcessResult, workerBufferSize)
 }
@@ -155,6 +180,7 @@ func initGoRoutines(channels *Channels) {
     for i := 0; i < config.Workers; i++ {
         go doUnpack()
 		go saveToStorage()
+		go recordInFedora()
         go logResult()
         go doCleanUp()
     }
@@ -185,6 +211,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
         nil,             // FetchResult: could we get the bag?
         nil,             // TarResult: could we untar and validate the bag?
         nil,             // BagReadResult
+		nil,             // FedoraResult
         "",              // Current stage of processing
         true}            // Retry if processing fails? Default to yes.
     channels.FetchChannel <- result
@@ -193,7 +220,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 }
 
 
-// -- Step 1 of 5 --
+// -- Step 1 of 6 --
 // This runs as a go routine to fetch files from S3.
 func doFetch() {
     for result := range channels.FetchChannel {
@@ -228,7 +255,7 @@ func doFetch() {
     }
 }
 
-// -- Step 2 of 5 --
+// -- Step 2 of 6 --
 // This runs as a go routine to untar files downloaded from S3.
 // We calculate checksums and create generic files during the unpack
 // stage to avoid having to reprocess large streams of data several times.
@@ -255,11 +282,22 @@ func doUnpack() {
     }
 }
 
-// -- Step 3 of 5 --
+// -- Step 3 of 6 --
 // This runs as a go routine to save generic files to the permanent
-// S3 storage bucket.
+// S3 storage bucket. Unfortunately, there is no concept of transaction
+// here. Ideally, either all GenericFiles make to S3 or none do. In
+// cases where we're updating an existing bag (i.e. user uploaded a new
+// version of it), we may wind up in a state where half of the new files
+// make it successfully to S3 and half do not. That would leave us with
+// an inconsistent bag, containing half new files and half old files.
+// In addition, the failure to copy all files to S3 would result in no
+// metadata going to Fedora. So Fedora would not show that any of the
+// generic files were overwritten, even though some were. We should alert
+// an admin in these cases. The JSON log will have full information about
+// the state of all of the files.
 func saveToStorage() {
     for result := range channels.StorageChannel {
+		errorOccurred := false
 		messageLog.Println("[INFO] Storing",result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		result.Stage = "Store"
@@ -273,17 +311,21 @@ func saveToStorage() {
 				gf.Path)
 			absPath, err := filepath.Abs(file)
 			if err != nil {
+				// Consider this error transient. Leave retry = true.
 				result.ErrorMessage += fmt.Sprintf("Cannot get absolute " +
 					"path to file '%s'. " +
 					"File cannot be copied to long-term storage: %v",
 					file, err)
+				errorOccurred = true
 				continue
 			}
 			reader, err := os.Open(absPath)
 			if err != nil {
+				// Consider this error transient. Leave retry = true.
 				result.ErrorMessage += fmt.Sprintf("Error opening file '%s'" +
 					". File cannot be copied to long-term storage: %v",
 					absPath, err)
+				errorOccurred = true
 				continue
 			}
 			messageLog.Printf("[INFO] Sending %d bytes to S3 for file %s (UUID %s)",
@@ -296,25 +338,70 @@ func saveToStorage() {
 				gf.Size)
 			reader.Close()
 			if err != nil {
+				// Consider this error transient. Leave retry = true.
 				result.ErrorMessage += fmt.Sprintf("Error copying file '%s'" +
 					"to long-term storage: %v ", absPath, err)
 				messageLog.Println("[ERROR]", "Failed to send",
 					result.S3File.Key.Key,
 					"to long-term storage:",
 					err.Error())
+				errorOccurred = true
 			} else {
 				gf.StorageURL = url
 				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
 					"to long-term storage bucket.", gf.Path, gf.Uuid)
 			}
 		}
-		channels.ResultsChannel <- result
+		if errorOccurred {
+			// Don't record Fedora metadata if error occurred.
+			// Just make a note in Fluctus' processed items list
+			// and then clean up.
+			channels.ResultsChannel <- result
+		} else {
+			// Record metadata in Fluctus/Fedora
+			channels.FedoraChannel <- result
+		}
     }
 }
 
-// -- Step 4 of 5 --
+// -- Step 4 of 6 --
+// We have to make several calls to Fluctus/Fedora here, and this will
+// likely be the bottleneck in the process. The calls are sequential
+// because later calls depend on the object created in earlier calls.
+// There's no way around this until we implement a single Fluctus endpoint
+// that will take in all the metadata at once and processing everyhing.
+
+func recordInFedora() {
+    for result := range channels.StorageChannel {
+		messageLog.Println("[INFO] Recording Fedora metadata for",
+			result.S3File.Key.Key)
+		result.NsqMessage.Touch()
+		result.Stage = "Record"
+		err := recordAllFedoraData(&result)
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf(" %s",err.Error())
+		}
+		if result.FedoraResult.AllRecordsSucceeded() == false {
+			result.ErrorMessage += " When recording IntellectualObject, GenericFiles and " +
+				"PremisEvents, one or more calls to Fluctus failed. See the JSON log for details."
+		}
+		if result.ErrorMessage == "" {
+			messageLog.Println("[INFO] Successfully recorded Fedora metadata for",
+				result.S3File.Key.Key)
+		} else {
+			// If any errors in occur while talking to Fluctus,
+			// we'll want to requeue and try again. Just leave
+			// the result.Retry flag alone, and that will happen.
+			messageLog.Println("[ERROR]", result.ErrorMessage)
+		}
+        channels.ResultsChannel <- result
+	}
+}
+
+// -- Step 5 of 6 --
 // This prints to the log the result of the program's attempt to fetch,
 // untar, unbag and verify an individual S3 tar file.
+// THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
 func logResult() {
     for result := range channels.ResultsChannel {
         // Log full results to the JSON log
@@ -351,16 +438,15 @@ func logResult() {
             }
         }()
 
-		// TODO: Add item to metadata_topic for recording in fluctus.
-
         // Clean up the bag/tar files
         channels.CleanUpChannel <- result
     }
 }
 
-// -- Step 5 of 5 --
+// -- Step 6 of 6 --
 // This runs as a go routine to remove the files we downloaded
 // and untarred.
+// THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
 func doCleanUp() {
     for result := range channels.CleanUpChannel {
         messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
@@ -387,8 +473,6 @@ func doCleanUp() {
         } else {
             result.NsqMessage.Finish()
         }
-
-        // TODO: Send ProcessResult to nsq metadata topic
     }
 }
 
@@ -463,15 +547,6 @@ func getFluctusClient() (fClient *client.Client, err error) {
 // SendProcessedItemToFluctus sends information about the status of
 // processing this item to Fluctus.
 func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
-    if config.FluctusURL == "" {
-        return fmt.Errorf("FluctusUrl is not set in config file")
-    }
-    if os.Getenv("FLUCTUS_API_USER") == "" {
-        return fmt.Errorf("Environment variable FLUCTUS_API_USER is not set")
-    }
-    if os.Getenv("FLUCTUS_API_KEY") == "" {
-        return fmt.Errorf("Environment variable FLUCTUS_API_KEY is not set")
-    }
     client, err := getFluctusClient()
     if err != nil {
         return err
@@ -492,4 +567,120 @@ func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
     messageLog.Printf("[INFO] Updated status in Fluctus for %s: %s/%s\n",
         result.S3File.Key.Key, localStatus.Status, localStatus.Stage)
     return nil
+}
+
+// Send all metadata about the bag to Fluctus/Fedora. This includes
+// the IntellectualObject, the GenericFiles, and all PremisEvents
+// related to the object and the files.
+func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
+    client, err := getFluctusClient()
+    if err != nil {
+        return err
+    }
+	intellectualObject, err := result.IntellectualObject()
+    if err != nil {
+        return err
+    }
+	result.FedoraResult = bagman.NewFedoraResult(
+		intellectualObject.Id,
+		result.TarResult.GenericFilePaths())
+
+	fedoraRecordIntellectualObject(result, client, intellectualObject)
+	for _, genericFile := range(result.TarResult.GenericFiles) {
+		fedoraRecordGenericFile(result, client, genericFile)
+	}
+	return nil
+}
+
+func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client, gf *bagman.GenericFile) (error) {
+	// Save the GenericFile metadata in Fedora, and add a metadata
+	// record so we know whether the call to Fluctus succeeded or failed.
+	fluctusGenericFile, err := gf.ToFluctusModel()
+	if err != nil {
+		return fmt.Errorf("Error converting GenericFile to Fluctus model: %v", err)
+	}
+	_, err = client.GenericFileSave(result.FedoraResult.ObjectIdentifer, fluctusGenericFile)
+	addMetadataRecord(result, "GenericFile", "file_registered", gf.Path, err)
+
+	eventId, err := uuid.NewV4()
+	if err != nil {
+		return fmt.Errorf("Error generating UUID for identifier_assignment event: %v", err)
+	}
+
+	// Save the identifier assignment event
+	idEvent := &models.PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "identifier_assignment",
+		DateTime: gf.UuidGenerated,
+		Detail: "S3 key generated for file",
+		Outcome: "Success",
+		OutcomeDetail: gf.Uuid,
+		Object: "nu7hatch/gouuid",
+		Agent: "https://github.com/nu7hatch/gouuid",
+		OutcomeInformation: "Generated with golang gouuid",
+	}
+	_, err = client.PremisEventSave(gf.Path, "GenericFile", idEvent)
+	addMetadataRecord(result, "PremisEvent", "identifier_assignment", gf.Path, err)
+
+	eventId, err = uuid.NewV4()
+	if err != nil {
+		return fmt.Errorf("Error generating UUID for fixity_generation event: %v", err)
+	}
+
+	// Save the fixity generation event
+	fixityEvent := &models.PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "fixity_generation",
+		DateTime: gf.Sha256Generated,
+		Detail: "Calculated SHA256 checksum",
+		Outcome: "Success",
+		OutcomeDetail: gf.Sha256,
+		Object: "golang crypto/sha256",
+		Agent: "http://golang.org/pkg/crypto/sha256/",
+		OutcomeInformation: "Generated with golang sha256",
+	}
+	_, err = client.PremisEventSave(gf.Path, "GenericFile", fixityEvent)
+	addMetadataRecord(result, "PremisEvent", "fixity_generation", gf.Path, err)
+	return nil
+}
+
+// Creates/Updates an IntellectualObject in Fedora, and sends the
+// Ingest PremisEvent to Fedora.
+func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client.Client, intellectualObject *models.IntellectualObject) (error) {
+	// Create/Update the IntellectualObject
+	_, err := client.IntellectualObjectSave(intellectualObject)
+	addMetadataRecord(result, "IntellectualObject", "object_registered", intellectualObject.Id, err)
+
+	// Add PremisEvents for the ingest
+	eventId, err := uuid.NewV4()
+	if err != nil {
+		return fmt.Errorf("Error generating UUID for ingest event: %v", err)
+	}
+	ingestEvent := &models.PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "ingest",
+		DateTime: time.Now(),
+		Detail: "Copied all files to perservation bucket",
+		Outcome: "Success",
+		OutcomeDetail: fmt.Sprintf("%d files copied", len(result.FedoraResult.GenericFilePaths)),
+		Object: "goamz S3 client",
+		Agent: "https://launchpad.net/goamz",
+		OutcomeInformation: "Multipart put using md5 checksum",
+	}
+	_, err = client.PremisEventSave(intellectualObject.Id, "IntellectualObject", ingestEvent)
+	addMetadataRecord(result, "PremisEvent", "ingest", intellectualObject.Id, err)
+	return nil
+}
+
+func addMetadataRecord(result *bagman.ProcessResult, eventType, action, eventObject string, err error) {
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
+	// Die on bad records. This is entirely within the developer's control
+	// and should never happen.
+	recError := result.FedoraResult.AddRecord(eventType, action, eventObject, errMsg)
+	if recError != nil {
+		messageLog.Fatal(recError)
+	}
 }

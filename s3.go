@@ -183,7 +183,11 @@ func (client *S3Client) CheckBucket(bucketName string) (bucketSummary *BucketSum
     return bucketSummary, nil
 }
 
-// Saves a file to S3 with default access of Private
+// Saves a file to S3 with default access of Private.
+// The underlying S3 client does not return the md5 checksum
+// from s3, but we already have this info elsewhere. If the
+// PUT produces no error, we assume the copy worked and the
+// files md5 sum is the same on S3 as here.
 func (client *S3Client) SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64) (url string, err error) {
     bucket := client.S3.Bucket(bucketName)
     putErr := bucket.PutReader(fileName, reader, byteCount, contentType, s3.Private)
