@@ -297,6 +297,16 @@ func TestEventSave(t *testing.T) {
 	if obj.Identifier != identifierEvent.Identifier {
         t.Error("PremisEventSave returned object with wrong id")
 	}
+}
 
 
+func TestCacheInstitutions(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+	err := client.CacheInstitutions()
+	if err != nil {
+		t.Errorf("Error caching institutions: %v", err)
+	}
 }
