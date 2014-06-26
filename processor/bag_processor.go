@@ -619,7 +619,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 		Agent: "https://github.com/nu7hatch/gouuid",
 		OutcomeInformation: "Generated with golang gouuid",
 	}
-	_, err = client.PremisEventSave(gf.Path, "GenericFile", idEvent)
+	_, err = client.PremisEventSave(gf.Uuid, "GenericFile", idEvent)
 	addMetadataRecord(result, "PremisEvent", "identifier_assignment", gf.Path, err)
 
 	eventId, err = uuid.NewV4()
@@ -639,7 +639,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 		Agent: "http://golang.org/pkg/crypto/sha256/",
 		OutcomeInformation: "Generated with golang sha256",
 	}
-	_, err = client.PremisEventSave(gf.Path, "GenericFile", fixityEvent)
+	_, err = client.PremisEventSave(gf.Uuid, "GenericFile", fixityEvent)
 	addMetadataRecord(result, "PremisEvent", "fixity_generation", gf.Path, err)
 	return nil
 }
@@ -675,6 +675,10 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 func addMetadataRecord(result *bagman.ProcessResult, eventType, action, eventObject string, err error) {
 	errMsg := ""
 	if err != nil {
+		// TEMPORARY -- REMOVE ME!!
+		fmt.Println("---- QUITTING DUE TO FLUCTUS ERROR ----")
+		log.Fatal(err)
+		// TEMPORARY -- REMOVE ME!!
 		errMsg = err.Error()
 	}
 	// Die on bad records. This is entirely within the developer's control

@@ -8,7 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"encoding/json"
-//	"regexp"
+	"regexp"
 	"fmt"
 	"bytes"
 	"log"
@@ -17,6 +17,8 @@ import (
 	"github.com/APTrust/bagman/fluctus/models"
 )
 
+var domainPattern *regexp.Regexp = regexp.MustCompile("\\.edu|org|com$")
+
 type Client struct {
 	hostUrl        string
 	apiUser        string
@@ -24,6 +26,7 @@ type Client struct {
 	httpClient     *http.Client
 	transport      *http.Transport
 	logger         *log.Logger
+	institutions   map[string]string
 }
 
 // Creates a new fluctus client. Param hostUrl should come from
@@ -37,9 +40,51 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 	}
 	transport := &http.Transport{ MaxIdleConnsPerHost: 12 }
 	httpClient := &http.Client{ Jar: cookieJar, Transport: transport }
-	return &Client{hostUrl, apiUser, apiKey, httpClient, transport, logger}, nil
+	return &Client{hostUrl, apiUser, apiKey, httpClient, transport, logger, nil}, nil
 }
 
+// Caches a map of institutions in which institution domain name
+// is the key and institution id is the value.
+func (client *Client) CacheInstitutions () (error) {
+	url := client.BuildUrl("/institutions")
+	client.logger.Println("[INFO] Requesting list of institutions from fluctus:", url)
+	request, err := client.NewJsonRequest("GET", url.String(), nil)
+	if err != nil {
+		client.logger.Println("[ERROR] Error building institutions request in Fluctus client:", err.Error())
+		return err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		client.logger.Println("[ERROR] Error getting list of institutions from Fluctus", err.Error())
+		return err
+	}
+
+	if response.StatusCode != 200 {
+		return fmt.Errorf("Fluctus replied to request for institutions list with status code %d",
+			response.StatusCode)
+	}
+
+	// Read the json response
+	defer response.Body.Close()
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+
+	// Build and return the data structure
+	institutions := make([]*models.Institution, 1, 100)
+	err = json.Unmarshal(body, &institutions)
+	if err != nil {
+		return err
+	}
+
+	client.institutions = make(map[string]string, len(institutions))
+	for _, inst := range(institutions) {
+		client.institutions[inst.Identifier] = inst.Pid
+	}
+	return nil
+
+}
 
 // BuildUrl combines the host and protocol in client.hostUrl with
 // relativeUrl to create an absolute URL. For example, if client.hostUrl
@@ -196,8 +241,24 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	if err != nil {
 		return nil, err
 	}
+
+	if client.institutions == nil || len(client.institutions) == 0 {
+		err = client.CacheInstitutions()
+		if err != nil {
+			client.logger.Printf("[ERROR] Fluctus client can't build institutions cache: %v", err)
+			return nil, fmt.Errorf("Error building institutions cache: %v", err)
+		}
+	}
+
+	// Our institution id is the institution's domain name. When we talk to
+	// Fluctus, we need to use its institution id.
+	fluctusInstitutionId := obj.InstitutionId
+	if domainPattern.Match([]byte(obj.InstitutionId)) {
+		fluctusInstitutionId = client.institutions[obj.InstitutionId]
+	}
+
 	// URL & method for create
-	url := client.BuildUrl(fmt.Sprintf("/institutions/%s/objects.json", obj.InstitutionId))
+	url := client.BuildUrl(fmt.Sprintf("/institutions/%s/objects.json", fluctusInstitutionId))
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
@@ -248,12 +309,12 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 }
 
 
-func (client *Client) GenericFileGet (identifier string, includeRelations bool) (*models.GenericFile, error) {
+func (client *Client) GenericFileGet (genericFileId string, includeRelations bool) (*models.GenericFile, error) {
 	queryString := ""
 	if includeRelations == true {
 		queryString = "include_relations=true"
 	}
-	url := client.BuildUrl(fmt.Sprintf("/files/%s?%s", identifier, queryString))
+	url := client.BuildUrl(fmt.Sprintf("/files/%s?%s", genericFileId, queryString))
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", url)
 	request, err := client.NewJsonRequest("GET", url.String(), nil)
 	if err != nil {
