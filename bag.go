@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 	"github.com/APTrust/bagins"
+	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/nu7hatch/gouuid"
 	"github.com/rakyll/magicmime"
 )
@@ -156,7 +157,7 @@ func ReadBag(path string) (result *BagReadResult) {
 	}
 
 	if errMsg != "" {
-		bagReadResult.ErrorMessage = fmt.Sprintf(errMsg)
+		bagReadResult.ErrorMessage += fmt.Sprintf(errMsg)
 	}
 
 	return bagReadResult
@@ -167,6 +168,7 @@ func ReadBag(path string) (result *BagReadResult) {
 // of the BagReadResult structure.
 func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	tagFiles := []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}
+	accessRights := ""
 	for _, file := range tagFiles {
 		tagFile, err := bag.TagFile(file)
 		if err != nil {
@@ -178,7 +180,27 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 		for _, tagField := range tagFields {
 			tag := Tag{ tagField.Label(), tagField.Value() }
 			bagReadResult.Tags = append(bagReadResult.Tags, tag)
+
+			lcLabel := strings.ToLower(tag.Label)
+			if lcLabel == "access" {
+				accessRights = strings.ToLower(tag.Value)
+			} else if accessRights == "" && lcLabel == "rights" {
+				accessRights = strings.ToLower(tag.Value)
+			}
 		}
+	}
+	fmt.Println("Access =", accessRights)
+
+	// Make sure access rights are valid, or Fluctus will reject
+	// this data when we try to register it.
+	accessValid := false
+	for _, value := range(models.AccessRights) {
+		if accessRights == value {
+			accessValid = true
+		}
+	}
+	if false == accessValid {
+		bagReadResult.ErrorMessage += fmt.Sprintf("Access (rights) value '%s' is not valid. ", accessRights)
 	}
 }
 

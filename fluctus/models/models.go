@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 )
 
-// List of valid APTrust IntellectualObject rights.
-var rights []string = []string {
-    "consortial",
-    "institutional",
+// List of valid APTrust IntellectualObject AccessRights.
+var AccessRights []string = []string {
+    "consortia",
+    "institution",
     "restricted"}
 
 // List of valid Premis Event types.
@@ -141,7 +141,7 @@ type IntellectualObject struct {
 // structure's Access property contains a valid value.
 func (obj *IntellectualObject) AccessValid() bool {
     lcAccess := strings.ToLower(obj.Access)
-    for _, value := range rights {
+    for _, value := range AccessRights {
         if value == lcAccess {
             return true
         }

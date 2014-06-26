@@ -226,10 +226,10 @@ func TestIntellectualObject(t *testing.T) {
             obj.Id,
             "ncsu.edu.ncsu.1840.16-2928")
     }
-    if obj.Access != "Consortial" {
+    if obj.Access != "consortia" {
         t.Errorf("IntellectualObject.Access is '%s', expected '%s'.",
             obj.Access,
-            "Consortial")
+            "consortia")
     }
 }
 

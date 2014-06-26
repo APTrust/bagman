@@ -112,6 +112,17 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
     if accessRights == "" {
         accessRights = result.BagReadResult.TagValue("Rights")
     }
+	// Fluctus wants access to be all lower-case
+	accessRights = strings.ToLower(accessRights)
+	// We probably should not do this correction, but we
+	// need to get through test runs with the bad data
+	// out partners submitted.
+	// TODO: Remove this??
+	if accessRights == "consortial" {
+		accessRights = "consortia"
+	} else if accessRights == "institutional" {
+		accessRights = "institution"
+	}
     institution := &models.Institution{
         BriefName: OwnerOf(result.S3File.BucketName),
     }
