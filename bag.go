@@ -189,7 +189,6 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 			}
 		}
 	}
-	fmt.Println("Access =", accessRights)
 
 	// Make sure access rights are valid, or Fluctus will reject
 	// this data when we try to register it.
