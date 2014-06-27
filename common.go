@@ -140,7 +140,7 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
         InstitutionId: institution.BriefName,
         Title: result.BagReadResult.TagValue("Title"),
         Description: result.BagReadResult.TagValue("Description"),
-        Id: identifier,
+        Identifier: identifier,
         Access: accessRights,
 		GenericFiles: files,
     }
@@ -469,7 +469,7 @@ func (record *MetadataRecord) Succeeded() (bool) {
 // The bag processor needs to keep track of this information to ensure
 // it successfully records all metadata in Fedora.
 type FedoraResult struct {
-	ObjectIdentifer  string
+	ObjectIdentifier  string
 	GenericFilePaths []string
 	MetadataRecords  []*MetadataRecord
 }
@@ -478,7 +478,7 @@ type FedoraResult struct {
 // identifier and list of GenericFile paths.
 func NewFedoraResult(objectIdentifier string, genericFilePaths []string)(*FedoraResult) {
 	return &FedoraResult{
-		ObjectIdentifer: objectIdentifier,
+		ObjectIdentifier: objectIdentifier,
 		GenericFilePaths: genericFilePaths,
 	}
 }
@@ -549,11 +549,11 @@ func (result *FedoraResult) RecordSucceeded(recordType, action, eventObject stri
 // successful MetadataRecords.
 func (result *FedoraResult) AllRecordsSucceeded() (bool) {
 	// Make sure the IntellectualObject was created
-	if false == result.RecordSucceeded("IntellectualObject", "object_registered", result.ObjectIdentifer) {
+	if false == result.RecordSucceeded("IntellectualObject", "object_registered", result.ObjectIdentifier) {
 		return false
 	}
 	// Make sure the ingest event was recorded
-	if false == result.RecordSucceeded("PremisEvent", "ingest", result.ObjectIdentifer) {
+	if false == result.RecordSucceeded("PremisEvent", "ingest", result.ObjectIdentifier) {
 		return false
 	}
 	// Make sure we recorded fixity generation and identifier assignment

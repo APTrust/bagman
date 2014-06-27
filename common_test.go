@@ -221,9 +221,9 @@ func TestIntellectualObject(t *testing.T) {
             obj.Description,
             "Description of intellectual object.")
     }
-    if obj.Id != "ncsu.edu.ncsu.1840.16-2928" {
+    if obj.Identifier != "ncsu.edu.ncsu.1840.16-2928" {
         t.Errorf("IntellectualObject.Identifier is '%s', expected '%s'.",
-            obj.Id,
+            obj.Identifier,
             "ncsu.edu.ncsu.1840.16-2928")
     }
     if obj.Access != "consortia" {
@@ -449,7 +449,7 @@ func getFedoraResult(t *testing.T) (*bagman.FedoraResult) {
 		t.Error(err)
 	}
 	genericFilePaths := result.TarResult.GenericFilePaths()
-	return bagman.NewFedoraResult(intellectualObject.Id, genericFilePaths)
+	return bagman.NewFedoraResult(intellectualObject.Identifier, genericFilePaths)
 }
 
 func TestFedoraResultAddRecord (t *testing.T) {
@@ -485,7 +485,7 @@ func TestFedoraResultAddRecord (t *testing.T) {
 	}
 
 	// Good records
-	err = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
+	err = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifier, "")
 	if err != nil {
 		t.Errorf("FedoraResult.AddRecord rejected a valid IntellectualObject record: %v", err)
 	}
@@ -510,11 +510,11 @@ func TestFedoraResultFindRecord(t *testing.T) {
 
 	fedoraResult := getFedoraResult(t)
 
-	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
+	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifier, "")
 	_ = fedoraResult.AddRecord("GenericFile", "file_registered", "data/ORIGINAL/1", "")
 	_ = fedoraResult.AddRecord("PremisEvent", "fixity_generation", "data/ORIGINAL/1", "")
 
-	record := fedoraResult.FindRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer)
+	record := fedoraResult.FindRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifier)
 	if record == nil {
 		t.Error("FedoraResult.FindRecord did not return expected record")
 	}
@@ -537,11 +537,11 @@ func TestFedoraResultRecordSucceeded(t *testing.T) {
 
 	fedoraResult := getFedoraResult(t)
 
-	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
+	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifier, "")
 	_ = fedoraResult.AddRecord("GenericFile", "file_registered", "data/ORIGINAL/1", "Internet blew up")
 
 	succeeded := fedoraResult.RecordSucceeded("IntellectualObject", "object_registered",
-		fedoraResult.ObjectIdentifer)
+		fedoraResult.ObjectIdentifier)
 	if false == succeeded {
 		t.Error("FedoraResult.RecordSucceeded returned false when it should have returned true")
 	}
@@ -556,8 +556,8 @@ func TestAllRecordsSucceeded(t *testing.T) {
 	fedoraResult := getFedoraResult(t)
 
 	// Add successful events for the intellectual object
-	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifer, "")
-	_ = fedoraResult.AddRecord("PremisEvent", "ingest", fedoraResult.ObjectIdentifer, "")
+	_ = fedoraResult.AddRecord("IntellectualObject", "object_registered", fedoraResult.ObjectIdentifier, "")
+	_ = fedoraResult.AddRecord("PremisEvent", "ingest", fedoraResult.ObjectIdentifier, "")
 	// Add successful events for each generic file
 	for _, path := range(expectedPaths) {
 		_ = fedoraResult.AddRecord("GenericFile", "file_registered", path, "")

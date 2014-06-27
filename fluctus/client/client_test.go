@@ -79,7 +79,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 		if len(obj.GenericFiles) == 0 {
 			t.Error("IntellectualObject has no GenericFiles, but it should.")
 		}
-		gf := obj.GenericFiles[0]
+		gf := findFile(obj.GenericFiles, gfId)
 		if len(gf.Events) == 0 {
 			t.Error("GenericFile from Fluctus is missing events.")
 		}
@@ -98,6 +98,18 @@ func TestIntellectualObjectGet(t *testing.T) {
         t.Errorf("IntellectualObjectGet returned something that shouldn't be there: %v", obj)
     }
 
+}
+
+// Returns the file with the specified id. We use this in testing
+// because we want to look at a file that we know has both events
+// and checksums.
+func findFile(files []*models.GenericFile, id string) (*models.GenericFile) {
+	for _, f := range(files) {
+		if f.Id == id {
+			return f
+		}
+	}
+	return nil
 }
 
 func TestIntellectualObjectSave(t *testing.T) {
@@ -132,7 +144,8 @@ func TestIntellectualObjectSave(t *testing.T) {
 	if err != nil {
         t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
     }
-	if newObj.Id != obj.Id || newObj.Title != obj.Title || newObj.Description != obj.Description {
+	if newObj.Identifier != obj.Identifier || newObj.Title != obj.Title ||
+		newObj.Description != obj.Description {
 		t.Error("New object attributes don't match what was submitted.")
 	}
 }

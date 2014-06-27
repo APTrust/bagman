@@ -20,12 +20,12 @@ import (
 )
 
 type Channels struct {
-    FetchChannel     chan bagman.ProcessResult
-    UnpackChannel    chan bagman.ProcessResult
-	StorageChannel   chan bagman.ProcessResult
-	FedoraChannel    chan bagman.ProcessResult
-    CleanUpChannel   chan bagman.ProcessResult
-    ResultsChannel   chan bagman.ProcessResult
+    FetchChannel     chan *bagman.ProcessResult
+    UnpackChannel    chan *bagman.ProcessResult
+	StorageChannel   chan *bagman.ProcessResult
+	FedoraChannel    chan *bagman.ProcessResult
+    CleanUpChannel   chan *bagman.ProcessResult
+    ResultsChannel   chan *bagman.ProcessResult
 }
 
 
@@ -160,12 +160,12 @@ func initChannels() {
     workerBufferSize := config.Workers * 10
 
     channels = &Channels{}
-    channels.FetchChannel = make(chan bagman.ProcessResult, fetcherBufferSize)
-    channels.UnpackChannel = make(chan bagman.ProcessResult, workerBufferSize)
-    channels.StorageChannel = make(chan bagman.ProcessResult, workerBufferSize)
-	channels.FedoraChannel = make(chan bagman.ProcessResult, workerBufferSize)
-    channels.CleanUpChannel = make(chan bagman.ProcessResult, workerBufferSize)
-    channels.ResultsChannel = make(chan bagman.ProcessResult, workerBufferSize)
+    channels.FetchChannel = make(chan *bagman.ProcessResult, fetcherBufferSize)
+    channels.UnpackChannel = make(chan *bagman.ProcessResult, workerBufferSize)
+    channels.StorageChannel = make(chan *bagman.ProcessResult, workerBufferSize)
+	channels.FedoraChannel = make(chan *bagman.ProcessResult, workerBufferSize)
+    channels.CleanUpChannel = make(chan *bagman.ProcessResult, workerBufferSize)
+    channels.ResultsChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 }
 
 // Set up our go routines. We do NOT want one go routine per
@@ -204,7 +204,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
     }
 
     // Create the result struct and pass it down the pipeline
-    result := bagman.ProcessResult{
+    result := &bagman.ProcessResult{
         message,         // NsqMessage
         &s3File,         // S3File: tarred bag that was uploaded to receiving bucket
         "",              // ErrorMessage: no processing error yet
@@ -271,7 +271,7 @@ func doUnpack() {
             // so nsqd knows we're making progress.
             messageLog.Println("[INFO]", "Unpacking", result.S3File.Key.Key)
             result.NsqMessage.Touch()
-            ProcessBagFile(&result)
+            ProcessBagFile(result)
 			if result.ErrorMessage == "" {
 				// Move to permanent storage if bag processing succeeded
 				channels.StorageChannel <- result
@@ -303,7 +303,7 @@ func saveToStorage() {
 		result.Stage = "Store"
 		re := regexp.MustCompile("\\.tar$")
 		// Copy each generic file to S3
-		for _, gf := range result.TarResult.GenericFiles {
+		for _, gf := range(result.TarResult.GenericFiles) {
 			bagDir := re.ReplaceAllString(result.S3File.Key.Key, "")
 			file := filepath.Join(
 				config.TarDirectory,
@@ -348,6 +348,8 @@ func saveToStorage() {
 				errorOccurred = true
 			} else {
 				gf.StorageURL = url
+				//fmt.Println("Set", gf.Path, "storage url to", gf.StorageURL)
+				//fmt.Println("Set", gf)
 				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
 					"to long-term storage bucket.", gf.Path, gf.Uuid)
 			}
@@ -377,7 +379,7 @@ func recordInFedora() {
 			result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		result.Stage = "Record"
-		err := recordAllFedoraData(&result)
+		err := recordAllFedoraData(result)
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf(" %s",err.Error())
 		}
@@ -431,7 +433,7 @@ func logResult() {
 
         // Tell Fluctus what happened
         go func() {
-            err := SendProcessedItemToFluctus(&result)
+            err := SendProcessedItemToFluctus(result)
             if err != nil {
                 messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
                     err)
@@ -582,24 +584,27 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
         return err
     }
 	result.FedoraResult = bagman.NewFedoraResult(
-		intellectualObject.Id,
+		intellectualObject.Identifier,
 		result.TarResult.GenericFilePaths())
 
 	fedoraRecordIntellectualObject(result, client, intellectualObject)
 	for _, genericFile := range(result.TarResult.GenericFiles) {
-		fedoraRecordGenericFile(result, client, genericFile)
+		// FIXME: The storage URL we set above is lost here!
+		fmt.Println("S3 Save ->", genericFile.Path, "=", genericFile.StorageURL)
+		//fmt.Println("S3 Save ->", genericFile)
+		fedoraRecordGenericFile(result, client, intellectualObject.Id, genericFile)
 	}
 	return nil
 }
 
-func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client, gf *bagman.GenericFile) (error) {
+func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client, objId string, gf *bagman.GenericFile) (error) {
 	// Save the GenericFile metadata in Fedora, and add a metadata
 	// record so we know whether the call to Fluctus succeeded or failed.
 	fluctusGenericFile, err := gf.ToFluctusModel()
 	if err != nil {
 		return fmt.Errorf("Error converting GenericFile to Fluctus model: %v", err)
 	}
-	_, err = client.GenericFileSave(result.FedoraResult.ObjectIdentifer, fluctusGenericFile)
+	_, err = client.GenericFileSave(objId, fluctusGenericFile)
 	addMetadataRecord(result, "GenericFile", "file_registered", gf.Path, err)
 
 	eventId, err := uuid.NewV4()
@@ -648,8 +653,11 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 // Ingest PremisEvent to Fedora.
 func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client.Client, intellectualObject *models.IntellectualObject) (error) {
 	// Create/Update the IntellectualObject
-	_, err := client.IntellectualObjectSave(intellectualObject)
-	addMetadataRecord(result, "IntellectualObject", "object_registered", intellectualObject.Id, err)
+	savedObj, err := client.IntellectualObjectSave(intellectualObject)
+	addMetadataRecord(result, "IntellectualObject", "object_registered", intellectualObject.Identifier, err)
+	if savedObj != nil {
+		intellectualObject.Id = savedObj.Id
+	}
 
 	// Add PremisEvents for the ingest
 	eventId, err := uuid.NewV4()
@@ -667,8 +675,9 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 		Agent: "https://launchpad.net/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
+	fmt.Println(intellectualObject.Id)
 	_, err = client.PremisEventSave(intellectualObject.Id, "IntellectualObject", ingestEvent)
-	addMetadataRecord(result, "PremisEvent", "ingest", intellectualObject.Id, err)
+	addMetadataRecord(result, "PremisEvent", "ingest", intellectualObject.Identifier, err)
 	return nil
 }
 

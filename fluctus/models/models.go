@@ -81,22 +81,6 @@ type PremisEvent struct {
     OutcomeInformation string     `json:"outcome_information"`
 }
 
-// // Serialize the subset of PremisEvent data that fluctus
-// // will accept. We're serializing everything but the id.
-// func (event *PremisEvent) SerializeForFluctus() ([]byte, error) {
-//     return json.Marshal(map[string]interface{}{
-// 		"event_type": event.EventType,
-// 		"date_time": event.DateTime,
-// 		"detail": event.Detail,
-// 		"outcome": event.Outcome,
-// 		"outcome_detail": event.OutcomeDetail,
-// 		"object": event.Object,
-// 		"agent": event.Agent,
-// 		"outcome_information": event.OutcomeInformation,
-//     })
-// }
-
-
 
 /*
 Institution represents an institution in fluctus. Name is the
@@ -129,6 +113,7 @@ consortial, institution and restricted.
 */
 type IntellectualObject struct {
     Id                 string         `json:"id"`
+    Identifier         string         `json:"identifier"`
     InstitutionId      string         `json:"institution_id"`
     Title              string         `json:"title"`
     Description        string         `json:"description"`
@@ -150,14 +135,12 @@ func (obj *IntellectualObject) AccessValid() bool {
 }
 
 // Serialize the subset of IntellectualObject data that fluctus
-// will accept.
+// will accept. This is for post/put, where essential info, such
+// as institution id and/or object id will be in the URL.
 func (obj *IntellectualObject) SerializeForFluctus() ([]byte, error) {
-	// TODO: Why does fluctus require both pid and identifier?
     return json.Marshal(map[string]interface{}{
-		"pid": obj.Id,
-		"identifier": obj.Id,
+		"identifier": obj.Identifier,
 		"title": obj.Title,
-		"institution_id": obj.InstitutionId,
 		"description": obj.Description,
 		"access": obj.Access,
     })
