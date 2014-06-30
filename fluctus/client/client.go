@@ -388,6 +388,7 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 	if response.StatusCode != 201 && response.StatusCode != 204 {
 		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
+		fmt.Println(string(body))
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {

@@ -303,7 +303,8 @@ func saveToStorage() {
 		result.Stage = "Store"
 		re := regexp.MustCompile("\\.tar$")
 		// Copy each generic file to S3
-		for _, gf := range(result.TarResult.GenericFiles) {
+		for i := range(result.TarResult.GenericFiles) {
+			gf := result.TarResult.GenericFiles[i]
 			bagDir := re.ReplaceAllString(result.S3File.Key.Key, "")
 			file := filepath.Join(
 				config.TarDirectory,
@@ -348,8 +349,6 @@ func saveToStorage() {
 				errorOccurred = true
 			} else {
 				gf.StorageURL = url
-				//fmt.Println("Set", gf.Path, "storage url to", gf.StorageURL)
-				//fmt.Println("Set", gf)
 				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
 					"to long-term storage bucket.", gf.Path, gf.Uuid)
 			}
@@ -374,7 +373,7 @@ func saveToStorage() {
 // that will take in all the metadata at once and processing everyhing.
 
 func recordInFedora() {
-    for result := range channels.StorageChannel {
+    for result := range channels.FedoraChannel {
 		messageLog.Println("[INFO] Recording Fedora metadata for",
 			result.S3File.Key.Key)
 		result.NsqMessage.Touch()
@@ -588,10 +587,9 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 		result.TarResult.GenericFilePaths())
 
 	fedoraRecordIntellectualObject(result, client, intellectualObject)
-	for _, genericFile := range(result.TarResult.GenericFiles) {
-		// FIXME: The storage URL we set above is lost here!
+	for i := range(result.TarResult.GenericFiles) {
+		genericFile := result.TarResult.GenericFiles[i]
 		fmt.Println("S3 Save ->", genericFile.Path, "=", genericFile.StorageURL)
-		//fmt.Println("S3 Save ->", genericFile)
 		fedoraRecordGenericFile(result, client, intellectualObject.Id, genericFile)
 	}
 	return nil
