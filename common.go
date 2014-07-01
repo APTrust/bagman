@@ -14,6 +14,7 @@ import (
 )
 
 const (
+	APTrustNamespace = "urn:mace:aptrust.org"
     ReceiveBucketPrefix = "aptrust.receiving."
     RestoreBucketPrefix = "aptrust.restore."
     S3DateFormat = "2006-01-02T15:04:05.000Z"
@@ -152,7 +153,9 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
 func (result *ProcessResult) GenericFiles() (files []*models.GenericFile, err error) {
     files = make([]*models.GenericFile, len(result.TarResult.GenericFiles))
     for i, file := range(result.TarResult.GenericFiles) {
-		gfModel, err := file.ToFluctusModel()
+		gfModel, err := file.ToFluctusModel(
+			OwnerOf(result.S3File.BucketName),
+			result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
 		if err != nil {
 			return nil, err
 		}
@@ -312,7 +315,7 @@ type GenericFile struct {
 
 // Converts bagman.GenericFile to models.GenericFile, which is what
 // Fluctus understands.
-func (gf *GenericFile) ToFluctusModel() (*models.GenericFile, error) {
+func (gf *GenericFile) ToFluctusModel(instDomain, bagName string) (*models.GenericFile, error) {
 	checksumAttributes := make([]*models.ChecksumAttribute, 2)
 	checksumAttributes[0] = &models.ChecksumAttribute{
 		Algorithm: "md5",
@@ -329,8 +332,8 @@ func (gf *GenericFile) ToFluctusModel() (*models.GenericFile, error) {
 		return nil, err
 	}
 	gfModel := &models.GenericFile{
-		Id: gf.Uuid,
-		Identifier: gf.Path,
+		Identifier: fmt.Sprintf("%s.%s/%s", instDomain, bagName, gf.Path),
+		Format: gf.MimeType,
 		URI: gf.StorageURL,
 		Size: gf.Size,
 		Created: gf.Modified,

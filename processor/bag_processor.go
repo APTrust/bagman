@@ -589,8 +589,7 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 	fedoraRecordIntellectualObject(result, client, intellectualObject)
 	for i := range(result.TarResult.GenericFiles) {
 		genericFile := result.TarResult.GenericFiles[i]
-		fmt.Println("S3 Save ->", genericFile.Path, "=", genericFile.StorageURL)
-		fedoraRecordGenericFile(result, client, intellectualObject.Id, genericFile)
+		fedoraRecordGenericFile(result, client, intellectualObject.Identifier, genericFile)
 	}
 	return nil
 }
@@ -598,7 +597,9 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client, objId string, gf *bagman.GenericFile) (error) {
 	// Save the GenericFile metadata in Fedora, and add a metadata
 	// record so we know whether the call to Fluctus succeeded or failed.
-	fluctusGenericFile, err := gf.ToFluctusModel()
+	fluctusGenericFile, err := gf.ToFluctusModel(
+		bagman.OwnerOf(result.S3File.BucketName),
+		result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
 	if err != nil {
 		return fmt.Errorf("Error converting GenericFile to Fluctus model: %v", err)
 	}
@@ -622,7 +623,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 		Agent: "https://github.com/nu7hatch/gouuid",
 		OutcomeInformation: "Generated with golang gouuid",
 	}
-	_, err = client.PremisEventSave(gf.Uuid, "GenericFile", idEvent)
+	_, err = client.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", idEvent)
 	addMetadataRecord(result, "PremisEvent", "identifier_assignment", gf.Path, err)
 
 	eventId, err = uuid.NewV4()
@@ -642,7 +643,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 		Agent: "http://golang.org/pkg/crypto/sha256/",
 		OutcomeInformation: "Generated with golang sha256",
 	}
-	_, err = client.PremisEventSave(gf.Uuid, "GenericFile", fixityEvent)
+	_, err = client.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", fixityEvent)
 	addMetadataRecord(result, "PremisEvent", "fixity_generation", gf.Path, err)
 	return nil
 }
@@ -651,6 +652,8 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 // Ingest PremisEvent to Fedora.
 func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client.Client, intellectualObject *models.IntellectualObject) (error) {
 	// Create/Update the IntellectualObject
+	// BUG: We're creating a new intellectual object when we should be updating an existing one.
+	// TODO: Fix intellectual object update!!
 	savedObj, err := client.IntellectualObjectSave(intellectualObject)
 	addMetadataRecord(result, "IntellectualObject", "object_registered", intellectualObject.Identifier, err)
 	if savedObj != nil {
@@ -673,7 +676,6 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 		Agent: "https://launchpad.net/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
-	fmt.Println(intellectualObject.Id)
 	_, err = client.PremisEventSave(intellectualObject.Id, "IntellectualObject", ingestEvent)
 	addMetadataRecord(result, "PremisEvent", "ingest", intellectualObject.Identifier, err)
 	return nil
@@ -682,7 +684,7 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 func addMetadataRecord(result *bagman.ProcessResult, eventType, action, eventObject string, err error) {
 	errMsg := ""
 	if err != nil {
-		// TEMPORARY -- REMOVE ME!!
+		// TEMPORARY -- REMOVE ME!! - OR SET ME AS A CONFIG OPTION.
 		fmt.Println("---- QUITTING DUE TO FLUCTUS ERROR ----")
 		log.Fatal(err)
 		// TEMPORARY -- REMOVE ME!!

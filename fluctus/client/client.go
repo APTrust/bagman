@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"log"
 	"time"
+	"strings"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/models"
 )
@@ -46,9 +47,9 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 // Caches a map of institutions in which institution domain name
 // is the key and institution id is the value.
 func (client *Client) CacheInstitutions () (error) {
-	url := client.BuildUrl("/institutions")
-	client.logger.Println("[INFO] Requesting list of institutions from fluctus:", url)
-	request, err := client.NewJsonRequest("GET", url.String(), nil)
+	instUrl := client.BuildUrl("/institutions")
+	client.logger.Println("[INFO] Requesting list of institutions from fluctus:", instUrl)
+	request, err := client.NewJsonRequest("GET", instUrl, nil)
 	if err != nil {
 		client.logger.Println("[ERROR] Error building institutions request in Fluctus client:", err.Error())
 		return err
@@ -90,21 +91,22 @@ func (client *Client) CacheInstitutions () (error) {
 // relativeUrl to create an absolute URL. For example, if client.hostUrl
 // is "http://localhost:3456", then client.BuildUrl("/path/to/action.json")
 // would return "http://localhost:3456/path/to/action.json".
-func (client *Client) BuildUrl (relativeUrl string) (absoluteUrl *url.URL) {
-	absoluteUrl, err := url.Parse(client.hostUrl + relativeUrl)
-	if err != nil {
-		// TODO: Check validity of Fluctus url on app init,
-		// so we don't have to panic here.
-		panic(fmt.Sprintf("Can't parse URL '%s': %v", absoluteUrl, err))
-	}
-	return absoluteUrl
+func (client *Client) BuildUrl (relativeUrl string) (string) {
+	// absoluteUrl, err := url.Parse(client.hostUrl + relativeUrl)
+	// if err != nil {
+	// 	// TODO: Check validity of Fluctus url on app init,
+	// 	// so we don't have to panic here.
+	// 	panic(fmt.Sprintf("Can't parse URL '%s': %v", absoluteUrl, err))
+	// }
+	// return absoluteUrl
+	return client.hostUrl + relativeUrl
 }
 
 
 // newJsonGet returns a new request with headers indicating
 // JSON request and response formats.
-func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(method, url, body)
+func (client *Client) NewJsonRequest(method, targetUrl string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(method, targetUrl, body)
 	if err != nil {
 		return nil, err
 	}
@@ -112,6 +114,20 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("X-Fluctus-API-User", client.apiUser)
 	req.Header.Add("X-Fluctus-API-Key", client.apiKey)
+
+	// Unfix the URL that golang net/url "fixes" for us.
+	// See http://stackoverflow.com/questions/20847357/golang-http-client-always-escaped-the-url/
+	incorrectUrl, err := url.Parse(targetUrl)
+	if err != nil {
+		return nil, err
+	}
+	opaqueUrl := strings.Replace(targetUrl, client.hostUrl, "", 1)
+	correctUrl := &url.URL{
+		Scheme: incorrectUrl.Scheme,
+		Host: incorrectUrl.Host,
+		Opaque: opaqueUrl,
+	}
+	req.URL = correctUrl
 	return req, nil
 }
 
@@ -119,8 +135,8 @@ func (client *Client) NewJsonRequest(method, url string, body io.Reader) (*http.
 // GetBagStatus returns the status of a bag from a prior round of processing.
 // This function will return nil if Fluctus has no record of this bag.
 func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
-	url := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name, bag_date.Format(time.RFC3339)))
-	req, err := client.NewJsonRequest("GET", url.String(), nil)
+	statusUrl := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name, bag_date.Format(time.RFC3339)))
+	req, err := client.NewJsonRequest("GET", statusUrl, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -139,12 +155,12 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 			status.ETag, status.Name, status.BagDate.Format(time.RFC3339))
 		httpMethod = "PUT"
 	}
-	url := client.BuildUrl(relativeUrl)
+	statusUrl := client.BuildUrl(relativeUrl)
 	postData, err := status.SerializeForFluctus()
 	if err != nil {
 		return err
 	}
-	req, err := client.NewJsonRequest(httpMethod, url.String(), bytes.NewBuffer(postData))
+	req, err := client.NewJsonRequest(httpMethod, statusUrl, bytes.NewBuffer(postData))
 	if err != nil {
 		return err
 	}
@@ -196,9 +212,9 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 	if includeRelations == true {
 		queryString = "include_relations=true"
 	}
-	url := client.BuildUrl(fmt.Sprintf("/objects/%s?%s", identifier, queryString))
-	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", url)
-	request, err := client.NewJsonRequest("GET", url.String(), nil)
+	objUrl := client.BuildUrl(fmt.Sprintf("/objects/%s?%s", identifier, queryString))
+	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -258,18 +274,18 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	}
 
 	// URL & method for create
-	url := client.BuildUrl(fmt.Sprintf("/institutions/%s/objects.json", fluctusInstitutionId))
+	objUrl := client.BuildUrl(fmt.Sprintf("/institutions/%s/objects.json", fluctusInstitutionId))
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
-		url = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Id))
+		objUrl = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Id))
 		method = "PUT"
 	}
 
 	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Id)
 
 	data, err := obj.SerializeForFluctus()
-	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
+	request, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
@@ -314,9 +330,9 @@ func (client *Client) GenericFileGet (genericFileId string, includeRelations boo
 	if includeRelations == true {
 		queryString = "include_relations=true"
 	}
-	url := client.BuildUrl(fmt.Sprintf("/files/%s?%s", genericFileId, queryString))
-	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", url)
-	request, err := client.NewJsonRequest("GET", url.String(), nil)
+	fileUrl := client.BuildUrl(fmt.Sprintf("/files/%s?%s", genericFileId, queryString))
+	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", fileUrl)
+	request, err := client.NewJsonRequest("GET", fileUrl, nil)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
@@ -358,18 +374,18 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		return nil, err
 	}
 	// URL & method for create
-	url := client.BuildUrl(fmt.Sprintf("/objects/%s/files.json", objId))
+	fileUrl := client.BuildUrl(fmt.Sprintf("/objects/%s/files.json", objId))
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
-		url = client.BuildUrl(fmt.Sprintf("/files/%s", gf.Id))
+		fileUrl = client.BuildUrl(fmt.Sprintf("/files/%s", gf.Id))
 		method = "PUT"
 	}
 
 	client.logger.Printf("[INFO] About to %s GenericFile %s to Fluctus", method, gf.Identifier)
 
 	data, err := gf.SerializeForFluctus()
-	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
+	request, err := client.NewJsonRequest(method, fileUrl, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
@@ -388,7 +404,10 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 	if response.StatusCode != 201 && response.StatusCode != 204 {
 		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
-		fmt.Println(string(body))
+		fmt.Println(string(data))
+		if len(body) < 1000 {
+			fmt.Println(string(body))
+		}
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
@@ -429,15 +448,15 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 	}
 
 	method := "POST"
-	url := client.BuildUrl(fmt.Sprintf("/files/%s/events.json", objId))
+	eventUrl := client.BuildUrl(fmt.Sprintf("/files/%s/events", escapeSlashes(objId)))
 	if objType == "IntellectualObject" {
-		url = client.BuildUrl(fmt.Sprintf("/objects/%s/events.json", objId))
+		eventUrl = client.BuildUrl(fmt.Sprintf("/objects/%s/events", escapeSlashes(objId)))
 	}
 
 	client.logger.Printf("[INFO] Creating %s PremisEvent %s for objId %s", objType, event.EventType, objId)
 
 	data, err := json.Marshal(event)
-	request, err := client.NewJsonRequest(method, url.String(), bytes.NewBuffer(data))
+	request, err := client.NewJsonRequest(method, eventUrl, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err
 	}
@@ -456,6 +475,10 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 		err = fmt.Errorf("Expected status code 201 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
 		client.logger.Println("[ERROR]", err)
+		fmt.Println(string(data))
+		if len(body) < 1000 {
+			fmt.Println(string(body))
+		}
 		return nil, err
 	} else {
 		client.logger.Printf("[INFO] %s PremisEvent %s for objId %s succeeded", method, event.EventType, objId)
@@ -469,4 +492,9 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 		return nil, err
 	}
 	return newEvent, nil
+}
+
+// Replaces "/" with "%2F", which golang's url.QueryEscape does not do.
+func escapeSlashes(s string) (string) {
+	return strings.Replace(s, "/", "%2F", -1)
 }
