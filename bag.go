@@ -275,10 +275,9 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 		gf.ErrorMessage = fmt.Sprintf("Error determining mime type: %v", err)
 		return gf
 	}
-	if mimetype == "" {
+	gf.MimeType = mimetype
+	if gf.MimeType == "" {
 		gf.MimeType = "application/binary"
-	} else {
-		gf.MimeType = mimetype
 	}
 
 	return gf
