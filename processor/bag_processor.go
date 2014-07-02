@@ -676,7 +676,7 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 		Agent: "https://launchpad.net/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
-	_, err = client.PremisEventSave(intellectualObject.Id, "IntellectualObject", ingestEvent)
+	_, err = client.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", ingestEvent)
 	addMetadataRecord(result, "PremisEvent", "ingest", intellectualObject.Identifier, err)
 	return nil
 }

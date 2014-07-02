@@ -92,13 +92,6 @@ func (client *Client) CacheInstitutions () (error) {
 // is "http://localhost:3456", then client.BuildUrl("/path/to/action.json")
 // would return "http://localhost:3456/path/to/action.json".
 func (client *Client) BuildUrl (relativeUrl string) (string) {
-	// absoluteUrl, err := url.Parse(client.hostUrl + relativeUrl)
-	// if err != nil {
-	// 	// TODO: Check validity of Fluctus url on app init,
-	// 	// so we don't have to panic here.
-	// 	panic(fmt.Sprintf("Can't parse URL '%s': %v", absoluteUrl, err))
-	// }
-	// return absoluteUrl
 	return client.hostUrl + relativeUrl
 }
 
@@ -253,7 +246,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	if obj == nil {
 		return nil, fmt.Errorf("Param obj cannot be nil")
 	}
-	existingObj, err := client.IntellectualObjectGet(obj.Id, false)
+	existingObj, err := client.IntellectualObjectGet(obj.Identifier, false)
 	if err != nil {
 		return nil, err
 	}
@@ -278,11 +271,11 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
-		objUrl = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Id))
+		objUrl = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Identifier))
 		method = "PUT"
 	}
 
-	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Id)
+	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
 
 	data, err := obj.SerializeForFluctus()
 	request, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(data))
@@ -307,7 +300,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
-		client.logger.Printf("[INFO] %s IntellectualObject %s succeeded", method, obj.Id)
+		client.logger.Printf("[INFO] %s IntellectualObject %s succeeded", method, obj.Identifier)
 	}
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
@@ -325,12 +318,14 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 }
 
 
-func (client *Client) GenericFileGet (genericFileId string, includeRelations bool) (*models.GenericFile, error) {
+func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelations bool) (*models.GenericFile, error) {
 	queryString := ""
 	if includeRelations == true {
 		queryString = "include_relations=true"
 	}
-	fileUrl := client.BuildUrl(fmt.Sprintf("/files/%s?%s", genericFileId, queryString))
+	fileUrl := client.BuildUrl(fmt.Sprintf("/files/%s?%s",
+		escapeSlashes(genericFileIdentifier),
+		queryString))
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", fileUrl)
 	request, err := client.NewJsonRequest("GET", fileUrl, nil)
 	if err != nil {
@@ -369,7 +364,7 @@ func (client *Client) GenericFileGet (genericFileId string, includeRelations boo
 // Param objId is the Id of the IntellectualObject to which
 // the file belongs. This returns the GenericFile.
 func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (newGf *models.GenericFile, err error) {
-	existingObj, err := client.GenericFileGet(gf.Id, false)
+	existingObj, err := client.GenericFileGet(gf.Identifier, false)
 	if err != nil {
 		return nil, err
 	}
@@ -378,7 +373,7 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
-		fileUrl = client.BuildUrl(fmt.Sprintf("/files/%s", gf.Id))
+		fileUrl = client.BuildUrl(fmt.Sprintf("/files/%s", escapeSlashes(gf.Identifier)))
 		method = "PUT"
 	}
 
