@@ -197,7 +197,7 @@ type GenericFile struct {
     Size               int64      `json:"size"`
     Created            time.Time  `json:"created"`
     Modified           time.Time  `json:"modified"`
-    ChecksumAttributes []*ChecksumAttribute  `json:"checksum_attributes"`
+    ChecksumAttributes []*ChecksumAttribute  `json:"checksum"`
     Events             []*PremisEvent        `json:"premisEvents"`
 }
 
