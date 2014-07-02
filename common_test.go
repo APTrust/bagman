@@ -257,20 +257,17 @@ func TestGenericFiles(t *testing.T) {
         if gf.Modified == emptyTime {
             t.Error("GenericFile.Modified should not be nil")
         }
-        if strings.HasPrefix(gf.Id, bagman.APTrustNamespace) == false {
-            t.Errorf("GenericFile.Id should start with APTrust namespace, but it's '%s'", gf.Id)
+        if gf.Id != "" {
+            t.Errorf("GenericFile.Id should be empty, but it's '%s'", gf.Id)
         }
-        if strings.Index(gf.Id, "/") > -1 {
-            t.Errorf("GenericFile.Id should not contain slashes")
+        if strings.Index(gf.Identifier, "/") < 0 {
+            t.Errorf("GenericFile.Identifier should contain slashes")
         }
-        if strings.Index(gf.Id, "ncsu.edu") < 0 {
-            t.Errorf("GenericFile.Id should not contain the owner's domain name")
+        if strings.Index(gf.Identifier, "ncsu.edu") < 0 {
+            t.Errorf("GenericFile.Identifier should contain the owner's domain name")
         }
-        if strings.Index(gf.Id, strings.Replace(gf.Id, "/", "", -1)) < 0 {
-            t.Errorf("GenericFile.Id should not contain the file name")
-        }
-        if len(gf.Identifier) != 36 {
-            t.Errorf("GenericFile.Identifier should be a UUID, got '%s'", gf.Identifier)
+        if strings.Index(gf.Identifier, strings.Replace(gf.Identifier, "/", "", -1)) > -1 {
+            t.Errorf("GenericFile.Identifier should contain the file name")
         }
         for _, cs := range gf.ChecksumAttributes {
             if cs.Algorithm != "md5" && cs.Algorithm != "sha256" {
