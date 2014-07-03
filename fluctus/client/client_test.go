@@ -7,7 +7,6 @@ import (
 	"os"
 	"io/ioutil"
 	"net/http"
-//	"encoding/json"
 	"time"
 	"github.com/nu7hatch/gouuid"
 	"github.com/APTrust/bagman/fluctus/client"
@@ -265,7 +264,7 @@ func TestEventSave(t *testing.T) {
 		Outcome: "Success",
 		OutcomeDetail: "md5: 000000001234567890",
 		Object: "goamz S3 client",
-		Agent: "https://launchpad.net/goamz",
+		Agent: "https://github.com/crowdmob/goamz/s3",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
 

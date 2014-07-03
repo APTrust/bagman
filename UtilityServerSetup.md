@@ -81,7 +81,8 @@ small instance's /mnt has 160GB of disk space.
 Install the go packages we'll need:
 
 ```
-    go get launchpad.net/goamz
+	go get github.com/crowdmob/goamz/aws
+	go get github.com/crowdmob/goamz/s3
     go get github.com/nu7hatch/gouuid
     go get github.com/rakyll/magicmime
     go get github.com/APTrust/bagins

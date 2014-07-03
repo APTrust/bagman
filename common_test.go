@@ -8,7 +8,7 @@ import (
     "io/ioutil"
     "encoding/json"
     "path/filepath"
-    "launchpad.net/goamz/s3"
+	"github.com/crowdmob/goamz/s3"
     "github.com/APTrust/bagman"
 )
 
@@ -123,8 +123,7 @@ func TestIngestStatus(t *testing.T) {
     assertCorrectSummary(t, failedStore, "Failed")
 
     passedRecord := getResult("Record", true)
-    // TODO: Change Processing to Succeeded when Record step is working.
-    assertCorrectSummary(t, passedRecord, "Processing")
+    assertCorrectSummary(t, passedRecord, "Succeeded")
     failedRecord := getResult("Record", false)
     assertCorrectSummary(t, failedRecord, "Failed")
 }

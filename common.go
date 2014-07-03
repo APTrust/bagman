@@ -7,7 +7,7 @@ import (
     "time"
     "strings"
     "encoding/json"
-    "launchpad.net/goamz/s3"
+	"github.com/crowdmob/goamz/s3"
     "github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
     "github.com/APTrust/bagman/fluctus/models"
@@ -118,7 +118,6 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
 	// We probably should not do this correction, but we
 	// need to get through test runs with the bad data
 	// out partners submitted.
-	// TODO: Remove this??
 	if accessRights == "consortial" {
 		accessRights = "consortia"
 	} else if accessRights == "institutional" {
@@ -282,11 +281,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 		status.Retry = result.Retry
     } else {
         status.Note = "No problems"
-        if result.Stage == "Validate" {
-            // We made it through last stage with no errors
-            // TODO: Change back to "Record" after demo.
-            // *** NOTE: THE LAST STAGE SHOULD BE "Record", BUT FOR DEMO
-            // WE'LL CONSIDER "Validate" TO BE SUCCESS ***
+        if result.Stage == "Record" {
             status.Status = "Succeeded"
         }
 		// If there were no errors, bag was processed sucessfully,

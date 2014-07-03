@@ -6,8 +6,10 @@ import (
     "os"
     "path/filepath"
     "github.com/APTrust/bagman"
-    "launchpad.net/goamz/aws"
-    "launchpad.net/goamz/s3"
+    // "launchpad.net/goamz/aws"
+    // "launchpad.net/goamz/s3"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
 )
 
 var skipMessagePrinted bool = false
@@ -204,8 +206,12 @@ func TestSaveToS3(t *testing.T) {
     if err != nil {
         t.Errorf("Can't stat local test file: %v", err)
     }
+	// Bug in github.com/crowdmob/goamz/s3 or s3 causes s3 to reject
+	// even valid md5 sum. So we're not passing it for now.
+	// bag_processor.go has a work-around for this.
+	options := s3Client.MakeOptions("", nil)
     url, err := s3Client.SaveToS3(testPreservationBucket, "test_file.tar",
-        "application/binary", file, fileInfo.Size())
+        "application/binary", file, fileInfo.Size(), options)
     if err != nil {
         t.Error(err)
     }

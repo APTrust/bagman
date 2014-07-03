@@ -14,8 +14,8 @@ import (
     "github.com/APTrust/bagman"
     "github.com/APTrust/bagman/fluctus/client"
     "github.com/APTrust/bagman/fluctus/models"
-    "launchpad.net/goamz/aws"
-    "launchpad.net/goamz/s3"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
     "github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
 )
@@ -332,12 +332,31 @@ func saveToStorage() {
 			}
 			messageLog.Printf("[INFO] Sending %d bytes to S3 for file %s (UUID %s)",
 				gf.Size, gf.Path, gf.Uuid)
+
+			// Prepare metadata for save to S3
+			bagName := result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4]
+			instDomain := bagman.OwnerOf(result.S3File.BucketName)
+			s3Metadata := make(map[string][]string)
+			s3Metadata["md5"] = []string{ gf.Md5  }
+			s3Metadata["institution"] = []string{ instDomain }
+			s3Metadata["bag"] = []string{ bagName }
+			s3Metadata["bagpath"] = []string{ gf.Path }
+
+			// We should copy with gf.Md5 as the first options param
+			// (instead of the empty string below), but S3 always rejects
+			// our md5 sums, even when they are valid. Is that a bug?
+			// For now, we're adding the md5 to the metadata, and we do
+			// a get after storing the file (below) and compare the ETag
+			// to our known md5. That covers our requirements.
+			options := s3Client.MakeOptions("", s3Metadata)
+
 			url, err := s3Client.SaveToS3(
 				config.PreservationBucket,
 				gf.Uuid,
 				gf.MimeType,
 				reader,
-				gf.Size)
+				gf.Size,
+				options)
 			reader.Close()
 			if err != nil {
 				// Consider this error transient. Leave retry = true.
@@ -395,7 +414,6 @@ func saveToStorage() {
 // because later calls depend on the object created in earlier calls.
 // There's no way around this until we implement a single Fluctus endpoint
 // that will take in all the metadata at once and processing everyhing.
-
 func recordInFedora() {
     for result := range channels.FedoraChannel {
 		messageLog.Println("[INFO] Recording Fedora metadata for",
@@ -648,8 +666,6 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 // Ingest PremisEvent to Fedora.
 func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client.Client, intellectualObject *models.IntellectualObject) (error) {
 	// Create/Update the IntellectualObject
-	// BUG: We're creating a new intellectual object when we should be updating an existing one.
-	// TODO: Fix intellectual object update!!
 	savedObj, err := client.IntellectualObjectSave(intellectualObject)
 	addMetadataRecord(result, "IntellectualObject", "object_registered", intellectualObject.Identifier, err)
 	if savedObj != nil {

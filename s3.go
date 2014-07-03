@@ -6,8 +6,8 @@ import (
     "os"
     "strings"
     "crypto/md5"
-    "launchpad.net/goamz/aws"
-    "launchpad.net/goamz/s3"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
 )
 
 type S3Client struct {
@@ -183,17 +183,32 @@ func (client *S3Client) CheckBucket(bucketName string) (bucketSummary *BucketSum
     return bucketSummary, nil
 }
 
+// Creates an options struct that adds metadata headers to the S3 put.
+func (client *S3Client) MakeOptions(md5sum string, metadata map[string][]string) (s3.Options) {
+	if md5sum != "" {
+		return s3.Options{
+			ContentMD5: md5sum,
+			Meta: metadata,
+		}
+	} else {
+		return s3.Options{
+			Meta: metadata,
+		}
+	}
+}
+
 // Saves a file to S3 with default access of Private.
 // The underlying S3 client does not return the md5 checksum
 // from s3, but we already have this info elsewhere. If the
 // PUT produces no error, we assume the copy worked and the
 // files md5 sum is the same on S3 as here.
-func (client *S3Client) SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64) (url string, err error) {
+func (client *S3Client) SaveToS3(bucketName, fileName, contentType string, reader io.Reader, byteCount int64, options s3.Options) (url string, err error) {
     bucket := client.S3.Bucket(bucketName)
-    putErr := bucket.PutReader(fileName, reader, byteCount, contentType, s3.Private)
+    putErr := bucket.PutReader(fileName, reader, byteCount,
+		contentType, s3.Private, options)
     if putErr != nil {
         err = fmt.Errorf("Error saving file '%s' to bucket '%s': %v",
-            fileName, bucketName, err)
+            fileName, bucketName, putErr)
 		return "", err
     }
 	url = fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, fileName)
