@@ -196,10 +196,10 @@ func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) 
     events[1] = &models.PremisEvent{
 		Identifier: ingestEventUuid.String(),
         EventType: "ingest",
-        DateTime: time.Now(),
+        DateTime: gf.StoredAt,
         Detail: "Completed copy to S3",
         Outcome: "Success",
-        OutcomeDetail: "s3 md5 digest here", // XXXX Get this!
+        OutcomeDetail: gf.StorageMd5,
         Object: "bagman + goamz s3 client",
         Agent: "https://github.com/APTrust/bagman",
         OutcomeInformation: "Put using md5 checksum",
@@ -345,6 +345,8 @@ type GenericFile struct {
 	// bucket. If this is blank, the file has not yet been sent to
 	// preservation.
     StorageURL         string
+	StoredAt           time.Time
+	StorageMd5         string
 	// The unique id of this GenericFile. Institution domain name +
 	// "." + bag name.
 	Identifier         string

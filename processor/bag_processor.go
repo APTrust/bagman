@@ -8,6 +8,7 @@ import (
     "regexp"
     "sync/atomic"
     "log"
+	"strings"
 	"time"
     "path/filepath"
     "github.com/APTrust/bagman"
@@ -349,8 +350,31 @@ func saveToStorage() {
 				errorOccurred = true
 			} else {
 				gf.StorageURL = url
+				gf.StoredAt = time.Now()
 				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
 					"to long-term storage bucket.", gf.Path, gf.Uuid)
+				// Get md5 from S3
+				s3Key, err := s3Client.GetKey(config.PreservationBucket, gf.Uuid)
+				if err != nil {
+					msg := fmt.Sprintf("Error retrieving S3 key for '%s'. " +
+						"URL '%s': %v ", absPath, gf.StorageURL, err)
+					result.ErrorMessage += msg
+					messageLog.Println("[ERROR]", msg)
+					errorOccurred = true
+				} else {
+					gf.StorageMd5 = strings.Replace(s3Key.ETag, "\"", "", -1)
+					// Make sure md5 matches. For multi-GB files, the ETag is not a
+					// true md5 sum. It has a different length, and there's no way
+					// we can verify it. We'll consider this error transient, so don't
+					// set retry to false.
+					if len(gf.StorageMd5) == len(gf.Md5) && gf.StorageMd5 != gf.Md5 {
+						msg := fmt.Sprintf("md5 sum returned by preservation bucket for '%s'. " +
+							"is '%s', but it should be '%s' ", absPath, gf.StorageMd5, gf.Md5)
+						result.ErrorMessage += msg
+						messageLog.Println("[ERROR]", msg)
+						errorOccurred = true
+					}
+				}
 			}
 		}
 		if errorOccurred {
