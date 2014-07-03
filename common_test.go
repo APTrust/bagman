@@ -339,72 +339,108 @@ func TestGenericFiles(t *testing.T) {
     }
 }
 
-// func TestPremisEvents(t *testing.T) {
-//     filepath := filepath.Join("testdata", "result_good.json")
-//     result, err := loadResult(filepath)
-//     if err != nil {
-//         t.Errorf("Error loading test data file '%s': %v", filepath, err)
-//     }
-//     emptyTime := time.Time{}
-//     genericFiles, err := result.GenericFiles()
-// 	if err != nil {
-// 		t.Errorf("Error creating generic files from result: %v", err)
-// 	}
-//     for i, file := range(genericFiles) {
-//         if file.Events[0].EventType != "Ingest" {
-//             t.Errorf("EventType is '%s', expected '%s'",
-//                 file.Events[0].EventType,
-//                 "Ingest")
-//         }
-//         if file.Events[0].DateTime != emptyTime {
-//             t.Errorf("DateTime is %v, expected %v",
-//                 file.Events[0].DateTime,
-//                 emptyTime)
-//         }
-//         if file.Events[0].Identifier == "" {
-//             t.Errorf("Ingest event identifier is missing")
-//         }
+func TestPremisEvents(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+    emptyTime := time.Time{}
+    genericFiles, err := result.GenericFiles()
+	if err != nil {
+		t.Errorf("Error creating generic files from result: %v", err)
+	}
+    for i, file := range(genericFiles) {
+        if file.Events[0].EventType != "fixity_check" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[0].EventType,
+                "fixity_check")
+        }
+        if file.Events[0].DateTime == emptyTime {
+            t.Errorf("Event.DateTime is missing")
+        }
+        if file.Events[0].Identifier == "" {
+            t.Errorf("Fixity check event identifier is missing")
+        }
 
-//         if file.Events[1].EventType != "Fixity Generation" {
-//             t.Errorf("EventType is '%s', expected '%s'",
-//                 file.Events[1].EventType,
-//                 "Ingest")
-//         }
-//         if file.Events[1].DateTime != result.TarResult.GenericFiles[i].Sha256Generated {
-//             t.Errorf("DateTime is %v, expected %v",
-//                 file.Events[1].DateTime,
-//                 result.TarResult.GenericFiles[i].Sha256Generated)
-//         }
-//         if file.Events[1].OutcomeDetail != result.TarResult.GenericFiles[i].Sha256 {
-//             t.Errorf("OutcomeDetail is '%s', expected '%s'",
-//                 file.Events[1].OutcomeDetail,
-//                 result.TarResult.GenericFiles[i].Sha256)
-//         }
-//         if file.Events[1].Identifier == "" {
-//             t.Errorf("Fixity generation event identifier is missing")
-//         }
+        if file.Events[1].EventType != "ingest" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[1].EventType,
+                "ingest")
+        }
+        if file.Events[1].DateTime != result.TarResult.GenericFiles[i].StoredAt {
+            t.Errorf("DateTime is %v, expected %v",
+                file.Events[1].DateTime,
+                result.TarResult.GenericFiles[i].StoredAt)
+        }
+        if file.Events[1].OutcomeDetail != result.TarResult.GenericFiles[i].StorageMd5 {
+            t.Errorf("OutcomeDetail is '%s', expected '%s'",
+                file.Events[1].OutcomeDetail,
+                result.TarResult.GenericFiles[i].StorageMd5)
+        }
+        if file.Events[1].Identifier == "" {
+            t.Errorf("Ingest event identifier is missing")
+        }
 
-//         if file.Events[2].EventType != "Identifier Assignment" {
-//             t.Errorf("EventType is '%s', expected '%s'",
-//                 file.Events[2].EventType,
-//                 "Identifier Assignment")
-//         }
-//         if file.Events[2].DateTime != result.TarResult.GenericFiles[i].UuidGenerated {
-//             t.Errorf("DateTime is %v, expected %v",
-//                 file.Events[2].DateTime,
-//                 result.TarResult.GenericFiles[i].UuidGenerated)
-//         }
-//         if file.Events[2].OutcomeDetail != result.TarResult.GenericFiles[i].Uuid {
-//             t.Errorf("OutcomeDetail is '%s', expected '%s'",
-//                 file.Events[2].OutcomeDetail,
-//                 result.TarResult.GenericFiles[i].Uuid)
-//         }
-//         if file.Events[2].Identifier == "" {
-//             t.Errorf("Identifier assignement event id is missing")
-//         }
+        if file.Events[2].EventType != "fixity_generation" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[2].EventType,
+                "fixity_generation")
+        }
+        if file.Events[2].DateTime != result.TarResult.GenericFiles[i].Sha256Generated {
+            t.Errorf("DateTime is %v, expected %v",
+                file.Events[2].DateTime,
+                result.TarResult.GenericFiles[i].Sha256Generated)
+        }
+		expected256 := fmt.Sprintf("sha256:%s", result.TarResult.GenericFiles[i].Sha256)
+        if file.Events[2].OutcomeDetail != expected256 {
+            t.Errorf("OutcomeDetail is '%s', expected '%s'",
+                file.Events[2].OutcomeDetail,
+                expected256)
+        }
+        if file.Events[2].Identifier == "" {
+            t.Errorf("Fixity generation event id is missing")
+        }
 
-//     }
-// }
+        if file.Events[3].EventType != "identifier_assignment" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[3].EventType,
+                "identifier_assignment")
+        }
+        if file.Events[3].DateTime != result.TarResult.GenericFiles[i].UuidGenerated {
+            t.Errorf("DateTime is %v, expected %v",
+                file.Events[3].DateTime,
+                result.TarResult.GenericFiles[i].UuidGenerated)
+        }
+        if file.Events[3].OutcomeDetail != result.TarResult.GenericFiles[i].Identifier {
+            t.Errorf("OutcomeDetail is '%s', expected '%s'",
+                file.Events[3].OutcomeDetail,
+                result.TarResult.GenericFiles[i].Identifier)
+        }
+        if file.Events[3].Identifier == "" {
+            t.Errorf("Identifier assignement event id is missing")
+        }
+
+        if file.Events[4].EventType != "identifier_assignment" {
+            t.Errorf("EventType is '%s', expected '%s'",
+                file.Events[4].EventType,
+                "identifier_assignment")
+        }
+        if file.Events[4].DateTime != result.TarResult.GenericFiles[i].UuidGenerated {
+            t.Errorf("DateTime is %v, expected %v",
+                file.Events[4].DateTime,
+                result.TarResult.GenericFiles[i].UuidGenerated)
+        }
+        if file.Events[4].OutcomeDetail != result.TarResult.GenericFiles[i].StorageURL {
+            t.Errorf("OutcomeDetail is '%s', expected '%s'",
+                file.Events[4].OutcomeDetail,
+                result.TarResult.GenericFiles[i].StorageURL)
+        }
+        if file.Events[4].Identifier == "" {
+            t.Errorf("Identifier assignement event id is missing")
+        }
+    }
+}
 
 
 func TestGenericFilePaths(t *testing.T) {
