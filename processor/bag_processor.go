@@ -510,7 +510,10 @@ func CleanUp(file string) (errors []error) {
 // whether it was successfully unpacked, valid and complete.
 func ProcessBagFile(result *bagman.ProcessResult) {
     result.Stage = "Unpack"
-    result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile)
+	instDomain := bagman.OwnerOf(result.S3File.BucketName)
+	bagName := result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4]
+    result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile,
+		instDomain, bagName)
     if result.TarResult.ErrorMessage != "" {
         result.ErrorMessage = result.TarResult.ErrorMessage
         // If we can't untar this, there's no reason to retry...
@@ -525,7 +528,12 @@ func ProcessBagFile(result *bagman.ProcessResult) {
             // Something was wrong with this bag. Bad checksum,
             // missing file, etc. Don't reprocess it.
             result.Retry = false
-        }
+        } else {
+			for i := range(result.TarResult.GenericFiles) {
+				gf := result.TarResult.GenericFiles[i]
+				gf.Md5Verified = time.Now()
+			}
+		}
     }
 }
 
@@ -597,54 +605,18 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client, objId string, gf *bagman.GenericFile) (error) {
 	// Save the GenericFile metadata in Fedora, and add a metadata
 	// record so we know whether the call to Fluctus succeeded or failed.
-	fluctusGenericFile, err := gf.ToFluctusModel(
-		bagman.OwnerOf(result.S3File.BucketName),
-		result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
+	fluctusGenericFile, err := gf.ToFluctusModel()
 	if err != nil {
 		return fmt.Errorf("Error converting GenericFile to Fluctus model: %v", err)
 	}
 	_, err = client.GenericFileSave(objId, fluctusGenericFile)
 	addMetadataRecord(result, "GenericFile", "file_registered", gf.Path, err)
 
-	eventId, err := uuid.NewV4()
-	if err != nil {
-		return fmt.Errorf("Error generating UUID for identifier_assignment event: %v", err)
+	for _, event := range(fluctusGenericFile.Events) {
+		_, err = client.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", event)
+		addMetadataRecord(result, "PremisEvent", event.EventType, gf.Path, err)
 	}
 
-	// Save the identifier assignment event
-	idEvent := &models.PremisEvent{
-		Identifier: eventId.String(),
-		EventType: "identifier_assignment",
-		DateTime: gf.UuidGenerated,
-		Detail: "S3 key generated for file",
-		Outcome: "Success",
-		OutcomeDetail: gf.Uuid,
-		Object: "nu7hatch/gouuid",
-		Agent: "https://github.com/nu7hatch/gouuid",
-		OutcomeInformation: "Generated with golang gouuid",
-	}
-	_, err = client.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", idEvent)
-	addMetadataRecord(result, "PremisEvent", "identifier_assignment", gf.Path, err)
-
-	eventId, err = uuid.NewV4()
-	if err != nil {
-		return fmt.Errorf("Error generating UUID for fixity_generation event: %v", err)
-	}
-
-	// Save the fixity generation event
-	fixityEvent := &models.PremisEvent{
-		Identifier: eventId.String(),
-		EventType: "fixity_generation",
-		DateTime: gf.Sha256Generated,
-		Detail: "Calculated SHA256 checksum",
-		Outcome: "Success",
-		OutcomeDetail: gf.Sha256,
-		Object: "golang crypto/sha256",
-		Agent: "http://golang.org/pkg/crypto/sha256/",
-		OutcomeInformation: "Generated with golang sha256",
-	}
-	_, err = client.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", fixityEvent)
-	addMetadataRecord(result, "PremisEvent", "fixity_generation", gf.Path, err)
 	return nil
 }
 
@@ -678,6 +650,21 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 	}
 	_, err = client.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", ingestEvent)
 	addMetadataRecord(result, "PremisEvent", "ingest", intellectualObject.Identifier, err)
+
+	idEvent := &models.PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "identifier_assignment",
+		DateTime: time.Now(),
+		Detail: "Assigned bag identifier",
+		Outcome: "Success",
+		OutcomeDetail: intellectualObject.Identifier,
+		Object: "APTrust bagman",
+		Agent: "https://github.com/APTrust/bagman",
+		OutcomeInformation: "Institution domain + tar file name",
+	}
+	_, err = client.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", idEvent)
+	addMetadataRecord(result, "PremisEvent", "identifier_assignment", intellectualObject.Identifier, err)
+
 	return nil
 }
 

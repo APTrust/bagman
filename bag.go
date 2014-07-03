@@ -24,7 +24,10 @@ var magicMime *magicmime.Magic
 // Untars the file at the specified path and returns a list
 // of files that were untarred from the archive. Check
 // result.Error to ensure there were no errors.
-func Untar(path string) (result *TarResult) {
+// path is the path to the tar file that you want to unpack.
+// instDomain is the domain name of the institution that owns the bag.
+// bagName is the name of the tar file, minus the ".tar" extension.
+func Untar(path, instDomain, bagName string) (result *TarResult) {
 
 	// Set up our result
 	tarResult := new(TarResult)
@@ -79,6 +82,8 @@ func Untar(path string) (result *TarResult) {
 			if strings.Contains(header.Name, "data/") {
 				genericFile := buildGenericFile(tarReader, filepath.Dir(absInputFile), header.Name,
 					header.Size, header.ModTime)
+				genericFile.Identifier = fmt.Sprintf("%s.%s/%s", instDomain, bagName, genericFile.Path)
+				genericFile.IdentifierAssigned = time.Now()
 				tarResult.GenericFiles = append(tarResult.GenericFiles, genericFile)
 			} else {
 				err = saveFile(outputPath, tarReader)

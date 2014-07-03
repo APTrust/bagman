@@ -70,7 +70,7 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 	setup()
 	defer teardown()
 	for _, tarFile := range allFiles {
-		result := bagman.Untar(tarFile)
+		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
 		if result.ErrorMessage != "" {
 			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
 		}
@@ -81,7 +81,7 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 }
 
 func TestUntarCreatesGenericFiles(t *testing.T) {
-	tarResult := bagman.Untar(sampleGood)
+	tarResult := bagman.Untar(sampleGood, "ncsu.edu", "ncsu.1840.16-2928.tar")
 
 	// Generic files contains info about files in the /data directory
 	expectedPath := []string{
@@ -156,7 +156,7 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 // or corrupt tar file. It should return a TarResult with an
 // Error property.
 func TestUntarSetsErrorOnBadFile(t *testing.T) {
-	result := bagman.Untar(invalidTarFile)
+	result := bagman.Untar(invalidTarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
 	if result.ErrorMessage == "" {
 		t.Errorf("Untar should have reported an error about a bad tar file, but did not.")
 	}
@@ -168,7 +168,7 @@ func TestUntarSetsErrorOnBadFile(t *testing.T) {
 func TestGoodBagParsesCorrectly(t *testing.T) {
 	setup()
 	defer teardown()
-	tarResult := bagman.Untar(sampleGood)
+	tarResult := bagman.Untar(sampleGood, "ncsu.edu", "ncsu.1840.16-2928.tar")
 	result := bagman.ReadBag(tarResult.OutputDir)
 	if result.Path != tarResult.OutputDir {
 		t.Errorf("Result path %s is incorrect, expected %s", result.Path, tarResult.OutputDir)
@@ -235,7 +235,7 @@ func TestBadBagReturnsError(t *testing.T) {
 	fmt.Fprintf(os.Stderr, "Warnings below about missing bag-info/bagit files are expected.\n")
 	fmt.Fprintf(os.Stderr, "Tests are checking to see if the bag reader handles these cases.\n\n")
 	for _, tarFile := range badFiles {
-		tarResult := bagman.Untar(tarFile)
+		tarResult := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
 		result := bagman.ReadBag(tarResult.OutputDir)
 		if result.ErrorMessage == "" {
 			t.Errorf("Bag unpacked from %s should have produced an error, but did not",

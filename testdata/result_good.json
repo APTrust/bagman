@@ -49,13 +49,16 @@
                 "Created": "0001-01-01T00:00:00Z",
                 "Modified": "2014-04-25T18:05:51Z",
                 "Md5": "84586caa94ff719e93b802720501fcc7",
+                "Md5Verified": "2014-04-25T18:05:51Z",
                 "Sha256": "ab807222abc85eb3be8c4d5b754c1a5d89d53642d05232f9eade3a539e7f1784",
                 "Sha256Generated": "2014-06-09T14:12:45.574358959Z",
                 "Uuid": "b21fdb34-1f79-4101-62c5-56918f4782fc",
                 "UuidGenerated": "2014-06-09T14:12:45.574023166Z",
                 "MimeType": "application/xml",
                 "ErrorMessage": "",
-                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc"
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc",
+                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/metadata.xml",
+                "IdentifierAssigned": "2014-04-25T18:05:51Z"
             },
             {
                 "Path": "data/object.properties",
@@ -63,13 +66,16 @@
                 "Created": "0001-01-01T00:00:00Z",
                 "Modified": "2014-04-25T18:05:51Z",
                 "Md5": "a340203a24dcd6f6ca2bc95a4956c65d",
+                "Md5Verified": "2014-04-25T18:05:51Z",
                 "Sha256": "54536211e3ad308e8509091a1db393cbcc7fadd4a9b7f434bec8097d149a2039",
                 "Sha256Generated": "2014-06-09T14:12:45.574645986Z",
                 "Uuid": "cba60bd7-1d46-4d53-705f-2298e173bbf9",
                 "UuidGenerated": "2014-06-09T14:12:45.574558786Z",
                 "MimeType": "text/plain",
                 "ErrorMessage": "",
-                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/cba60bd7-1d46-4d53-705f-2298e173bbf9"
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/cba60bd7-1d46-4d53-705f-2298e173bbf9",
+                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/object.properties",
+                "IdentifierAssigned": "2014-04-25T18:05:51Z"
             },
             {
                 "Path": "data/ORIGINAL/1",
@@ -77,13 +83,16 @@
                 "Created": "0001-01-01T00:00:00Z",
                 "Modified": "2014-04-25T18:05:52Z",
                 "Md5": "71bf1855639c4194c5a6337cc05c2b19",
+                "Md5Verified": "2014-04-25T18:05:51Z",
                 "Sha256": "1e03f27bd4056b9082ea645517d3c419cb488ac316b392b344eda73ea3010169",
                 "Sha256Generated": "2014-06-09T14:12:45.729000335Z",
                 "Uuid": "18299764-f623-489e-5171-b9f7e37675a1",
                 "UuidGenerated": "2014-06-09T14:12:45.576285246Z",
                 "MimeType": "application/pdf",
                 "ErrorMessage": "",
-                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/18299764-f623-489e-5171-b9f7e37675a1"
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/18299764-f623-489e-5171-b9f7e37675a1",
+                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/ORIGINAL/1",
+                "IdentifierAssigned": "2014-04-25T18:05:51Z"
             },
             {
                 "Path": "data/ORIGINAL/1-metadata.xml",
@@ -91,13 +100,16 @@
                 "Created": "0001-01-01T00:00:00Z",
                 "Modified": "2014-04-25T18:05:52Z",
                 "Md5": "a4d9c67041d961bb8e003fdc2a3b65e8",
+                "Md5Verified": "2014-04-25T18:05:51Z",
                 "Sha256": "60eca5faef45a627d0c1e916026ed6cf91ffe911b5f9b136a3dcc7d99e291519",
                 "Sha256Generated": "2014-06-09T14:12:45.731513738Z",
                 "Uuid": "59ce7814-cba5-4898-62d2-9541b2b28295",
                 "UuidGenerated": "2014-06-09T14:12:45.73140604Z",
                 "MimeType": "application/xml",
                 "ErrorMessage": "",
-                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/59ce7814-cba5-4898-62d2-9541b2b28295"
+                "StorageURL": "https://s3.amazonaws.com/aptrust.storage/59ce7814-cba5-4898-62d2-9541b2b28295",
+                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/ORIGINAL/1-metadata.xml",
+                "IdentifierAssigned": "2014-04-25T18:05:51Z"
             }
         ]
     },

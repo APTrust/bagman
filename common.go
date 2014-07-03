@@ -153,9 +153,7 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
 func (result *ProcessResult) GenericFiles() (files []*models.GenericFile, err error) {
     files = make([]*models.GenericFile, len(result.TarResult.GenericFiles))
     for i, file := range(result.TarResult.GenericFiles) {
-		gfModel, err := file.ToFluctusModel(
-			OwnerOf(result.S3File.BucketName),
-			result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
+		gfModel, err := file.ToFluctusModel()
 		if err != nil {
 			return nil, err
 		}
@@ -167,22 +165,41 @@ func (result *ProcessResult) GenericFiles() (files []*models.GenericFile, err er
 // PremisEvents returns a list of Premis events generated during bag
 // processing. Ingest, Fixity Generation (sha256), identifier
 // assignment.
-func PremisEvents(gf *GenericFile) (events []*models.PremisEvent, err error) {
-    events = make([]*models.PremisEvent, 3)
+func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) {
+    events = make([]*models.PremisEvent, 5)
+    // Fixity check
+    fCheckEventUuid, err := uuid.NewV4()
+	if err != nil {
+		detailedErr := fmt.Errorf("Error generating UUID for fixity check event: %v", err)
+		return nil, detailedErr
+	}
+	// Fixity check event
+    events[0] = &models.PremisEvent{
+		Identifier: fCheckEventUuid.String(),
+        EventType: "fixity_check",
+        DateTime: gf.Md5Verified,
+        Detail: "Fixity check against registered hash",
+        Outcome: "Success",
+        OutcomeDetail: fmt.Sprintf("md5:%s", gf.Md5),
+        Object: "Go crypto/md5",
+        Agent: "http://golang.org/pkg/crypto/md5/",
+        OutcomeInformation: "Fixity matches",
+    }
+
     // Ingest
     ingestEventUuid, err := uuid.NewV4()
 	if err != nil {
 		detailedErr := fmt.Errorf("Error generating UUID for ingest event: %v", err)
 		return nil, detailedErr
 	}
-	// TODO: Use actual timestamp instead of blank time struct
-    events[0] = &models.PremisEvent{
+	// Ingest event
+    events[1] = &models.PremisEvent{
 		Identifier: ingestEventUuid.String(),
-        EventType: "Ingest",
-        DateTime: time.Time{},
+        EventType: "ingest",
+        DateTime: time.Now(),
         Detail: "Completed copy to S3",
         Outcome: "Success",
-        OutcomeDetail: "s3 md5 digest here",
+        OutcomeDetail: "s3 md5 digest here", // XXXX Get this!
         Object: "bagman + goamz s3 client",
         Agent: "https://github.com/APTrust/bagman",
         OutcomeInformation: "Put using md5 checksum",
@@ -193,31 +210,48 @@ func PremisEvents(gf *GenericFile) (events []*models.PremisEvent, err error) {
 		detailedErr := fmt.Errorf("Error generating UUID for fixity generation event: %v", err)
 		return nil, detailedErr
 	}
-    events[1] = &models.PremisEvent{
+    events[2] = &models.PremisEvent{
 		Identifier: fixityGenUuid.String(),
-        EventType: "Fixity Generation",
+        EventType: "fixity_generation",
         DateTime: gf.Sha256Generated,
         Detail: "Calculated new fixity value",
         Outcome: "Success",
-        OutcomeDetail: gf.Sha256,
+        OutcomeDetail: fmt.Sprintf("sha256:%s", gf.Sha256),
         Object: "Go language crypto/sha256",
         Agent: "http://golang.org/pkg/crypto/sha256/",
         OutcomeInformation: "",
     }
-    // Identifier assignment
+    // Identifier assignment (Friendly ID)
     idAssignmentUuid, err := uuid.NewV4()
 	if err != nil {
-		detailedErr := fmt.Errorf("Error generating UUID for identifier assignment event: %v", err)
+		detailedErr := fmt.Errorf("Error generating UUID for identifier assignment event for friendly ID: %v", err)
 		return nil, detailedErr
 	}
-    events[2] = &models.PremisEvent{
+    events[3] = &models.PremisEvent{
 		Identifier: idAssignmentUuid.String(),
-        EventType: "Identifier Assignment",
+        EventType: "identifier_assignment",
         DateTime: gf.UuidGenerated,
-        Detail: "Assigned new identifier",
+        Detail: "Assigned new institution.bag/path identifier",
         Outcome: "Success",
-        OutcomeDetail: gf.Uuid,
-        Object: "Go language UUID generator",
+        OutcomeDetail: gf.Identifier,
+        Object: "APTrust bag processor",
+        Agent: "https://github.com/APTrust/bagman",
+        OutcomeInformation: "",
+    }
+    // Identifier assignment (S3 URL)
+    urlAssignmentUuid, err := uuid.NewV4()
+	if err != nil {
+		detailedErr := fmt.Errorf("Error generating UUID for identifier assignment event for S3 URL: %v", err)
+		return nil, detailedErr
+	}
+    events[4] = &models.PremisEvent{
+		Identifier: urlAssignmentUuid.String(),
+        EventType: "identifier_assignment",
+        DateTime: gf.UuidGenerated,
+        Detail: "Assigned new storage URL identifier",
+        Outcome: "Success",
+        OutcomeDetail: gf.StorageURL,
+        Object: "Go uuid library + goamz S3 library",
         Agent: "http://github.com/nu7hatch/gouuid",
         OutcomeInformation: "",
     }
@@ -275,47 +309,52 @@ type BucketSummary struct {
 type GenericFile struct {
 	// Path is the path to the file within the bag. It should
 	// always begin with "data/"
-    Path             string
+    Path               string
 	// The size of the file, in bytes.
-    Size             int64
+    Size               int64
 	// The time the file was created. This is here because
 	// it's part of the Fedora object model, but we do not
 	// actually have access to this data. Created will usually
 	// be set to empty time or mod time.
-    Created          time.Time
+    Created            time.Time
 	// The time the file was last modified.
-    Modified         time.Time
-	// The md5 checksum for the file.
-    Md5              string
+    Modified           time.Time
+	// The md5 checksum for the file & when we verified it.
+    Md5                string
+	Md5Verified        time.Time
 	// The sha256 checksum for the file.
-    Sha256           string
+    Sha256             string
 	// The time the sha256 checksum was generated. The bag processor
 	// generates this checksum when it unpacks the file from the
 	// tar archive.
-    Sha256Generated  time.Time
+    Sha256Generated    time.Time
 	// The unique identifier for this file. This is generated by the
 	// bag processor when it unpackes the file from the tar archive.
-    Uuid             string
+    Uuid               string
 	// The time when the bag processor generated the UUID for this file.
-    UuidGenerated    time.Time
+    UuidGenerated      time.Time
 	// The mime type of the file. This should be suitable for use in an
 	// HTTP Content-Type header.
-    MimeType         string
+    MimeType           string
 	// A message describing any errors that occurred during the processing
 	// of this file. E.g. I/O error, bad checksum, etc. If this is empty,
 	// there were no processing errors.
-    ErrorMessage     string
+    ErrorMessage       string
 	// The file's URL in the S3 preservation bucket. This is assigned by
 	// the bag processor after it stores the file in the preservation
 	// bucket. If this is blank, the file has not yet been sent to
 	// preservation.
-    StorageURL       string
+    StorageURL         string
+	// The unique id of this GenericFile. Institution domain name +
+	// "." + bag name.
+	Identifier         string
+	IdentifierAssigned time.Time
 }
 
 
 // Converts bagman.GenericFile to models.GenericFile, which is what
 // Fluctus understands.
-func (gf *GenericFile) ToFluctusModel(instDomain, bagName string) (*models.GenericFile, error) {
+func (gf *GenericFile) ToFluctusModel() (*models.GenericFile, error) {
 	checksumAttributes := make([]*models.ChecksumAttribute, 2)
 	checksumAttributes[0] = &models.ChecksumAttribute{
 		Algorithm: "md5",
@@ -327,12 +366,12 @@ func (gf *GenericFile) ToFluctusModel(instDomain, bagName string) (*models.Gener
 		DateTime: gf.Sha256Generated,
 		Digest: gf.Sha256,
 	}
-	events, err := PremisEvents(gf)
+	events, err := gf.PremisEvents()
 	if err != nil {
 		return nil, err
 	}
 	gfModel := &models.GenericFile{
-		Identifier: fmt.Sprintf("%s.%s/%s", instDomain, bagName, gf.Path),
+		Identifier: gf.Identifier,
 		Format: gf.MimeType,
 		URI: gf.StorageURL,
 		Size: gf.Size,
@@ -491,7 +530,7 @@ func (result *FedoraResult) AddRecord (recordType, action, eventObject, errorMes
 	if recordType != "IntellectualObject" && recordType != "GenericFile" && recordType !=  "PremisEvent" {
 		return fmt.Errorf("Param recordType must be one of 'IntellectualObject', 'GenericFile', or 'PremisEvent'")
 	}
-	if recordType == "PremisEvent" && action != "ingest" &&
+	if recordType == "PremisEvent" && action != "ingest" && action != "fixity_check" &&
 		action != "identifier_assignment" && action != "fixity_generation" {
 		return fmt.Errorf("'%s' is not a valid action for PremisEvent", action)
 	} else if recordType == "IntellectualObject" && action != "object_registered" {
