@@ -22,8 +22,8 @@ for determining file mime types. We'll need gcc to build the
 magicmime go package later.
 
 ```
-        sudo apt-get install git bzr mercurial
-        sudo apt-get install gcc libmagic-dev
+    sudo apt-get install git bzr mercurial
+    sudo apt-get install gcc libmagic-dev
 ```
 
 Install go, but don't use apt-get.
@@ -67,15 +67,16 @@ You should see this output:
     go version go1.2.1 linux/386
 ```
 
-Make a directory to hold the tar/bag files we're going to
-download. Most EC2 instances include a volume attached at /mnt. A
-small instance's /mnt has 160GB of disk space.
+Mount the EBS volume and then make directories to hold the tar/bag
+files we're going to download.
 
 ```
-    sudo mkdir /mnt/apt_data
-    sudo mkdir /mnt/apt_logs
-    sudo chown ubuntu.ubuntu /mnt/apt_data/
-    sudo chown ubuntu.ubuntu /mnt/apt_logs/
+    sudo mkdir /mnt/apt
+    sudo mount /dev/xvdc /mnt/apt
+    sudo mkdir /mnt/apt/data
+    sudo mkdir /mnt/apt/logs
+    sudo chown ubuntu.ubuntu /mnt/apt/data/
+    sudo chown ubuntu.ubuntu /mnt/apt/logs/
 ```
 
 Install the go packages we'll need:
@@ -143,7 +144,7 @@ fluctus.
 After running the test program, make sure it cleaned up after itself:
 
 ```
-    ls /mnt/apt_data/
+    ls /mnt/apt/data/
 ```
 
 That listing should show an empty directory.
@@ -322,7 +323,7 @@ demo: &demo
   DEVISE_SECRET_KEY: XXXXXXXXX
 
 test:
-  <<: *demo
+  &lt;&lt;: *demo
 </pre>
 
 Install jetty/hydra by running this command in ~/fluctus:
