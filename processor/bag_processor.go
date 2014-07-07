@@ -711,10 +711,6 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 func addMetadataRecord(result *bagman.ProcessResult, eventType, action, eventObject string, err error) {
 	errMsg := ""
 	if err != nil {
-		// TEMPORARY -- REMOVE ME!! - OR SET ME AS A CONFIG OPTION.
-		fmt.Println("---- QUITTING DUE TO FLUCTUS ERROR ----")
-		log.Fatal(err)
-		// TEMPORARY -- REMOVE ME!!
 		errMsg = err.Error()
 	}
 	// Die on bad records. This is entirely within the developer's control
