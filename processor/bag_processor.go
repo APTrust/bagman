@@ -4,11 +4,12 @@ import (
     "fmt"
     "flag"
     "encoding/json"
+    "encoding/base64"
+    "encoding/hex"
     "os"
     "regexp"
     "sync/atomic"
     "log"
-	"strings"
 	"time"
     "path/filepath"
     "github.com/APTrust/bagman"
@@ -342,14 +343,20 @@ func saveToStorage() {
 			s3Metadata["bag"] = []string{ bagName }
 			s3Metadata["bagpath"] = []string{ gf.Path }
 
-			// We should copy with gf.Md5 as the first options param
-			// (instead of the empty string below), but S3 always rejects
-			// our md5 sums, even when they are valid. Is that a bug?
-			// For now, we're adding the md5 to the metadata, and we do
-			// a get after storing the file (below) and compare the ETag
-			// to our known md5. That covers our requirements.
-			options := s3Client.MakeOptions("", s3Metadata)
+			// We'll get error if md5 contains non-hex characters. Catch
+			// that below, when S3 tells us our md5 sum is invalid.
+			md5Bytes, err := hex.DecodeString(gf.Md5)
+			if err != nil {
+				msg := fmt.Sprintf("Md5 sum '%s' contains invalid characters. " +
+					"S3 will reject this!", gf.Md5)
+				result.ErrorMessage += msg
+				messageLog.Println("[ERROR]", msg)
+				errorOccurred = true
+			}
 
+			// Save to S3 with the base64-encoded md5 sum
+			base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
+			options := s3Client.MakeOptions(base64md5, s3Metadata)
 			url, err := s3Client.SaveToS3(
 				config.PreservationBucket,
 				gf.Uuid,
@@ -372,28 +379,6 @@ func saveToStorage() {
 				gf.StoredAt = time.Now()
 				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
 					"to long-term storage bucket.", gf.Path, gf.Uuid)
-				// Get md5 from S3
-				s3Key, err := s3Client.GetKey(config.PreservationBucket, gf.Uuid)
-				if err != nil {
-					msg := fmt.Sprintf("Error retrieving S3 key for '%s'. " +
-						"URL '%s': %v ", absPath, gf.StorageURL, err)
-					result.ErrorMessage += msg
-					messageLog.Println("[ERROR]", msg)
-					errorOccurred = true
-				} else {
-					gf.StorageMd5 = strings.Replace(s3Key.ETag, "\"", "", -1)
-					// Make sure md5 matches. For multi-GB files, the ETag is not a
-					// true md5 sum. It has a different length, and there's no way
-					// we can verify it. We'll consider this error transient, so don't
-					// set retry to false.
-					if len(gf.StorageMd5) == len(gf.Md5) && gf.StorageMd5 != gf.Md5 {
-						msg := fmt.Sprintf("md5 sum returned by preservation bucket for '%s'. " +
-							"is '%s', but it should be '%s' ", absPath, gf.StorageMd5, gf.Md5)
-						result.ErrorMessage += msg
-						messageLog.Println("[ERROR]", msg)
-						errorOccurred = true
-					}
-				}
 			}
 		}
 		if errorOccurred {

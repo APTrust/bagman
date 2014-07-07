@@ -5,9 +5,9 @@ import (
     "fmt"
     "os"
     "path/filepath"
+	"encoding/base64"
+	"crypto/md5"
     "github.com/APTrust/bagman"
-    // "launchpad.net/goamz/aws"
-    // "launchpad.net/goamz/s3"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 )
@@ -209,7 +209,12 @@ func TestSaveToS3(t *testing.T) {
 	// Bug in github.com/crowdmob/goamz/s3 or s3 causes s3 to reject
 	// even valid md5 sum. So we're not passing it for now.
 	// bag_processor.go has a work-around for this.
-	options := s3Client.MakeOptions("", nil)
+	fileBytes := make([]byte, fileInfo.Size())
+	_, _ = file.Read(fileBytes)
+	_, _ = file.Seek(0, 0)
+	md5Bytes := md5.Sum(fileBytes)
+	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes[:])
+	options := s3Client.MakeOptions(base64md5, nil)
     url, err := s3Client.SaveToS3(testPreservationBucket, "test_file.tar",
         "application/binary", file, fileInfo.Size(), options)
     if err != nil {
@@ -218,7 +223,7 @@ func TestSaveToS3(t *testing.T) {
 	expectedUrl := fmt.Sprintf("https://s3.amazonaws.com/%s/test_file.tar",
 		testPreservationBucket)
 	if url != expectedUrl {
-		t.Errorf("Expected url '%s' but got '%s'", url)
+		t.Errorf("Expected url '%s' but got '%s'", expectedUrl, url)
 	}
 }
 
