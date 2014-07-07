@@ -39,7 +39,10 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Can't create cookie jar for HTTP client: %v", err)
 	}
-	transport := &http.Transport{ MaxIdleConnsPerHost: 12 }
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: 8,
+		DisableKeepAlives: false,
+	}
 	httpClient := &http.Client{ Jar: cookieJar, Transport: transport }
 	return &Client{hostUrl, apiUser, apiKey, httpClient, transport, logger, nil}, nil
 }
@@ -107,6 +110,7 @@ func (client *Client) NewJsonRequest(method, targetUrl string, body io.Reader) (
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("X-Fluctus-API-User", client.apiUser)
 	req.Header.Add("X-Fluctus-API-Key", client.apiKey)
+	req.Header.Add("Connection", "Keep-Alive")
 
 	// Unfix the URL that golang net/url "fixes" for us.
 	// See http://stackoverflow.com/questions/20847357/golang-http-client-always-escaped-the-url/
@@ -171,6 +175,20 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 		return nil, err
 	}
 
+	// We have to read the response body, whether we're interested in
+	// its contents or not. If we don't read to the end of it, we'll
+	// end up with thousands of TCP connections in CLOSED_WAIT state,
+	// and the system will run out of file handles. See this post:
+	// http://stackoverflow.com/questions/17948827/reusing-http-connections-in-golang
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// OK to return 404 on a status check. It just means the bag has not
 	// been processed before.
 	if response.StatusCode == 404 && request.Method == "GET" {
@@ -180,11 +198,6 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	if response.StatusCode != expectedStatus {
 		err = fmt.Errorf("Expected status code %d but got %d. URL: %s",
 			expectedStatus, response.StatusCode, request.URL)
-		return nil, err
-	}
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
 		return nil, err
 	}
 
@@ -217,16 +230,20 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 		fmt.Println(err)
 		return nil, err
 	}
+
+	// Must read body. See comment above.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// 404 for object not found
 	if response.StatusCode != 200 {
 		return nil, nil
-	}
-
-	// Read the json response
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
 	}
 
 	// Build and return the data structure
@@ -287,10 +304,14 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 		return nil, err
 	}
 
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
+	// Must read body. See comment above.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
@@ -337,16 +358,20 @@ func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelat
 		fmt.Println(err)
 		return nil, err
 	}
+
+	// Must read body. See comment above.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	// 404 for object not found
 	if response.StatusCode != 200 {
 		return nil, nil
-	}
-
-	// Read the json response
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
 	}
 
 	// Build and return the data structure
@@ -389,10 +414,14 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		return nil, err
 	}
 
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
+	// Must read body. See comment above.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
@@ -460,10 +489,14 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 		return nil, err
 	}
 
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return nil, err
+ 	// Must read body. See comment above.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if response.StatusCode != 201  {
