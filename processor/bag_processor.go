@@ -652,10 +652,22 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 		return fmt.Errorf("Error converting GenericFile to Fluctus model: %v", err)
 	}
 	_, err = client.GenericFileSave(objId, fluctusGenericFile)
+	if err != nil {
+		handleFedoraError(result,
+			fmt.Sprintf("Error saving generic file '%s' to Fedora", objId),
+			err)
+		return err
+	}
 	addMetadataRecord(result, "GenericFile", "file_registered", gf.Path, err)
 
 	for _, event := range(fluctusGenericFile.Events) {
 		_, err = client.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", event)
+		if err != nil {
+			message := fmt.Sprintf("Error saving event '%s' for generic file " +
+				"'%s' to Fedora", event, objId)
+			handleFedoraError(result, message, err)
+			return err
+		}
 		addMetadataRecord(result, "PremisEvent", event.EventType, gf.Path, err)
 	}
 
@@ -667,6 +679,12 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client.Client, intellectualObject *models.IntellectualObject) (error) {
 	// Create/Update the IntellectualObject
 	savedObj, err := client.IntellectualObjectSave(intellectualObject)
+	if err != nil {
+		message := fmt.Sprintf("Error saving intellectual object '%s' to Fedora",
+			intellectualObject.Identifier)
+		handleFedoraError(result, message, err)
+		return err
+	}
 	addMetadataRecord(result, "IntellectualObject", "object_registered", intellectualObject.Identifier, err)
 	if savedObj != nil {
 		intellectualObject.Id = savedObj.Id
@@ -689,6 +707,12 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
 	_, err = client.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", ingestEvent)
+	if err != nil {
+		message := fmt.Sprintf("Error saving ingest event for intellectual " +
+			"object '%s' to Fedora", intellectualObject.Identifier)
+		handleFedoraError(result, message, err)
+		return err
+	}
 	addMetadataRecord(result, "PremisEvent", "ingest", intellectualObject.Identifier, err)
 
 	idEvent := &models.PremisEvent{
@@ -703,6 +727,12 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 		OutcomeInformation: "Institution domain + tar file name",
 	}
 	_, err = client.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", idEvent)
+	if err != nil {
+		message := fmt.Sprintf("Error saving identifier_assignment event for " +
+			"intellectual object '%s' to Fedora", intellectualObject.Identifier)
+		handleFedoraError(result, message, err)
+		return err
+	}
 	addMetadataRecord(result, "PremisEvent", "identifier_assignment", intellectualObject.Identifier, err)
 
 	return nil
@@ -719,4 +749,9 @@ func addMetadataRecord(result *bagman.ProcessResult, eventType, action, eventObj
 	if recError != nil {
 		messageLog.Fatal(recError)
 	}
+}
+
+func handleFedoraError(result *bagman.ProcessResult, message string, err error) {
+	result.FedoraResult.ErrorMessage = fmt.Sprintf("%s: %v", message, err)
+	result.ErrorMessage = result.FedoraResult.ErrorMessage
 }

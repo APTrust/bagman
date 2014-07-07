@@ -511,6 +511,7 @@ type FedoraResult struct {
 	ObjectIdentifier  string
 	GenericFilePaths []string
 	MetadataRecords  []*MetadataRecord
+	ErrorMessage     string
 }
 
 // Creates a new FedoraResult object with the specified IntellectualObject
