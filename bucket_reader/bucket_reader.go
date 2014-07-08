@@ -152,7 +152,14 @@ func filterProcessedFiles (s3Files []*bagman.S3File) (filesToProcess []*bagman.S
 			reason := "Bag has never been processed."
             if status != nil {
                 reason = "Bag failed prior processing attempt, and retry flag is true."
-            }
+            } else {
+				err = createFluctusRecord(s3File)
+				if err != nil {
+					// TODO: Notify someone?
+					messageLog.Printf("[ERROR] Could not create Fluctus ProcessedItem " +
+						"for %s: %v",s3File.Key.Key, err)
+				}
+			}
             messageLog.Printf("[INFO] Will process bag %s: %s",s3File.Key.Key, reason)
             filesToProcess = append(filesToProcess, s3File)
         } else if status.Status != "Failed" {
@@ -162,6 +169,36 @@ func filterProcessedFiles (s3Files []*bagman.S3File) (filesToProcess []*bagman.S
 		}
     }
     return filesToProcess
+}
+
+
+func createFluctusRecord(s3File *bagman.S3File) (err error) {
+    status := &bagman.ProcessStatus{}
+    status.Date = time.Now().UTC()
+    status.Action = "Ingest"
+    status.Name = s3File.Key.Key
+    bagDate, _ := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
+    status.BagDate = bagDate
+    status.Bucket = s3File.BucketName
+    // Strip the quotes off the ETag
+    status.ETag = strings.Replace(s3File.Key.ETag, "\"", "", 2)
+    status.Stage = "Receive"
+    status.Status = "Received"
+	status.Note = "Item is in receiving bucket. Processing has not started."
+    status.Institution = bagman.OwnerOf(s3File.BucketName)
+    status.Outcome = status.Status
+
+	// Retry should be true until we know for sure that there
+	// is something wrong with the bag.
+	status.Retry = true
+
+    err = fluctusClient.UpdateBagStatus(status)
+    if err != nil {
+        return err
+    }
+    messageLog.Printf("[INFO] Created Fluctus ProcessedItem for %s\n",
+        s3File.Key.Key)
+    return nil
 }
 
 

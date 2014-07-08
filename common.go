@@ -40,7 +40,8 @@ type S3File struct {
 // Type may have one of the following values: Ingest, Delete,
 // Restore
 //
-// Stage may have one of the following values: Fetch (fetch
+// Stage may have one of the following values: Receive (bag was
+// uploaded by partner into receiving bucket), Fetch (fetch
 // tarred bag file from S3 receiving bucket), Unpack (unpack
 // the tarred bag), Validate (make sure all data files are present,
 // checksums are correct, required tags are present), Store (copy
