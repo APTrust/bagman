@@ -233,3 +233,10 @@ func (client *S3Client) GetKey(bucketName, fileName string) (*s3.Key, error) {
     }
     return &listResp.Contents[0], nil
 }
+
+
+// Deletes an item from S3
+func (client *S3Client) Delete(bucketName, fileName string) (error) {
+    bucket := client.S3.Bucket(bucketName)
+    return bucket.Del(fileName)
+}

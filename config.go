@@ -98,6 +98,10 @@ type Config struct {
     // The name of the preservation bucket to which we should
     // copy files for long-term storage.
     PreservationBucket   string
+
+	// Should we delete the uploaded tar file from the receiving
+	// bucket after successfully processing this bag?
+	DeleteOnSuccess      bool
 }
 
 // This returns the configuration that the user requested.
