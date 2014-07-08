@@ -91,9 +91,13 @@ func main() {
         messageLog.Fatalf("Cannot initialize S3Client: %v", err)
     }
 
-    nsqConfig := nsq.NewConfig()
-    nsqConfig.Set("max_in_flight", 20)
-    nsqConfig.Set("heartbeat_interval", "0m15s")
+	nsqConfig := nsq.NewConfig()
+	nsqConfig.Set("max_in_flight", 10)
+	nsqConfig.Set("heartbeat_interval", "10s")
+	nsqConfig.Set("max_attempts", uint16(3))
+	nsqConfig.Set("read_timeout", "60s")
+	nsqConfig.Set("write_timeout", "10s")
+	nsqConfig.Set("msg_timeout", "30m")
     consumer, err := nsq.NewConsumer(config.BagProcessorTopic, config.BagProcessorChannel, nsqConfig)
     if err != nil {
         messageLog.Fatalf(err.Error())
