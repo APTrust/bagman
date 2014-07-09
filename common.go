@@ -129,7 +129,7 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
     }
     // For now, object identifier is institution domain, plus the name
     // of the tar file, with ".tar" truncated.
-    identifier := fmt.Sprintf("%s.%s",
+    identifier := fmt.Sprintf("%s/%s",
         institution.BriefName,
         result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
 	files, err := result.GenericFiles()

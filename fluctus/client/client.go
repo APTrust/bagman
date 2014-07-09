@@ -213,12 +213,13 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 // such object exists. If includeRelations is false, this returns only
 // the IntellectualObject. If includeRelations is true, this returns
 // the IntellectualObject with all of its GenericFiles and Events.
+// Param identifier must have slashes replaced with %2F or you'll get a 404!
 func (client *Client) IntellectualObjectGet (identifier string, includeRelations bool) (*models.IntellectualObject, error) {
 	queryString := ""
 	if includeRelations == true {
 		queryString = "include_relations=true"
 	}
-	objUrl := client.BuildUrl(fmt.Sprintf("/objects/%s?%s", identifier, queryString))
+	objUrl := client.BuildUrl(fmt.Sprintf("/objects/%s?%s", escapeSlashes(identifier), queryString))
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
@@ -288,7 +289,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
-		objUrl = client.BuildUrl(fmt.Sprintf("/objects/%s", obj.Identifier))
+		objUrl = client.BuildUrl(fmt.Sprintf("/objects/%s", escapeSlashes(obj.Identifier)))
 		method = "PUT"
 	}
 
@@ -339,6 +340,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 }
 
 
+// Returns the generic file with the specified identifier.
 func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelations bool) (*models.GenericFile, error) {
 	queryString := ""
 	if includeRelations == true {

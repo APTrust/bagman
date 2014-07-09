@@ -15,8 +15,8 @@ import (
 
 // TODO: Fix tests so they don't depend on these hard-coded ids!
 var fluctusUrl string = "http://localhost:3000"
-var objId string = "ncsu.edu.ncsu.1840.16-1153"
-var gfId string = "ncsu.edu.ncsu.1840.16-1153/data/object.properties"
+var objId string = "ncsu.edu/ncsu.1840.16-1153"
+var gfId string = "ncsu.edu/ncsu.1840.16-1153/data/object.properties"
 var skipMessagePrinted bool = false
 
 func runFluctusTests() (bool) {
