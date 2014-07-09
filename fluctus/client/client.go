@@ -396,7 +396,7 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		return nil, err
 	}
 	// URL & method for create
-	fileUrl := client.BuildUrl(fmt.Sprintf("/objects/%s/files.json", objId))
+	fileUrl := client.BuildUrl(fmt.Sprintf("/objects/%s/files.json", escapeSlashes(objId)))
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
