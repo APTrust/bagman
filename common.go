@@ -275,11 +275,18 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
     status.Status = "Processing"
     if result.ErrorMessage != "" {
         status.Note = result.ErrorMessage
-        status.Status = "Failed"
 		// Indicate whether we want to try re-processing this bag.
 		// For transient errors (e.g. network problems), we retry.
 		// For permanent errors (e.g. invalid bag), we do not retry.
 		status.Retry = result.Retry
+		if status.Retry == false {
+			// Only mark an item as failed if we know we're not
+			// going to retry it. If we're going to retry it, leave
+			// it as "Processing", so that institutional admins
+			// cannot delete it from the ProcessedItems list in
+			// Fluctus.
+			status.Status = "Failed"
+		}
     } else {
         status.Note = "No problems"
         if result.Stage == "Record" {
