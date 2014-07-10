@@ -200,10 +200,10 @@ func findInStatusCache(etag, name string, bagDate time.Time) (*bagman.ProcessSta
 	key := fmt.Sprintf("%s%s%s", etag, name, bagDate)
 	item, exists := statusCache[key]
 	if exists {
-		messageLog.Println("[INFO] Found item in cache: %s", name)
+		messageLog.Printf("[INFO] Found item in cache: %s\n", name)
 		return item
 	}
-	messageLog.Println("[INFO] Item not in cache. Will have to ask the fluctopus for %s", name)
+	messageLog.Printf("[INFO] Item not in cache. Will have to ask the fluctopus for %s\n", name)
 	return nil
 }
 
