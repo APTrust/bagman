@@ -32,6 +32,7 @@ var (
 	jsonLog       *log.Logger
 	messageLog    *log.Logger
 	fluctusClient *client.Client
+	statusCache   map[string]*bagman.ProcessStatus
 )
 
 func main() {
@@ -68,6 +69,7 @@ func run() {
 		messageLog.Println("[ERROR]", err)
 		return
 	}
+	loadStatusCache()
 	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
 		config.BagProcessorTopic)
 	messageLog.Printf("[INFO] Sending S3 file info to %s \n", url)
@@ -142,7 +144,10 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			continue
 		}
 		etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
-		status, err := fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+		status := findInStatusCache(etag, s3File.Key.Key, bagDate)
+		if status == nil {
+			status, err = fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+		}
 		if err != nil {
 			messageLog.Printf("[ERROR] Cannot get Fluctus bag status for %s. "+
 				"Will re-process bag. Error was %v", s3File.Key.Key, err)
@@ -150,10 +155,8 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 		} else if status == nil ||
 			(status.Status == "Received" && time.Since(status.Date) > time.Hour*12) ||
 			(status.Status == "Processing" && status.Retry == true) {
-			reason := "Bag has never been processed."
-			if status != nil {
-				reason = "Bag failed prior processing attempt, and retry flag is true."
-			} else {
+			reason := "Bag has not yet been successfully processed."
+			if status == nil {
 				err = createFluctusRecord(s3File)
 				if err != nil {
 					// TODO: Notify someone?
@@ -170,6 +173,38 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 		}
 	}
 	return filesToProcess
+}
+
+// Loads status of all bags received in the past two hours from fluctus
+// in a single call.
+func loadStatusCache() {
+	twoHoursAgo := time.Now().Add(time.Hour * -2)
+	statusRecords, err := fluctusClient.BulkStatusGet(twoHoursAgo)
+	if err != nil {
+		messageLog.Println("[WARNING] Could not get bulk status records")
+	} else {
+		messageLog.Printf("[INFO] Got %d status records from the fluctopus\n", len(statusRecords))
+		statusCache = make(map[string]*bagman.ProcessStatus, len(statusRecords))
+		for i := range(statusRecords) {
+			record := statusRecords[i]
+			key := fmt.Sprintf("%s%s%s", record.ETag, record.Name, record.BagDate)
+			statusCache[key] = record
+		}
+	}
+}
+
+// Finds the status of the specified tar bag in the cache that
+// we retrieved from Fluctus. The cache can save us hundreds or
+// thousands of HTTP calls each time the bucket reader runs.
+func findInStatusCache(etag, name string, bagDate time.Time) (*bagman.ProcessStatus) {
+	key := fmt.Sprintf("%s%s%s", etag, name, bagDate)
+	item, exists := statusCache[key]
+	if exists {
+		messageLog.Println("[INFO] Found item in cache: %s", name)
+		return item
+	}
+	messageLog.Println("[INFO] Item not in cache. Will have to ask the fluctopus for %s", name)
+	return nil
 }
 
 func createFluctusRecord(s3File *bagman.S3File) (err error) {
@@ -211,7 +246,6 @@ func enqueue(url string, s3Files []*bagman.S3File) {
 		} else {
 			jsonData[i] = string(json)
 			messageLog.Println("[INFO]", "Put", s3File.Key.Key, "into fetch queue")
-			//fmt.Println(s3File.Key.Key)
 		}
 	}
 	batch := strings.Join(jsonData, "\n")
