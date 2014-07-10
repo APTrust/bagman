@@ -196,7 +196,7 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	}
 
 	if response.StatusCode != expectedStatus {
-		err = fmt.Errorf("Expected status code %d but got %d. URL: %s",
+		err = fmt.Errorf("doStatusRequest Expected status code %d but got %d. URL: %s",
 			expectedStatus, response.StatusCode, request.URL)
 		return nil, err
 	}
@@ -208,6 +208,45 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	}
 	return status, nil
 }
+
+
+func (client *Client) BulkStatusGet (since time.Time) (statusRecords []*bagman.ProcessStatus, err error) {
+	objUrl := client.BuildUrl(fmt.Sprintf("/itemresults/ingested_since/%s",
+		url.QueryEscape(since.Format(time.RFC3339))))
+	client.logger.Println("[INFO] Requesting bulk bag status from fluctus:", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Must read body. See comment above.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 400 or 500
+	if response.StatusCode != 200 {
+		return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
+	}
+
+	// Build and return the data structure
+	err = json.Unmarshal(body, &statusRecords)
+	if err != nil {
+		return nil, err
+	}
+	return statusRecords, nil
+}
+
+
 
 // Returns the IntellectualObject with the specified id, or nil of no
 // such object exists. If includeRelations is false, this returns only
@@ -223,12 +262,10 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -317,7 +354,7 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
 	if response.StatusCode != 201 && response.StatusCode != 204 {
-		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s\n",
+		err = fmt.Errorf("IntellectualObjectSave Expected status code 201 or 204 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
 		client.logger.Println("[ERROR]", err)
 		return nil, err
@@ -352,12 +389,10 @@ func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelat
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", fileUrl)
 	request, err := client.NewJsonRequest("GET", fileUrl, nil)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -428,12 +463,8 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
 	if response.StatusCode != 201 && response.StatusCode != 204 {
-		err = fmt.Errorf("Expected status code 201 or 204 but got %d. URL: %s\n",
+		err = fmt.Errorf("GenericFileSave Expected status code 201 or 204 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
-		fmt.Println(string(data))
-		if len(body) < 1000 {
-			fmt.Println(string(body))
-		}
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
@@ -502,13 +533,9 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 	}
 
 	if response.StatusCode != 201  {
-		err = fmt.Errorf("Expected status code 201 but got %d. URL: %s\n",
+		err = fmt.Errorf("PremisEventSave Expected status code 201 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
 		client.logger.Println("[ERROR]", err)
-		fmt.Println(string(data))
-		if len(body) < 1000 {
-			fmt.Println(string(body))
-		}
 		return nil, err
 	} else {
 		client.logger.Printf("[INFO] %s PremisEvent %s for objId %s succeeded", method, event.EventType, objId)

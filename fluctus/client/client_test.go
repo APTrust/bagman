@@ -323,3 +323,27 @@ func TestCacheInstitutions(t *testing.T) {
 		t.Errorf("Error caching institutions: %v", err)
 	}
 }
+
+func TestBulkStatusGet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
+	records, err := client.BulkStatusGet(sinceWhen)
+	if err != nil {
+		t.Errorf("Error getting bulk status: %v", err)
+	}
+	if len(records) == 0 {
+		t.Error("BulkStatusGet returned no records when it should have returned something.")
+	}
+
+	records, err = client.BulkStatusGet(time.Now())
+	if err != nil {
+		t.Errorf("Error getting bulk status: %v", err)
+	}
+	if len(records) != 0 {
+		t.Error("BulkStatusGet records when it shouldn't have.")
+	}
+
+}
