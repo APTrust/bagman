@@ -83,7 +83,7 @@
         "MaxFileSize": 0,
         "LogLevel": 4,
         "Fetchers": 6,
-        "Workers": 2,
+        "Workers": 4,
         "FluctusURL": "http://test.aptrust.org",
         "NsqdHttpAddress": "http://localhost:4151",
         "NsqLookupd": "localhost:4161",

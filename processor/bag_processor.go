@@ -191,6 +191,11 @@ func initGoRoutines(channels *Channels) {
         go logResult()
         go doCleanUp()
     }
+	// TODO: Add as config option if this helps.
+	// Testing additional Fedora workers...
+    for i := 0; i < config.Workers * 3; i++ {
+		go recordInFedora()
+    }
 }
 
 type BagProcessor struct {
