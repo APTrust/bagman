@@ -40,7 +40,7 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 		return nil, fmt.Errorf("Can't create cookie jar for HTTP client: %v", err)
 	}
 	transport := &http.Transport{
-		MaxIdleConnsPerHost: 12,
+		MaxIdleConnsPerHost: 8,
 		DisableKeepAlives: false,
 	}
 	httpClient := &http.Client{ Jar: cookieJar, Transport: transport }

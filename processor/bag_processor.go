@@ -93,7 +93,7 @@ func main() {
     }
 
 	nsqConfig := nsq.NewConfig()
-	nsqConfig.Set("max_in_flight", 10)
+	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
 	nsqConfig.Set("max_attempts", uint16(3))
 	nsqConfig.Set("read_timeout", "60s")
@@ -191,11 +191,6 @@ func initGoRoutines(channels *Channels) {
         go logResult()
         go doCleanUp()
     }
-	// TODO: Add as config option if this helps.
-	// Testing additional Fedora workers...
-    for i := 0; i < config.Workers * 3; i++ {
-		go recordInFedora()
-    }
 }
 
 type BagProcessor struct {
@@ -258,11 +253,11 @@ func needsProcessing(s3File *bagman.S3File) (bool) {
 		return true
 	}
 	etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
-	fluctusClient, err := getFluctusClient()
+	client, err := getFluctusClient()
     if err != nil {
         messageLog.Fatal("Cannot get fluctus client. Exiting.")
     }
-	status, err := fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+	status, err := client.GetBagStatus(etag, s3File.Key.Key, bagDate)
 	if err != nil {
 		messageLog.Printf("[ERROR] Error getting status for file %s. Will reprocess.",
 			s3File.Key.Key)
