@@ -11,6 +11,7 @@ import (
     "sync/atomic"
     "log"
 	"time"
+	"strings"
     "path/filepath"
     "github.com/APTrust/bagman"
     "github.com/APTrust/bagman/fluctus/client"
@@ -209,6 +210,18 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
         return nil
     }
 
+	// If we're not reprocessing on purpose, and this item has already
+	// been successfully processed, skip it. There are certain timing
+	// conditions that can cause the bucket reader to add items to the
+	// queue twice. If we get rid of NSQ, we can get rid of this check.
+	if config.SkipAlreadyProcessed == true && needsProcessing(&s3File) == false {
+		messageLog.Printf("[INFO] Marking %s as complete, without processing because " +
+			"this bag was successfully processed previously and Config.SkipAlreadyProcessed " +
+			"= true", s3File.Key.Key)
+		message.Finish()
+		return nil
+	}
+
     // Create the result struct and pass it down the pipeline
     result := &bagman.ProcessResult{
         message,         // NsqMessage
@@ -225,6 +238,34 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
     return nil
 }
 
+// Returns true if the file needs processing. We check this
+// because the bucket reader may add duplicate items to the
+// queue when the queue is long and the reader refills it hourly.
+// If we get rid of NSQ and read directly from the
+// database, we can get rid of this.
+func needsProcessing(s3File *bagman.S3File) (bool) {
+	bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
+	if err != nil {
+		messageLog.Printf("[ERROR] Cannot parse S3File mod date '%s'. "+
+			"File %s will be re-processed.",
+			s3File.Key.LastModified, s3File.Key.Key)
+		return true
+	}
+	etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
+	fluctusClient, err := getFluctusClient()
+    if err != nil {
+        messageLog.Fatal("Cannot get fluctus client. Exiting.")
+    }
+	status, err := fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+	if err != nil {
+		messageLog.Printf("[ERROR] Error getting status for file %s. Will reprocess.",
+			s3File.Key.Key)
+	}
+	if status != nil && (status.Stage == "Record" && status.Status == "Succeeded") {
+		return false
+	}
+	return true
+}
 
 // -- Step 1 of 6 --
 // This runs as a go routine to fetch files from S3.

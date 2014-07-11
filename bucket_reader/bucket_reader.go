@@ -152,8 +152,8 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			messageLog.Printf("[ERROR] Cannot get Fluctus bag status for %s. "+
 				"Will re-process bag. Error was %v", s3File.Key.Key, err)
 			filesToProcess = append(filesToProcess, s3File)
-		} else if status == nil ||
-			(status.Status == "Received" && time.Since(status.Date) > time.Hour*12) ||
+		} else if  status == nil ||
+			(status.Stage == "Receive" && time.Since(status.Date) > time.Hour*24) ||
 			(status.Status == "Processing" && status.Retry == true) {
 			reason := "Bag has not yet been successfully processed."
 			if status == nil {
@@ -218,7 +218,7 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	// Strip the quotes off the ETag
 	status.ETag = strings.Replace(s3File.Key.ETag, "\"", "", 2)
 	status.Stage = "Receive"
-	status.Status = "Received"
+	status.Status = "Succeeded"
 	status.Note = "Item is in receiving bucket. Processing has not started."
 	status.Institution = bagman.OwnerOf(s3File.BucketName)
 	status.Outcome = status.Status
