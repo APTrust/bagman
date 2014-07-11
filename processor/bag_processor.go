@@ -200,6 +200,7 @@ type BagProcessor struct {
 // MessageHandler handles messages from the queue, putting each
 // item into the pipleline.
 func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
+	message.DisableAutoResponse()
     message.Attempts++
     var s3File bagman.S3File
     err := json.Unmarshal(message.Body, &s3File)
