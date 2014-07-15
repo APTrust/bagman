@@ -65,6 +65,7 @@ type ProcessStatus struct {
     Status       string      `json:"status"`
     Outcome      string      `json:"outcome"`
     Retry        bool        `json:"retry"`
+	Reviewed     bool        `json:"reviewed"`
 }
 
 // Convert ProcessStatus to JSON, omitting id, which Rails won't permit.
@@ -83,6 +84,7 @@ func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
         "status": status.Status,
         "outcome": status.Outcome,
         "retry": status.Retry,
+		"reviewed": status.Reviewed,
     })
 }
 

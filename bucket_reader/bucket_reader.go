@@ -220,6 +220,7 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	status.Note = "Item is in receiving bucket. Processing has not started."
 	status.Institution = bagman.OwnerOf(s3File.BucketName)
 	status.Outcome = status.Status
+	status.Reviewed = false
 
 	// Retry should be true until we know for sure that there
 	// is something wrong with the bag.
