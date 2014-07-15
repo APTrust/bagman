@@ -109,6 +109,7 @@ func main() {
     <-consumer.StopChan
 }
 
+// TODO: Move to common area. This is duplicated in metarecord.go
 func loadConfig() {
     // Load the config or die.
     requestedConfig := flag.String("config", "", "configuration to run")
@@ -117,6 +118,7 @@ func loadConfig() {
     jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bag_processor")
 }
 
+// TODO: Move to common area. This is duplicated in metarecord.go
 func ensureFluctusConfig() (error) {
     if config.FluctusURL == "" {
         return fmt.Errorf("FluctusUrl is not set in config file")
@@ -420,7 +422,7 @@ func saveToStorage() {
 
 		// If there were no errors, put this into the metadata
 		// queue, so we can record the events in Fluctus.
-		if result.ErrorMessage != "" {
+		if result.ErrorMessage == "" {
 			err := QueueMetadata(result)
 			if err != nil {
 				messageLog.Printf("[ERROR] %v", err)
@@ -433,6 +435,7 @@ func saveToStorage() {
 }
 
 // -- Step 4 of 5 --
+// TODO: This code is duplicated in metarecord.go
 // This prints to the log the result of the program's attempt to fetch,
 // untar, unbag and verify an individual S3 tar file.
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
@@ -568,6 +571,7 @@ func ProcessBagFile(result *bagman.ProcessResult) {
     }
 }
 
+// TODO: Remove this. Initialize in main.
 // Returns a reusable HTTP client for communicating with Fluctus.
 func getFluctusClient() (fClient *client.Client, err error) {
     if fluctusClient == nil {
@@ -584,6 +588,7 @@ func getFluctusClient() (fClient *client.Client, err error) {
     return fluctusClient, nil
 }
 
+// TODO: Move to common area; metarecord also uses this.
 // SendProcessedItemToFluctus sends information about the status of
 // processing this item to Fluctus.
 func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {

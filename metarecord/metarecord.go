@@ -56,7 +56,8 @@ func main() {
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
 	nsqConfig.Set("msg_timeout", "60m")
-    consumer, err := nsq.NewConsumer(config.BagProcessorTopic, config.BagProcessorChannel, nsqConfig)
+    consumer, err := nsq.NewConsumer(config.MetadataTopic,
+		config.MetadataChannel, nsqConfig)
     if err != nil {
         messageLog.Fatalf(err.Error())
     }
@@ -69,15 +70,16 @@ func main() {
     <-consumer.StopChan
 }
 
-
+// TODO: Move to common area. This is duplicated in bag_processor.go
 func loadConfig() {
     // Load the config or die.
     requestedConfig := flag.String("config", "", "configuration to run")
     flag.Parse()
     config = bagman.LoadRequestedConfig(requestedConfig)
-    jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bag_processor")
+    jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "metarecord")
 }
 
+// TODO: Move to common area. This is duplicated in bag_processor.go
 func ensureFluctusConfig() (error) {
     if config.FluctusURL == "" {
         return fmt.Errorf("FluctusUrl is not set in config file")
@@ -136,8 +138,9 @@ func (*RecordProcessor) HandleMessage(message *nsq.Message) (error) {
         message.Finish()
         return detailedError
     }
+	result.NsqMessage = message
     channels.FedoraChannel <- &result
-    messageLog.Println("[INFO]", "Put", result.S3File.Key.Key, "into storage channel")
+    messageLog.Println("[INFO]", "Put", result.S3File.Key.Key, "into Fluctus channel")
     return nil
 }
 
@@ -169,6 +172,7 @@ func recordInFedora() {
 	}
 }
 
+// TODO: This code is duplicated in bag_processor.go
 func logResult() {
     for result := range channels.ResultsChannel {
         // Log full results to the JSON log
@@ -207,6 +211,7 @@ func logResult() {
     }
 }
 
+// TODO: Move DeleteFromReceiving to a separate processor.
 func doCleanUp() {
     for result := range channels.CleanUpChannel {
         messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
@@ -233,6 +238,7 @@ func doCleanUp() {
     }
 }
 
+// TODO: Move DeleteFromReceiving to a separate processor.
 // Deletes the original uploaded tar file from the receiving bucket.
 // You should call this only if Config.DeleteOnSuccess is true.
 func DeleteFromReceiving(result *bagman.ProcessResult) {
@@ -249,6 +255,7 @@ func DeleteFromReceiving(result *bagman.ProcessResult) {
 	}
 }
 
+// TODO: Remove this and initialize in main.
 // Returns a reusable HTTP client for communicating with Fluctus.
 func getFluctusClient() (fClient *client.Client, err error) {
     if fluctusClient == nil {
@@ -265,6 +272,7 @@ func getFluctusClient() (fClient *client.Client, err error) {
     return fluctusClient, nil
 }
 
+// TODO: Move to common area. This is duplicated in bag_processor.go
 // SendProcessedItemToFluctus sends information about the status of
 // processing this item to Fluctus.
 func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
