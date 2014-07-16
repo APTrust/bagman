@@ -80,6 +80,15 @@ func main() {
         messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
     }
 
+	fluctusClient, err = client.New(
+		config.FluctusURL,
+		os.Getenv("FLUCTUS_API_USER"),
+		os.Getenv("FLUCTUS_API_KEY"),
+		messageLog)
+	if err != nil {
+		messageLog.Fatalf("Cannot initialize Fluctus Client: %v", err)
+	}
+
     initVolume()
     initChannels()
     initGoRoutines()
@@ -109,7 +118,7 @@ func main() {
     <-consumer.StopChan
 }
 
-// TODO: Move to common area. This is duplicated in metarecord.go
+
 func loadConfig() {
     // Load the config or die.
     requestedConfig := flag.String("config", "", "configuration to run")
@@ -236,11 +245,7 @@ func needsProcessing(s3File *bagman.S3File) (bool) {
 		return true
 	}
 	etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
-	client, err := getFluctusClient()
-    if err != nil {
-        messageLog.Fatal("Cannot get fluctus client. Exiting.")
-    }
-	status, err := client.GetBagStatus(etag, s3File.Key.Key, bagDate)
+	status, err := fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
 	if err != nil {
 		messageLog.Printf("[ERROR] Error getting status for file %s. Will reprocess.",
 			s3File.Key.Key)
@@ -452,21 +457,16 @@ func logResult() {
         messageLog.Printf("[STATS] Succeeded: %d, Failed: %d, Bytes Processed: %d\n",
             succeeded, failed, bytesProcessed)
 
-		client, err := getFluctusClient()
-		if err != nil {
-			result.ErrorMessage += "Could not get Fluctus client to record processed item status. "
-		} else {
-			// Tell Fluctus what happened
-			go func() {
-				err := client.SendProcessedItem(result.IngestStatus())
-				if err != nil {
-					result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
-						"item status returned error %v. ", err)
-					messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
-						err)
-				}
-			}()
-		}
+		// Tell Fluctus what happened
+		go func() {
+			err := fluctusClient.SendProcessedItem(result.IngestStatus())
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
+					"item status returned error %v. ", err)
+				messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
+					err)
+			}
+		}()
 
         // Clean up the bag/tar files
         channels.CleanUpChannel <- result
@@ -562,23 +562,6 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 			}
 		}
     }
-}
-
-// TODO: Remove this. Initialize in main.
-// Returns a reusable HTTP client for communicating with Fluctus.
-func getFluctusClient() (fClient *client.Client, err error) {
-    if fluctusClient == nil {
-        fClient, err := client.New(
-            config.FluctusURL,
-            os.Getenv("FLUCTUS_API_USER"),
-            os.Getenv("FLUCTUS_API_KEY"),
-            messageLog)
-        if err != nil {
-            return nil, err
-        }
-        fluctusClient = fClient
-    }
-    return fluctusClient, nil
 }
 
 

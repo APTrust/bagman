@@ -41,6 +41,15 @@ func main() {
         messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
     }
 
+	fluctusClient, err = client.New(
+		config.FluctusURL,
+		os.Getenv("FLUCTUS_API_USER"),
+		os.Getenv("FLUCTUS_API_KEY"),
+		messageLog)
+	if err != nil {
+		messageLog.Fatalf("Cannot initialize Fluctus Client: %v", err)
+	}
+
     initChannels()
     initGoRoutines()
 
@@ -70,7 +79,6 @@ func main() {
     <-consumer.StopChan
 }
 
-// TODO: Move to common area. This is duplicated in bag_processor.go
 func loadConfig() {
     // Load the config or die.
     requestedConfig := flag.String("config", "", "configuration to run")
@@ -184,21 +192,16 @@ func logResult() {
         // Add some stats to the message log
         messageLog.Printf("[STATS] Succeeded: %d, Failed: %d\n", succeeded, failed)
 
-		client, err := getFluctusClient()
-		if err != nil {
-			result.ErrorMessage += "Could not get Fluctus client to record processed item status. "
-		} else {
-			// Tell Fluctus what happened
-			go func() {
-				err := client.SendProcessedItem(result.IngestStatus())
-				if err != nil {
-					result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
-						"item status returned error %v. ", err)
-					messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
-						err)
-				}
-			}()
-		}
+		// Tell Fluctus what happened
+		go func() {
+			err := fluctusClient.SendProcessedItem(result.IngestStatus())
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
+					"item status returned error %v. ", err)
+				messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
+					err)
+			}
+		}()
 
         // Clean up the bag/tar files
         channels.CleanUpChannel <- result
@@ -249,32 +252,10 @@ func DeleteFromReceiving(result *bagman.ProcessResult) {
 	}
 }
 
-// TODO: Remove this and initialize in main.
-// Returns a reusable HTTP client for communicating with Fluctus.
-func getFluctusClient() (fClient *client.Client, err error) {
-    if fluctusClient == nil {
-        fClient, err := client.New(
-            config.FluctusURL,
-            os.Getenv("FLUCTUS_API_USER"),
-            os.Getenv("FLUCTUS_API_KEY"),
-            messageLog)
-        if err != nil {
-            return nil, err
-        }
-        fluctusClient = fClient
-    }
-    return fluctusClient, nil
-}
-
-
 // Send all metadata about the bag to Fluctus/Fedora. This includes
 // the IntellectualObject, the GenericFiles, and all PremisEvents
 // related to the object and the files.
 func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
-    client, err := getFluctusClient()
-    if err != nil {
-        return err
-    }
 	intellectualObject, err := result.IntellectualObject()
     if err != nil {
         return err
@@ -283,22 +264,22 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 		intellectualObject.Identifier,
 		result.TarResult.GenericFilePaths())
 
-	fedoraRecordIntellectualObject(result, client, intellectualObject)
+	fedoraRecordIntellectualObject(result, intellectualObject)
 	for i := range(result.TarResult.GenericFiles) {
 		genericFile := result.TarResult.GenericFiles[i]
-		fedoraRecordGenericFile(result, client, intellectualObject.Identifier, genericFile)
+		fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
 	}
 	return nil
 }
 
-func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client, objId string, gf *bagman.GenericFile) (error) {
+func fedoraRecordGenericFile(result *bagman.ProcessResult, objId string, gf *bagman.GenericFile) (error) {
 	// Save the GenericFile metadata in Fedora, and add a metadata
 	// record so we know whether the call to Fluctus succeeded or failed.
 	fluctusGenericFile, err := gf.ToFluctusModel()
 	if err != nil {
 		return fmt.Errorf("Error converting GenericFile to Fluctus model: %v", err)
 	}
-	_, err = client.GenericFileSave(objId, fluctusGenericFile)
+	_, err = fluctusClient.GenericFileSave(objId, fluctusGenericFile)
 	if err != nil {
 		handleFedoraError(result,
 			fmt.Sprintf("Error saving generic file '%s' to Fedora", objId),
@@ -308,7 +289,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 	addMetadataRecord(result, "GenericFile", "file_registered", gf.Path, err)
 
 	for _, event := range(fluctusGenericFile.Events) {
-		_, err = client.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", event)
+		_, err = fluctusClient.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", event)
 		if err != nil {
 			message := fmt.Sprintf("Error saving event '%s' for generic file " +
 				"'%s' to Fedora", event, objId)
@@ -323,9 +304,9 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, client *client.Client
 
 // Creates/Updates an IntellectualObject in Fedora, and sends the
 // Ingest PremisEvent to Fedora.
-func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client.Client, intellectualObject *models.IntellectualObject) (error) {
+func fedoraRecordIntellectualObject(result *bagman.ProcessResult, intellectualObject *models.IntellectualObject) (error) {
 	// Create/Update the IntellectualObject
-	savedObj, err := client.IntellectualObjectSave(intellectualObject)
+	savedObj, err := fluctusClient.IntellectualObjectSave(intellectualObject)
 	if err != nil {
 		message := fmt.Sprintf("Error saving intellectual object '%s' to Fedora",
 			intellectualObject.Identifier)
@@ -353,7 +334,7 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 		Agent: "https://launchpad.net/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
-	_, err = client.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", ingestEvent)
+	_, err = fluctusClient.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", ingestEvent)
 	if err != nil {
 		message := fmt.Sprintf("Error saving ingest event for intellectual " +
 			"object '%s' to Fedora", intellectualObject.Identifier)
@@ -373,7 +354,7 @@ func fedoraRecordIntellectualObject(result *bagman.ProcessResult, client *client
 		Agent: "https://github.com/APTrust/bagman",
 		OutcomeInformation: "Institution domain + tar file name",
 	}
-	_, err = client.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", idEvent)
+	_, err = fluctusClient.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", idEvent)
 	if err != nil {
 		message := fmt.Sprintf("Error saving identifier_assignment event for " +
 			"intellectual object '%s' to Fedora", intellectualObject.Identifier)
