@@ -275,14 +275,10 @@ func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size 
 		}
 	}
 
-	mimetype, err := magicMime.TypeByFile(absPath)
-	if err != nil {
-		gf.ErrorMessage = fmt.Sprintf("Error determining mime type: %v", err)
-		return gf
-	}
-	gf.MimeType = mimetype
-	if gf.MimeType == "" {
-		gf.MimeType = "application/binary"
+	gf.MimeType = "application/binary"
+	mimetype, _ := magicMime.TypeByFile(absPath)
+	if gf.MimeType != "" {
+		gf.MimeType = mimetype
 	}
 
 	return gf
