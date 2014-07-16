@@ -192,6 +192,21 @@ func logResult() {
         // Add some stats to the message log
         messageLog.Printf("[STATS] Succeeded: %d, Failed: %d\n", succeeded, failed)
 
+		if result.NsqMessage.Attempts >= 3 && result.ErrorMessage != "" {
+			result.Retry = false
+			result.ErrorMessage += fmt.Sprintf("Failure is due to a technical error " +
+				"in Fedora. Giving up after %d failed attempts. This item has been " +
+				"queued for administrative review. ",
+				result.NsqMessage.Attempts)
+			err = bagman.Enqueue(config.NsqdHttpAddress, config.TroubleTopic, result)
+			if err != nil {
+				messageLog.Printf("[ERROR] Could not send '%s' to trouble queue: %v\n",
+					result.S3File.Key.Key, err)
+			} else {
+				messageLog.Printf("[WARN] Sent '%s' to trouble queue\n", result.S3File.Key.Key)
+			}
+		}
+
 		// Tell Fluctus what happened
 		go func() {
 			err := fluctusClient.SendProcessedItem(result.IngestStatus())

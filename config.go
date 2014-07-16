@@ -78,14 +78,16 @@ type Config struct {
     // the metadata_processor reads. (Not yet implemented)
     MetadataChannel      string
 
-    // ProcessStateTopic is the name of the NSQ topic to
-    // which the bag_processor sends info about the status
-    // of the bags it's processing. (Not yet implemented)
-    ProcessStateTopic    string
+    // TroubleTopic is the name of the NSQ topic to
+    // which the bag_processor and metarecord processes send
+    // info about items that were partially processed and
+	// then left in an inconsistent state.
+    TroubleTopic         string
 
-    // StateChannel is the name of the NSQ channel from which
-    // the state_reporter process reads. (Not yet implemented)
-    StateChannel         string
+    // TroubleChannel is the name of the NSQ channel that
+	// holds information about the state of partially-processed
+	// bags that need attention from an administrator.
+    TroubleChannel       string
 
     // SkipAlreadyProcessed indicates whether or not the
     // bucket_reader should  put successfully-processed items into

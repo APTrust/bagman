@@ -3,9 +3,11 @@
 package bagman
 
 import (
+	"bytes"
     "fmt"
     "time"
     "strings"
+	"net/http"
     "encoding/json"
 	"github.com/crowdmob/goamz/s3"
     "github.com/bitly/go-nsq"
@@ -412,6 +414,29 @@ func (result *TarResult) GenericFilePaths() ([]string) {
 	return paths
 }
 
+// Returns true if any generic files were successfully copied
+// to S3 long term storage.
+func (result *TarResult) AnyFilesCopiedToPreservation() (bool) {
+	for _, gf := range(result.GenericFiles) {
+		if gf.StorageURL != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// Returns true if all generic files were successfully copied
+// to S3 long term storage.
+func (result *TarResult) AllFilesCopiedToPreservation() (bool) {
+	for _, gf := range(result.GenericFiles) {
+		if gf.StorageURL == "" {
+			return false
+		}
+	}
+	return true
+}
+
+
 // This Tag struct is essentially the same as the bagins
 // TagField struct, but its properties are public and can
 // be easily serialized to / deserialized from JSON.
@@ -620,4 +645,25 @@ func (result *FedoraResult) AllRecordsSucceeded() (bool) {
 		}
 	}
 	return true
+}
+
+// Sends the JSON of a result object to the specified queue.
+func Enqueue(nsqdHttpAddress, topic string, result *ProcessResult) (error) {
+	key := result.S3File.Key.Key
+	url := fmt.Sprintf("%s/put?topic=%s", nsqdHttpAddress, topic)
+	json, err := json.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("Error marshalling result for '%s' to JSON for file: %v", key, err)
+	}
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(json))
+	if err != nil {
+		return fmt.Errorf("Nsqd returned an error when queuing '%s': %v", key, err)
+	}
+	if resp == nil {
+		return fmt.Errorf("No response from nsqd at '%s'. Is it running?", url)
+	} else if resp.StatusCode != 200 {
+		return fmt.Errorf("nsqd returned status code %d when attempting to queue %s",
+			resp.StatusCode, key)
+	}
+	return nil
 }

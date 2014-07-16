@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
     "fmt"
     "flag"
     "encoding/json"
@@ -14,7 +13,6 @@ import (
 	"time"
 	"strings"
     "path/filepath"
-	"net/http"
     "github.com/APTrust/bagman"
     "github.com/APTrust/bagman/fluctus/client"
 	"github.com/crowdmob/goamz/aws"
@@ -414,12 +412,34 @@ func saveToStorage() {
 		// If there were no errors, put this into the metadata
 		// queue, so we can record the events in Fluctus.
 		if result.ErrorMessage == "" {
-			err := QueueMetadata(result)
+			err := bagman.Enqueue(config.NsqdHttpAddress, config.MetadataTopic, result)
 			if err != nil {
-				messageLog.Printf("[ERROR] %v", err)
-				result.ErrorMessage += err.Error()
+				errMsg := fmt.Sprintf("[ERROR] Error adding '%s' to metadata queue: %v ",
+					result.S3File.Key.Key, err)
+				messageLog.Println(errMsg)
+				result.ErrorMessage += errMsg
+			} else {
+				messageLog.Printf("[INFO] Sent '%s' to metadata queue\n",
+					result.S3File.Key.Key)
 			}
 		}
+
+		// If some but not all files were copied to preservation, add an
+		// entry to the trouble queue. We should review the items that
+		// were copied and decide whether to delete them.
+		if (result.TarResult.AnyFilesCopiedToPreservation() == true &&
+			result.TarResult.AllFilesCopiedToPreservation() == false) {
+			err := bagman.Enqueue(config.NsqdHttpAddress, config.TroubleTopic, result)
+			if err != nil {
+				messageLog.Printf("[ERROR] Could not send '%s' to trouble queue: %v\n",
+					result.S3File.Key.Key, err)
+			} else {
+				messageLog.Printf("[WARN] Sent '%s' to trouble queue because some but not " +
+					"all generic files were copied to preservation bucket\n", result.S3File.Key.Key)
+			}
+
+		}
+
 		// Record the results.
 		channels.ResultsChannel <- result
     }
@@ -562,26 +582,4 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 			}
 		}
     }
-}
-
-
-func QueueMetadata(result *bagman.ProcessResult) (error) {
-	key := result.S3File.Key.Key
-	messageLog.Printf("[INFO] Queueing '%s' for Fluctus", key)
-	url := fmt.Sprintf("%s/put?topic=%s", config.NsqdHttpAddress, config.MetadataTopic)
-	json, err := json.Marshal(result)
-	if err != nil {
-		return fmt.Errorf("Error marshalling result for '%s' to JSON for file: %v", key, err)
-	}
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer(json))
-	if err != nil {
-		return fmt.Errorf("Nsqd returned an error when queuing '%s': %v", key, err)
-	}
-	if resp == nil {
-		return fmt.Errorf("No response from nsqd at '%s'. Is it running?", url)
-	} else if resp.StatusCode != 200 {
-		return fmt.Errorf("nsqd returned status code %d when attempting to queue %s",
-			resp.StatusCode, key)
-	}
-	return nil
 }

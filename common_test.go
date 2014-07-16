@@ -618,3 +618,39 @@ func TestAllRecordsSucceeded(t *testing.T) {
 		t.Error("FedoraResult.AllRecordsSucceeded() returned true when it should have returned false")
 	}
 }
+
+func TestAnyFilesCopiedToPreservation(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+	if result.TarResult.AnyFilesCopiedToPreservation() == false {
+		t.Error("AnyFilesCopiedToPreservation should have returned true")
+	}
+	result.TarResult.GenericFiles[0].StorageURL = ""
+	if result.TarResult.AnyFilesCopiedToPreservation() == false {
+		t.Error("AnyFilesCopiedToPreservation should have returned true")
+	}
+	for i := range result.TarResult.GenericFiles {
+		result.TarResult.GenericFiles[i].StorageURL = ""
+	}
+	if result.TarResult.AnyFilesCopiedToPreservation() == true {
+		t.Error("AnyFilesCopiedToPreservation should have returned false")
+	}
+}
+
+func TestAllFilesCopiedToPreservation(t *testing.T) {
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := loadResult(filepath)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", filepath, err)
+    }
+	if result.TarResult.AllFilesCopiedToPreservation() == false {
+		t.Error("AllFilesCopiedToPreservation should have returned true")
+	}
+	result.TarResult.GenericFiles[0].StorageURL = ""
+	if result.TarResult.AllFilesCopiedToPreservation() == true {
+		t.Error("AllFilesCopiedToPreservation should have returned false")
+	}
+}
