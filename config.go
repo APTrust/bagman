@@ -2,7 +2,6 @@ package bagman
 
 import (
     "fmt"
-//    "io/ioutil"
     "os"
     "encoding/json"
 )
@@ -146,4 +145,17 @@ func loadConfigFile() (configurations map[string]Config) {
         os.Exit(1)
     }
     return configurations
+}
+
+func (config *Config) EnsureFluctusConfig() (error) {
+    if config.FluctusURL == "" {
+        return fmt.Errorf("FluctusUrl is not set in config file")
+    }
+    if os.Getenv("FLUCTUS_API_USER") == "" {
+        return fmt.Errorf("Environment variable FLUCTUS_API_USER is not set")
+    }
+    if os.Getenv("FLUCTUS_API_KEY") == "" {
+        return fmt.Errorf("Environment variable FLUCTUS_API_KEY is not set")
+    }
+	return nil
 }

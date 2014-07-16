@@ -36,7 +36,7 @@ var fluctusClient *client.Client
 func main() {
 
     loadConfig()
-	err := ensureFluctusConfig()
+	err := config.EnsureFluctusConfig()
     if err != nil {
         messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
     }
@@ -79,19 +79,6 @@ func loadConfig() {
     jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "metarecord")
 }
 
-// TODO: Move to common area. This is duplicated in bag_processor.go
-func ensureFluctusConfig() (error) {
-    if config.FluctusURL == "" {
-        return fmt.Errorf("FluctusUrl is not set in config file")
-    }
-    if os.Getenv("FLUCTUS_API_USER") == "" {
-        return fmt.Errorf("Environment variable FLUCTUS_API_USER is not set")
-    }
-    if os.Getenv("FLUCTUS_API_KEY") == "" {
-        return fmt.Errorf("Environment variable FLUCTUS_API_KEY is not set")
-    }
-	return nil
-}
 
 // Set up the channels.
 func initChannels() {
