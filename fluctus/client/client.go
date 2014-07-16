@@ -556,11 +556,11 @@ func escapeSlashes(s string) (string) {
 	return strings.Replace(s, "/", "%2F", -1)
 }
 
-// SendProcessedItemToFluctus sends information about the status of
+// SendProcessedItem sends information about the status of
 // processing this item to Fluctus. Param localStatus should come from
 // bagman.ProcessResult.ProcessStatus(), which gives information about
 // the current state of processing.
-func (client *Client) SendProcessedItemToFluctus(localStatus *bagman.ProcessStatus) (err error) {
+func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err error) {
     // Look up the status record in Flucutus. It should already exist.
 	// We want to get its ID and update the existing record, rather
 	// than creating a new record. Each bag should have no more than

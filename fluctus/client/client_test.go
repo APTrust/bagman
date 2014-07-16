@@ -348,7 +348,7 @@ func TestBulkStatusGet(t *testing.T) {
 	}
 }
 
-func TestSendProcessedItemToFluctus(t *testing.T) {
+func TestSendProcessedItem(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
@@ -375,7 +375,7 @@ func TestSendProcessedItemToFluctus(t *testing.T) {
 	}
 
 	// Create new record
-	err = client.SendProcessedItemToFluctus(status)
+	err = client.SendProcessedItem(status)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
@@ -384,7 +384,7 @@ func TestSendProcessedItemToFluctus(t *testing.T) {
 	}
 
 	// Update existing record
-	err = client.SendProcessedItemToFluctus(status)
+	err = client.SendProcessedItem(status)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}

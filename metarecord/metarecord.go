@@ -190,7 +190,7 @@ func logResult() {
 		} else {
 			// Tell Fluctus what happened
 			go func() {
-				err := client.SendProcessedItemToFluctus(result.IngestStatus())
+				err := client.SendProcessedItem(result.IngestStatus())
 				if err != nil {
 					result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
 						"item status returned error %v. ", err)
