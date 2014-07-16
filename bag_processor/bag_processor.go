@@ -452,14 +452,21 @@ func logResult() {
         messageLog.Printf("[STATS] Succeeded: %d, Failed: %d, Bytes Processed: %d\n",
             succeeded, failed, bytesProcessed)
 
-        // Tell Fluctus what happened
-        go func() {
-            err := SendProcessedItemToFluctus(result)
-            if err != nil {
-                messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
-                    err)
-            }
-        }()
+		client, err := getFluctusClient()
+		if err != nil {
+			result.ErrorMessage += "Could not get Fluctus client to record processed item status. "
+		} else {
+			// Tell Fluctus what happened
+			go func() {
+				err := client.SendProcessedItemToFluctus(result.IngestStatus())
+				if err != nil {
+					result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
+						"item status returned error %v. ", err)
+					messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
+						err)
+				}
+			}()
+		}
 
         // Clean up the bag/tar files
         channels.CleanUpChannel <- result
@@ -492,7 +499,7 @@ func doCleanUp() {
         // processing succeeded.
         if result.ErrorMessage != "" && result.Retry == true {
 			messageLog.Printf("[INFO] Requeueing %s", result.S3File.Key.Key)
-            result.NsqMessage.Requeue(30000)
+            result.NsqMessage.Requeue(5 * time.Minute)
         } else {
             result.NsqMessage.Finish()
         }
@@ -574,31 +581,6 @@ func getFluctusClient() (fClient *client.Client, err error) {
     return fluctusClient, nil
 }
 
-// TODO: Move to common area; metarecord also uses this.
-// SendProcessedItemToFluctus sends information about the status of
-// processing this item to Fluctus.
-func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
-    client, err := getFluctusClient()
-    if err != nil {
-        return err
-    }
-    localStatus := result.IngestStatus()
-    remoteStatus, err := client.GetBagStatus(
-        localStatus.ETag, localStatus.Name, localStatus.BagDate)
-    if err != nil {
-        return err
-    }
-    if remoteStatus != nil {
-        localStatus.Id = remoteStatus.Id
-    }
-    err = client.UpdateBagStatus(localStatus)
-    if err != nil {
-        return err
-    }
-    messageLog.Printf("[INFO] Updated status in Fluctus for %s: %s/%s\n",
-        result.S3File.Key.Key, localStatus.Status, localStatus.Stage)
-    return nil
-}
 
 func QueueMetadata(result *bagman.ProcessResult) (error) {
 	key := result.S3File.Key.Key

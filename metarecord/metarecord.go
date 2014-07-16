@@ -144,7 +144,7 @@ func recordInFedora() {
 		}
 		if result.FedoraResult.AllRecordsSucceeded() == false {
 			result.ErrorMessage += " When recording IntellectualObject, GenericFiles and " +
-				"PremisEvents, one or more calls to Fluctus failed. See the JSON log for details."
+				"PremisEvents, one or more calls to Fluctus failed."
 		}
 		if result.ErrorMessage == "" {
 			messageLog.Println("[INFO] Successfully recorded Fedora metadata for",
@@ -184,14 +184,21 @@ func logResult() {
         // Add some stats to the message log
         messageLog.Printf("[STATS] Succeeded: %d, Failed: %d\n", succeeded, failed)
 
-        // Tell Fluctus what happened
-        go func() {
-            err := SendProcessedItemToFluctus(result)
-            if err != nil {
-                messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
-                    err)
-            }
-        }()
+		client, err := getFluctusClient()
+		if err != nil {
+			result.ErrorMessage += "Could not get Fluctus client to record processed item status. "
+		} else {
+			// Tell Fluctus what happened
+			go func() {
+				err := client.SendProcessedItemToFluctus(result.IngestStatus())
+				if err != nil {
+					result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
+						"item status returned error %v. ", err)
+					messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
+						err)
+				}
+			}()
+		}
 
         // Clean up the bag/tar files
         channels.CleanUpChannel <- result
@@ -218,7 +225,7 @@ func doCleanUp() {
         // processing succeeded.
         if result.ErrorMessage != "" && result.Retry == true {
 			messageLog.Printf("[INFO] Requeueing %s", result.S3File.Key.Key)
-            result.NsqMessage.Requeue(3000)
+            result.NsqMessage.Requeue(1 * time.Minute)
         } else {
             result.NsqMessage.Finish()
         }
@@ -259,31 +266,6 @@ func getFluctusClient() (fClient *client.Client, err error) {
     return fluctusClient, nil
 }
 
-// TODO: Move to common area. This is duplicated in bag_processor.go
-// SendProcessedItemToFluctus sends information about the status of
-// processing this item to Fluctus.
-func SendProcessedItemToFluctus(result *bagman.ProcessResult) (err error) {
-    client, err := getFluctusClient()
-    if err != nil {
-        return err
-    }
-    localStatus := result.IngestStatus()
-    remoteStatus, err := client.GetBagStatus(
-        localStatus.ETag, localStatus.Name, localStatus.BagDate)
-    if err != nil {
-        return err
-    }
-    if remoteStatus != nil {
-        localStatus.Id = remoteStatus.Id
-    }
-    err = client.UpdateBagStatus(localStatus)
-    if err != nil {
-        return err
-    }
-    messageLog.Printf("[INFO] Updated status in Fluctus for %s: %s/%s\n",
-        result.S3File.Key.Key, localStatus.Status, localStatus.Stage)
-    return nil
-}
 
 // Send all metadata about the bag to Fluctus/Fedora. This includes
 // the IntellectualObject, the GenericFiles, and all PremisEvents

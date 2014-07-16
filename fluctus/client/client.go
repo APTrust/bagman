@@ -555,3 +555,29 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 func escapeSlashes(s string) (string) {
 	return strings.Replace(s, "/", "%2F", -1)
 }
+
+// SendProcessedItemToFluctus sends information about the status of
+// processing this item to Fluctus. Param localStatus should come from
+// bagman.ProcessResult.ProcessStatus(), which gives information about
+// the current state of processing.
+func (client *Client) SendProcessedItemToFluctus(localStatus *bagman.ProcessStatus) (err error) {
+    // Look up the status record in Flucutus. It should already exist.
+	// We want to get its ID and update the existing record, rather
+	// than creating a new record. Each bag should have no more than
+	// one ProcessedItem record.
+    remoteStatus, err := client.GetBagStatus(
+        localStatus.ETag, localStatus.Name, localStatus.BagDate)
+    if err != nil {
+        return err
+    }
+    if remoteStatus != nil {
+        localStatus.Id = remoteStatus.Id
+    }
+    err = client.UpdateBagStatus(localStatus)
+    if err != nil {
+        return err
+    }
+    client.logger.Printf("[INFO] Updated status in Fluctus for %s: %s/%s\n",
+        localStatus.Name, localStatus.Status, localStatus.Stage)
+    return nil
+}
