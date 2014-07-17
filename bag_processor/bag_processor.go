@@ -99,7 +99,7 @@ func main() {
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(3))
+	nsqConfig.Set("max_attempts", uint16(config.MaxBagAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
 	nsqConfig.Set("msg_timeout", "60m")
@@ -190,7 +190,6 @@ type BagProcessor struct {
 // item into the pipleline.
 func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 	message.DisableAutoResponse()
-    message.Attempts++
     var s3File bagman.S3File
     err := json.Unmarshal(message.Body, &s3File)
     if err != nil {

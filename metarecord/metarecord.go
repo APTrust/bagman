@@ -61,7 +61,7 @@ func main() {
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(3))
+	nsqConfig.Set("max_attempts", uint16(config.MaxMetadataAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
 	nsqConfig.Set("msg_timeout", "60m")
@@ -122,7 +122,6 @@ type RecordProcessor struct {
 // item into the pipleline.
 func (*RecordProcessor) HandleMessage(message *nsq.Message) (error) {
 	message.DisableAutoResponse()
-    message.Attempts++
     var result bagman.ProcessResult
     err := json.Unmarshal(message.Body, &result)
     if err != nil {
@@ -192,7 +191,7 @@ func logResult() {
         // Add some stats to the message log
         messageLog.Printf("[STATS] Succeeded: %d, Failed: %d\n", succeeded, failed)
 
-		if result.NsqMessage.Attempts >= 3 && result.ErrorMessage != "" {
+		if result.NsqMessage.Attempts >= config.MaxMetadataAttempts && result.ErrorMessage != "" {
 			result.Retry = false
 			result.ErrorMessage += fmt.Sprintf("Failure is due to a technical error " +
 				"in Fedora. Giving up after %d failed attempts. This item has been " +

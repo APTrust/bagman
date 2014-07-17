@@ -69,6 +69,9 @@ type Config struct {
     // bag processor will read.
     BagProcessorChannel  string
 
+	// Maximum number of times we'll try to process a bag.
+	MaxBagAttempts       int
+
     // MetaDataTopic is the name of the NSQ topic the bag
     // processor sends results to. The metadata_processor worker
     // will read from this topic. (Not yet implemented)
@@ -77,6 +80,20 @@ type Config struct {
     // MetaDataChannel is the name of the NSQ channel from which
     // the metadata_processor reads. (Not yet implemented)
     MetadataChannel      string
+
+	// Maximum number of times we'll try to send metadata to Fluctus.
+	MaxMetadataAttempts  int
+
+    // CleanupTopic contains messages about files that need to
+	// be deleted from S3.
+    CleanupTopic         string
+
+    // CleanupChannel is what cleanup.go listens to to find out
+	// which files it should delete from S3.
+    CleanupChannel       string
+
+	// Maximum number of times we'll try to clean up files in S3.
+	MaxCleanupAttempts   int
 
     // TroubleTopic is the name of the NSQ topic to
     // which the bag_processor and metarecord processes send
@@ -88,6 +105,9 @@ type Config struct {
 	// holds information about the state of partially-processed
 	// bags that need attention from an administrator.
     TroubleChannel       string
+
+	// Maximum number of times we'll try to process a trouble item.
+	MaxTroubleAttempts   int
 
     // SkipAlreadyProcessed indicates whether or not the
     // bucket_reader should  put successfully-processed items into
