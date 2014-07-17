@@ -393,3 +393,35 @@ func TestSendProcessedItem(t *testing.T) {
 	//	t.Error("status.Id should have been reassigned but was not")
 	//}
 }
+
+func TestGetReviewedItems(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+
+	// Make sure we have a couple of reviewed items...
+	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
+	records, err := client.BulkStatusGet(sinceWhen)
+	if err != nil {
+		t.Errorf("Error getting bulk status: %v", err)
+	}
+	records[0].Reviewed = true
+	records[1].Reviewed = true
+	err = client.SendProcessedItem(records[0])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+	err = client.SendProcessedItem(records[1])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+
+	reviewed, err := client.GetReviewedItems()
+	if err != nil {
+		t.Errorf("Error getting reviewed items: %v", err)
+	}
+	if len(reviewed) < 2 {
+		t.Errorf("GetReviewedItems returned %d items; expected at least two", len(reviewed))
+	}
+}

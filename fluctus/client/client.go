@@ -141,6 +141,54 @@ func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (statu
 	return status, err
 }
 
+// GetReviewedItems returns a list of items from Fluctus's reviewed items
+// from Fluctus' processed items list. It returns a list of CleanupResults.
+// The cleanup task uses this list to figure out what to delete from the
+// receiving buckets.
+func (client *Client) GetReviewedItems() (results []*bagman.CleanupResult, err error) {
+	reviewedUrl := client.BuildUrl("/itemresults/get_reviewed.json")
+	request, err := client.NewJsonRequest("GET", reviewedUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+	items := make([]*bagman.ProcessStatus, 0)
+	err = json.Unmarshal(body, &items)
+	if err != nil {
+		return nil, err
+	}
+	results = make([]*bagman.CleanupResult, len(items))
+	for i, item := range items {
+		file := &bagman.CleanupFile{
+			BucketName: item.Bucket,
+			Key: item.Name,
+		}
+		files := make([]*bagman.CleanupFile, 1)
+		files[0] = file
+		cleanupResult := &bagman.CleanupResult {
+			BagName: item.Name,
+			ETag: item.ETag,
+			BagDate: item.BagDate,
+			ObjectIdentifier: "",
+			Files: files,
+		}
+		results[i] = cleanupResult
+	}
+	return results, nil
+}
+
+
 // UpdateBagStatus sends a message to Fluctus describing whether bag
 // processing succeeded or failed. If it failed, the ProcessStatus
 // object includes some details of what went wrong.

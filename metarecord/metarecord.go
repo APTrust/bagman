@@ -191,7 +191,7 @@ func logResult() {
         // Add some stats to the message log
         messageLog.Printf("[STATS] Succeeded: %d, Failed: %d\n", succeeded, failed)
 
-		if result.NsqMessage.Attempts >= config.MaxMetadataAttempts && result.ErrorMessage != "" {
+		if result.NsqMessage.Attempts >= uint16(config.MaxMetadataAttempts) && result.ErrorMessage != "" {
 			result.Retry = false
 			result.ErrorMessage += fmt.Sprintf("Failure is due to a technical error " +
 				"in Fedora. Giving up after %d failed attempts. This item has been " +
@@ -222,22 +222,9 @@ func logResult() {
     }
 }
 
-// TODO: Move DeleteFromReceiving to a separate processor.
 func doCleanUp() {
     for result := range channels.CleanUpChannel {
         messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
-		// If we got all the way to the end of processing with no
-		// errors, delete the original tar file from the receiving
-		// bucket, if config specifies that.
-		if result.Stage == "Record" && result.ErrorMessage == "" {
-			if config.DeleteOnSuccess {
-				DeleteFromReceiving(result)
-			} else {
-				messageLog.Printf("[INFO] Leaving original '%s' from bucket '%s' " +
-					"because Config.DeleteOnSuccess is false",
-					result.S3File.Key.Key, result.S3File.BucketName)
-			}
-		}
         // Build and send message back to NSQ, indicating whether
         // processing succeeded.
         if result.ErrorMessage != "" && result.Retry == true {
@@ -247,23 +234,6 @@ func doCleanUp() {
             result.NsqMessage.Finish()
         }
     }
-}
-
-// TODO: Move DeleteFromReceiving to a separate processor.
-// Deletes the original uploaded tar file from the receiving bucket.
-// You should call this only if Config.DeleteOnSuccess is true.
-func DeleteFromReceiving(result *bagman.ProcessResult) {
-	err := s3Client.Delete(result.S3File.BucketName, result.S3File.Key.Key)
-	if err != nil {
-		result.ErrorMessage += fmt.Sprintf("After processing completed, " +
-			"there was an error deleting file '%s' from receiving " +
-			"bucket '%s': %v ", result.S3File.Key.Key, result.S3File.BucketName)
-		result.Retry = false
-		messageLog.Println("[Error]", result.ErrorMessage)
-	} else {
-		messageLog.Printf("[INFO] Deleted original tar file '%s' from bucket '%s'",
-			result.S3File.BucketName, result.S3File.Key.Key)
-	}
 }
 
 // Send all metadata about the bag to Fluctus/Fedora. This includes
