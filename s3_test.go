@@ -188,7 +188,12 @@ func TestSaveToS3(t *testing.T) {
         printSkipMessage()
         return
     }
-	saveToS3(t)
+	// Copy this file from the testdata directory to the
+	// test preservation bucket.
+	err := SaveToS3("sample_good.tar", testPreservationBucket)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestGetKey(t *testing.T) {
@@ -200,10 +205,14 @@ func TestGetKey(t *testing.T) {
     if err != nil {
         t.Error("Cannot create S3 client: %v\n", err)
     }
-    key, err := s3Client.GetKey(testPreservationBucket, "test_file.tar")
+    key, err := s3Client.GetKey(testPreservationBucket, "sample_good.tar")
     if err != nil {
         t.Error(err)
     }
+	if key == nil {
+		t.Error("s3Client.GetKey returned nil")
+		return
+	}
     expectedETag := "\"7d5c7c1727fd538888f3eb89658abfdf\""
     if key.ETag != expectedETag {
         t.Errorf("Expected ETag %s, got %s", expectedETag, key.ETag)
@@ -219,7 +228,11 @@ func TestDeleteFromS3(t *testing.T) {
         return
     }
 	// Make sure we have a file there to delete.
-	saveToS3(t)
+	err := SaveToS3("sample_good.tar", testPreservationBucket)
+	if err != nil {
+		t.Error(err)
+	}
+
 	// Now make sure the delete function works.
     s3Client, err := bagman.NewS3Client(aws.USEast)
     if err != nil {
@@ -231,26 +244,26 @@ func TestDeleteFromS3(t *testing.T) {
 	}
 }
 
-// Saves our test file to the long-term storage bucket on S3.
-// This is used in more than one test.
-func saveToS3(t *testing.T) {
+// Copies localFile to bucketName on S3. localFile is assumed
+// to be inside the testdata directory.
+func SaveToS3(localFile, bucketName string) (error) {
     s3Client, err := bagman.NewS3Client(aws.USEast)
     if err != nil {
-        t.Error("Cannot create S3 client: %v\n", err)
+        return fmt.Errorf("Cannot create S3 client: %v\n", err)
     }
     bagmanHome, err := bagman.BagmanHome()
     if err != nil {
-        t.Error(err)
+        return err
     }
-    path := filepath.Join(bagmanHome, "testdata", "sample_good.tar")
+    path := filepath.Join(bagmanHome, "testdata", localFile)
     file, err := os.Open(path)
     if err != nil {
-        t.Errorf("Error opening local test file: %v", err)
+        return fmt.Errorf("Error opening local test file: %v", err)
     }
     defer file.Close()
     fileInfo, err := file.Stat()
     if err != nil {
-        t.Errorf("Can't stat local test file: %v", err)
+        return fmt.Errorf("Can't stat local test file: %v", err)
     }
 	fileBytes := make([]byte, fileInfo.Size())
 	_, _ = file.Read(fileBytes)
@@ -258,14 +271,15 @@ func saveToS3(t *testing.T) {
 	md5Bytes := md5.Sum(fileBytes)
 	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes[:])
 	options := s3Client.MakeOptions(base64md5, nil)
-    url, err := s3Client.SaveToS3(testPreservationBucket, "test_file.tar",
+    url, err := s3Client.SaveToS3(bucketName, localFile,
         "application/binary", file, fileInfo.Size(), options)
     if err != nil {
-        t.Error(err)
+        return err
     }
-	expectedUrl := fmt.Sprintf("https://s3.amazonaws.com/%s/test_file.tar",
-		testPreservationBucket)
+	expectedUrl := fmt.Sprintf("https://s3.amazonaws.com/%s/%s",
+		bucketName, localFile)
 	if url != expectedUrl {
-		t.Errorf("Expected url '%s' but got '%s'", expectedUrl, url)
+		return fmt.Errorf("Expected url '%s' but got '%s'", expectedUrl, url)
 	}
+	return nil
 }
