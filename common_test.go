@@ -187,22 +187,9 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
     }
 }
 
-// Loads a result from the test data directory.
-func loadResult(filename string) (result *bagman.ProcessResult, err error) {
-    file, err := ioutil.ReadFile(filename)
-    if err != nil {
-        return nil, err
-    }
-    err = json.Unmarshal(file, &result)
-    if err != nil{
-        return nil, err
-    }
-    return result, nil
-}
-
 func TestIntellectualObject(t *testing.T) {
     filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
@@ -234,7 +221,7 @@ func TestIntellectualObject(t *testing.T) {
 
 func TestGenericFiles(t *testing.T) {
     filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
@@ -341,7 +328,7 @@ func TestGenericFiles(t *testing.T) {
 
 func TestPremisEvents(t *testing.T) {
     filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
@@ -445,7 +432,7 @@ func TestPremisEvents(t *testing.T) {
 
 func TestGenericFilePaths(t *testing.T) {
     filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
@@ -481,7 +468,7 @@ func TestMetadataRecordSucceeded(t *testing.T) {
 
 func getFedoraResult(t *testing.T) (*bagman.FedoraResult) {
     filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
@@ -621,7 +608,7 @@ func TestAllRecordsSucceeded(t *testing.T) {
 
 func TestAnyFilesCopiedToPreservation(t *testing.T) {
     filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
@@ -642,7 +629,7 @@ func TestAnyFilesCopiedToPreservation(t *testing.T) {
 
 func TestAllFilesCopiedToPreservation(t *testing.T) {
     filepath := filepath.Join("testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }

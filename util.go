@@ -5,6 +5,7 @@ import (
     "io/ioutil"
     "os"
     "path/filepath"
+	"encoding/json"
 )
 
 // BagmanHome returns the absolute path to the bagman root directory,
@@ -40,4 +41,18 @@ func LoadRelativeFile(relativePath string) ([]byte, error) {
     }
     absPath := filepath.Join(bagmanHome, relativePath)
     return ioutil.ReadFile(absPath)
+}
+
+// Loads a result from the test data directory.
+// This is used primarily for tests.
+func LoadResult(filename string) (result *ProcessResult, err error) {
+    file, err := LoadRelativeFile(filename)
+    if err != nil {
+        return nil, err
+    }
+    err = json.Unmarshal(file, &result)
+    if err != nil{
+        return nil, err
+    }
+    return result, nil
 }

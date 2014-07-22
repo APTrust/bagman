@@ -7,18 +7,23 @@ import (
 	"os"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 	"time"
+	"strings"
 	"github.com/nu7hatch/gouuid"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/client"
     "github.com/APTrust/bagman/fluctus/models"
 )
 
-// TODO: Fix tests so they don't depend on these hard-coded ids!
+
 var fluctusUrl string = "http://localhost:3000"
-var objId string = "ncsu.edu/ncsu.1840.16-1153"
-var gfId string = "ncsu.edu/ncsu.1840.16-1153/data/object.properties"
 var skipMessagePrinted bool = false
+
+// objId and gfId come from our test fixture in testdata/result_good.json
+var objId string = "ncsu.edu/ncsu.1840.16-2928"
+var gfId string = "ncsu.edu/ncsu.1840.16-2928/data/object.properties"
+
 
 func runFluctusTests() (bool) {
 	_, err := http.Get(fluctusUrl)
@@ -47,12 +52,54 @@ func getClient(t *testing.T) (*client.Client) {
 	return client
 }
 
+// Loads an intellectual object with events and generic files
+// from a test fixture into our test Fedora/Fluctus instance.
+func loadTestResult(t *testing.T) (error) {
+
+	client := getClient(t)
+
+	// Load processing result fixture
+	testfile := filepath.Join("testdata", "result_good.json")
+    result, err := bagman.LoadResult(testfile)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", testfile, err)
+		return err
+    }
+	// Get the intellectual object from the processing result
+    obj, err := result.IntellectualObject()
+	if err != nil {
+		t.Errorf("Error creating intellectual object from result: %v", err)
+	}
+
+	// Try to get the object with this identifier from Fluctus
+	fluctusObj, err := client.IntellectualObjectGet(obj.Identifier, false)
+	if err != nil {
+        t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
+		return err
+    }
+
+	// Add this object to fluctus if it doesn't already exist.
+	if fluctusObj == nil {
+		_, err := client.IntellectualObjectCreate(obj)
+		if err != nil {
+			t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
+			return err
+		}
+	}
+
+	return nil
+}
 
 func TestIntellectualObjectGet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
 	client := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
 
 	// Get the lightweight version of an existing object
 	obj, err := client.IntellectualObjectGet(objId, false)
@@ -112,11 +159,17 @@ func findFile(files []*models.GenericFile, id string) (*models.GenericFile) {
 	return nil
 }
 
-func TestIntellectualObjectSave(t *testing.T) {
+func TestIntellectualObjectUpdate(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
 	client := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
+
 	obj, err := client.IntellectualObjectGet(objId, false)
 	if err != nil {
         t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
@@ -127,7 +180,7 @@ func TestIntellectualObjectSave(t *testing.T) {
 	}
 
 	// Update an existing object
-	newObj, err := client.IntellectualObjectSave(obj)
+	newObj, err := client.IntellectualObjectUpdate(obj)
 	if err != nil {
         t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
     }
@@ -137,10 +190,39 @@ func TestIntellectualObjectSave(t *testing.T) {
 		newObj.Description != obj.Description {
 		t.Error("New object attributes don't match what was submitted.")
 	}
+}
 
-	// Save a new object... just change the id, so Fluctus thinks it's new
-	obj.Id = fmt.Sprintf("test:%d", time.Now().Unix())
-	newObj, err = client.IntellectualObjectSave(obj)
+func TestIntellectualObjectCreate(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+
+	// Load processing result fixture
+	testfile := filepath.Join("testdata", "result_good.json")
+    result, err := bagman.LoadResult(testfile)
+    if err != nil {
+        t.Errorf("Error loading test data file '%s': %v", testfile, err)
+		return
+    }
+	// Get the intellectual object from the processing result
+    obj, err := result.IntellectualObject()
+	if err != nil {
+		t.Errorf("Error creating intellectual object from result: %v", err)
+		return
+	}
+
+	// Save a new object... just change the id & identifier,
+	// so Fluctus thinks it's new
+	obj.Id = ""
+	oldIdentifier := obj.Identifier
+	obj.Identifier = fmt.Sprintf("test.edu/%d", time.Now().Unix())
+	// Update the identifier on all of the generic files...
+	for i := range obj.GenericFiles {
+		obj.GenericFiles[i].Identifier = strings.Replace(
+			obj.GenericFiles[i].Identifier, oldIdentifier, obj.Identifier, 1)
+	}
+	newObj, err := client.IntellectualObjectCreate(obj)
 	if err != nil {
         t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
 		return
@@ -149,6 +231,7 @@ func TestIntellectualObjectSave(t *testing.T) {
 		newObj.Description != obj.Description {
 		t.Error("New object attributes don't match what was submitted.")
 	}
+
 }
 
 func TestGenericFileGet(t *testing.T) {
@@ -156,6 +239,11 @@ func TestGenericFileGet(t *testing.T) {
 		return
 	}
 	client := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
 
 	// Get the lightweight version of an existing object
 	gf, err := client.GenericFileGet(gfId, false)
@@ -208,6 +296,12 @@ func TestGenericFileSave(t *testing.T) {
 		return
 	}
 	client := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
+
 	gf, err := client.GenericFileGet(gfId, true)
 	if err != nil {
         t.Errorf("Error asking fluctus for GenericFile: %v", err)
@@ -252,6 +346,11 @@ func TestEventSave(t *testing.T) {
 		return
 	}
 	client := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
 
 	eventId, err := uuid.NewV4()
 	if err != nil {
@@ -330,6 +429,12 @@ func TestBulkStatusGet(t *testing.T) {
 		return
 	}
 	client := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
+
 	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
 	records, err := client.BulkStatusGet(sinceWhen)
 	if err != nil {
@@ -368,13 +473,13 @@ func TestSendProcessedItem(t *testing.T) {
 		Note: "Test item",
 		Action: "Ingest",
 		Stage: "Receive",
-		Status: "Processing",
+		Status: "Pending",
 		Outcome: "O-diddly Kay!",
 		Retry: true,
 		Reviewed: false,
 	}
 
-	// Create new record
+	// Create new records
 	err = client.SendProcessedItem(status)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
@@ -388,10 +493,9 @@ func TestSendProcessedItem(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
-	// WTF Rails? This test fails in Rails test env when SQLite is the DB
-	//if status.Id == 0 {
-	//	t.Error("status.Id should have been reassigned but was not")
-	//}
+	if status.Id == 0 {
+		t.Error("status.Id should have been reassigned but was not")
+	}
 }
 
 func TestGetReviewedItems(t *testing.T) {
@@ -403,6 +507,7 @@ func TestGetReviewedItems(t *testing.T) {
 	// Make sure we have a couple of reviewed items...
 	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
 	records, err := client.BulkStatusGet(sinceWhen)
+
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
 	}

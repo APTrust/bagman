@@ -59,7 +59,7 @@
                 "StorageURL": "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc",
                 "StoredAt": "2014-07-03T16:05:51Z",
                 "StorageMd5": "84586caa94ff719e93b802720501fcc7",
-                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/metadata.xml",
+                "Identifier": "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml",
                 "IdentifierAssigned": "2014-04-25T18:05:51Z"
             },
             {
@@ -78,7 +78,7 @@
                 "StorageURL": "https://s3.amazonaws.com/aptrust.storage/cba60bd7-1d46-4d53-705f-2298e173bbf9",
                 "StoredAt": "2014-07-03T16:05:54Z",
                 "StorageMd5": "a340203a24dcd6f6ca2bc95a4956c65d",
-                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/object.properties",
+                "Identifier": "ncsu.edu/ncsu.1840.16-2928/data/object.properties",
                 "IdentifierAssigned": "2014-04-25T18:05:51Z"
             },
             {
@@ -97,7 +97,7 @@
                 "StorageURL": "https://s3.amazonaws.com/aptrust.storage/18299764-f623-489e-5171-b9f7e37675a1",
                 "StoredAt": "2014-07-03T16:05:57Z",
                 "StorageMd5": "71bf1855639c4194c5a6337cc05c2b19",
-                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/ORIGINAL/1",
+                "Identifier": "ncsu.edu/ncsu.1840.16-2928/data/ORIGINAL/1",
                 "IdentifierAssigned": "2014-04-25T18:05:51Z"
             },
             {
@@ -116,7 +116,7 @@
                 "StorageURL": "https://s3.amazonaws.com/aptrust.storage/59ce7814-cba5-4898-62d2-9541b2b28295",
                 "StoredAt": "2014-07-03T16:05:59Z",
                 "StorageMd5": "a4d9c67041d961bb8e003fdc2a3b65e8",
-                "Identifier": "ncsu.edu.ncsu.1840.16-2928/data/ORIGINAL/1-metadata.xml",
+                "Identifier": "ncsu.edu/ncsu.1840.16-2928/data/ORIGINAL/1-metadata.xml",
                 "IdentifierAssigned": "2014-04-25T18:05:51Z"
             }
         ]

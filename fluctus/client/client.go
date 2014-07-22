@@ -132,7 +132,8 @@ func (client *Client) NewJsonRequest(method, targetUrl string, body io.Reader) (
 // GetBagStatus returns the status of a bag from a prior round of processing.
 // This function will return nil if Fluctus has no record of this bag.
 func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
-	statusUrl := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name, bag_date.Format(time.RFC3339)))
+	statusUrl := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name,
+		url.QueryEscape(bag_date.Format(time.RFC3339))))
 	req, err := client.NewJsonRequest("GET", statusUrl, nil)
 	if err != nil {
 		return nil, err
@@ -260,7 +261,7 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 
 func (client *Client) BulkStatusGet (since time.Time) (statusRecords []*bagman.ProcessStatus, err error) {
 	objUrl := client.BuildUrl(fmt.Sprintf("/itemresults/ingested_since/%s",
-		url.QueryEscape(since.Format(time.RFC3339))))
+		url.QueryEscape(since.UTC().Format(time.RFC3339))))
 	client.logger.Println("[INFO] Requesting bulk bag status from fluctus:", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
@@ -342,16 +343,11 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 }
 
 
-// Saves an IntellectualObject to fluctus. This function
-// figures out whether the save is a create or an update.
-// It returns the IntellectualObject.
-func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
+// Updates an existing IntellectualObject in fluctus.
+// Returns the IntellectualObject.
+func (client *Client) IntellectualObjectUpdate (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
 	if obj == nil {
 		return nil, fmt.Errorf("Param obj cannot be nil")
-	}
-	existingObj, err := client.IntellectualObjectGet(obj.Identifier, false)
-	if err != nil {
-		return nil, err
 	}
 
 	if client.institutions == nil || len(client.institutions) == 0 {
@@ -362,21 +358,8 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 		}
 	}
 
-	// Our institution id is the institution's domain name. When we talk to
-	// Fluctus, we need to use its institution id.
-	fluctusInstitutionId := obj.InstitutionId
-	if domainPattern.Match([]byte(obj.InstitutionId)) {
-		fluctusInstitutionId = client.institutions[obj.InstitutionId]
-	}
-
-	// URL & method for create
-	objUrl := client.BuildUrl(fmt.Sprintf("/institutions/%s/objects.json", fluctusInstitutionId))
-	method := "POST"
-	// URL & method for update
-	if existingObj != nil {
-		objUrl = client.BuildUrl(fmt.Sprintf("/objects/%s", escapeSlashes(obj.Identifier)))
-		method = "PUT"
-	}
+	objUrl := client.BuildUrl(fmt.Sprintf("/objects/%s", escapeSlashes(obj.Identifier)))
+	method := "PUT"
 
 	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
 
@@ -424,6 +407,67 @@ func (client *Client) IntellectualObjectSave (obj *models.IntellectualObject) (n
 	}
 }
 
+func (client *Client) IntellectualObjectCreate (obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
+	if obj == nil {
+		return nil, fmt.Errorf("Param obj cannot be nil")
+	}
+
+	if client.institutions == nil || len(client.institutions) == 0 {
+		err = client.CacheInstitutions()
+		if err != nil {
+			client.logger.Printf("[ERROR] Fluctus client can't build institutions cache: %v", err)
+			return nil, fmt.Errorf("Error building institutions cache: %v", err)
+		}
+	}
+
+	// URL & method for create
+	objUrl := client.BuildUrl("/objects/include_nested.json?include_nested=true")
+	method := "POST"
+
+	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
+
+	data, err := obj.SerializeForCreate()
+	request, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(data))
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Must read body. See comment above.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if response.StatusCode != 201 {
+		err = fmt.Errorf("IntellectualObjectCreate Expected status code 201 but got %d. URL: %s\n",
+			response.StatusCode, request.URL)
+		client.logger.Println("[ERROR]", err)
+		return nil, err
+	} else {
+		client.logger.Printf("[INFO] %s IntellectualObject %s succeeded", method, obj.Identifier)
+	}
+
+	// On create, Fluctus returns the new object. On update, it returns nothing.
+	if len(body) > 0 {
+		//client.logger.Println(string(body))
+		newObj = &models.IntellectualObject{}
+		err = json.Unmarshal(body, newObj)
+		if err != nil {
+			return nil, err
+		}
+		return newObj, nil
+	} else {
+		return obj, nil
+	}
+}
 
 // Returns the generic file with the specified identifier.
 func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelations bool) (*models.GenericFile, error) {
@@ -609,7 +653,7 @@ func escapeSlashes(s string) (string) {
 // bagman.ProcessResult.ProcessStatus(), which gives information about
 // the current state of processing.
 func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err error) {
-    // Look up the status record in Flucutus. It should already exist.
+    // Look up the status record in Fluctus. It should already exist.
 	// We want to get its ID and update the existing record, rather
 	// than creating a new record. Each bag should have no more than
 	// one ProcessedItem record.

@@ -2,25 +2,10 @@ package models_test
 
 import (
     "testing"
-//	"fmt"
 	"encoding/json"
 	"path/filepath"
-	"io/ioutil"
 	"github.com/APTrust/bagman"
 )
-
-// Loads a result from the test data directory.
-func loadResult(filename string) (result *bagman.ProcessResult, err error) {
-    file, err := ioutil.ReadFile(filename)
-    if err != nil {
-        return nil, err
-    }
-    err = json.Unmarshal(file, &result)
-    if err != nil{
-        return nil, err
-    }
-    return result, nil
-}
 
 func assertValue(t *testing.T, data map[string]interface{}, key, expected string) {
 	if data[key] != expected {
@@ -29,8 +14,8 @@ func assertValue(t *testing.T, data map[string]interface{}, key, expected string
 }
 
 func TestSerializeForCreate(t *testing.T) {
-    filepath := filepath.Join("../../testdata", "result_good.json")
-    result, err := loadResult(filepath)
+    filepath := filepath.Join("testdata", "result_good.json")
+    result, err := bagman.LoadResult(filepath)
     if err != nil {
         t.Errorf("Error loading test data file '%s': %v", filepath, err)
     }
@@ -76,7 +61,7 @@ func TestSerializeForCreate(t *testing.T) {
 	file1 := files[0].(map[string]interface{})
 	assertValue(t, file1, "created", "2014-04-25T18:05:51Z")
 	assertValue(t, file1, "format", "application/xml")
-	assertValue(t, file1, "identifier", "ncsu.edu.ncsu.1840.16-2928/data/metadata.xml")
+	assertValue(t, file1, "identifier", "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml")
 	assertValue(t, file1, "modified", "2014-04-25T18:05:51Z")
 	assertValue(t, file1, "uri", "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc")
 	if file1["size"] != float64(5105) {
@@ -114,7 +99,7 @@ func TestSerializeForCreate(t *testing.T) {
 	assertValue(t, event3, "outcome_detail", "sha256:ab807222abc85eb3be8c4d5b754c1a5d89d53642d05232f9eade3a539e7f1784")
 
 	assertValue(t, event4, "type", "identifier_assignment")
-	assertValue(t, event4, "outcome_detail", "ncsu.edu.ncsu.1840.16-2928/data/metadata.xml")
+	assertValue(t, event4, "outcome_detail", "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml")
 
 	assertValue(t, event5, "type", "identifier_assignment")
 	assertValue(t, event5, "outcome_detail", "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc")
