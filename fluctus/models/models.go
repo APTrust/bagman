@@ -3,9 +3,11 @@
 package models
 
 import (
+	"fmt"
     "strings"
     "time"
 	"encoding/json"
+	"github.com/nu7hatch/gouuid"
 )
 
 // List of valid APTrust IntellectualObject AccessRights.
@@ -133,6 +135,93 @@ func (obj *IntellectualObject) AccessValid() bool {
     }
     return false
 }
+
+// SerializeForCreate serializes an intellectual object along
+// with all of its generic files and events in a single shot.
+// The output is a byte array of JSON data.
+func (obj *IntellectualObject) SerializeForCreate() ([]byte, error) {
+	genericFileMaps := make([]map[string]interface{}, len(obj.GenericFiles))
+	for i, gf := range(obj.GenericFiles) {
+		genericFileMaps[i] = map[string]interface{}{
+			"identifier": gf.Identifier,
+			"format": gf.Format,
+			"uri": gf.URI,
+			"size": gf.Size,
+			"created": gf.Created,
+			"modified": gf.Modified,
+			"checksum": gf.ChecksumAttributes,
+			"premisEvents": gf.Events,
+		}
+	}
+	events := make([]*PremisEvent, 2)
+	ingestEvent, err := obj.CreateIngestEvent()
+	if err != nil {
+		return nil, err
+	}
+	idEvent, err := obj.CreateIdEvent()
+	if err != nil {
+		return nil, err
+	}
+	events[0] = idEvent
+	events[1] = ingestEvent
+
+	// Even though we're sending only one object,
+	// Fluctus expects an array.
+	objects := make([]map[string]interface{}, 1)
+	objects[0] = map[string]interface{}{
+		"identifier": obj.Identifier,
+		"title": obj.Title,
+		"description": obj.Description,
+		"access": obj.Access,
+		"institution_id": obj.InstitutionId,
+		"premisEvents": events,
+		"generic_files": genericFileMaps,
+    }
+	jsonBytes, err := json.Marshal(objects)
+	if err != nil {
+		return nil, err
+	}
+	return jsonBytes, nil
+}
+
+
+func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent, error) {
+	eventId, err := uuid.NewV4()
+	if err != nil {
+		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
+	}
+	return &PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "ingest",
+		DateTime: time.Now(),
+		Detail: "Copied all files to perservation bucket",
+		Outcome: "Success",
+		OutcomeDetail: fmt.Sprintf("%d files copied", len(obj.GenericFiles)),
+		Object: "goamz S3 client",
+		Agent: "https://launchpad.net/goamz",
+		OutcomeInformation: "Multipart put using md5 checksum",
+	}, nil
+}
+
+
+func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
+	eventId, err := uuid.NewV4()
+	if err != nil {
+		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
+	}
+	return &PremisEvent{
+		Identifier: eventId.String(),
+		EventType: "identifier_assignment",
+		DateTime: time.Now(),
+		Detail: "Assigned bag identifier",
+		Outcome: "Success",
+		OutcomeDetail: obj.Identifier,
+		Object: "APTrust bagman",
+		Agent: "https://github.com/APTrust/bagman",
+		OutcomeInformation: "Institution domain + tar file name",
+	}, nil
+}
+
 
 // Serialize the subset of IntellectualObject data that fluctus
 // will accept. This is for post/put, where essential info, such
