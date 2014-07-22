@@ -10,6 +10,10 @@ import (
 	"github.com/crowdmob/goamz/s3"
 )
 
+// Chunk size for multipart puts to S3.
+// Files over 2GB in size must be uploaded via multi-part put.
+const chunkSize = int64(209715200)
+
 type S3Client struct {
     S3    *s3.S3
 }
@@ -239,4 +243,37 @@ func (client *S3Client) GetKey(bucketName, fileName string) (*s3.Key, error) {
 func (client *S3Client) Delete(bucketName, fileName string) (error) {
     bucket := client.S3.Bucket(bucketName)
     return bucket.Del(fileName)
+}
+
+
+// Sends a large file (>= 5GB) to S3 in 200MB chunks. This operation
+// may take several minutes to complete. Note that io.File satisfies
+// the s3.ReaderAtSeeker interface.
+func (client *S3Client) PutLargeFile(bucketName, fileName, contentType string,
+	reader s3.ReaderAtSeeker, byteCount int64, options s3.Options) (url string, err error) {
+
+    bucket := client.S3.Bucket(bucketName)
+	multipartPut, err := bucket.InitMulti(fileName, contentType, s3.Private)
+	if err != nil {
+		return "", err
+	}
+
+	// Send all of the individual parts to S3, in chunks of 200MB
+	parts, err := multipartPut.PutAll(reader, chunkSize)
+	if err != nil {
+		return "", err
+	}
+
+	// This command tells S3 to stitch all the parts into a single file.
+	err = multipartPut.Complete(parts)
+	if err != nil {
+		return "", err
+	}
+
+	// ---------------------------------------------------------------
+	// TODO: Add metadata to the multipart object. Is this possible??
+	// ---------------------------------------------------------------
+
+	url = fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, fileName)
+    return url, nil
 }
