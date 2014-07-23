@@ -546,6 +546,7 @@ type FedoraResult struct {
 	ObjectIdentifier  string
 	GenericFilePaths []string
 	MetadataRecords  []*MetadataRecord
+	IsNewObject      bool
 	ErrorMessage     string
 }
 
@@ -555,6 +556,7 @@ func NewFedoraResult(objectIdentifier string, genericFilePaths []string)(*Fedora
 	return &FedoraResult{
 		ObjectIdentifier: objectIdentifier,
 		GenericFilePaths: genericFilePaths,
+		IsNewObject: true,
 	}
 }
 
@@ -623,24 +625,8 @@ func (result *FedoraResult) RecordSucceeded(recordType, action, eventObject stri
 // A successful FedoraResult will have (2 + (3 * len(GenericFilePaths)))
 // successful MetadataRecords.
 func (result *FedoraResult) AllRecordsSucceeded() (bool) {
-	// Make sure the IntellectualObject was created
-	if false == result.RecordSucceeded("IntellectualObject", "object_registered", result.ObjectIdentifier) {
-		return false
-	}
-	// Make sure the ingest event was recorded
-	if false == result.RecordSucceeded("PremisEvent", "ingest", result.ObjectIdentifier) {
-		return false
-	}
-	// Make sure we recorded fixity generation and identifier assignment
-	// for each generic file.
-	for _, filePath := range(result.GenericFilePaths) {
-		if false == result.RecordSucceeded("GenericFile", "file_registered", filePath) {
-			return false
-		}
-		if false == result.RecordSucceeded("PremisEvent", "identifier_assignment", filePath) {
-			return false
-		}
-		if false == result.RecordSucceeded("PremisEvent", "fixity_generation", filePath) {
+	for _, record := range result.MetadataRecords {
+		if false == record.Succeeded() {
 			return false
 		}
 	}

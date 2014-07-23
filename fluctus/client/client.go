@@ -383,9 +383,9 @@ func (client *Client) IntellectualObjectUpdate (obj *models.IntellectualObject) 
 		}
 	}
 
-	// Fluctus returns 201 (Created) on create, 204 (No content) on update
-	if response.StatusCode != 201 && response.StatusCode != 204 {
-		err = fmt.Errorf("IntellectualObjectSave Expected status code 201 or 204 but got %d. URL: %s\n",
+	// Fluctus returns 204 (No content) on update
+	if response.StatusCode != 204 {
+		err = fmt.Errorf("IntellectualObjectSave Expected status code 204 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
 		client.logger.Println("[ERROR]", err)
 		return nil, err

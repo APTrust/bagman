@@ -247,11 +247,32 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 	result.FedoraResult = bagman.NewFedoraResult(
 		intellectualObject.Identifier,
 		result.TarResult.GenericFilePaths())
-
-	fedoraRecordIntellectualObject(result, intellectualObject)
-	for i := range(result.TarResult.GenericFiles) {
-		genericFile := result.TarResult.GenericFiles[i]
-		fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
+	existingObj, err := fluctusClient.IntellectualObjectGet(
+		intellectualObject.Identifier, false)
+	if err != nil {
+		result.FedoraResult.ErrorMessage = fmt.Sprintf(
+			"[ERROR] Error checking Fluctus for existing IntellectualObject '%s': %v",
+			intellectualObject.Identifier, err)
+		return err
+	}
+	if existingObj != nil {
+		result.FedoraResult.IsNewObject = false
+		fedoraUpdateIntellectualObject(result, intellectualObject)
+		for i := range(result.TarResult.GenericFiles) {
+			genericFile := result.TarResult.GenericFiles[i]
+			fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
+		}
+	} else {
+		result.FedoraResult.IsNewObject = true
+		newObj, err := fluctusClient.IntellectualObjectCreate(intellectualObject)
+		if err != nil {
+			result.FedoraResult.ErrorMessage = fmt.Sprintf(
+				"[ERROR] Error creating new IntellectualObject '%s' in Fluctus: %v",
+				intellectualObject.Identifier, err)
+			return err
+		} else {
+			intellectualObject.Id = newObj.Id
+		}
 	}
 	return nil
 }
@@ -288,9 +309,9 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, objId string, gf *bag
 
 // Creates/Updates an IntellectualObject in Fedora, and sends the
 // Ingest PremisEvent to Fedora.
-func fedoraRecordIntellectualObject(result *bagman.ProcessResult, intellectualObject *models.IntellectualObject) (error) {
+func fedoraUpdateIntellectualObject(result *bagman.ProcessResult, intellectualObject *models.IntellectualObject) (error) {
 	// Create/Update the IntellectualObject
-	savedObj, err := fluctusClient.IntellectualObjectSave(intellectualObject)
+	savedObj, err := fluctusClient.IntellectualObjectUpdate(intellectualObject)
 	if err != nil {
 		message := fmt.Sprintf("Error saving intellectual object '%s' to Fedora",
 			intellectualObject.Identifier)
