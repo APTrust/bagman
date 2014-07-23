@@ -33,8 +33,8 @@ func main() {
 		"Note for test entry",
 		"Ingest",
 		"Record",
-		"Succeeded",
-		"Succeeded"}
+		"Success",
+		"Success"}
 
 
 	remoteStatus, err := client.GetBagStatus(status.ETag, status.Name, status.BagDate)
@@ -48,8 +48,8 @@ func main() {
 	}
 	status.Date = time.Now().UTC()
 	status.Action = "Ingest"
-	status.Status = "Succeeded"
-	status.Outcome = "Succeeded"
+	status.Status = "Success"
+	status.Outcome = "Success"
 	err = client.UpdateBagStatus(status)
 	if err != nil {
 		fmt.Println(err)

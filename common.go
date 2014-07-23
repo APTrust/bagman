@@ -51,8 +51,8 @@ type S3File struct {
 // (save record of intellectual object, generic files and events
 // to Fedora).
 //
-// Status may have one of the following values: Processing,
-// Succeeded, Failed.
+// Status may have one of the following values: Pending,
+// Success, Failed.
 type ProcessStatus struct {
     Id           int         `json:"id"`
     Name         string      `json:"name"`
@@ -276,7 +276,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
     // Strip the quotes off the ETag
     status.ETag = strings.Replace(result.S3File.Key.ETag, "\"", "", 2)
     status.Stage = result.Stage
-    status.Status = "Processing"
+    status.Status = "Pending"
     if result.ErrorMessage != "" {
         status.Note = result.ErrorMessage
 		// Indicate whether we want to try re-processing this bag.
@@ -286,7 +286,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 		if status.Retry == false {
 			// Only mark an item as failed if we know we're not
 			// going to retry it. If we're going to retry it, leave
-			// it as "Processing", so that institutional admins
+			// it as "Pending", so that institutional admins
 			// cannot delete it from the ProcessedItems list in
 			// Fluctus.
 			status.Status = "Failed"
@@ -294,7 +294,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
     } else {
         status.Note = "No problems"
         if result.Stage == "Record" {
-            status.Status = "Succeeded"
+            status.Status = "Success"
         }
 		// If there were no errors, bag was processed sucessfully,
 		// and there is no need to retry.

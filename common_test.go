@@ -108,22 +108,22 @@ func resultFailedRecord() (result *bagman.ProcessResult) {
 // ProcessStatus data.
 func TestIngestStatus(t *testing.T) {
     passedFetch := getResult("Fetch", true)
-    assertCorrectSummary(t, passedFetch, "Processing")
+    assertCorrectSummary(t, passedFetch, "Pending")
     failedFetch := getResult("Fetch", false)
     assertCorrectSummary(t, failedFetch, "Failed")
 
     passedUnpack := getResult("Unpack", true)
-    assertCorrectSummary(t, passedUnpack, "Processing")
+    assertCorrectSummary(t, passedUnpack, "Pending")
     failedUnpack := getResult("Unpack", false)
     assertCorrectSummary(t, failedUnpack, "Failed")
 
     passedStore := getResult("Store", true)
-    assertCorrectSummary(t, passedStore, "Processing")
+    assertCorrectSummary(t, passedStore, "Pending")
     failedStore := getResult("Store", false)
     assertCorrectSummary(t, failedStore, "Failed")
 
     passedRecord := getResult("Record", true)
-    assertCorrectSummary(t, passedRecord, "Succeeded")
+    assertCorrectSummary(t, passedRecord, "Success")
     failedRecord := getResult("Record", false)
     assertCorrectSummary(t, failedRecord, "Failed")
 }
