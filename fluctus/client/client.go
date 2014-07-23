@@ -245,8 +245,14 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	}
 
 	if response.StatusCode != expectedStatus {
-		err = fmt.Errorf("doStatusRequest Expected status code %d but got %d. URL: %s",
-			expectedStatus, response.StatusCode, request.URL)
+		if len(body) < 1000 {
+			err = fmt.Errorf("doStatusRequest Expected status code %d but got %d. "+
+				"URL: %s, Response: %s",
+				expectedStatus, response.StatusCode, request.URL, string(body))
+		} else {
+			err = fmt.Errorf("doStatusRequest Expected status code %d but got %d. URL: %s",
+				expectedStatus, response.StatusCode, request.URL)
+		}
 		return nil, err
 	}
 
@@ -284,7 +290,12 @@ func (client *Client) BulkStatusGet (since time.Time) (statusRecords []*bagman.P
 
 	// 400 or 500
 	if response.StatusCode != 200 {
-		return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
+		if len(body) < 1000 {
+			return nil, fmt.Errorf("Request returned status code %d. " +
+				"Response body: %s", response.StatusCode, string(body))
+		} else {
+			return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
+		}
 	}
 
 	// Build and return the data structure
@@ -385,8 +396,14 @@ func (client *Client) IntellectualObjectUpdate (obj *models.IntellectualObject) 
 
 	// Fluctus returns 204 (No content) on update
 	if response.StatusCode != 204 {
-		err = fmt.Errorf("IntellectualObjectSave Expected status code 204 but got %d. URL: %s\n",
-			response.StatusCode, request.URL)
+		if len(body) < 1000 {
+			err = fmt.Errorf("IntellectualObjectSave Expected status code 204 but got %d. " +
+				"URL: %s, Response body: %s\n",
+				response.StatusCode, request.URL, string(body))
+		} else {
+			err = fmt.Errorf("IntellectualObjectSave Expected status code 204 but got %d. URL: %s\n",
+				response.StatusCode, request.URL)
+		}
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
@@ -447,8 +464,14 @@ func (client *Client) IntellectualObjectCreate (obj *models.IntellectualObject) 
 	}
 
 	if response.StatusCode != 201 {
-		err = fmt.Errorf("IntellectualObjectCreate Expected status code 201 but got %d. URL: %s\n",
-			response.StatusCode, request.URL)
+		if len(body) < 1000 {
+			err = fmt.Errorf("IntellectualObjectCreate Expected status code 201 but got %d. " +
+				"URL: %s, Response body: %s\n",
+				response.StatusCode, request.URL, string(body))
+		} else {
+			err = fmt.Errorf("IntellectualObjectCreate Expected status code 201 but got %d. URL: %s\n",
+				response.StatusCode, request.URL)
+		}
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
@@ -557,7 +580,11 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 	if response.StatusCode != 201 && response.StatusCode != 204 {
 		err = fmt.Errorf("GenericFileSave Expected status code 201 or 204 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
-		client.logger.Println("[ERROR]", err)
+		if len(body) < 1000 {
+			client.logger.Println("[ERROR]", err, string(body))
+		} else {
+			client.logger.Println("[ERROR]", err)
+		}
 		return nil, err
 	} else {
 		client.logger.Printf("[INFO] %s GenericFile %s succeeded", method, gf.Identifier)
@@ -625,8 +652,14 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 	}
 
 	if response.StatusCode != 201  {
-		err = fmt.Errorf("PremisEventSave Expected status code 201 but got %d. URL: %s\n",
-			response.StatusCode, request.URL)
+		if len(body) < 1000 {
+			err = fmt.Errorf("PremisEventSave Expected status code 201 but got %d. " +
+				"URL: %s, Response Body: %s\n",
+				response.StatusCode, request.URL, string(body))
+		} else {
+			err = fmt.Errorf("PremisEventSave Expected status code 201 but got %d. URL: %s\n",
+				response.StatusCode, request.URL)
+		}
 		client.logger.Println("[ERROR]", err)
 		return nil, err
 	} else {
