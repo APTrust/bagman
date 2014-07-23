@@ -247,9 +247,9 @@ func (client *S3Client) Delete(bucketName, fileName string) (error) {
 
 
 // Sends a large file (>= 5GB) to S3 in 200MB chunks. This operation
-// may take several minutes to complete. Note that io.File satisfies
+// may take several minutes to complete. Note that os.File satisfies
 // the s3.ReaderAtSeeker interface.
-func (client *S3Client) PutLargeFile(bucketName, fileName, contentType string,
+func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType string,
 	reader s3.ReaderAtSeeker, byteCount int64, options s3.Options) (url string, err error) {
 
     bucket := client.S3.Bucket(bucketName)
@@ -271,8 +271,23 @@ func (client *S3Client) PutLargeFile(bucketName, fileName, contentType string,
 	}
 
 	// ---------------------------------------------------------------
-	// TODO: Add metadata to the multipart object. Is this possible??
+	// To add our custom metadata tags to multi-part upload, we have
+	// to copy the file and add our custom headers. Because the source
+	// and destination are the same, the copy is a no-op, but it has
+	// the effect of updating the content type, custom metadata and
+	// access permissions.
 	// ---------------------------------------------------------------
+	copyOptions := CopyOptions{
+		Options: options,
+		MetadataDirective: "REPLACE",
+		ContentType: contentType,
+	}
+	// We're not really concerned with the result, as long as there's no
+	// error. The result has two members: ETag and LastModified, both strings.
+	result, err := bucket.PutCopy(filename, s3.Private, copyOptions, filename)
+	if err != nil {
+		return "", err
+	}
 
 	url = fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, fileName)
     return url, nil

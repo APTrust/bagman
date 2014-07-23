@@ -20,6 +20,9 @@ import (
     "github.com/bitly/go-nsq"
 )
 
+// Constants
+GIGABYTE int64 = int64(1024 * 1024 * 1024)
+
 type Channels struct {
     FetchChannel     chan *bagman.ProcessResult
     UnpackChannel    chan *bagman.ProcessResult
@@ -384,13 +387,26 @@ func saveToStorage() {
 			// Save to S3 with the base64-encoded md5 sum
 			base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
 			options := s3Client.MakeOptions(base64md5, s3Metadata)
-			url, err := s3Client.SaveToS3(
-				config.PreservationBucket,
-				gf.Uuid,
-				gf.MimeType,
-				reader,
-				gf.Size,
-				options)
+			var url string = ""
+			// Standard put to S3 for files < 5GB
+			if gf.Size < (5 * GIGABYTE) {
+				url, err = s3Client.SaveToS3(
+					config.PreservationBucket,
+					gf.Uuid,
+					gf.MimeType,
+					reader,
+					gf.Size,
+					options)
+			} else {
+				// Multi-part put for files >= 5GB
+				url, err = s3Client.SaveLargeFileToS3(
+					config.PreservationBucket,
+					gf.Uuid,
+					gf.MimeType,
+					reader,
+					gf.Size,
+					options)
+			}
 			reader.Close()
 			if err != nil {
 				// Consider this error transient. Leave retry = true.
