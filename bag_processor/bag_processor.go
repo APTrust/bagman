@@ -21,7 +21,12 @@ import (
 )
 
 // Constants
-GIGABYTE int64 = int64(1024 * 1024 * 1024)
+const GIGABYTE int64 = int64(1024 * 1024 * 1024)
+// Files over 5GB in size must be uploaded via multi-part put.
+const S3_LARGE_FILE int64 = int64(5 * GIGABYTE)
+// Chunk size for multipart puts to S3.
+const S3_CHUNK_SIZE = int64(209715200)
+
 
 type Channels struct {
     FetchChannel     chan *bagman.ProcessResult
@@ -389,7 +394,7 @@ func saveToStorage() {
 			options := s3Client.MakeOptions(base64md5, s3Metadata)
 			var url string = ""
 			// Standard put to S3 for files < 5GB
-			if gf.Size < (5 * GIGABYTE) {
+			if gf.Size < S3_LARGE_FILE {
 				url, err = s3Client.SaveToS3(
 					config.PreservationBucket,
 					gf.Uuid,
@@ -405,7 +410,8 @@ func saveToStorage() {
 					gf.MimeType,
 					reader,
 					gf.Size,
-					options)
+					options,
+				    S3_CHUNK_SIZE)
 			}
 			reader.Close()
 			if err != nil {

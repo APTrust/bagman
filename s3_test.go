@@ -283,3 +283,74 @@ func SaveToS3(localFile, bucketName string) (error) {
 	}
 	return nil
 }
+
+func TestSaveLargeFileToS3(t *testing.T) {
+    if !awsEnvAvailable() {
+        printSkipMessage()
+        return
+    }
+
+	// Copy this local file to remote bucket.
+	localFile := "multi_mb_test_bag.tar"
+	bucketName := testPreservationBucket
+
+
+    bagmanHome, err := bagman.BagmanHome()
+    if err != nil {
+        t.Error(err)
+    }
+    path := filepath.Join(bagmanHome, "testdata", localFile)
+
+	// Our multi-megabyte test file is not in the github repo
+	// and we don't want to perform this test all the time anyway.
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		fmt.Printf("Skipping TestSaveLargeFileToS3 because test file " +
+			"%s does not exist", path)
+		return
+	}
+
+
+    s3Client, err := bagman.NewS3Client(aws.USEast)
+    if err != nil {
+        t.Errorf("Cannot create S3 client: %v\n", err)
+    }
+
+	// Delete the file if it's already there.
+	_ = s3Client.Delete(bucketName, localFile)
+
+    file, err := os.Open(path)
+    if err != nil {
+        t.Errorf("Error opening local test file: %v", err)
+    }
+    defer file.Close()
+    fileInfo, err := file.Stat()
+    if err != nil {
+        t.Errorf("Can't stat local test file: %v", err)
+    }
+	fileBytes := make([]byte, fileInfo.Size())
+	_, _ = file.Read(fileBytes)
+	_, _ = file.Seek(0, 0)
+	md5Bytes := md5.Sum(fileBytes)
+	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes[:])
+
+	s3Metadata := make(map[string][]string)
+	s3Metadata["md5"] = []string{ "Test12345678" }
+	s3Metadata["institution"] = []string{ "aptrust.org" }
+	s3Metadata["bag"] = []string{ "test_bag" }
+	s3Metadata["bagpath"] = []string{ "data/test_file.pdf" }
+
+	options := s3Client.MakeOptions(base64md5, s3Metadata)
+
+	// Send the file up in 6mb chunks.
+    url, err := s3Client.SaveLargeFileToS3(bucketName, localFile,
+        "application/binary", file, fileInfo.Size(), options, int64(6000000))
+    if err != nil {
+        t.Error(err)
+    }
+
+	expectedUrl := fmt.Sprintf("https://s3.amazonaws.com/%s/%s",
+		bucketName, localFile)
+	if url != expectedUrl {
+		t.Errorf("Expected url '%s' but got '%s'", expectedUrl, url)
+	}
+}

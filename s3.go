@@ -10,9 +10,6 @@ import (
 	"github.com/crowdmob/goamz/s3"
 )
 
-// Chunk size for multipart puts to S3.
-// Files over 2GB in size must be uploaded via multi-part put.
-const chunkSize = int64(209715200)
 
 type S3Client struct {
     S3    *s3.S3
@@ -250,7 +247,7 @@ func (client *S3Client) Delete(bucketName, fileName string) (error) {
 // may take several minutes to complete. Note that os.File satisfies
 // the s3.ReaderAtSeeker interface.
 func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType string,
-	reader s3.ReaderAtSeeker, byteCount int64, options s3.Options) (url string, err error) {
+	reader s3.ReaderAtSeeker, byteCount int64, options s3.Options, chunkSize int64) (url string, err error) {
 
     bucket := client.S3.Bucket(bucketName)
 	multipartPut, err := bucket.InitMulti(fileName, contentType, s3.Private)
@@ -258,7 +255,7 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 		return "", err
 	}
 
-	// Send all of the individual parts to S3, in chunks of 200MB
+	// Send all of the individual parts to S3, in chunks >= 5MB
 	parts, err := multipartPut.PutAll(reader, chunkSize)
 	if err != nil {
 		return "", err
@@ -277,18 +274,68 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 	// the effect of updating the content type, custom metadata and
 	// access permissions.
 	// ---------------------------------------------------------------
-	copyOptions := CopyOptions{
+	copyOptions := s3.CopyOptions{
 		Options: options,
 		MetadataDirective: "REPLACE",
 		ContentType: contentType,
 	}
 	// We're not really concerned with the result, as long as there's no
 	// error. The result has two members: ETag and LastModified, both strings.
-	result, err := bucket.PutCopy(filename, s3.Private, copyOptions, filename)
+	source := fmt.Sprintf("%s/%s", bucketName, fileName)
+	_, err = bucket.PutCopy(fileName, s3.Private, copyOptions, source)
 	if err != nil {
 		return "", err
 	}
 
+	resp, err := bucket.Head(fileName, nil)
+	if err != nil {
+		return "", fmt.Errorf("Files were uploaded to S3, but attempt to " +
+			"confirm metadata returned this error: %v", err)
+	}
+
+	// Make sure all the meta data made it there.
+	// Var metadata is the metadata we sent to S3.
+	metadata := copyOptions.Options.Meta
+	notVerified := ""
+
+	if !metadataMatches(metadata, "institution", resp.Header, "X-Amz-Meta-Institution") {
+		notVerified += "institution, "
+	}
+	if !metadataMatches(metadata, "bag", resp.Header, "X-Amz-Meta-Bag") {
+		notVerified += "bag, "
+	}
+	if !metadataMatches(metadata, "bagpath", resp.Header, "X-Amz-Meta-Bagpath") {
+		notVerified += "bagpath, "
+	}
+	if !metadataMatches(metadata, "md5", resp.Header, "X-Amz-Meta-Md5") {
+		notVerified += "md5"
+	}
+	if len(notVerified) > 0 {
+		return "", fmt.Errorf("Multi-part upload succeeded, but S3 does not return " +
+			"the following metadata: %s", notVerified)
+	}
+
 	url = fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, fileName)
     return url, nil
+}
+
+func metadataMatches(metadata map[string][]string, key string, s3headers map[string][]string, headerName string)(bool) {
+	metaValue, keyExists := metadata[key]
+	headerValue, headerExists := s3headers[headerName]
+
+	// If we didn't send this metadata in the first place, we
+	// don't care if S3 has it.
+	if !keyExists {
+		return true
+	}
+
+	// If we sent the metadata, test whether S3 returned
+	// what we sent.
+	if keyExists && len(metaValue) > 0 && headerExists && len(headerValue) > 0 {
+		return metaValue[0] == headerValue[0]
+	}
+
+	// If we get here, the key exists in the metadata we
+	// sent, but not in the S3 headers.
+	return false
 }
