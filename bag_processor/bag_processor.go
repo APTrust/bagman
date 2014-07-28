@@ -404,6 +404,8 @@ func saveToStorage() {
 					options)
 			} else {
 				// Multi-part put for files >= 5GB
+				messageLog.Printf("[INFO] File %s is %d bytes. Using multi-part put.\n",
+					gf.Path, gf.Size)
 				url, err = s3Client.SaveLargeFileToS3(
 					config.PreservationBucket,
 					gf.Uuid,
