@@ -22,6 +22,7 @@ var domainPattern *regexp.Regexp = regexp.MustCompile("\\.edu|org|com$")
 
 type Client struct {
 	hostUrl        string
+	apiVersion     string
 	apiUser        string
 	apiKey         string
 	httpClient     *http.Client
@@ -32,7 +33,7 @@ type Client struct {
 
 // Creates a new fluctus client. Param hostUrl should come from
 // the config.json file.
-func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
+func New(hostUrl, apiVersion, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 	// see security warning on nil PublicSuffixList here:
 	// http://gotour.golang.org/src/pkg/net/http/cookiejar/jar.go?s=1011:1492#L24
 	cookieJar, err := cookiejar.New(nil)
@@ -44,7 +45,7 @@ func New(hostUrl, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
 		DisableKeepAlives: false,
 	}
 	httpClient := &http.Client{ Jar: cookieJar, Transport: transport }
-	return &Client{hostUrl, apiUser, apiKey, httpClient, transport, logger, nil}, nil
+	return &Client{hostUrl, apiVersion, apiUser, apiKey, httpClient, transport, logger, nil}, nil
 }
 
 // Caches a map of institutions in which institution domain name
@@ -132,7 +133,8 @@ func (client *Client) NewJsonRequest(method, targetUrl string, body io.Reader) (
 // GetBagStatus returns the status of a bag from a prior round of processing.
 // This function will return nil if Fluctus has no record of this bag.
 func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
-	statusUrl := client.BuildUrl(fmt.Sprintf("/itemresults/%s/%s/%s", etag, name,
+	statusUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/%s/%s/%s",
+		client.apiVersion, etag, name,
 		url.QueryEscape(bag_date.Format(time.RFC3339))))
 	req, err := client.NewJsonRequest("GET", statusUrl, nil)
 	if err != nil {
@@ -147,7 +149,8 @@ func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (statu
 // The cleanup task uses this list to figure out what to delete from the
 // receiving buckets.
 func (client *Client) GetReviewedItems() (results []*bagman.CleanupResult, err error) {
-	reviewedUrl := client.BuildUrl("/itemresults/get_reviewed.json")
+	reviewedUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/get_reviewed.json",
+		client.apiVersion))
 	request, err := client.NewJsonRequest("GET", reviewedUrl, nil)
 	if err != nil {
 		return nil, err
@@ -194,11 +197,12 @@ func (client *Client) GetReviewedItems() (results []*bagman.CleanupResult, err e
 // processing succeeded or failed. If it failed, the ProcessStatus
 // object includes some details of what went wrong.
 func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) {
-	relativeUrl := "/itemresults"
+	relativeUrl := fmt.Sprintf("/api/%s/itemresults", client.apiVersion)
 	httpMethod := "POST"
 	if status.Id > 0 {
-		relativeUrl = fmt.Sprintf("/itemresults/%s/%s/%s",
-			status.ETag, status.Name, status.BagDate.Format(time.RFC3339))
+		relativeUrl = fmt.Sprintf("/api/%s/itemresults/%s/%s/%s",
+			client.apiVersion, status.ETag, status.Name,
+			status.BagDate.Format(time.RFC3339))
 		httpMethod = "PUT"
 	}
 	statusUrl := client.BuildUrl(relativeUrl)
@@ -266,8 +270,8 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 
 
 func (client *Client) BulkStatusGet (since time.Time) (statusRecords []*bagman.ProcessStatus, err error) {
-	objUrl := client.BuildUrl(fmt.Sprintf("/itemresults/ingested_since/%s",
-		url.QueryEscape(since.UTC().Format(time.RFC3339))))
+	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/ingested_since/%s",
+		client.apiVersion, url.QueryEscape(since.UTC().Format(time.RFC3339))))
 	client.logger.Println("[INFO] Requesting bulk bag status from fluctus:", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
@@ -318,7 +322,8 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 	if includeRelations == true {
 		queryString = "include_relations=true"
 	}
-	objUrl := client.BuildUrl(fmt.Sprintf("/objects/%s?%s", escapeSlashes(identifier), queryString))
+	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/objects/%s?%s",
+		client.apiVersion, escapeSlashes(identifier), queryString))
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
@@ -369,7 +374,8 @@ func (client *Client) IntellectualObjectUpdate (obj *models.IntellectualObject) 
 		}
 	}
 
-	objUrl := client.BuildUrl(fmt.Sprintf("/objects/%s", escapeSlashes(obj.Identifier)))
+	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/objects/%s",
+		client.apiVersion, escapeSlashes(obj.Identifier)))
 	method := "PUT"
 
 	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
@@ -438,7 +444,8 @@ func (client *Client) IntellectualObjectCreate (obj *models.IntellectualObject) 
 	}
 
 	// URL & method for create
-	objUrl := client.BuildUrl("/objects/include_nested.json?include_nested=true")
+	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/objects/include_nested.json?include_nested=true",
+		client.apiVersion))
 	method := "POST"
 
 	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
@@ -498,7 +505,8 @@ func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelat
 	if includeRelations == true {
 		queryString = "include_relations=true"
 	}
-	fileUrl := client.BuildUrl(fmt.Sprintf("/files/%s?%s",
+	fileUrl := client.BuildUrl(fmt.Sprintf("/api/%s/files/%s?%s",
+		client.apiVersion,
 		escapeSlashes(genericFileIdentifier),
 		queryString))
 	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", fileUrl)
@@ -546,11 +554,13 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		return nil, err
 	}
 	// URL & method for create
-	fileUrl := client.BuildUrl(fmt.Sprintf("/objects/%s/files.json", escapeSlashes(objId)))
+	fileUrl := client.BuildUrl(fmt.Sprintf("/api/%s/objects/%s/files.json",
+		client.apiVersion, escapeSlashes(objId)))
 	method := "POST"
 	// URL & method for update
 	if existingObj != nil {
-		fileUrl = client.BuildUrl(fmt.Sprintf("/files/%s", escapeSlashes(gf.Identifier)))
+		fileUrl = client.BuildUrl(fmt.Sprintf("/api/%s/files/%s",
+			client.apiVersion, escapeSlashes(gf.Identifier)))
 		method = "PUT"
 	}
 
@@ -624,9 +634,11 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 	}
 
 	method := "POST"
-	eventUrl := client.BuildUrl(fmt.Sprintf("/files/%s/events", escapeSlashes(objId)))
+	eventUrl := client.BuildUrl(fmt.Sprintf("/api/%s/files/%s/events",
+		client.apiVersion, escapeSlashes(objId)))
 	if objType == "IntellectualObject" {
-		eventUrl = client.BuildUrl(fmt.Sprintf("/objects/%s/events", escapeSlashes(objId)))
+		eventUrl = client.BuildUrl(fmt.Sprintf("/api/%s/objects/%s/events",
+			client.apiVersion, escapeSlashes(objId)))
 	}
 
 	client.logger.Printf("[INFO] Creating %s PremisEvent %s for objId %s", objType, event.EventType, objId)

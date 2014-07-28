@@ -18,6 +18,7 @@ import (
 
 
 var fluctusUrl string = "http://localhost:3000"
+var fluctusAPIVersion string = "v1"
 var skipMessagePrinted bool = false
 
 // objId and gfId come from our test fixture in testdata/result_good.json
@@ -42,7 +43,9 @@ func getClient(t *testing.T) (*client.Client) {
 	// If you want to debug, change ioutil.Discard to os.Stdout
 	// to see log output from the client.
 	logger := log.New(ioutil.Discard, "", 0)
-	client, err := client.New(fluctusUrl,
+	client, err := client.New(
+		fluctusUrl,
+		fluctusAPIVersion,
 		os.Getenv("FLUCTUS_API_USER"),
 		os.Getenv("FLUCTUS_API_KEY"),
 		logger)

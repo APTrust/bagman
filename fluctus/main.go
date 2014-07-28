@@ -12,7 +12,9 @@ import (
 // TODO: Move this into client_test
 func main() {
 	logger := log.New(os.Stdout, "", 0)
-	client, err := client.New("http://localhost:3000",
+	client, err := client.New(
+		"http://localhost:3000",
+		"v1",
 		os.Getenv("FLUCTUS_API_USER"),
 		os.Getenv("FLUCTUS_API_KEY"),
 		logger)

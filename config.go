@@ -45,6 +45,10 @@ type Config struct {
     // start with http:// or https://
     FluctusURL           string
 
+	// The version of the Fluctus API we're using. This should
+	// start with a v, like v1, v2.2, etc.
+	FluctusAPIVersion    string
+
     // Buckets is a list of S3 receiving buckets to check
     // for incoming tar files.
     Buckets              []string

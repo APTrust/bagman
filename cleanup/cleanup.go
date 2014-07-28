@@ -39,6 +39,7 @@ func main() {
 
 	fluctusClient, err = client.New(
 		config.FluctusURL,
+		config.FluctusAPIVersion,
 		os.Getenv("FLUCTUS_API_USER"),
 		os.Getenv("FLUCTUS_API_KEY"),
 		messageLog)
