@@ -294,7 +294,6 @@ func TestSaveLargeFileToS3(t *testing.T) {
 	localFile := "multi_mb_test_bag.tar"
 	bucketName := testPreservationBucket
 
-
     bagmanHome, err := bagman.BagmanHome()
     if err != nil {
         t.Error(err)
@@ -308,7 +307,6 @@ func TestSaveLargeFileToS3(t *testing.T) {
 			"%s does not exist", path)
 		return
 	}
-
 
     s3Client, err := bagman.NewS3Client(aws.USEast)
     if err != nil {
