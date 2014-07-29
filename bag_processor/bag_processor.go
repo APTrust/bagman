@@ -24,8 +24,8 @@ import (
 const GIGABYTE int64 = int64(1024 * 1024 * 1024)
 // Files over 5GB in size must be uploaded via multi-part put.
 const S3_LARGE_FILE int64 = int64(5 * GIGABYTE)
-// Chunk size for multipart puts to S3: 500 MB
-const S3_CHUNK_SIZE = int64(500000000)
+// Chunk size for multipart puts to S3: 100 MB
+const S3_CHUNK_SIZE = int64(100000000)
 
 
 type Channels struct {
