@@ -261,10 +261,36 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 		fedoraUpdateIntellectualObject(result, intellectualObject)
 		for i := range(result.TarResult.GenericFiles) {
 			genericFile := result.TarResult.GenericFiles[i]
+			// -------------------------------------------------------------------------
+			// TEMP - For debugging a specific error
+			// -------------------------------------------------------------------------
+			if genericFile.MimeType == "" {
+				messageLog.Printf("[WARN] Generic file %s of object %s has no mime type",
+					genericFile.Path, intellectualObject.Identifier)
+			}
+			// -------------------------------------------------------------------------
+			// END OF TEMP CODE
+			// -------------------------------------------------------------------------
+
 			fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
 		}
 	} else {
 		result.FedoraResult.IsNewObject = true
+
+		// -------------------------------------------------------------------------
+		// TEMP - For debugging a specific error
+		// -------------------------------------------------------------------------
+		for i := range(result.TarResult.GenericFiles) {
+			genericFile := result.TarResult.GenericFiles[i]
+			if genericFile.MimeType == "" {
+				messageLog.Printf("[WARN] Generic file %s of object %s has no mime type",
+					genericFile.Path, intellectualObject.Identifier)
+			}
+		}
+		// -------------------------------------------------------------------------
+		// END OF TEMP CODE
+		// -------------------------------------------------------------------------
+
 		newObj, err := fluctusClient.IntellectualObjectCreate(intellectualObject)
 		if err != nil {
 			result.FedoraResult.ErrorMessage = fmt.Sprintf(
