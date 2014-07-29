@@ -255,7 +255,7 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 		return "", err
 	}
 
-	// Send all of the individual parts to S3, in chunks >= 5MB
+	// Send all of the individual parts to S3 in chunks
 	parts, err := multipartPut.PutAll(reader, chunkSize)
 	if err != nil {
 		return "", err
