@@ -59,13 +59,13 @@ func TestLoadRelativeFile(t *testing.T) {
 
 func TestSyncMap(t *testing.T) {
 	syncMap := bagman.NewSynchronizedMap()
-	keys1 := [...]string { "1", "2", "3", "4", "5" }
-	keys2 := [...]string { "6", "7", "8", "9", "10" }
+	keys1 := []string { "1", "2", "3", "4", "5" }
+	keys2 := []string { "6", "7", "8", "9", "10" }
 	go testSyncMap(t, syncMap, keys1)
 	go testSyncMap(t, syncMap, keys2)
 }
 
-func testSyncMap(t *testing.T, syncMap *bagman.SynchronizedMap, keys [5]string) {
+func testSyncMap(t *testing.T, syncMap *bagman.SynchronizedMap, keys []string) {
 	for i, key := range keys {
 		syncMap.Add(key, key)
 		if syncMap.HasKey(key) == false {
@@ -85,7 +85,7 @@ func testSyncMap(t *testing.T, syncMap *bagman.SynchronizedMap, keys [5]string) 
 
 func TestSyncMapDelete(t *testing.T) {
 	syncMap := bagman.NewSynchronizedMap()
-	keys := [...]string { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
+	keys := []string { "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"}
 
 	for _, key := range keys {
 		syncMap.Add(key, key)
