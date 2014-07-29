@@ -49,6 +49,7 @@ var failed = int64(0)
 var bytesInS3 = int64(0)
 var bytesProcessed = int64(0)
 var fluctusClient *client.Client
+var syncMap *bagman.SynchronizedMap
 
 // bag_processor receives messages from nsqd describing
 // items in the S3 receiving buckets. Each item/message
@@ -99,6 +100,8 @@ func main() {
     initVolume()
     initChannels()
     initGoRoutines()
+
+	syncMap = bagman.NewSynchronizedMap()
 
 	err = initS3Client()
     if err != nil {
@@ -218,6 +221,22 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 			"= true", s3File.Key.Key)
 		message.Finish()
 		return nil
+	}
+
+	// Don't start working on a message that we're already working on.
+	key := fmt.Sprintf("%s/%s", bagman.OwnerOf(s3File.BucketName), s3File.Key.Key)
+	messageId := make([]byte, nsq.MsgIDLength)
+	for i := range messageId {
+		messageId[i] = message.ID[i]
+	}
+	if syncMap.HasKey(key) && syncMap.Get(key) != string(messageId) {
+		messageLog.Printf("[INFO] Marking %s as complete because the file is already " +
+			"being processed under another message id.\n", s3File.Key.Key)
+		message.Finish()
+		return nil
+	} else {
+		// Make a note that we're processing this file.
+		syncMap.Add(key, string(messageId))
 	}
 
     // Create the result struct and pass it down the pipeline
@@ -547,6 +566,11 @@ func doCleanUp() {
         } else {
             result.NsqMessage.Finish()
         }
+
+		// We're done processing this, so remove it from the map.
+		// If it comes in again, we'll reprocess it again.
+		key := fmt.Sprintf("%s/%s", bagman.OwnerOf(result.S3File.BucketName), result.S3File.Key.Key)
+		syncMap.Delete(key)
     }
 }
 
