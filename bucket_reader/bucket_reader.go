@@ -166,9 +166,9 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			messageLog.Printf("[INFO] Will process bag %s: %s", s3File.Key.Key, reason)
 			filesToProcess = append(filesToProcess, s3File)
 		} else if status.Status != "Failed" {
-			messageLog.Printf("[INFO] Skipping %s: already processed successfully.", s3File.Key.Key)
+			//messageLog.Printf("[INFO] Skipping %s: already processed successfully.", s3File.Key.Key)
 		} else if status.Retry == false {
-			messageLog.Printf("[INFO] Skipping %s: retry flag is set to false.", s3File.Key.Key)
+			//messageLog.Printf("[INFO] Skipping %s: retry flag is set to false.", s3File.Key.Key)
 		}
 	}
 	return filesToProcess
@@ -199,10 +199,10 @@ func findInStatusCache(etag, name string, bagDate time.Time) (*bagman.ProcessSta
 	key := fmt.Sprintf("%s%s%s", etag, name, bagDate)
 	item, exists := statusCache[key]
 	if exists {
-		messageLog.Printf("[INFO] Found item in cache: %s\n", name)
+		//messageLog.Printf("[INFO] Found item in cache: %s\n", name)
 		return item
 	}
-	messageLog.Printf("[INFO] Item not in cache. Will have to ask the fluctopus for %s\n", name)
+	//messageLog.Printf("[INFO] Item not in cache. Will have to ask the fluctopus for %s\n", name)
 	return nil
 }
 
