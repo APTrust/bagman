@@ -8,7 +8,7 @@ import (
     "io/ioutil"
     "encoding/json"
     "path/filepath"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/diamondap/goamz/s3"
     "github.com/APTrust/bagman"
 )
 

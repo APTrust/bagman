@@ -8,8 +8,8 @@ import (
 	"encoding/base64"
 	"crypto/md5"
     "github.com/APTrust/bagman"
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/diamondap/goamz/aws"
+	"github.com/diamondap/goamz/s3"
 )
 
 var skipMessagePrinted bool = false

@@ -6,8 +6,8 @@ import (
     "os"
     "strings"
     "crypto/md5"
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/diamondap/goamz/aws"
+	"github.com/diamondap/goamz/s3"
 )
 
 
@@ -250,7 +250,7 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 	reader s3.ReaderAtSeeker, byteCount int64, options s3.Options, chunkSize int64) (url string, err error) {
 
     bucket := client.S3.Bucket(bucketName)
-	multipartPut, err := bucket.InitMulti(fileName, contentType, s3.Private)
+	multipartPut, err := bucket.InitMulti(fileName, contentType, s3.Private, options)
 	if err != nil {
 		return "", err
 	}
@@ -267,26 +267,6 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 		return "", err
 	}
 
-	// ---------------------------------------------------------------
-	// To add our custom metadata tags to multi-part upload, we have
-	// to copy the file and add our custom headers. Because the source
-	// and destination are the same, the copy is a no-op, but it has
-	// the effect of updating the content type, custom metadata and
-	// access permissions.
-	// ---------------------------------------------------------------
-	copyOptions := s3.CopyOptions{
-		Options: options,
-		MetadataDirective: "REPLACE",
-		ContentType: contentType,
-	}
-	// We're not really concerned with the result, as long as there's no
-	// error. The result has two members: ETag and LastModified, both strings.
-	source := fmt.Sprintf("%s/%s", bucketName, fileName)
-	_, err = bucket.PutCopy(fileName, s3.Private, copyOptions, source)
-	if err != nil {
-		return "", err
-	}
-
 	resp, err := bucket.Head(fileName, nil)
 	if err != nil {
 		return "", fmt.Errorf("Files were uploaded to S3, but attempt to " +
@@ -295,7 +275,7 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 
 	// Make sure all the meta data made it there.
 	// Var metadata is the metadata we sent to S3.
-	metadata := copyOptions.Options.Meta
+	metadata := options.Meta
 	notVerified := ""
 
 	if !metadataMatches(metadata, "institution", resp.Header, "X-Amz-Meta-Institution") {

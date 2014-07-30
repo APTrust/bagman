@@ -15,8 +15,8 @@ import (
     "path/filepath"
     "github.com/APTrust/bagman"
     "github.com/APTrust/bagman/fluctus/client"
-	"github.com/crowdmob/goamz/aws"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/diamondap/goamz/aws"
+	"github.com/diamondap/goamz/s3"
     "github.com/bitly/go-nsq"
 )
 

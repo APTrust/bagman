@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/client"
-	"github.com/crowdmob/goamz/aws"
+	"github.com/diamondap/goamz/aws"
 	"log"
 	"net/http"
 	"os"

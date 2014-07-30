@@ -9,7 +9,7 @@ import (
     "strings"
 	"net/http"
     "encoding/json"
-	"github.com/crowdmob/goamz/s3"
+	"github.com/diamondap/goamz/s3"
     "github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
     "github.com/APTrust/bagman/fluctus/models"

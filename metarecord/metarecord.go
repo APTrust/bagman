@@ -13,7 +13,7 @@ import (
     "github.com/APTrust/bagman/fluctus/models"
     "github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
-	"github.com/crowdmob/goamz/aws"
+	"github.com/diamondap/goamz/aws"
 )
 
 type Channels struct {
