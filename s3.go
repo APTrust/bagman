@@ -258,12 +258,24 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 	// Send all of the individual parts to S3 in chunks
 	parts, err := multipartPut.PutAll(reader, chunkSize)
 	if err != nil {
+		abortErr := multipartPut.Abort()
+		if abortErr != nil {
+			return "", fmt.Errorf("Multipart put failed with error %v " +
+				"while uploading a part and abort failed with error %v",
+				err, abortErr)
+		}
 		return "", err
 	}
 
 	// This command tells S3 to stitch all the parts into a single file.
 	err = multipartPut.Complete(parts)
 	if err != nil {
+		abortErr := multipartPut.Abort()
+		if abortErr != nil {
+			return "", fmt.Errorf("Multipart put failed in 'complete' stage " +
+				"with error %v and abort failed with error %v",
+				err, abortErr)
+		}
 		return "", err
 	}
 
