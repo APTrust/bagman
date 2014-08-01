@@ -9,6 +9,7 @@ import (
     "strings"
 	"net/http"
     "encoding/json"
+	"io/ioutil"
 	"github.com/diamondap/goamz/s3"
     "github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
@@ -642,6 +643,11 @@ func Enqueue(nsqdHttpAddress, topic string, result *ProcessResult) (error) {
 		return fmt.Errorf("Error marshalling result for '%s' to JSON for file: %v", key, err)
 	}
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(json))
+
+	// Read the response body, or the connection will hang open forever
+	_, _ = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
 	if err != nil {
 		return fmt.Errorf("Nsqd returned an error when queuing '%s': %v", key, err)
 	}
