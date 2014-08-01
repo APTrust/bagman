@@ -644,16 +644,19 @@ func Enqueue(nsqdHttpAddress, topic string, result *ProcessResult) (error) {
 	}
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(json))
 
-	// Read the response body, or the connection will hang open forever
-	_, _ = ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-
 	if err != nil {
 		return fmt.Errorf("Nsqd returned an error when queuing '%s': %v", key, err)
 	}
 	if resp == nil {
 		return fmt.Errorf("No response from nsqd at '%s'. Is it running?", url)
-	} else if resp.StatusCode != 200 {
+	}
+
+	// nsqd sends a simple OK. We have to read the response body,
+	// or the connection will hang open forever.
+	_, _ = ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+
+	if resp.StatusCode != 200 {
 		return fmt.Errorf("nsqd returned status code %d when attempting to queue %s",
 			resp.StatusCode, key)
 	}
