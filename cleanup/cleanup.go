@@ -219,8 +219,8 @@ func MarkItemResolved(result *bagman.CleanupResult) (error) {
 	}
 	if remoteStatus != nil {
 		remoteStatus.Reviewed = false
-		remoteStatus.Stage = "Cleanup"
-		remoteStatus.Status = "Resolved"
+		remoteStatus.Stage = StageCleanup
+		remoteStatus.Status = StatusResolved
 	}
 	err = fluctusClient.UpdateBagStatus(remoteStatus)
 	if err != nil {

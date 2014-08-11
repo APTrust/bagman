@@ -80,7 +80,7 @@ func baseResult() (result *bagman.ProcessResult) {
 
 // Returns a result with Stage set to stage. If successful is false,
 // the result will include an error message.
-func getResult(stage string, successful bool) (result *bagman.ProcessResult) {
+func getResult(stage bagman.StageType, successful bool) (result *bagman.ProcessResult) {
     result = baseResult()
     if successful == false {
         result.ErrorMessage = fmt.Sprintf("Sample error message. Sumpin went rawng!")
@@ -108,27 +108,27 @@ func resultFailedRecord() (result *bagman.ProcessResult) {
 // ProcessStatus data.
 func TestIngestStatus(t *testing.T) {
     passedFetch := getResult("Fetch", true)
-    assertCorrectSummary(t, passedFetch, "Pending")
+    assertCorrectSummary(t, passedFetch, bagman.StatusPending)
     failedFetch := getResult("Fetch", false)
-    assertCorrectSummary(t, failedFetch, "Failed")
+    assertCorrectSummary(t, failedFetch, bagman.StatusFailed)
 
     passedUnpack := getResult("Unpack", true)
-    assertCorrectSummary(t, passedUnpack, "Pending")
+    assertCorrectSummary(t, passedUnpack, bagman.StatusPending)
     failedUnpack := getResult("Unpack", false)
-    assertCorrectSummary(t, failedUnpack, "Failed")
+    assertCorrectSummary(t, failedUnpack, bagman.StatusFailed)
 
     passedStore := getResult("Store", true)
-    assertCorrectSummary(t, passedStore, "Pending")
+    assertCorrectSummary(t, passedStore, bagman.StatusPending)
     failedStore := getResult("Store", false)
-    assertCorrectSummary(t, failedStore, "Failed")
+    assertCorrectSummary(t, failedStore, bagman.StatusFailed)
 
     passedRecord := getResult("Record", true)
-    assertCorrectSummary(t, passedRecord, "Success")
+    assertCorrectSummary(t, passedRecord, bagman.StatusSuccess)
     failedRecord := getResult("Record", false)
-    assertCorrectSummary(t, failedRecord, "Failed")
+    assertCorrectSummary(t, failedRecord, bagman.StatusFailed)
 }
 
-func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedStatus string) {
+func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedStatus bagman.StatusType) {
     status := result.IngestStatus()
     expectedBagDate := "2014-05-28 16:22:24.016 +0000 UTC"
     if status.Date == emptyTime {

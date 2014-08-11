@@ -275,7 +275,7 @@ func needsProcessing(s3File *bagman.S3File) (bool) {
 		messageLog.Printf("[ERROR] Error getting status for file %s. Will reprocess.",
 			s3File.Key.Key)
 	}
-	if status != nil && (status.Stage == "Record" && status.Status == "Success") {
+	if status != nil && (status.Stage == bagman.StageRecord && status.Status == bagman.StatusSuccess) {
 		return false
 	}
 	return true

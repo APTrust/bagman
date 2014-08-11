@@ -34,6 +34,41 @@ type S3File struct {
     Key            s3.Key
 }
 
+// Status enumerations match values defined in
+// https://github.com/APTrust/fluctus/blob/develop/config/application.rb
+type StatusType string
+const (
+	StatusStarted StatusType = "Started"
+	StatusPending = "Pending"
+	StatusSuccess = "Success"
+	StatusFailed = "Failed"
+	StatusCancelled = "Cancelled"
+)
+
+// Stage enumerations match values defined in
+// https://github.com/APTrust/fluctus/blob/develop/config/application.rb
+type StageType string
+const (
+	StageReceive StageType = "Receive"
+	StageFetch = "Fetch"
+	StageUnpack = "Unpack"
+	StageValidate = "Validate"
+	StageStore = "Store"
+	StageRecord = "Record"
+	StageCleanup = "Cleanup"
+	StageResolve = "Resolve"
+)
+
+// Action enumerations match values defined in
+// https://github.com/APTrust/fluctus/blob/develop/config/application.rb
+type ActionType string
+const (
+	ActionIngest ActionType = "Ingest"
+	ActionFixityCheck = "Fixity Check"
+	ActionRestore = "Restore"
+	ActionDelete = "Delete"
+)
+
 // ProcessStatus contains summary information describing
 // the status of a bag in process. This data goes to Fluctus,
 // so that APTrust partners can see which of their bags have
@@ -63,9 +98,9 @@ type ProcessStatus struct {
     Institution  string      `json:"institution"`
     Date         time.Time   `json:"date"`
     Note         string      `json:"note"`
-    Action       string      `json:"action"`
-    Stage        string      `json:"stage"`
-    Status       string      `json:"status"`
+    Action       ActionType  `json:"action"`
+    Stage        StageType   `json:"stage"`
+    Status       StatusType  `json:"status"`
     Outcome      string      `json:"outcome"`
     Retry        bool        `json:"retry"`
 	Reviewed     bool        `json:"reviewed"`
@@ -106,7 +141,7 @@ type ProcessResult struct {
     TarResult        *TarResult
     BagReadResult    *BagReadResult
 	FedoraResult     *FedoraResult
-    Stage            string
+    Stage            StageType
     Retry            bool
 }
 
@@ -184,7 +219,7 @@ func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) 
         EventType: "fixity_check",
         DateTime: gf.Md5Verified,
         Detail: "Fixity check against registered hash",
-        Outcome: "Success",
+        Outcome: string(StatusSuccess),
         OutcomeDetail: fmt.Sprintf("md5:%s", gf.Md5),
         Object: "Go crypto/md5",
         Agent: "http://golang.org/pkg/crypto/md5/",
@@ -203,7 +238,7 @@ func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) 
         EventType: "ingest",
         DateTime: gf.StoredAt,
         Detail: "Completed copy to S3",
-        Outcome: "Success",
+        Outcome: string(StatusSuccess),
         OutcomeDetail: gf.StorageMd5,
         Object: "bagman + goamz s3 client",
         Agent: "https://github.com/APTrust/bagman",
@@ -220,7 +255,7 @@ func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) 
         EventType: "fixity_generation",
         DateTime: gf.Sha256Generated,
         Detail: "Calculated new fixity value",
-        Outcome: "Success",
+        Outcome: string(StatusSuccess),
         OutcomeDetail: fmt.Sprintf("sha256:%s", gf.Sha256),
         Object: "Go language crypto/sha256",
         Agent: "http://golang.org/pkg/crypto/sha256/",
@@ -237,7 +272,7 @@ func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) 
         EventType: "identifier_assignment",
         DateTime: gf.UuidGenerated,
         Detail: "Assigned new institution.bag/path identifier",
-        Outcome: "Success",
+        Outcome: string(StatusSuccess),
         OutcomeDetail: gf.Identifier,
         Object: "APTrust bag processor",
         Agent: "https://github.com/APTrust/bagman",
@@ -254,7 +289,7 @@ func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) 
         EventType: "identifier_assignment",
         DateTime: gf.UuidGenerated,
         Detail: "Assigned new storage URL identifier",
-        Outcome: "Success",
+        Outcome: string(StatusSuccess),
         OutcomeDetail: gf.StorageURL,
         Object: "Go uuid library + goamz S3 library",
         Agent: "http://github.com/nu7hatch/gouuid",
@@ -269,7 +304,7 @@ func (gf *GenericFile) PremisEvents() (events []*models.PremisEvent, err error) 
 func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
     status = &ProcessStatus{}
     status.Date = time.Now().UTC()
-    status.Action = "Ingest"
+    status.Action = ActionIngest
     status.Name = result.S3File.Key.Key
     bagDate, _ := time.Parse(S3DateFormat, result.S3File.Key.LastModified)
     status.BagDate = bagDate
@@ -277,7 +312,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
     // Strip the quotes off the ETag
     status.ETag = strings.Replace(result.S3File.Key.ETag, "\"", "", 2)
     status.Stage = result.Stage
-    status.Status = "Pending"
+    status.Status = StatusPending
     if result.ErrorMessage != "" {
         status.Note = result.ErrorMessage
 		// Indicate whether we want to try re-processing this bag.
@@ -290,19 +325,19 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 			// it as "Pending", so that institutional admins
 			// cannot delete it from the ProcessedItems list in
 			// Fluctus.
-			status.Status = "Failed"
+			status.Status = StatusFailed
 		}
     } else {
         status.Note = "No problems"
         if result.Stage == "Record" {
-            status.Status = "Success"
+            status.Status = StatusSuccess
         }
 		// If there were no errors, bag was processed sucessfully,
 		// and there is no need to retry.
 		status.Retry = false
     }
     status.Institution = OwnerOf(result.S3File.BucketName)
-    status.Outcome = status.Status
+    status.Outcome = string(status.Status)
     return status
 }
 

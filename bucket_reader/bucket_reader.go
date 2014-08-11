@@ -216,11 +216,11 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	status.Bucket = s3File.BucketName
 	// Strip the quotes off the ETag
 	status.ETag = strings.Replace(s3File.Key.ETag, "\"", "", 2)
-	status.Stage = "Receive"
-	status.Status = "Success"
+	status.Stage = bagman.StageReceive
+	status.Status = bagman.StatusSuccess
 	status.Note = "Item is in receiving bucket. Processing has not started."
 	status.Institution = bagman.OwnerOf(s3File.BucketName)
-	status.Outcome = status.Status
+	status.Outcome = string(status.Status)
 	status.Reviewed = false
 
 	// Retry should be true until we know for sure that there
