@@ -2,6 +2,7 @@ package bagman
 
 import (
 	"archive/tar"
+	"path"
 	"path/filepath"
 	"crypto/md5"
 	"crypto/sha256"
@@ -21,17 +22,17 @@ import (
 // just one copy of this open at a time.
 var magicMime *magicmime.Magic
 
-// Untars the file at the specified path and returns a list
+// Untars the file at the specified tarFilePath and returns a list
 // of files that were untarred from the archive. Check
 // result.Error to ensure there were no errors.
-// path is the path to the tar file that you want to unpack.
+// tarFilePath is the tarFilePath to the tar file that you want to unpack.
 // instDomain is the domain name of the institution that owns the bag.
 // bagName is the name of the tar file, minus the ".tar" extension.
-func Untar(path, instDomain, bagName string) (result *TarResult) {
+func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 
 	// Set up our result
 	tarResult := new(TarResult)
-	absInputFile, err := filepath.Abs(path)
+	absInputFile, err := filepath.Abs(tarFilePath)
 	if err != nil {
 		tarResult.ErrorMessage = fmt.Sprintf("Before untarring, could not determine " +
 			"absolute path to downloaded file: %v", err)
@@ -40,15 +41,29 @@ func Untar(path, instDomain, bagName string) (result *TarResult) {
 	tarResult.InputFile = absInputFile
 
 	// Open the tar file for reading.
-	file, err := os.Open(path)
+	file, err := os.Open(tarFilePath)
 	if file != nil {
 		defer file.Close()
 	}
 	if err != nil {
 		tarResult.ErrorMessage = fmt.Sprintf("Could not open file %s for untarring: %v",
-			path, err)
+			tarFilePath, err)
 		return tarResult
 	}
+
+	// Record the name of the top-level directory in the tar
+	// file. Our spec says that the name of the directory into
+	// which the file untars should be the same as the tar file
+	// name, minus the .tar extension. So uva-123.tar should
+	// untar into a directory called uva-123. This is required
+	// so that IntellectualObject and GenericFile identifiers
+	// in Fedora can be traced back to the named bag from which
+	// they came. Other parts of bagman, such as the file cleanup
+	// routines, assume that the untarred directory name will
+	// match the tar file name, as the spec demands. When the names
+	// do not match, the cleanup routines will not clean up the
+	// untarred files, and we'll end up losing a lot of disk space.
+	topLevelDir := ""
 
 	// Untar the file and record the results.
 	tarReader := tar.NewReader(file)
@@ -62,6 +77,23 @@ func Untar(path, instDomain, bagName string) (result *TarResult) {
 			tarResult.ErrorMessage = fmt.Sprintf("Error reading tar file header: %v", err)
 			return tarResult
 		}
+
+		// Top-level dir will be the first header entry.
+		if topLevelDir == "" {
+			topLevelDir = strings.Replace(header.Name, "/", "", 1)
+			expectedDir := path.Base(tarFilePath)
+			if strings.HasSuffix(expectedDir, ".tar") {
+				expectedDir = expectedDir[0:len(expectedDir) - 4]
+			}
+			if (topLevelDir != expectedDir) {
+				tarResult.ErrorMessage = fmt.Sprintf(
+					"Bag '%s' should untar to a folder named '%s', but " +
+						"it untars to '%s'. Please repackage and re-upload this bag.",
+					path.Base(tarFilePath), expectedDir, topLevelDir)
+				return tarResult
+			}
+		}
+
 		outputPath := filepath.Join(filepath.Dir(absInputFile), header.Name)
 		tarDirectory := strings.Split(header.Name, "/")[0]
 		if tarResult.OutputDir == "" {
@@ -107,18 +139,18 @@ func Untar(path, instDomain, bagName string) (result *TarResult) {
 	return tarResult
 }
 
-// Reads an untarred bag. The path parameter should be a path to
+// Reads an untarred bag. The tarFilePath parameter should be a path to
 // a directory that contains the bag, info and manifest files.
-// The bag content should be in the data directory under path.
+// The bag content should be in the data directory under tarFilePath.
 // Check result.Error to ensure there were no errors.
-func ReadBag(path string) (result *BagReadResult) {
+func ReadBag(tarFilePath string) (result *BagReadResult) {
 	bagReadResult := new(BagReadResult)
-	bagReadResult.Path = path
+	bagReadResult.Path = tarFilePath
 
 	// Final param to bagins.ReadBag is the name of the checksum file.
 	// That param defaults to manifest-md5.txt, which is what it
 	// should be for bags we're fetching from the S3 receiving buckets.
-	bag, err := bagins.ReadBag(path, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}, "")
+	bag, err := bagins.ReadBag(tarFilePath, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}, "")
 	if err != nil {
 		bagReadResult.ErrorMessage = fmt.Sprintf("Error unpacking bag: %v", err)
 		return bagReadResult
@@ -228,10 +260,10 @@ func saveFile(destination string, tarReader *tar.Reader) (error) {
 // buildGenericFile saves a data file from the tar archive to disk,
 // then returns a struct with data we'll need to construct the
 // GenericFile object in Fedora later.
-func buildGenericFile(tarReader *tar.Reader, path string, fileName string, size int64, modTime time.Time) (gf *GenericFile) {
+func buildGenericFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (gf *GenericFile) {
 	gf = &GenericFile{}
 	gf.Path = fileName[strings.Index(fileName, "/data/") + 1:len(fileName)]
-	absPath, err := filepath.Abs(filepath.Join(path, fileName))
+	absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
 	if err != nil {
 		gf.ErrorMessage = fmt.Sprintf("Path error: %v", err)
 		return gf

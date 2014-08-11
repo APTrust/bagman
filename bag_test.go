@@ -4,6 +4,7 @@ import (
 	"testing"
 	"github.com/APTrust/bagman"
 	"errors"
+	"strings"
 	"os"
 	"fmt"
 	"time"
@@ -18,12 +19,14 @@ var sampleGood string = filepath.Join(testDataPath, "sample_good.tar")
 var sampleMissingDataFile string = filepath.Join(testDataPath, "sample_missing_data_file.tar")
 var sampleNoBagInfo string = filepath.Join(testDataPath, "sample_no_bag_info.tar")
 var sampleNoBagit string = filepath.Join(testDataPath, "sample_no_bagit.tar")
+var sampleWrongFolderName string = filepath.Join(testDataPath, "sample_wrong_folder_name.tar")
 var invalidTarFile string = filepath.Join(testDataPath, "not_a_tar_file.tar")
 var badFiles []string = []string{
 	sampleBadChecksums,
 	sampleMissingDataFile,
 	sampleNoBagInfo,
 	sampleNoBagit,
+	sampleWrongFolderName,
 }
 var goodFiles []string = []string{
 	sampleGood,
@@ -69,7 +72,7 @@ func assertTagMatch(tag bagman.Tag, expectedLabel string, expectedValue string) 
 func TestUntarWorksOnGoodFiles(t *testing.T) {
 	setup()
 	defer teardown()
-	for _, tarFile := range allFiles {
+	for _, tarFile := range goodFiles {
 		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
 		if result.ErrorMessage != "" {
 			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
@@ -243,4 +246,19 @@ func TestBadBagReturnsError(t *testing.T) {
 		}
 	}
 	fmt.Fprintf(os.Stderr, "\n")
+}
+
+// If the top-level directory of the untarred file does not
+// match the name of the tar file minus the .tar extension,
+// we should get an error message in the TarResult. (E.g.
+// If my_file.tar does not untar to a dir called my_file,
+// we should get an error message.)
+func TestErrorOnBadFolderName(t *testing.T) {
+	setup()
+	defer teardown()
+	result := bagman.Untar(sampleWrongFolderName, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	if !strings.Contains(result.ErrorMessage, "should untar to a folder named") {
+		t.Errorf("Untarring file '%s' should have generated an 'incorrect file name' error.",
+			sampleWrongFolderName)
+	}
 }

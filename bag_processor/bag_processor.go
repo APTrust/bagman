@@ -589,8 +589,8 @@ func CleanUp(file string) (errors []error) {
     if err != nil {
         errors = append(errors, err)
     }
-    // TODO: Don't assume the untarred dir name is the same as
-    // the tar file. We have its actual name in the TarResult.
+    // The untarred dir name is the same as the tar file, minus
+	// the .tar extension. This is guaranteed by bag.Untar.
     re := regexp.MustCompile("\\.tar$")
     untarredDir := re.ReplaceAllString(file, "")
     err = os.RemoveAll(untarredDir)
