@@ -79,7 +79,7 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 		}
 
 		// Top-level dir will be the first header entry.
-		if topLevelDir == "" {
+		if header.Typeflag == tar.TypeDir && topLevelDir == "" {
 			topLevelDir = strings.Replace(header.Name, "/", "", 1)
 			expectedDir := path.Base(tarFilePath)
 			if strings.HasSuffix(expectedDir, ".tar") {
