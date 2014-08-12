@@ -11,11 +11,11 @@ import (
 	"regexp"
 	"fmt"
 	"bytes"
-	"log"
 	"time"
 	"strings"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/models"
+	"github.com/op/go-logging"
 )
 
 var domainPattern *regexp.Regexp = regexp.MustCompile("\\.edu|org|com$")
@@ -27,13 +27,13 @@ type Client struct {
 	apiKey         string
 	httpClient     *http.Client
 	transport      *http.Transport
-	logger         *log.Logger
+	logger         *logging.Logger
 	institutions   map[string]string
 }
 
 // Creates a new fluctus client. Param hostUrl should come from
 // the config.json file.
-func New(hostUrl, apiVersion, apiUser, apiKey string, logger *log.Logger) (*Client, error) {
+func New(hostUrl, apiVersion, apiUser, apiKey string, logger *logging.Logger) (*Client, error) {
 	// see security warning on nil PublicSuffixList here:
 	// http://gotour.golang.org/src/pkg/net/http/cookiejar/jar.go?s=1011:1492#L24
 	cookieJar, err := cookiejar.New(nil)
@@ -52,15 +52,15 @@ func New(hostUrl, apiVersion, apiUser, apiKey string, logger *log.Logger) (*Clie
 // is the key and institution id is the value.
 func (client *Client) CacheInstitutions () (error) {
 	instUrl := client.BuildUrl("/institutions")
-	client.logger.Println("[INFO] Requesting list of institutions from fluctus:", instUrl)
+	client.logger.Info("Requesting list of institutions from fluctus:", instUrl)
 	request, err := client.NewJsonRequest("GET", instUrl, nil)
 	if err != nil {
-		client.logger.Println("[ERROR] Error building institutions request in Fluctus client:", err.Error())
+		client.logger.Error("Error building institutions request in Fluctus client:", err.Error())
 		return err
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		client.logger.Println("[ERROR] Error getting list of institutions from Fluctus", err.Error())
+		client.logger.Error("Error getting list of institutions from Fluctus", err.Error())
 		return err
 	}
 
@@ -216,7 +216,7 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 	}
 	status, err = client.doStatusRequest(req, 201)
 	if err != nil {
-		client.logger.Printf("[ERROR] JSON for failed Fluctus request: %s",
+		client.logger.Error("JSON for failed Fluctus request: %s",
 			string(postData))
 	}
 	return err
@@ -272,7 +272,7 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 func (client *Client) BulkStatusGet (since time.Time) (statusRecords []*bagman.ProcessStatus, err error) {
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/ingested_since/%s",
 		client.apiVersion, url.QueryEscape(since.UTC().Format(time.RFC3339))))
-	client.logger.Println("[INFO] Requesting bulk bag status from fluctus:", objUrl)
+	client.logger.Info("Requesting bulk bag status from fluctus: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
 		return nil, err
@@ -324,7 +324,7 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 	}
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/objects/%s?%s",
 		client.apiVersion, escapeSlashes(identifier), queryString))
-	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", objUrl)
+	client.logger.Info("Requesting IntellectualObject from fluctus:", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
 		return nil, err
@@ -369,7 +369,7 @@ func (client *Client) IntellectualObjectUpdate (obj *models.IntellectualObject) 
 	if client.institutions == nil || len(client.institutions) == 0 {
 		err = client.CacheInstitutions()
 		if err != nil {
-			client.logger.Printf("[ERROR] Fluctus client can't build institutions cache: %v", err)
+			client.logger.Error("Fluctus client can't build institutions cache: %v", err)
 			return nil, fmt.Errorf("Error building institutions cache: %v", err)
 		}
 	}
@@ -378,7 +378,7 @@ func (client *Client) IntellectualObjectUpdate (obj *models.IntellectualObject) 
 		client.apiVersion, escapeSlashes(obj.Identifier)))
 	method := "PUT"
 
-	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
+	client.logger.Debug("About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
 
 	data, err := obj.SerializeForFluctus()
 	request, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(data))
@@ -410,15 +410,14 @@ func (client *Client) IntellectualObjectUpdate (obj *models.IntellectualObject) 
 			err = fmt.Errorf("IntellectualObjectSave Expected status code 204 but got %d. URL: %s\n",
 				response.StatusCode, request.URL)
 		}
-		client.logger.Println("[ERROR]", err)
+		client.logger.Error(err.Error())
 		return nil, err
 	} else {
-		client.logger.Printf("[INFO] %s IntellectualObject %s succeeded", method, obj.Identifier)
+		client.logger.Debug("%s IntellectualObject %s succeeded", method, obj.Identifier)
 	}
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		//client.logger.Println(string(body))
 		newObj = &models.IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
@@ -438,7 +437,7 @@ func (client *Client) IntellectualObjectCreate (obj *models.IntellectualObject) 
 	if client.institutions == nil || len(client.institutions) == 0 {
 		err = client.CacheInstitutions()
 		if err != nil {
-			client.logger.Printf("[ERROR] Fluctus client can't build institutions cache: %v", err)
+			client.logger.Error("Fluctus client can't build institutions cache: %v", err)
 			return nil, fmt.Errorf("Error building institutions cache: %v", err)
 		}
 	}
@@ -448,7 +447,7 @@ func (client *Client) IntellectualObjectCreate (obj *models.IntellectualObject) 
 		client.apiVersion))
 	method := "POST"
 
-	client.logger.Printf("[INFO] About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
+	client.logger.Debug("About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
 
 	data, err := obj.SerializeForCreate()
 	request, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(data))
@@ -479,15 +478,14 @@ func (client *Client) IntellectualObjectCreate (obj *models.IntellectualObject) 
 			err = fmt.Errorf("IntellectualObjectCreate Expected status code 201 but got %d. URL: %s\n",
 				response.StatusCode, request.URL)
 		}
-		client.logger.Println("[ERROR]", err)
+		client.logger.Error(err.Error())
 		return nil, err
 	} else {
-		client.logger.Printf("[INFO] %s IntellectualObject %s succeeded", method, obj.Identifier)
+		client.logger.Debug("%s IntellectualObject %s succeeded", method, obj.Identifier)
 	}
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		//client.logger.Println(string(body))
 		newObj = &models.IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
@@ -509,7 +507,7 @@ func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelat
 		client.apiVersion,
 		escapeSlashes(genericFileIdentifier),
 		queryString))
-	client.logger.Println("[INFO] Requesting IntellectualObject from fluctus:", fileUrl)
+	client.logger.Debug("Requesting IntellectualObject from fluctus:", fileUrl)
 	request, err := client.NewJsonRequest("GET", fileUrl, nil)
 	if err != nil {
 		return nil, err
@@ -564,7 +562,7 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		method = "PUT"
 	}
 
-	client.logger.Printf("[INFO] About to %s GenericFile %s to Fluctus", method, gf.Identifier)
+	client.logger.Debug("About to %s GenericFile %s to Fluctus", method, gf.Identifier)
 
 	data, err := gf.SerializeForFluctus()
 	request, err := client.NewJsonRequest(method, fileUrl, bytes.NewBuffer(data))
@@ -591,18 +589,17 @@ func (client *Client) GenericFileSave (objId string, gf *models.GenericFile) (ne
 		err = fmt.Errorf("GenericFileSave Expected status code 201 or 204 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
 		if len(body) < 1000 {
-			client.logger.Println("[ERROR]", err, string(body))
+			client.logger.Error(err.Error(), string(body))
 		} else {
-			client.logger.Println("[ERROR]", err)
+			client.logger.Error(err.Error())
 		}
 		return nil, err
 	} else {
-		client.logger.Printf("[INFO] %s GenericFile %s succeeded", method, gf.Identifier)
+		client.logger.Debug("%s GenericFile %s succeeded", method, gf.Identifier)
 	}
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		// client.logger.Println(string(body))
 		newGf = &models.GenericFile{}
 		err = json.Unmarshal(body, newGf)
 		if err != nil {
@@ -641,7 +638,7 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 			client.apiVersion, escapeSlashes(objId)))
 	}
 
-	client.logger.Printf("[INFO] Creating %s PremisEvent %s for objId %s", objType, event.EventType, objId)
+	client.logger.Info("Creating %s PremisEvent %s for objId %s", objType, event.EventType, objId)
 
 	data, err := json.Marshal(event)
 	request, err := client.NewJsonRequest(method, eventUrl, bytes.NewBuffer(data))
@@ -672,14 +669,13 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 			err = fmt.Errorf("PremisEventSave Expected status code 201 but got %d. URL: %s\n",
 				response.StatusCode, request.URL)
 		}
-		client.logger.Println("[ERROR]", err)
+		client.logger.Error(err.Error())
 		return nil, err
 	} else {
-		client.logger.Printf("[INFO] %s PremisEvent %s for objId %s succeeded", method, event.EventType, objId)
+		client.logger.Debug("%s PremisEvent %s for objId %s succeeded", method, event.EventType, objId)
 	}
 
 	// Fluctus should always return the newly created event
-	// client.logger.Println(string(body))
 	newEvent = &models.PremisEvent{}
 	err = json.Unmarshal(body, newEvent)
 	if err != nil {
@@ -714,7 +710,7 @@ func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err 
     if err != nil {
         return err
     }
-    client.logger.Printf("[INFO] Updated status in Fluctus for %s: %s/%s\n",
+    client.logger.Info("Updated status in Fluctus for %s: %s/%s\n",
         localStatus.Name, localStatus.Status, localStatus.Stage)
     return nil
 }

@@ -45,18 +45,12 @@ data. Bagman JSON logs consist of a single JSON object per line,
 with no extraneous data. Because all of the data in the file is
 pure JSON, with one record per line, these files are easy to parse.
 */
-func InitJsonLogger(config Config) (*logging.Logger) {
+func InitJsonLogger(config Config) (*stdlog.Logger) {
 	processName := path.Base(os.Args[0])
 	filename := fmt.Sprintf("%s.json", processName)
 	filename = filepath.Join(config.AbsLogDirectory(), filename)
 	writer := getRotatingFileWriter(filename)
-	log := logging.MustGetLogger(processName)
-	format := logging.MustStringFormatter("%{message}")
-	logging.SetFormatter(format)
-    logging.SetLevel(config.LogLevel, processName)
-	logBackend := logging.NewLogBackend(writer, "", 0)
-	logging.SetBackend(logBackend)
-	return log
+	return stdlog.New(writer, "", 0)
 }
 
 /*

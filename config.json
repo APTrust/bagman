@@ -1,7 +1,7 @@
 {
     "apd4n": {
-        "TarDirectory": "./tmp",
-        "LogDirectory": "./tmp",
+        "TarDirectory": "/Users/apd4n/tmp",
+        "LogDirectory": "/Users/apd4n/tmp",
         "LogToStderr": true,
         "MaxFileSize": 100000,
         "LogLevel": 4,

@@ -7,9 +7,9 @@ import (
     "encoding/base64"
     "encoding/hex"
     "os"
+	"log"
     "regexp"
     "sync/atomic"
-    "log"
 	"time"
 	"strings"
     "path/filepath"
@@ -18,6 +18,7 @@ import (
 	"github.com/diamondap/goamz/aws"
 	"github.com/diamondap/goamz/s3"
     "github.com/bitly/go-nsq"
+	"github.com/op/go-logging"
 )
 
 // Constants
@@ -41,7 +42,7 @@ type Channels struct {
 var channels *Channels
 var config bagman.Config
 var jsonLog *log.Logger
-var messageLog *log.Logger
+var messageLog *logging.Logger
 var volume *bagman.Volume
 var s3Client *bagman.S3Client
 var succeeded = int64(0)
@@ -206,7 +207,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
     var s3File bagman.S3File
     err := json.Unmarshal(message.Body, &s3File)
     if err != nil {
-        messageLog.Println("[ERROR] Could not unmarshal JSON data from nsq:",
+        messageLog.Error("Could not unmarshal JSON data from nsq:",
             string(message.Body))
         message.Finish()
         return nil
@@ -217,7 +218,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 	// conditions that can cause the bucket reader to add items to the
 	// queue twice. If we get rid of NSQ, we can get rid of this check.
 	if config.SkipAlreadyProcessed == true && needsProcessing(&s3File) == false {
-		messageLog.Printf("[INFO] Marking %s as complete, without processing because " +
+		messageLog.Info("Marking %s as complete, without processing because " +
 			"this bag was successfully processed previously and Config.SkipAlreadyProcessed " +
 			"= true", s3File.Key.Key)
 		message.Finish()
@@ -231,7 +232,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 		messageId[i] = message.ID[i]
 	}
 	if syncMap.HasKey(key) && syncMap.Get(key) != string(messageId) {
-		messageLog.Printf("[INFO] Marking %s as complete because the file is already " +
+		messageLog.Info("Marking %s as complete because the file is already " +
 			"being processed under another message id.\n", s3File.Key.Key)
 		message.Finish()
 		return nil
@@ -253,7 +254,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
         Retry: true,
 	}
     channels.FetchChannel <- result
-    messageLog.Println("[INFO]", "Put", s3File.Key.Key, "into fetch queue")
+    messageLog.Debug("Put %s into fetch queue", s3File.Key.Key)
     return nil
 }
 
@@ -265,7 +266,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) (error) {
 func needsProcessing(s3File *bagman.S3File) (bool) {
 	bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
 	if err != nil {
-		messageLog.Printf("[ERROR] Cannot parse S3File mod date '%s'. "+
+		messageLog.Error("Cannot parse S3File mod date '%s'. "+
 			"File %s will be re-processed.",
 			s3File.Key.LastModified, s3File.Key.Key)
 		return true
@@ -273,7 +274,7 @@ func needsProcessing(s3File *bagman.S3File) (bool) {
 	etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
 	status, err := fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
 	if err != nil {
-		messageLog.Printf("[ERROR] Error getting status for file %s. Will reprocess.",
+		messageLog.Error("Error getting status for file %s. Will reprocess.",
 			s3File.Key.Key)
 	}
 	if status != nil && (status.Stage == bagman.StageRecord && status.Status == bagman.StatusSuccess) {
@@ -293,13 +294,12 @@ func doFetch() {
         err := volume.Reserve(uint64(s3Key.Size * 2))
         if err != nil {
             // Not enough room on disk
-            messageLog.Println("[WARNING]", "Requeueing",
-                s3Key.Key, "- not enough disk space")
+            messageLog.Warning("Requeueing %s - not enough disk space", s3Key.Key)
             result.ErrorMessage = err.Error()
             result.Retry = true
             channels.ResultsChannel <- result
         } else {
-            messageLog.Println("[INFO]", "Fetching", s3Key.Key)
+            messageLog.Info("Fetching %s", s3Key.Key)
             fetchResult := Fetch(result.S3File.BucketName, s3Key)
             result.FetchResult = fetchResult
             result.Retry = fetchResult.Retry
@@ -325,13 +325,13 @@ func doUnpack() {
     for result := range channels.UnpackChannel {
         if result.ErrorMessage != "" {
             // Unpack failed. Go to end.
-            messageLog.Println("[INFO]", "Nothing to unpack for",
+            messageLog.Warning("Nothing to unpack for %s",
                 result.S3File.Key.Key)
             channels.ResultsChannel <- result
         } else {
             // Unpacked! Now process the bag and touch message
             // so nsqd knows we're making progress.
-            messageLog.Println("[INFO]", "Unpacking", result.S3File.Key.Key)
+            messageLog.Info("Unpacking %s", result.S3File.Key.Key)
             result.NsqMessage.Touch()
             ProcessBagFile(result)
 			if result.ErrorMessage == "" {
@@ -359,7 +359,7 @@ func doUnpack() {
 // the state of all of the files.
 func saveToStorage() {
     for result := range channels.StorageChannel {
-		messageLog.Println("[INFO] Storing",result.S3File.Key.Key)
+		messageLog.Info("Storing %s", result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		result.Stage = "Store"
 		re := regexp.MustCompile("\\.tar$")
@@ -388,7 +388,7 @@ func saveToStorage() {
 					absPath, err)
 				continue
 			}
-			messageLog.Printf("[INFO] Sending %d bytes to S3 for file %s (UUID %s)",
+			messageLog.Debug("Sending %d bytes to S3 for file %s (UUID %s)",
 				gf.Size, gf.Path, gf.Uuid)
 
 			// Prepare metadata for save to S3
@@ -407,7 +407,7 @@ func saveToStorage() {
 				msg := fmt.Sprintf("Md5 sum '%s' contains invalid characters. " +
 					"S3 will reject this!", gf.Md5)
 				result.ErrorMessage += msg
-				messageLog.Println("[ERROR]", msg)
+				messageLog.Error(msg)
 			}
 
 			// Save to S3 with the base64-encoded md5 sum
@@ -425,7 +425,7 @@ func saveToStorage() {
 					options)
 			} else {
 				// Multi-part put for files >= 5GB
-				messageLog.Printf("[INFO] File %s is %d bytes. Using multi-part put.\n",
+				messageLog.Debug("File %s is %d bytes. Using multi-part put.\n",
 					gf.Path, gf.Size)
 				url, err = s3Client.SaveLargeFileToS3(
 					config.PreservationBucket,
@@ -441,14 +441,13 @@ func saveToStorage() {
 				// Consider this error transient. Leave retry = true.
 				result.ErrorMessage += fmt.Sprintf("Error copying file '%s'" +
 					"to long-term storage: %v ", absPath, err)
-				messageLog.Println("[ERROR]", "Failed to send",
+				messageLog.Warning("Failed to send %s to long-term storage: %s",
 					result.S3File.Key.Key,
-					"to long-term storage:",
 					err.Error())
 			} else {
 				gf.StorageURL = url
 				gf.StoredAt = time.Now()
-				messageLog.Printf("[INFO] Successfully sent %s (UUID %s)" +
+				messageLog.Debug("Successfully sent %s (UUID %s)" +
 					"to long-term storage bucket.", gf.Path, gf.Uuid)
 			}
 		}
@@ -458,12 +457,12 @@ func saveToStorage() {
 		if result.ErrorMessage == "" {
 			err := bagman.Enqueue(config.NsqdHttpAddress, config.MetadataTopic, result)
 			if err != nil {
-				errMsg := fmt.Sprintf("[ERROR] Error adding '%s' to metadata queue: %v ",
+				errMsg := fmt.Sprintf("Error adding '%s' to metadata queue: %v ",
 					result.S3File.Key.Key, err)
-				messageLog.Println(errMsg)
+				messageLog.Error(errMsg)
 				result.ErrorMessage += errMsg
 			} else {
-				messageLog.Printf("[INFO] Sent '%s' to metadata queue\n",
+				messageLog.Debug("Sent '%s' to metadata queue\n",
 					result.S3File.Key.Key)
 			}
 		}
@@ -475,10 +474,10 @@ func saveToStorage() {
 			result.TarResult.AllFilesCopiedToPreservation() == false) {
 			err := bagman.Enqueue(config.NsqdHttpAddress, config.TroubleTopic, result)
 			if err != nil {
-				messageLog.Printf("[ERROR] Could not send '%s' to trouble queue: %v\n",
+				messageLog.Error("Could not send '%s' to trouble queue: %v\n",
 					result.S3File.Key.Key, err)
 			} else {
-				messageLog.Printf("[WARN] Sent '%s' to trouble queue because some but not " +
+				messageLog.Warning("Sent '%s' to trouble queue because some but not " +
 					"all generic files were copied to preservation bucket\n", result.S3File.Key.Key)
 			}
 
@@ -499,7 +498,7 @@ func logResult() {
         // Log full results to the JSON log
         json, err := json.Marshal(result)
         if err != nil {
-            messageLog.Println("[ERROR]", err)
+            messageLog.Error(err.Error())
         }
         jsonLog.Println(string(json))
 
@@ -507,18 +506,18 @@ func logResult() {
         atomic.AddInt64(&bytesInS3, int64(result.S3File.Key.Size))
         if(result.ErrorMessage != "") {
             atomic.AddInt64(&failed, 1)
-            messageLog.Println("[ERROR]",
+            messageLog.Error("%s %s -> %s",
                 result.S3File.BucketName,
                 result.S3File.Key.Key,
-                "->", result.ErrorMessage)
+                result.ErrorMessage)
         } else {
             atomic.AddInt64(&succeeded, 1)
             atomic.AddInt64(&bytesProcessed, int64(result.S3File.Key.Size))
-            messageLog.Println("[INFO]", result.S3File.Key.Key, "-> finished OK")
+            messageLog.Info("%s -> finished OK", result.S3File.Key.Key)
         }
 
         // Add some stats to the message log
-        messageLog.Printf("[STATS] Succeeded: %d, Failed: %d, Bytes Processed: %d\n",
+        messageLog.Info("** STATS ** Succeeded: %d, Failed: %d, Bytes Processed: %d\n",
             succeeded, failed, bytesProcessed)
 
 		// Tell Fluctus what happened
@@ -527,7 +526,7 @@ func logResult() {
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
 					"item status returned error %v. ", err)
-				messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
+				messageLog.Error("Error sending ProcessedItem to Fluctus: %v",
 					err)
 			}
 		}()
@@ -543,15 +542,15 @@ func logResult() {
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
 func doCleanUp() {
     for result := range channels.CleanUpChannel {
-        messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
+        messageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
         if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
             // Clean up any files we downloaded and unpacked
             errors := CleanUp(result.FetchResult.LocalTarFile)
             if errors != nil && len(errors) > 0 {
-                messageLog.Println("[WARNING]", "Errors cleaning up",
+                messageLog.Warning("Errors cleaning up %s",
                     result.FetchResult.LocalTarFile)
                 for _, e := range errors {
-                    messageLog.Println("[ERROR]", e)
+                    messageLog.Error(e.Error())
                 }
             }
 			// Let our volume tracker know we just freed up some disk space.
@@ -562,7 +561,7 @@ func doCleanUp() {
         // Build and send message back to NSQ, indicating whether
         // processing succeeded.
         if result.ErrorMessage != "" && result.Retry == true {
-			messageLog.Printf("[INFO] Requeueing %s", result.S3File.Key.Key)
+			messageLog.Info("Requeueing %s", result.S3File.Key.Key)
             result.NsqMessage.Requeue(5 * time.Minute)
         } else {
             result.NsqMessage.Finish()
@@ -596,7 +595,7 @@ func CleanUp(file string) (errors []error) {
     untarredDir := re.ReplaceAllString(file, "")
     err = os.RemoveAll(untarredDir)
     if err != nil {
-        messageLog.Printf("Error deleting dir %s: %s\n", untarredDir, err.Error())
+        messageLog.Error("Error deleting dir %s: %s\n", untarredDir, err.Error())
         errors = append(errors, err)
     }
     return errors

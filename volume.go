@@ -3,8 +3,8 @@ package bagman
 import (
 	"syscall"
 	"sync"
-	"log"
 	"fmt"
+	"github.com/op/go-logging"
 )
 
 // Volume tracks the amount of available space on a volume (disk),
@@ -19,12 +19,12 @@ type Volume struct {
 	mutex            *sync.Mutex
 	initialFree      uint64
 	claimed          uint64
-	messageLog       *log.Logger
+	messageLog       *logging.Logger
 }
 
 // NewVolume creates a new Volume structure to track the amount
 // of available space and claimed space on a volume (disk).
-func NewVolume(path string, messageLog *log.Logger) (*Volume, error) {
+func NewVolume(path string, messageLog *logging.Logger) (*Volume, error) {
 	volume := new(Volume)
 	volume.mutex = &sync.Mutex{}
 	volume.path = path
@@ -32,12 +32,12 @@ func NewVolume(path string, messageLog *log.Logger) (*Volume, error) {
 	volume.messageLog = messageLog
 	initialFree, err := volume.currentFreeSpace()
 	if err != nil {
-		messageLog.Println("[ERROR] volume.go could not measure " +
+		messageLog.Error("volume.go could not measure " +
 			"free space on storage volume")
 		return nil, err
 	}
 	volume.initialFree = initialFree
-	messageLog.Printf("[INFO] Initial free space on storage volume = %d bytes",
+	messageLog.Info("Initial free space on storage volume = %d bytes",
 		initialFree)
 	return volume, nil
 }
@@ -78,7 +78,7 @@ func (volume *Volume) AvailableSpace() (numBytes uint64) {
 	volume.mutex.Lock()
 	numBytes = volume.initialFree - volume.claimed
 	volume.mutex.Unlock()
-	volume.messageLog.Printf("[INFO] Storage volume has %d bytes available",
+	volume.messageLog.Info("Storage volume has %d bytes available",
 		numBytes)
 	return numBytes
 }
@@ -98,7 +98,7 @@ func (volume *Volume) Reserve(numBytes uint64) (err error) {
 		volume.mutex.Lock()
 		volume.claimed += numBytes
 		volume.mutex.Unlock()
-		volume.messageLog.Printf("[INFO] Reserved %d bytes on storage volume",
+		volume.messageLog.Info("Reserved %d bytes on storage volume",
 			numBytes)
 	}
 	return err
@@ -113,6 +113,6 @@ func (volume *Volume) Release(numBytes uint64) {
 	volume.mutex.Lock()
 	volume.claimed = volume.claimed - numBytes
 	volume.mutex.Unlock()
-	volume.messageLog.Printf("[INFO] Freed %d bytes on storage volume",
+	volume.messageLog.Info("Freed %d bytes on storage volume",
 		numBytes)
 }
