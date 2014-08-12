@@ -1,7 +1,8 @@
 {
     "apd4n": {
-        "TarDirectory": "/Users/apd4n/tmp/",
-        "LogDirectory": "/Users/apd4n/tmp/",
+        "TarDirectory": "./tmp",
+        "LogDirectory": "./tmp",
+        "LogToStderr": true,
         "MaxFileSize": 100000,
         "LogLevel": 4,
         "Fetchers": 4,
@@ -46,8 +47,9 @@
         ]
     },
     "test": {
-        "TarDirectory": "/mnt/apt_data",
-        "LogDirectory": "/mnt/apt_logs",
+        "TarDirectory": "./tmp",
+        "LogDirectory": "./tmp",
+        "LogToStderr": false,
         "MaxFileSize": 0,
         "LogLevel": 4,
         "Fetchers": 6,
@@ -94,6 +96,7 @@
     "demo": {
         "TarDirectory": "/mnt/apt/data",
         "LogDirectory": "/mnt/apt/logs",
+        "LogToStderr": false,
         "MaxFileSize": 0,
         "LogLevel": 4,
         "Fetchers": 6,

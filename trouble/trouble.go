@@ -15,7 +15,6 @@ import (
 
 // Global vars.
 var config bagman.Config
-var jsonLog *log.Logger
 var messageLog *log.Logger
 
 func main() {
@@ -47,7 +46,7 @@ func loadConfig() {
     requestedConfig := flag.String("config", "", "configuration to run")
     flag.Parse()
     config = bagman.LoadRequestedConfig(requestedConfig)
-    jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "trouble")
+    messageLog = bagman.InitLogger(config)
 }
 
 type RecordProcessor struct {

@@ -1,48 +1,75 @@
 package bagman
 
 import (
-	"time"
-	"log"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
+	"github.com/mipearson/rfw"
+	stdlog "log"
+	"github.com/op/go-logging"
 )
 
-type LogLevel int
+/*
+InitLogger creates and returns a logger suitable for logging
+human-readable message.
+*/
+func InitLogger(config Config) (*logging.Logger) {
+	processName := path.Base(os.Args[0])
+	filename := fmt.Sprintf("%s.log", processName)
+	filename = filepath.Join(config.AbsLogDirectory(), filename)
+	writer := getRotatingFileWriter(filename)
 
-const (
-	Fatal LogLevel = iota
-	Error
-	Warning
-	Info
-	Debug
-)
+	log := logging.MustGetLogger(processName)
+	format := logging.MustStringFormatter("[%{level}] [%{time}] %{message}")
+	logging.SetFormatter(format)
+    logging.SetLevel(config.LogLevel, processName)
 
-// InitLoggers creates and returns a JSON logger, which can be used to save
-// serialized JSON data, and a message logger for plain text messages, warnings,
-// errors, etc.
-//
-// Param dirname is the name of the directory in which to create the log file.
-// Param processName will be prefixed to the name of the log file.
-func InitLoggers(dirname string, processName string) (jsonLog *log.Logger, messageLog *log.Logger) {
-	jsonLog = makeLogger(dirname, processName, "json", false)
-	messageLog = makeLogger(dirname, processName, "message", true)
-	return jsonLog, messageLog
+	logBackend := logging.NewLogBackend(writer, "", 0)
+	if config.LogToStderr {
+		// Log to BOTH file and stderr
+		stderrBackend := logging.NewLogBackend(os.Stderr, "", stdlog.LstdFlags|stdlog.Lshortfile)
+		stderrBackend.Color = true
+		logging.SetBackend(logBackend, stderrBackend)
+	} else {
+		// Log to file only
+		logging.SetBackend(logBackend)
+	}
+
+	return log
 }
 
-func makeLogger(dirname string, processName string, logType string, includeTimestamp bool) (logger *log.Logger) {
-	const timeFormat = "20060102.150405"
-	filename := fmt.Sprintf("%s_%s_%s.log", processName,
-		logType, time.Now().UTC().Format(timeFormat))
-	filename = filepath.Join(dirname, filename)
-	file, err := os.OpenFile(filename, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+/*
+InitLogger creates and returns a logger suitable for logging JSON
+data. Bagman JSON logs consist of a single JSON object per line,
+with no extraneous data. Because all of the data in the file is
+pure JSON, with one record per line, these files are easy to parse.
+*/
+func InitJsonLogger(config Config) (*logging.Logger) {
+	processName := path.Base(os.Args[0])
+	filename := fmt.Sprintf("%s.json", processName)
+	filename = filepath.Join(config.AbsLogDirectory(), filename)
+	writer := getRotatingFileWriter(filename)
+	log := logging.MustGetLogger(processName)
+	format := logging.MustStringFormatter("%{message}")
+	logging.SetFormatter(format)
+    logging.SetLevel(config.LogLevel, processName)
+	logBackend := logging.NewLogBackend(writer, "", 0)
+	logging.SetBackend(logBackend)
+	return log
+}
+
+/*
+getRotatingFileWriter returns a Writer suitable for writing to files
+that may be deleted or renamed by outside processes, such as logrotate.
+If the underlying file disappears, the rotating file writer will
+recreate it and resume logging.
+*/
+func getRotatingFileWriter(filename string) (*rfw.Writer) {
+	writer, err := rfw.Open(filename, 0644)
 	if err != nil {
 		msg := fmt.Sprintf("Cannot open log file at %s: %v\n", filename, err)
 		panic(msg)
 	}
-	if includeTimestamp {
-		return log.New(file, "", log.Ldate|log.Ltime)
-	} else {
-		return log.New(file, "", 0)
-	}
+	return writer
 }

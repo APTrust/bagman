@@ -134,7 +134,8 @@ func loadConfig() {
     requestedConfig := flag.String("config", "", "configuration to run")
     flag.Parse()
     config = bagman.LoadRequestedConfig(requestedConfig)
-    jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "bag_processor")
+    messageLog = bagman.InitLogger(config)
+	jsonLog = bagman.InitJsonLogger(config)
 }
 
 // Set up the volume to keep track of how much disk space is

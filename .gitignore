@@ -32,3 +32,4 @@ testdata/sample_no_bag_info/
 testdata/sample_missing_data_file/
 testdata/sample_no_bagit/
 testdata/multi_mb_test_bag.tar
+tmp/

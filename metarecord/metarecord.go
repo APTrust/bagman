@@ -85,7 +85,8 @@ func loadConfig() {
     requestedConfig := flag.String("config", "", "configuration to run")
     flag.Parse()
     config = bagman.LoadRequestedConfig(requestedConfig)
-    jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "metarecord")
+    messageLog = bagman.InitLogger(config)
+	jsonLog = bagman.InitJsonLogger(config)
 }
 
 

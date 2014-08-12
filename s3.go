@@ -261,7 +261,9 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 		abortErr := multipartPut.Abort()
 		if abortErr != nil {
 			return "", fmt.Errorf("Multipart put failed with error %v " +
-				"while uploading a part and abort failed with error %v",
+				"while uploading a part and abort failed with error %v. " +
+				"YOU WILL BE CHARGED FOR THESE FILE PARTS UNTIL YOU DELETE THEM! " +
+				"Use multi.ListMulti in the S3 package to list orphaned parts.",
 				err, abortErr)
 		}
 		return "", err

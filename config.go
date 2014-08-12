@@ -4,6 +4,8 @@ import (
     "fmt"
     "os"
     "encoding/json"
+	"path/filepath"
+	"github.com/op/go-logging"
 )
 
 type Config struct {
@@ -19,6 +21,21 @@ type Config struct {
     // LogDirectory is where we'll write our log files.
     LogDirectory         string
 
+	// If true, processes will log to STDERR in addition
+	// to their standard log files. You really only want
+	// to do this in development.
+	LogToStderr          bool
+
+    // LogLevel is defined in github.com/op/go-logging
+	// and should be one of the following:
+	// 1 - CRITICAL
+	// 2 - ERROR
+	// 3 - WARNING
+	// 4 - NOTICE
+	// 5 - INFO
+	// 6 - DEBUG
+    LogLevel             logging.Level
+
     // MaxFileSize is the size in bytes of the largest
     // tar file we're willing to process. Set to zero
     // to process all files, regardless of size.
@@ -27,9 +44,6 @@ type Config struct {
     // up pulling down a huge amount of data from the
     // receiving buckets.
     MaxFileSize          int64
-
-    // LogLevel is not yet implemented.
-    LogLevel             LogLevel
 
     // Fetchers is the number of goroutines to use when
     // fetching files from the receiving buckets.
@@ -127,6 +141,16 @@ type Config struct {
 	// Should we delete the uploaded tar file from the receiving
 	// bucket after successfully processing this bag?
 	DeleteOnSuccess      bool
+}
+
+func (config *Config) AbsLogDirectory() string {
+	absPath, err := filepath.Abs(config.LogDirectory)
+	if err != nil {
+		msg := fmt.Sprintf("Cannot get absolute path to log directory. " +
+			"config.LogDirectory is set to '%s'", config.LogDirectory)
+		panic(msg)
+	}
+	return absPath
 }
 
 // This returns the configuration that the user requested.

@@ -26,7 +26,6 @@ const (
 
 var (
 	config        bagman.Config
-	jsonLog       *log.Logger
 	messageLog    *log.Logger
 	fluctusClient *client.Client
 	statusCache   map[string]*bagman.ProcessStatus
@@ -46,7 +45,7 @@ func initialize() (err error) {
 	requestedConfig := flag.String("config", "", "configuration to run")
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
-	jsonLog, messageLog = bagman.InitLoggers(config.LogDirectory, "cleanup_reader")
+    messageLog = bagman.InitLogger(config)
 	fluctusClient, err = client.New(
 		config.FluctusURL,
 		config.FluctusAPIVersion,
