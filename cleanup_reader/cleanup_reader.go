@@ -8,13 +8,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
-	"log"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/fluctus/client"
+	"github.com/op/go-logging"
 )
 
 // Queue delete requests in batches of 50.
@@ -26,7 +26,7 @@ const (
 
 var (
 	config        bagman.Config
-	messageLog    *log.Logger
+	messageLog    *logging.Logger
 	fluctusClient *client.Client
 	statusCache   map[string]*bagman.ProcessStatus
 )
@@ -58,20 +58,20 @@ func initialize() (err error) {
 func run() {
 	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
 		config.CleanupTopic)
-	messageLog.Printf("[INFO] Sending files to clean up to %s \n", url)
+	messageLog.Info("Sending files to clean up to %s \n", url)
 
 	results, err := fluctusClient.GetReviewedItems()
 	if err != nil {
 		messageLog.Fatal("Error getting reviewed items: %v", err)
 	}
 
-	messageLog.Printf("[INFO] Found %d items to clean up\n", len(results))
+	messageLog.Info("Found %d items to clean up\n", len(results))
 
 	start := 0
 	end := min(len(results), batchSize)
 	for start <= end {
 		batch := results[start:end]
-		messageLog.Printf("[INFO] Queuing batch of %d items\n", len(batch))
+		messageLog.Info("Queuing batch of %d items\n", len(batch))
 		enqueue(url, batch)
 		start = end + 1
 		if start < len(results) {
@@ -97,23 +97,23 @@ func enqueue(url string, results []*bagman.CleanupResult) {
 	for i, result := range results {
 		json, err := json.Marshal(result)
 		if err != nil {
-			messageLog.Printf("[ERROR] Error marshalling cleanup result to JSON: %v", err)
+			messageLog.Error("Error marshalling cleanup result to JSON: %s", err.Error())
 		} else {
 			jsonData[i] = string(json)
-			messageLog.Println("[INFO]", "Put", result.BagName, "into cleanup queue")
+			messageLog.Info("Put %s into cleanup queue", result.BagName)
 		}
 	}
 	batch := strings.Join(jsonData, "\n")
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
 	if err != nil {
-		messageLog.Printf("[ERROR] nsqd returned an error: %v", err)
+		messageLog.Error("nsqd returned an error: %s", err.Error())
 	}
 	if resp == nil {
-		msg := "[ERROR] No response from nsqd. Is it running? cleanup_reader is quitting."
-		messageLog.Printf(msg)
+		msg := "No response from nsqd. Is it running? cleanup_reader is quitting."
+		messageLog.Error(msg)
 		fmt.Println(msg)
 		os.Exit(1)
 	} else if resp.StatusCode != 200 {
-		messageLog.Printf("[ERROR] nsqd returned status code %d on last mput", resp.StatusCode)
+		messageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
 	}
 }

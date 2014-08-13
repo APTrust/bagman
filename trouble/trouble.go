@@ -7,15 +7,15 @@ import (
     "os"
 	"strings"
 	"io/ioutil"
-    "log"
 	"path"
     "github.com/APTrust/bagman"
     "github.com/bitly/go-nsq"
+	"github.com/op/go-logging"
 )
 
 // Global vars.
 var config bagman.Config
-var messageLog *log.Logger
+var messageLog *logging.Logger
 
 func main() {
 
@@ -36,6 +36,8 @@ func main() {
     handler := &RecordProcessor{}
     consumer.SetHandler(handler)
     consumer.ConnectToNSQLookupd(config.NsqLookupd)
+
+    messageLog.Info("Trouble has begun!")
 
     // This reader blocks until we get an interrupt, so our program does not exit.
     <-consumer.StopChan
@@ -58,14 +60,14 @@ func (*RecordProcessor) HandleMessage(message *nsq.Message) (error) {
     err := json.Unmarshal(message.Body, &result)
     if err != nil {
 		detailedError := fmt.Errorf(
-			"[ERROR] Could not unmarshal JSON data from nsq: %v. JSON: %s",
+			"Could not unmarshal JSON data from nsq: %v. JSON: %s",
             err, string(message.Body))
-        messageLog.Println("[ERROR]", detailedError)
+        messageLog.Error(detailedError.Error())
         message.Finish()
         return detailedError
     }
 	dumpToFile(&result)
-    messageLog.Println("[INFO]", "Processed", result.S3File.Key.Key)
+    messageLog.Info("Processed %s", result.S3File.Key.Key)
     return nil
 }
 

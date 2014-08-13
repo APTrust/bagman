@@ -12,6 +12,7 @@ import (
     "github.com/APTrust/bagman/fluctus/client"
     "github.com/bitly/go-nsq"
 	"github.com/diamondap/goamz/aws"
+	"github.com/op/go-logging"
 )
 
 type Channels struct {
@@ -23,7 +24,7 @@ type Channels struct {
 var channels *Channels
 var config bagman.Config
 var jsonLog *log.Logger
-var messageLog *log.Logger
+var messageLog *logging.Logger
 var succeeded = int64(0)
 var failed = int64(0)
 var s3Client *bagman.S3Client
@@ -124,13 +125,13 @@ func (*CleanupProcessor) HandleMessage(message *nsq.Message) (error) {
 		detailedError := fmt.Errorf(
 			"[ERROR] Could not unmarshal JSON data from nsq: %v. JSON: %s",
             err, string(message.Body))
-        messageLog.Println("[ERROR]", detailedError)
+        messageLog.Error(detailedError.Error())
         message.Finish()
         return detailedError
     }
 	result.NsqMessage = message
     channels.CleanupChannel <- &result
-    messageLog.Println("[INFO]", "Put", result.BagName, "into cleanup channel")
+    messageLog.Info("Put %s into cleanup channel", result.BagName)
     return nil
 }
 
@@ -140,8 +141,8 @@ func logResult() {
         // Log full results to the JSON log
         json, err := json.Marshal(result)
         if err != nil {
-            messageLog.Println("[ERROR]", err)
-			messageLog.Printf("[INFO] Requeueing %s due to error", result.BagName)
+            messageLog.Error(err.Error())
+			messageLog.Info("Requeueing %s due to error", result.BagName)
 			result.NsqMessage.Requeue(1 * time.Minute)
             atomic.AddInt64(&failed, 1)
 			logStats()
@@ -151,7 +152,7 @@ func logResult() {
 
 		// Log & requeue if something failed.
         if result.Succeeded() == false {
-			messageLog.Printf("[INFO] Requeueing %s because at least one S3 delete failed",
+			messageLog.Info("Requeueing %s because at least one S3 delete failed",
 				result.BagName)
             result.NsqMessage.Requeue(1 * time.Minute)
             atomic.AddInt64(&failed, 1)
@@ -163,12 +164,12 @@ func logResult() {
 		err = MarkItemResolved(result)
         if err != nil {
 			// TODO: This will just get retried forever, won't it?
-			messageLog.Printf("[ERROR] Requeueing %s because we could not update Fluctus",
+			messageLog.Error("Requeueing %s because we could not update Fluctus",
 				result.BagName)
 			result.NsqMessage.Requeue(1 * time.Minute)
             atomic.AddInt64(&failed, 1)
         } else {
-			messageLog.Printf("[INFO] Cleanup of %s succeeded", result.BagName)
+			messageLog.Info("Cleanup of %s succeeded", result.BagName)
 			result.NsqMessage.Finish()
             atomic.AddInt64(&succeeded, 1)
         }
@@ -177,17 +178,18 @@ func logResult() {
 }
 
 func logStats() {
-	messageLog.Printf("[STATS] Succeeded: %d, Failed: %d\n", succeeded, failed)
+	messageLog.Info("**STATS** Succeeded: %d, Failed: %d\n", succeeded, failed)
 }
 
 func doCleanUp() {
     for result := range channels.CleanupChannel {
-        messageLog.Println("[INFO]", "Cleaning up", result.BagName)
+        messageLog.Info("Cleaning up %s", result.BagName)
 		if config.DeleteOnSuccess == true {
 			DeleteS3Files(result)
 		} else {
 			// For testing...
 			// result.Files[0].DeletedAt = time.Now()
+			messageLog.Info("Not deleting %s because config.DeleteOnSuccess == false", result.BagName)
 		}
 		channels.ResultsChannel <- result
     }
@@ -201,10 +203,10 @@ func DeleteS3Files(result *bagman.CleanupResult) {
 		if err != nil {
 			file.ErrorMessage += fmt.Sprintf("Error deleting file '%s' from " +
 				"bucket '%s': %v ", file.Key, file.BucketName)
-			messageLog.Println("[Error]", file.ErrorMessage)
+			messageLog.Error(file.ErrorMessage)
 		} else {
 			file.DeletedAt = time.Now()
-			messageLog.Printf("[INFO] Deleted original file '%s' from bucket '%s'",
+			messageLog.Info("Deleted original file '%s' from bucket '%s'",
 				file.Key, file.BucketName)
 		}
 	}
@@ -215,20 +217,20 @@ func MarkItemResolved(result *bagman.CleanupResult) (error) {
 	remoteStatus, err := fluctusClient.GetBagStatus(
 		result.ETag, result.BagName, result.BagDate)
 	if err != nil {
-		messageLog.Println("[ERROR] Error getting ProcessedItem to Fluctus:", err)
+		messageLog.Error("Error getting ProcessedItem to Fluctus: %s", err.Error())
 		return err
 	}
 	if remoteStatus != nil {
 		remoteStatus.Reviewed = false
-		remoteStatus.Stage = StageCleanup
-		remoteStatus.Status = StatusResolved
+		remoteStatus.Stage = bagman.StageCleanup
+		remoteStatus.Status = bagman.StatusSuccess
 	}
 	err = fluctusClient.UpdateBagStatus(remoteStatus)
 	if err != nil {
-		messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:", err)
+		messageLog.Error("Error sending ProcessedItem to Fluctus: %s", err.Error())
 	} else {
-		messageLog.Printf("[INFO] Updated status in Fluctus for %s: %s/%s\n",
-			remoteStatus.Name, remoteStatus.Status, remoteStatus.Stage)
+		messageLog.Info("Updated status in Fluctus for %s: %s/%s\n",
+			remoteStatus.Name, remoteStatus.Stage, remoteStatus.Status)
 	}
 	return err
 }
