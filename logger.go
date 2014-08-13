@@ -21,7 +21,7 @@ func InitLogger(config Config) (*logging.Logger) {
 	writer := getRotatingFileWriter(filename)
 
 	log := logging.MustGetLogger(processName)
-	format := logging.MustStringFormatter("[%{level}] [%{time}] %{message}")
+	format := logging.MustStringFormatter("%{time} [%{level}] %{message}")
 	logging.SetFormatter(format)
     logging.SetLevel(config.LogLevel, processName)
 

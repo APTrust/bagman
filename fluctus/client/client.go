@@ -52,7 +52,7 @@ func New(hostUrl, apiVersion, apiUser, apiKey string, logger *logging.Logger) (*
 // is the key and institution id is the value.
 func (client *Client) CacheInstitutions () (error) {
 	instUrl := client.BuildUrl("/institutions")
-	client.logger.Info("Requesting list of institutions from fluctus:", instUrl)
+	client.logger.Debug("Requesting list of institutions from fluctus: %s", instUrl)
 	request, err := client.NewJsonRequest("GET", instUrl, nil)
 	if err != nil {
 		client.logger.Error("Error building institutions request in Fluctus client:", err.Error())
@@ -272,7 +272,7 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 func (client *Client) BulkStatusGet (since time.Time) (statusRecords []*bagman.ProcessStatus, err error) {
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/ingested_since/%s",
 		client.apiVersion, url.QueryEscape(since.UTC().Format(time.RFC3339))))
-	client.logger.Info("Requesting bulk bag status from fluctus: %s", objUrl)
+	client.logger.Debug("Requesting bulk bag status from fluctus: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
 		return nil, err
@@ -295,7 +295,7 @@ func (client *Client) BulkStatusGet (since time.Time) (statusRecords []*bagman.P
 	// 400 or 500
 	if response.StatusCode != 200 {
 		if len(body) < 1000 {
-			return nil, fmt.Errorf("Request returned status code %d. " +
+			return nil, fmt.Errorf("Request for bulk status returned status code %d. " +
 				"Response body: %s", response.StatusCode, string(body))
 		} else {
 			return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
@@ -324,7 +324,7 @@ func (client *Client) IntellectualObjectGet (identifier string, includeRelations
 	}
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/objects/%s?%s",
 		client.apiVersion, escapeSlashes(identifier), queryString))
-	client.logger.Info("Requesting IntellectualObject from fluctus:", objUrl)
+	client.logger.Debug("Requesting IntellectualObject from fluctus: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
 		return nil, err
@@ -507,7 +507,7 @@ func (client *Client) GenericFileGet (genericFileIdentifier string, includeRelat
 		client.apiVersion,
 		escapeSlashes(genericFileIdentifier),
 		queryString))
-	client.logger.Debug("Requesting IntellectualObject from fluctus:", fileUrl)
+	client.logger.Debug("Requesting IntellectualObject from fluctus: %s", fileUrl)
 	request, err := client.NewJsonRequest("GET", fileUrl, nil)
 	if err != nil {
 		return nil, err
@@ -638,7 +638,7 @@ func (client *Client) PremisEventSave (objId, objType string, event *models.Prem
 			client.apiVersion, escapeSlashes(objId)))
 	}
 
-	client.logger.Info("Creating %s PremisEvent %s for objId %s", objType, event.EventType, objId)
+	client.logger.Debug("Creating %s PremisEvent %s for objId %s", objType, event.EventType, objId)
 
 	data, err := json.Marshal(event)
 	request, err := client.NewJsonRequest(method, eventUrl, bytes.NewBuffer(data))
@@ -711,6 +711,6 @@ func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err 
         return err
     }
     client.logger.Info("Updated status in Fluctus for %s: %s/%s\n",
-        localStatus.Name, localStatus.Status, localStatus.Stage)
+        localStatus.Name, localStatus.Stage, localStatus.Status)
     return nil
 }

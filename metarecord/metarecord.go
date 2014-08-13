@@ -10,10 +10,11 @@ import (
 	"time"
     "github.com/APTrust/bagman"
     "github.com/APTrust/bagman/fluctus/client"
-    "github.com/APTrust/bagman/fluctus/models"
-    "github.com/bitly/go-nsq"
+	"github.com/APTrust/bagman/fluctus/models"
+	"github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
 	"github.com/diamondap/goamz/aws"
+	"github.com/op/go-logging"
 )
 
 type Channels struct {
@@ -27,7 +28,7 @@ type Channels struct {
 var channels *Channels
 var config bagman.Config
 var jsonLog *log.Logger
-var messageLog *log.Logger
+var messageLog *logging.Logger
 var succeeded = int64(0)
 var failed = int64(0)
 var s3Client *bagman.S3Client
@@ -130,20 +131,20 @@ func (*RecordProcessor) HandleMessage(message *nsq.Message) (error) {
 		detailedError := fmt.Errorf(
 			"[ERROR] Could not unmarshal JSON data from nsq: %v. JSON: %s",
             err, string(message.Body))
-        messageLog.Println("[ERROR]", detailedError)
+        messageLog.Error(detailedError.Error())
         message.Finish()
         return detailedError
     }
 	result.NsqMessage = message
     channels.FedoraChannel <- &result
-    messageLog.Println("[INFO]", "Put", result.S3File.Key.Key, "into Fluctus channel")
+    messageLog.Debug("Put %s into Fluctus channel", result.S3File.Key.Key)
     return nil
 }
 
 
 func recordInFedora() {
     for result := range channels.FedoraChannel {
-		messageLog.Println("[INFO] Recording Fedora metadata for",
+		messageLog.Info("Recording Fedora metadata for %s",
 			result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		result.Stage = "Record"
@@ -156,13 +157,13 @@ func recordInFedora() {
 				"PremisEvents, one or more calls to Fluctus failed."
 		}
 		if result.ErrorMessage == "" {
-			messageLog.Println("[INFO] Successfully recorded Fedora metadata for",
+			messageLog.Info("Successfully recorded Fedora metadata for %s",
 				result.S3File.Key.Key)
 		} else {
 			// If any errors in occur while talking to Fluctus,
 			// we'll want to requeue and try again. Just leave
 			// the result.Retry flag alone, and that will happen.
-			messageLog.Println("[ERROR]", result.ErrorMessage)
+			messageLog.Error(result.ErrorMessage)
 		}
         channels.ResultsChannel <- result
 	}
@@ -174,24 +175,24 @@ func logResult() {
         // Log full results to the JSON log
         json, err := json.Marshal(result)
         if err != nil {
-            messageLog.Println("[ERROR]", err)
+            messageLog.Error(err.Error())
         }
         jsonLog.Println(string(json))
 
         // Add a message to the message log
         if(result.ErrorMessage != "") {
             atomic.AddInt64(&failed, 1)
-            messageLog.Println("[ERROR]",
+            messageLog.Error("%s %s -> %s",
                 result.S3File.BucketName,
                 result.S3File.Key.Key,
-                "->", result.ErrorMessage)
+                result.ErrorMessage)
         } else {
             atomic.AddInt64(&succeeded, 1)
-            messageLog.Println("[INFO]", result.S3File.Key.Key, "-> finished OK")
+            messageLog.Info("%s -> finished OK", result.S3File.Key.Key)
         }
 
         // Add some stats to the message log
-        messageLog.Printf("[STATS] Succeeded: %d, Failed: %d\n", succeeded, failed)
+        messageLog.Info("** STATS ** Succeeded: %d, Failed: %d", succeeded, failed)
 
 		if result.NsqMessage.Attempts >= uint16(config.MaxMetadataAttempts) && result.ErrorMessage != "" {
 			result.Retry = false
@@ -201,10 +202,10 @@ func logResult() {
 				result.NsqMessage.Attempts)
 			err = bagman.Enqueue(config.NsqdHttpAddress, config.TroubleTopic, result)
 			if err != nil {
-				messageLog.Printf("[ERROR] Could not send '%s' to trouble queue: %v\n",
+				messageLog.Error("Could not send '%s' to trouble queue: %v",
 					result.S3File.Key.Key, err)
 			} else {
-				messageLog.Printf("[WARN] Sent '%s' to trouble queue\n", result.S3File.Key.Key)
+				messageLog.Warning("Sent '%s' to trouble queue", result.S3File.Key.Key)
 			}
 		}
 
@@ -214,8 +215,8 @@ func logResult() {
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Attempt to record processed " +
 					"item status returned error %v. ", err)
-				messageLog.Println("[ERROR] Error sending ProcessedItem to Fluctus:",
-					err)
+				messageLog.Error("Error sending ProcessedItem to Fluctus: %s",
+					err.Error())
 			}
 		}()
 
@@ -226,11 +227,11 @@ func logResult() {
 
 func doCleanUp() {
     for result := range channels.CleanUpChannel {
-        messageLog.Println("[INFO]", "Cleaning up", result.S3File.Key.Key)
+        messageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
         // Build and send message back to NSQ, indicating whether
         // processing succeeded.
         if result.ErrorMessage != "" && result.Retry == true {
-			messageLog.Printf("[INFO] Requeueing %s", result.S3File.Key.Key)
+			messageLog.Info("Requeueing %s", result.S3File.Key.Key)
             result.NsqMessage.Requeue(1 * time.Minute)
         } else {
             result.NsqMessage.Finish()
@@ -266,7 +267,7 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 			// TEMP - For debugging a specific error
 			// -------------------------------------------------------------------------
 			if genericFile.MimeType == "" {
-				messageLog.Printf("[WARN] Generic file %s of object %s has no mime type",
+				messageLog.Warning("Generic file %s of object %s has no mime type",
 					genericFile.Path, intellectualObject.Identifier)
 			}
 			// -------------------------------------------------------------------------
@@ -284,7 +285,7 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 		for i := range(result.TarResult.GenericFiles) {
 			genericFile := result.TarResult.GenericFiles[i]
 			if genericFile.MimeType == "" {
-				messageLog.Printf("[WARN] Generic file %s of object %s has no mime type",
+				messageLog.Warning("[WARN] Generic file %s of object %s has no mime type",
 					genericFile.Path, intellectualObject.Identifier)
 			}
 		}
