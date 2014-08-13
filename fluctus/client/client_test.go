@@ -3,9 +3,7 @@ package client_test
 import (
     "testing"
 	"fmt"
-    "log"
 	"os"
-	"io/ioutil"
 	"net/http"
 	"path/filepath"
 	"time"
@@ -42,7 +40,7 @@ func runFluctusTests() (bool) {
 func getClient(t *testing.T) (*client.Client) {
 	// If you want to debug, change ioutil.Discard to os.Stdout
 	// to see log output from the client.
-	logger := log.New(ioutil.Discard, "", 0)
+	logger := bagman.DiscardLogger("client_test")
 	client, err := client.New(
 		fluctusUrl,
 		fluctusAPIVersion,

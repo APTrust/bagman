@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"io/ioutil"
 	"github.com/mipearson/rfw"
 	stdlog "log"
 	"github.com/op/go-logging"
@@ -66,4 +67,16 @@ func getRotatingFileWriter(filename string) (*rfw.Writer) {
 		panic(msg)
 	}
 	return writer
+}
+
+/*
+Discard logger returns a logger that writes to dev/null.
+Suitable for use in testing.
+*/
+func DiscardLogger(module string) (*logging.Logger) {
+	log := logging.MustGetLogger(module)
+	devnull := logging.NewLogBackend(ioutil.Discard, "", 0)
+    logging.SetBackend(devnull)
+	logging.SetLevel(logging.INFO, "volume_test")
+	return log
 }

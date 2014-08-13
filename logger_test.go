@@ -56,7 +56,7 @@ func TestInitJsonLogger(t *testing.T) {
 	setupLoggerTest()
 	defer teardownLoggerTest()
 	log := bagman.InitJsonLogger(config)
-	log.Info("{a:100}")
+	log.Println("{a:100}")
 	logFile := filepath.Join(config.AbsLogDirectory(), path.Base(os.Args[0]) + ".json")
 	if !fileExists(logFile) {
 		t.Errorf("Log file does not exist at %s", logFile)
@@ -68,4 +68,12 @@ func TestInitJsonLogger(t *testing.T) {
 	if string(data) != "{a:100}\n" {
 		t.Error("Expected message was not in the json log.")
 	}
+}
+
+func TestDiscardLogger(t *testing.T) {
+	log := bagman.DiscardLogger("logger_test")
+	if log == nil {
+		t.Error("DiscardLogger returned nil")
+	}
+	log.Info("This should not cause an error!")
 }
