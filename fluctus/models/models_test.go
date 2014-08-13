@@ -1,10 +1,10 @@
 package models_test
 
 import (
-    "testing"
 	"encoding/json"
-	"path/filepath"
 	"github.com/APTrust/bagman"
+	"path/filepath"
+	"testing"
 )
 
 func assertValue(t *testing.T, data map[string]interface{}, key, expected string) {
@@ -14,12 +14,12 @@ func assertValue(t *testing.T, data map[string]interface{}, key, expected string
 }
 
 func TestSerializeForCreate(t *testing.T) {
-    filepath := filepath.Join("testdata", "result_good.json")
-    result, err := bagman.LoadResult(filepath)
-    if err != nil {
-        t.Errorf("Error loading test data file '%s': %v", filepath, err)
-    }
-    obj, err := result.IntellectualObject()
+	filepath := filepath.Join("testdata", "result_good.json")
+	result, err := bagman.LoadResult(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	obj, err := result.IntellectualObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestSerializeForCreate(t *testing.T) {
 	objEvents := data[0]["premisEvents"].([]interface{})
 	firstEvent := objEvents[0].(map[string]interface{})
 	secondEvent := objEvents[1].(map[string]interface{})
- 	assertValue(t, firstEvent, "type", "identifier_assignment")
+	assertValue(t, firstEvent, "type", "identifier_assignment")
 	assertValue(t, firstEvent, "outcome", "Success")
 	assertValue(t, secondEvent, "type", "ingest")
 	assertValue(t, secondEvent, "outcome", "Success")

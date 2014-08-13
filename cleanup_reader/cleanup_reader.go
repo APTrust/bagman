@@ -8,13 +8,13 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/fluctus/client"
+	"github.com/op/go-logging"
 	"net/http"
 	"os"
 	"strings"
 	"time"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
-	"github.com/op/go-logging"
 )
 
 // Queue delete requests in batches of 50.
@@ -45,7 +45,7 @@ func initialize() (err error) {
 	requestedConfig := flag.String("config", "", "configuration to run")
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
-    messageLog = bagman.InitLogger(config)
+	messageLog = bagman.InitLogger(config)
 	fluctusClient, err = client.New(
 		config.FluctusURL,
 		config.FluctusAPIVersion,

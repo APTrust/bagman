@@ -2,20 +2,20 @@ package bagman
 
 import (
 	"archive/tar"
-	"path"
-	"path/filepath"
 	"crypto/md5"
 	"crypto/sha256"
 	"fmt"
-	"io"
-	"os"
-	"sort"
-	"strings"
-	"time"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/nu7hatch/gouuid"
 	"github.com/rakyll/magicmime"
+	"io"
+	"os"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
 )
 
 // magicMime is the MimeMagic database. We want
@@ -34,7 +34,7 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 	tarResult := new(TarResult)
 	absInputFile, err := filepath.Abs(tarFilePath)
 	if err != nil {
-		tarResult.ErrorMessage = fmt.Sprintf("Before untarring, could not determine " +
+		tarResult.ErrorMessage = fmt.Sprintf("Before untarring, could not determine "+
 			"absolute path to downloaded file: %v", err)
 		return tarResult
 	}
@@ -69,9 +69,9 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 	tarReader := tar.NewReader(file)
 
 	for {
-		header, err := tarReader.Next();
+		header, err := tarReader.Next()
 		if err != nil && err.Error() == "EOF" {
-			break  // end of archive
+			break // end of archive
 		}
 		if err != nil {
 			tarResult.ErrorMessage = fmt.Sprintf("Error reading tar file header: %v", err)
@@ -83,11 +83,11 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 			topLevelDir = strings.Replace(header.Name, "/", "", 1)
 			expectedDir := path.Base(tarFilePath)
 			if strings.HasSuffix(expectedDir, ".tar") {
-				expectedDir = expectedDir[0:len(expectedDir) - 4]
+				expectedDir = expectedDir[0 : len(expectedDir)-4]
 			}
-			if (topLevelDir != expectedDir) {
+			if topLevelDir != expectedDir {
 				tarResult.ErrorMessage = fmt.Sprintf(
-					"Bag '%s' should untar to a folder named '%s', but " +
+					"Bag '%s' should untar to a folder named '%s', but "+
 						"it untars to '%s'. Please repackage and re-upload this bag.",
 					path.Base(tarFilePath), expectedDir, topLevelDir)
 				return tarResult
@@ -103,7 +103,7 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 		// Make sure the directory that we're about to write into exists.
 		err = os.MkdirAll(filepath.Dir(outputPath), 0755)
 		if err != nil {
-			tarResult.ErrorMessage = fmt.Sprintf("Could not create destination file '%s' " +
+			tarResult.ErrorMessage = fmt.Sprintf("Could not create destination file '%s' "+
 				"while unpacking tar archive: %v", outputPath, err)
 			return tarResult
 		}
@@ -120,13 +120,13 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 			} else {
 				err = saveFile(outputPath, tarReader)
 				if err != nil {
-					tarResult.ErrorMessage = fmt.Sprintf("Error copying file from tar archive " +
+					tarResult.ErrorMessage = fmt.Sprintf("Error copying file from tar archive "+
 						"to '%s': %v", outputPath, err)
 					return tarResult
 				}
 			}
 
-			outputRelativePath := strings.Replace(outputPath, tarResult.OutputDir + "/", "", 1)
+			outputRelativePath := strings.Replace(outputPath, tarResult.OutputDir+"/", "", 1)
 			tarResult.FilesUnpacked = append(tarResult.FilesUnpacked, outputRelativePath)
 
 		} else if header.Typeflag != tar.TypeDir {
@@ -157,7 +157,7 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 	}
 
 	fileNames, err := bag.ListFiles()
-	if err!= nil {
+	if err != nil {
 		bagReadResult.ErrorMessage = fmt.Sprintf("Could not list bag files: %v", err)
 		return bagReadResult
 	}
@@ -177,9 +177,15 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 			hasDataFiles = true
 		}
 	}
-	if !hasBagit { errMsg += "Bag is missing bagit.txt file. " }
-	if !hasMd5Manifest { errMsg += "Bag is missing manifest-md5.txt file. " }
-	if !hasDataFiles { errMsg += "Bag's data directory is missing or empty. " }
+	if !hasBagit {
+		errMsg += "Bag is missing bagit.txt file. "
+	}
+	if !hasMd5Manifest {
+		errMsg += "Bag is missing manifest-md5.txt file. "
+	}
+	if !hasDataFiles {
+		errMsg += "Bag's data directory is missing or empty. "
+	}
 
 	extractTags(bag, bagReadResult)
 
@@ -215,7 +221,7 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 		tagFields := tagFile.Data.Fields()
 
 		for _, tagField := range tagFields {
-			tag := Tag{ tagField.Label(), tagField.Value() }
+			tag := Tag{tagField.Label(), tagField.Value()}
 			bagReadResult.Tags = append(bagReadResult.Tags, tag)
 
 			lcLabel := strings.ToLower(tag.Label)
@@ -230,7 +236,7 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	// Make sure access rights are valid, or Fluctus will reject
 	// this data when we try to register it.
 	accessValid := false
-	for _, value := range(models.AccessRights) {
+	for _, value := range models.AccessRights {
 		if accessRights == value {
 			accessValid = true
 		}
@@ -242,15 +248,15 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 
 // Saves a file from the tar archive to local disk. This function
 // used to save non-data files (manifests, tag files, etc.)
-func saveFile(destination string, tarReader *tar.Reader) (error) {
-	outputWriter, err := os.OpenFile(destination, os.O_CREATE | os.O_WRONLY, 0644)
+func saveFile(destination string, tarReader *tar.Reader) error {
+	outputWriter, err := os.OpenFile(destination, os.O_CREATE|os.O_WRONLY, 0644)
 	if outputWriter != nil {
 		defer outputWriter.Close()
 	}
 	if err != nil {
 		return err
 	}
-	_, err = io.Copy(outputWriter, tarReader);
+	_, err = io.Copy(outputWriter, tarReader)
 	if err != nil {
 		return err
 	}
@@ -262,7 +268,7 @@ func saveFile(destination string, tarReader *tar.Reader) (error) {
 // GenericFile object in Fedora later.
 func buildGenericFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (gf *GenericFile) {
 	gf = &GenericFile{}
-	gf.Path = fileName[strings.Index(fileName, "/data/") + 1:len(fileName)]
+	gf.Path = fileName[strings.Index(fileName, "/data/")+1 : len(fileName)]
 	absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
 	if err != nil {
 		gf.ErrorMessage = fmt.Sprintf("Path error: %v", err)
@@ -281,7 +287,7 @@ func buildGenericFile(tarReader *tar.Reader, tarDirectory string, fileName strin
 	// Set up a MultiWriter to stream data ONCE to file,
 	// md5 and sha256. We don't want to process the stream
 	// three separate times.
-	outputWriter, err := os.OpenFile(absPath, os.O_CREATE | os.O_WRONLY, 0644)
+	outputWriter, err := os.OpenFile(absPath, os.O_CREATE|os.O_WRONLY, 0644)
 	if outputWriter != nil {
 		defer outputWriter.Close()
 	}

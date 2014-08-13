@@ -1,11 +1,10 @@
 package bagman_test
 
 import (
-	"testing"
-	"runtime"
 	"github.com/APTrust/bagman"
+	"runtime"
+	"testing"
 )
-
 
 func TestInitialFreeSpace(t *testing.T) {
 	_, filename, _, _ := runtime.Caller(0)
@@ -84,8 +83,8 @@ func TestVolume(t *testing.T) {
 	volume.Release(numBytes)
 
 	// Make sure it was freed.
-	if(volume.AvailableSpace() != volume.InitialFreeSpace()) {
-		t.Errorf("Available space was calculated incorrectly after Release: " +
+	if volume.AvailableSpace() != volume.InitialFreeSpace() {
+		t.Errorf("Available space was calculated incorrectly after Release: "+
 			"was %d, expected something close to %d",
 			volume.AvailableSpace(), volume.InitialFreeSpace())
 	}

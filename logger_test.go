@@ -1,22 +1,20 @@
 package bagman_test
 
 import (
-    "testing"
-//	"fmt"
+	"testing"
+	"github.com/APTrust/bagman"
 	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
-    "github.com/APTrust/bagman"
 )
-
 
 var config bagman.Config
 
 func setupLoggerTest() {
 	requestedConfig := "test"
-    config = bagman.LoadRequestedConfig(&requestedConfig)
+	config = bagman.LoadRequestedConfig(&requestedConfig)
 	_ = os.Mkdir(config.LogDirectory, 0755)
 }
 
@@ -26,7 +24,7 @@ func teardownLoggerTest() {
 	os.RemoveAll(config.AbsLogDirectory())
 }
 
-func fileExists (filename string) bool {
+func fileExists(filename string) bool {
 	_, err := os.Stat(filename)
 	if err != nil {
 		return false
@@ -39,7 +37,7 @@ func TestInitLogger(t *testing.T) {
 	defer teardownLoggerTest()
 	log := bagman.InitLogger(config)
 	log.Error("Test Message")
-	logFile := filepath.Join(config.AbsLogDirectory(), path.Base(os.Args[0]) + ".log")
+	logFile := filepath.Join(config.AbsLogDirectory(), path.Base(os.Args[0])+".log")
 	if !fileExists(logFile) {
 		t.Errorf("Log file does not exist at %s", logFile)
 	}
@@ -57,7 +55,7 @@ func TestInitJsonLogger(t *testing.T) {
 	defer teardownLoggerTest()
 	log := bagman.InitJsonLogger(config)
 	log.Println("{a:100}")
-	logFile := filepath.Join(config.AbsLogDirectory(), path.Base(os.Args[0]) + ".json")
+	logFile := filepath.Join(config.AbsLogDirectory(), path.Base(os.Args[0])+".json")
 	if !fileExists(logFile) {
 		t.Errorf("Log file does not exist at %s", logFile)
 	}

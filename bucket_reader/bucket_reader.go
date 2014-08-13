@@ -7,14 +7,14 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
-	"os"
-	"strings"
-	"time"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/client"
 	"github.com/diamondap/goamz/aws"
 	"github.com/op/go-logging"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 )
 
 // Send S3 files to queue in batches of 500.
@@ -48,7 +48,7 @@ func initialize() (err error) {
 	requestedConfig := flag.String("config", "", "configuration to run")
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
-    messageLog = bagman.InitLogger(config)
+	messageLog = bagman.InitLogger(config)
 	fluctusClient, err = client.New(
 		config.FluctusURL,
 		config.FluctusAPIVersion,
@@ -152,7 +152,7 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			messageLog.Error("Cannot get Fluctus bag status for %s. "+
 				"Will re-process bag. Error was %v", s3File.Key.Key, err)
 			filesToProcess = append(filesToProcess, s3File)
-		} else if  status == nil || (status.Status == "Pending" && status.Retry == true) {
+		} else if status == nil || (status.Status == "Pending" && status.Retry == true) {
 			reason := "Bag has not yet been successfully processed."
 			if status == nil {
 				err = createFluctusRecord(s3File)
@@ -183,7 +183,7 @@ func loadStatusCache() {
 	} else {
 		messageLog.Info("Got %d status records from the fluctopus\n", len(statusRecords))
 		statusCache = make(map[string]*bagman.ProcessStatus, len(statusRecords))
-		for i := range(statusRecords) {
+		for i := range statusRecords {
 			record := statusRecords[i]
 			key := fmt.Sprintf("%s%s%s", record.ETag, record.Name, record.BagDate)
 			statusCache[key] = record
@@ -194,7 +194,7 @@ func loadStatusCache() {
 // Finds the status of the specified tar bag in the cache that
 // we retrieved from Fluctus. The cache can save us hundreds or
 // thousands of HTTP calls each time the bucket reader runs.
-func findInStatusCache(etag, name string, bagDate time.Time) (*bagman.ProcessStatus) {
+func findInStatusCache(etag, name string, bagDate time.Time) *bagman.ProcessStatus {
 	key := fmt.Sprintf("%s%s%s", etag, name, bagDate)
 	item, exists := statusCache[key]
 	if exists {

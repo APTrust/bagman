@@ -3,43 +3,42 @@
 package models
 
 import (
-	"fmt"
-    "strings"
-    "time"
 	"encoding/json"
+	"fmt"
 	"github.com/nu7hatch/gouuid"
+	"strings"
+	"time"
 )
 
 // List of valid APTrust IntellectualObject AccessRights.
-var AccessRights []string = []string {
-    "consortia",
-    "institution",
-    "restricted"}
+var AccessRights []string = []string{
+	"consortia",
+	"institution",
+	"restricted"}
 
 // List of valid Premis Event types.
-var eventTypes []string = []string {
-    "ingest",
-    "validation",
-    "fixity_generation",
-    "fixity_check",
-    "identifier_assignment",
-    "quarentine",
-    "delete_action",
+var eventTypes []string = []string{
+	"ingest",
+	"validation",
+	"fixity_generation",
+	"fixity_check",
+	"identifier_assignment",
+	"quarentine",
+	"delete_action",
 }
 
 // EventTypeValid returns true/false, indicating whether the
 // structure's EventType property contains the name of a
 // valid premis event.
 func (premisEvent *PremisEvent) EventTypeValid() bool {
-    lcEventType := strings.ToLower(premisEvent.EventType)
-    for _, value := range eventTypes {
-        if value == lcEventType {
-            return true
-        }
-    }
-    return false
+	lcEventType := strings.ToLower(premisEvent.EventType)
+	for _, value := range eventTypes {
+		if value == lcEventType {
+			return true
+		}
+	}
+	return false
 }
-
 
 /*
 PremisEvent contains information about events that occur during
@@ -72,17 +71,16 @@ OutcomeInformation contains the text of an error message, if
 Outcome was failure.
 */
 type PremisEvent struct {
-	Identifier         string     `json:"identifier"`
-    EventType          string     `json:"type"`
-    DateTime           time.Time  `json:"date_time"`
-    Detail             string     `json:"detail"`
-    Outcome            string     `json:"outcome"`
-    OutcomeDetail      string     `json:"outcome_detail"`
-    Object             string     `json:"object"`
-    Agent              string     `json:"agent"`
-    OutcomeInformation string     `json:"outcome_information"`
+	Identifier         string    `json:"identifier"`
+	EventType          string    `json:"type"`
+	DateTime           time.Time `json:"date_time"`
+	Detail             string    `json:"detail"`
+	Outcome            string    `json:"outcome"`
+	OutcomeDetail      string    `json:"outcome_detail"`
+	Object             string    `json:"object"`
+	Agent              string    `json:"agent"`
+	OutcomeInformation string    `json:"outcome_information"`
 }
-
 
 /*
 Institution represents an institution in fluctus. Name is the
@@ -90,12 +88,11 @@ institution's full name. BriefName is a shortened name.
 Identifier is the institution's domain name.
 */
 type Institution struct {
-	Pid                string  `json:"pid"`
-    Name               string  `json:"name"`
-    BriefName          string  `json:"brief_name"`
-	Identifier         string  `json:"identifier"`
+	Pid        string `json:"pid"`
+	Name       string `json:"name"`
+	BriefName  string `json:"brief_name"`
+	Identifier string `json:"identifier"`
 }
-
 
 /*
 IntellectualObject belongs to an Institution and consists of
@@ -114,26 +111,26 @@ Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
 type IntellectualObject struct {
-    Id                 string         `json:"id"`
-    Identifier         string         `json:"identifier"`
-    InstitutionId      string         `json:"institution_id"`
-    Title              string         `json:"title"`
-    Description        string         `json:"description"`
-    Access             string         `json:"access"`
-	GenericFiles       []*GenericFile `json:"generic_files"`
-	Events             []*PremisEvent `json:"events"`
+	Id            string         `json:"id"`
+	Identifier    string         `json:"identifier"`
+	InstitutionId string         `json:"institution_id"`
+	Title         string         `json:"title"`
+	Description   string         `json:"description"`
+	Access        string         `json:"access"`
+	GenericFiles  []*GenericFile `json:"generic_files"`
+	Events        []*PremisEvent `json:"events"`
 }
 
 // AccessValid returns true or false to indicate whether the
 // structure's Access property contains a valid value.
 func (obj *IntellectualObject) AccessValid() bool {
-    lcAccess := strings.ToLower(obj.Access)
-    for _, value := range AccessRights {
-        if value == lcAccess {
-            return true
-        }
-    }
-    return false
+	lcAccess := strings.ToLower(obj.Access)
+	for _, value := range AccessRights {
+		if value == lcAccess {
+			return true
+		}
+	}
+	return false
 }
 
 // SerializeForCreate serializes an intellectual object along
@@ -141,15 +138,15 @@ func (obj *IntellectualObject) AccessValid() bool {
 // The output is a byte array of JSON data.
 func (obj *IntellectualObject) SerializeForCreate() ([]byte, error) {
 	genericFileMaps := make([]map[string]interface{}, len(obj.GenericFiles))
-	for i, gf := range(obj.GenericFiles) {
+	for i, gf := range obj.GenericFiles {
 		genericFileMaps[i] = map[string]interface{}{
-			"identifier": gf.Identifier,
-			"format": gf.Format,
-			"uri": gf.URI,
-			"size": gf.Size,
-			"created": gf.Created,
-			"modified": gf.Modified,
-			"checksum": gf.ChecksumAttributes,
+			"identifier":   gf.Identifier,
+			"format":       gf.Format,
+			"uri":          gf.URI,
+			"size":         gf.Size,
+			"created":      gf.Created,
+			"modified":     gf.Modified,
+			"checksum":     gf.ChecksumAttributes,
 			"premisEvents": gf.Events,
 		}
 	}
@@ -169,14 +166,14 @@ func (obj *IntellectualObject) SerializeForCreate() ([]byte, error) {
 	// Fluctus expects an array.
 	objects := make([]map[string]interface{}, 1)
 	objects[0] = map[string]interface{}{
-		"identifier": obj.Identifier,
-		"title": obj.Title,
-		"description": obj.Description,
-		"access": obj.Access,
+		"identifier":     obj.Identifier,
+		"title":          obj.Title,
+		"description":    obj.Description,
+		"access":         obj.Access,
 		"institution_id": obj.InstitutionId,
-		"premisEvents": events,
-		"generic_files": genericFileMaps,
-    }
+		"premisEvents":   events,
+		"generic_files":  genericFileMaps,
+	}
 	jsonBytes, err := json.Marshal(objects)
 	if err != nil {
 		return nil, err
@@ -184,25 +181,23 @@ func (obj *IntellectualObject) SerializeForCreate() ([]byte, error) {
 	return jsonBytes, nil
 }
 
-
 func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent, error) {
 	eventId, err := uuid.NewV4()
 	if err != nil {
 		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
 	}
 	return &PremisEvent{
-		Identifier: eventId.String(),
-		EventType: "ingest",
-		DateTime: time.Now(),
-		Detail: "Copied all files to perservation bucket",
-		Outcome: "Success",
-		OutcomeDetail: fmt.Sprintf("%d files copied", len(obj.GenericFiles)),
-		Object: "goamz S3 client",
-		Agent: "https://launchpad.net/goamz",
+		Identifier:         eventId.String(),
+		EventType:          "ingest",
+		DateTime:           time.Now(),
+		Detail:             "Copied all files to perservation bucket",
+		Outcome:            "Success",
+		OutcomeDetail:      fmt.Sprintf("%d files copied", len(obj.GenericFiles)),
+		Object:             "goamz S3 client",
+		Agent:              "https://launchpad.net/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}, nil
 }
-
 
 func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
 	eventId, err := uuid.NewV4()
@@ -210,32 +205,29 @@ func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
 		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
 	}
 	return &PremisEvent{
-		Identifier: eventId.String(),
-		EventType: "identifier_assignment",
-		DateTime: time.Now(),
-		Detail: "Assigned bag identifier",
-		Outcome: "Success",
-		OutcomeDetail: obj.Identifier,
-		Object: "APTrust bagman",
-		Agent: "https://github.com/APTrust/bagman",
+		Identifier:         eventId.String(),
+		EventType:          "identifier_assignment",
+		DateTime:           time.Now(),
+		Detail:             "Assigned bag identifier",
+		Outcome:            "Success",
+		OutcomeDetail:      obj.Identifier,
+		Object:             "APTrust bagman",
+		Agent:              "https://github.com/APTrust/bagman",
 		OutcomeInformation: "Institution domain + tar file name",
 	}, nil
 }
-
 
 // Serialize the subset of IntellectualObject data that fluctus
 // will accept. This is for post/put, where essential info, such
 // as institution id and/or object id will be in the URL.
 func (obj *IntellectualObject) SerializeForFluctus() ([]byte, error) {
-    return json.Marshal(map[string]interface{}{
-		"identifier": obj.Identifier,
-		"title": obj.Title,
+	return json.Marshal(map[string]interface{}{
+		"identifier":  obj.Identifier,
+		"title":       obj.Title,
 		"description": obj.Description,
-		"access": obj.Access,
-    })
+		"access":      obj.Access,
+	})
 }
-
-
 
 /*
 ChecksumAttribute contains information about a checksum that
@@ -248,9 +240,9 @@ For example:
 1994-11-05T08:15:30Z          (UTC)
 */
 type ChecksumAttribute struct {
-    Algorithm          string     `json:"algorithm"`
-    DateTime           time.Time  `json:"datetime"`
-    Digest             string     `json:"digest"`
+	Algorithm string    `json:"algorithm"`
+	DateTime  time.Time `json:"datetime"`
+	Digest    string    `json:"digest"`
 }
 
 /*
@@ -279,35 +271,34 @@ such as:
 1994-11-05T08:15:30Z          (UTC)
 */
 type GenericFile struct {
-	Id                 string     `json:"id"`
-	Identifier         string     `json:"identifier"`
-    Format             string     `json:"format"`
-    URI                string     `json:"uri"`
-    Size               int64      `json:"size"`
-    Created            time.Time  `json:"created"`
-    Modified           time.Time  `json:"modified"`
-    ChecksumAttributes []*ChecksumAttribute  `json:"checksum"`
-    Events             []*PremisEvent        `json:"premisEvents"`
+	Id                 string               `json:"id"`
+	Identifier         string               `json:"identifier"`
+	Format             string               `json:"format"`
+	URI                string               `json:"uri"`
+	Size               int64                `json:"size"`
+	Created            time.Time            `json:"created"`
+	Modified           time.Time            `json:"modified"`
+	ChecksumAttributes []*ChecksumAttribute `json:"checksum"`
+	Events             []*PremisEvent       `json:"premisEvents"`
 }
 
 // Serializes a version of GenericFile that Fluctus will accept as post/put input.
-func (gf *GenericFile) SerializeForFluctus()([]byte, error) {
-    return json.Marshal(map[string]interface{}{
-		"identifier": gf.Identifier,
-		"format": gf.Format,
-		"uri": gf.URI,
-		"size": gf.Size,
-		"created": gf.Created,
-		"modified": gf.Modified,
+func (gf *GenericFile) SerializeForFluctus() ([]byte, error) {
+	return json.Marshal(map[string]interface{}{
+		"identifier":          gf.Identifier,
+		"format":              gf.Format,
+		"uri":                 gf.URI,
+		"size":                gf.Size,
+		"created":             gf.Created,
+		"modified":            gf.Modified,
 		"checksum_attributes": gf.ChecksumAttributes,
-    })
+	})
 }
-
 
 // User struct is used for logging in to fluctus.
 type User struct {
-    Email              string  `json:"email"`
-    Password           string  `json:"password,omitempty"`
-    ApiKey             string  `json:"api_secret_key,omitempty"`
-    AuthToken          string  `json:"authenticity_token,omitempty"`
+	Email     string `json:"email"`
+	Password  string `json:"password,omitempty"`
+	ApiKey    string `json:"api_secret_key,omitempty"`
+	AuthToken string `json:"authenticity_token,omitempty"`
 }

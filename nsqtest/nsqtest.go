@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"github.com/bitly/go-nsq"
+	"log"
 )
 
 type PrintHandler struct {
-	counter   uint64
+	counter uint64
 }
 
 func (ph *PrintHandler) HandleMessage(m *nsq.Message, outputChannel chan *nsq.FinishedMessage) {
@@ -16,7 +16,7 @@ func (ph *PrintHandler) HandleMessage(m *nsq.Message, outputChannel chan *nsq.Fi
 	success := true
 
 	// Throw in an occasional failure for re-queueing.
-	if ph.counter % 4 == 0 {
+	if ph.counter%4 == 0 {
 		success = false
 	}
 	finishedMessage := &nsq.FinishedMessage{m.Id, 1000, success}

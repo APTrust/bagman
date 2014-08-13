@@ -1,10 +1,10 @@
 package bagman
 
 import (
-	"syscall"
-	"sync"
 	"fmt"
 	"github.com/op/go-logging"
+	"sync"
+	"syscall"
 )
 
 // Volume tracks the amount of available space on a volume (disk),
@@ -15,11 +15,11 @@ import (
 // avoid downloading 100GB files when we know ahead of time that
 // we don't have enough space to process them.
 type Volume struct {
-	path             string
-	mutex            *sync.Mutex
-	initialFree      uint64
-	claimed          uint64
-	messageLog       *logging.Logger
+	path        string
+	mutex       *sync.Mutex
+	initialFree uint64
+	claimed     uint64
+	messageLog  *logging.Logger
 }
 
 // NewVolume creates a new Volume structure to track the amount
@@ -59,7 +59,7 @@ func (volume *Volume) ClaimedSpace() (numBytes uint64) {
 // to unprivileged users on the underlying volume. This number comes
 // directly from the operating system's statfs call, and does not
 // take into account the number of bytes reserved for pending operations.
-func (volume *Volume)currentFreeSpace() (numBytes uint64, err error) {
+func (volume *Volume) currentFreeSpace() (numBytes uint64, err error) {
 	stat := &syscall.Statfs_t{}
 	err = syscall.Statfs(volume.path, stat)
 	if err != nil {
@@ -92,9 +92,9 @@ func (volume *Volume) AvailableSpace() (numBytes uint64) {
 func (volume *Volume) Reserve(numBytes uint64) (err error) {
 	available := volume.AvailableSpace()
 	if numBytes >= available {
-		err = fmt.Errorf("Requested %d bytes on volume, " +
+		err = fmt.Errorf("Requested %d bytes on volume, "+
 			"but only %d are available", numBytes, available)
-	} else  {
+	} else {
 		volume.mutex.Lock()
 		volume.claimed += numBytes
 		volume.mutex.Unlock()

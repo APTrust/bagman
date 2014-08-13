@@ -1,15 +1,15 @@
 package bagman_test
 
 import (
-	"testing"
-	"github.com/APTrust/bagman"
 	"errors"
-	"strings"
-	"os"
 	"fmt"
-	"time"
+	"github.com/APTrust/bagman"
 	"io/ioutil"
+	"os"
 	"path/filepath"
+	"strings"
+	"testing"
+	"time"
 )
 
 var gopath string = os.Getenv("GOPATH")
@@ -31,7 +31,7 @@ var badFiles []string = []string{
 var goodFiles []string = []string{
 	sampleGood,
 }
-var allFiles []string = append(badFiles, goodFiles ...)
+var allFiles []string = append(badFiles, goodFiles...)
 
 // Setup to run before tests
 func setup() {
@@ -111,12 +111,12 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 		"text/plain",
 		"application/xml",
 	}
-	expectedSize := []int64{ 2388, 6191, 4663, 579 }
+	expectedSize := []int64{2388, 6191, 4663, 579}
 	t0, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:25 -0400 EDT")
 	t1, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:25 -0400 EDT")
 	t2, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:26 -0400 EDT")
 	t3, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:26 -0400 EDT")
-	expectedModTime := []time.Time {t0, t1, t2, t3}
+	expectedModTime := []time.Time{t0, t1, t2, t3}
 
 	if len(tarResult.GenericFiles) != 4 {
 		t.Errorf("Unpacked %d generic files, expected %d", len(tarResult.GenericFiles), 4)
@@ -183,7 +183,6 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 		t.Errorf("Unpacked %d files, expected %d", len(result.Files), 8)
 	}
 
-
 	if result.ErrorMessage != "" {
 		t.Errorf("Unexpected error in read result: %v", result.ErrorMessage)
 	}
@@ -194,34 +193,54 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	}
 
 	err := assertTagMatch(result.Tags[0], "BagIt-Version", "0.97")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[1], "Tag-File-Character-Encoding", "UTF-8")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[2], "Source-Organization", "virginia.edu")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[3], "Bagging-Date", "2014-04-14T11:55:26.17-0400")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[4], "Bag-Count", "1 of 1")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[5], "Bag-Group-Identifier", "")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[6], "Internal-Sender-Description", "")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[7], "Internal-Sender-Identifier", "")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[8], "Title", "Strabo De situ orbis.")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	err = assertTagMatch(result.Tags[9], "Access", "Institution")
-	if err != nil { t.Error(err) }
+	if err != nil {
+		t.Error(err)
+	}
 
 	if len(result.ChecksumErrors) != 0 {
 		t.Errorf("Bag read result contained %d checksum errors; it should have none",

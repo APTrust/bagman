@@ -1,10 +1,10 @@
 package main
 
 import (
-	"os"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"github.com/APTrust/bagman"
+	"os"
 )
 
 func main() {

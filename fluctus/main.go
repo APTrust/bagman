@@ -2,11 +2,11 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"log"
-	"time"
-	"github.com/APTrust/bagman/fluctus/client"
 	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/fluctus/client"
+	"log"
+	"os"
+	"time"
 )
 
 // TODO: Move this into client_test
@@ -37,7 +37,6 @@ func main() {
 		"Record",
 		bagman.StatusSuccess,
 		bagman.StatusSuccess}
-
 
 	remoteStatus, err := client.GetBagStatus(status.ETag, status.Name, status.BagDate)
 	if err != nil {
