@@ -188,7 +188,7 @@ func logResult() {
 		}
 
 		// Add some stats to the message log
-		messageLog.Info("** STATS ** Succeeded: %d, Failed: %d", succeeded, failed)
+		messageLog.Info("**STATS** Succeeded: %d, Failed: %d", succeeded, failed)
 
 		if result.NsqMessage.Attempts >= uint16(config.MaxMetadataAttempts) && result.ErrorMessage != "" {
 			result.Retry = false

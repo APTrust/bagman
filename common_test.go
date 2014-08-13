@@ -167,7 +167,7 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 			status.Institution)
 	}
 	if result.ErrorMessage == "" && status.Note != "No problems" {
-		t.Error("ProcessStatus.Note should be '%s', but it's '%s'.",
+		t.Errorf("ProcessStatus.Note should be '%s', but it's '%s'.",
 			"No problems", status.Note)
 	}
 	if result.ErrorMessage != "" && status.Note == "" {

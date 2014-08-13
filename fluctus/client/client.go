@@ -701,7 +701,7 @@ func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err 
 	if err != nil {
 		return err
 	}
-	client.logger.Info("Updated status in Fluctus for %s: %s/%s\n",
+	client.logger.Info("Updated status in Fluctus for %s: %s/%s",
 		localStatus.Name, localStatus.Stage, localStatus.Status)
 	return nil
 }

@@ -92,7 +92,7 @@ func TestVolume(t *testing.T) {
 	// Now we should have enough space for this.
 	err = volume.Reserve(numBytes * 2)
 	if err != nil {
-		t.Error("Reserve rejected final reservation request: %v", err)
+		t.Errorf("Reserve rejected final reservation request: %v", err)
 	}
 
 }

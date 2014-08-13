@@ -460,7 +460,7 @@ func saveToStorage() {
 				messageLog.Error(errMsg)
 				result.ErrorMessage += errMsg
 			} else {
-				messageLog.Debug("Sent '%s' to metadata queue\n",
+				messageLog.Debug("Sent '%s' to metadata queue",
 					result.S3File.Key.Key)
 			}
 		}
@@ -515,7 +515,7 @@ func logResult() {
 		}
 
 		// Add some stats to the message log
-		messageLog.Info("** STATS ** Succeeded: %d, Failed: %d, Bytes Processed: %d\n",
+		messageLog.Info("**STATS** Succeeded: %d, Failed: %d, Bytes Processed: %d",
 			succeeded, failed, bytesProcessed)
 
 		// Tell Fluctus what happened

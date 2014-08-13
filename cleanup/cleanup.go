@@ -176,7 +176,7 @@ func logResult() {
 }
 
 func logStats() {
-	messageLog.Info("**STATS** Succeeded: %d, Failed: %d\n", succeeded, failed)
+	messageLog.Info("**STATS** Succeeded: %d, Failed: %d", succeeded, failed)
 }
 
 func doCleanUp() {

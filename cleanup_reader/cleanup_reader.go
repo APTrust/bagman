@@ -58,20 +58,20 @@ func initialize() (err error) {
 func run() {
 	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
 		config.CleanupTopic)
-	messageLog.Info("Sending files to clean up to %s \n", url)
+	messageLog.Info("Sending files to clean up to %s", url)
 
 	results, err := fluctusClient.GetReviewedItems()
 	if err != nil {
-		messageLog.Fatal("Error getting reviewed items: %v", err)
+		messageLog.Fatalf("Error getting reviewed items: %v", err)
 	}
 
-	messageLog.Info("Found %d items to clean up\n", len(results))
+	messageLog.Info("Found %d items to clean up", len(results))
 
 	start := 0
 	end := min(len(results), batchSize)
 	for start <= end {
 		batch := results[start:end]
-		messageLog.Info("Queuing batch of %d items\n", len(batch))
+		messageLog.Info("Queuing batch of %d items", len(batch))
 		enqueue(url, batch)
 		start = end + 1
 		if start < len(results) {

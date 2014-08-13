@@ -25,18 +25,21 @@ func main() {
 
 	bagDate, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-05-01T12:00:00.000Z")
 	status := &bagman.ProcessStatus{
-		0,
-		"sample_uva_bag.tar",
-		"aptrust.receiving.virginia.edu",
-		"9876543210",
-		bagDate,
-		"University of Virginia",
-		time.Now().UTC(),
-		"Note for test entry",
-		"Ingest",
-		"Record",
-		bagman.StatusSuccess,
-		bagman.StatusSuccess}
+		Id:          0,
+		Name:        "sample_uva_bag.tar",
+		Bucket:      "aptrust.receiving.virginia.edu",
+		ETag:        "9876543210",
+		BagDate:     bagDate,
+		Institution: "University of Virginia",
+		Date:        time.Now().UTC(),
+		Note:        "Note for test entry",
+		Action:      "Ingest",
+		Stage:       "Record",
+		Status:      bagman.StatusSuccess,
+		Outcome:     bagman.StatusSuccess,
+		Retry:       true,
+		Reviewed:    false,
+	}
 
 	remoteStatus, err := client.GetBagStatus(status.ETag, status.Name, status.BagDate)
 	if err != nil {

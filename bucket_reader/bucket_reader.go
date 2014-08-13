@@ -124,7 +124,9 @@ func filterLargeFiles(bucketSummaries []*bagman.BucketSummary) (s3Files []*bagma
 	for _, bucketSummary := range bucketSummaries {
 		for _, key := range bucketSummary.Keys {
 			if config.MaxFileSize == 0 || key.Size < config.MaxFileSize {
-				s3Files = append(s3Files, &bagman.S3File{bucketSummary.BucketName, key})
+				s3Files = append(s3Files, &bagman.S3File{
+					BucketName: bucketSummary.BucketName,
+					Key: key})
 			}
 		}
 	}
