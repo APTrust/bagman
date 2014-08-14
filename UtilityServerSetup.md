@@ -373,3 +373,54 @@ Session bag_processor:
 cd ~/go/src/github.com/APTrust/bagman/processor
 go run bag_processor.go -config=demo
 ```
+
+## Log Rotation
+
+The services that process bags keep logs in /mnt/apt/logs. These logs
+are rotated daily using logrotate and then backed up to S3.
+
+The logrotate configuration for the bag processing services is located
+at /etc/logrotate.d/aptrust, and contains the following:
+
+```
+#
+# Rotate bag processing logs daily, then copy them to S3.
+# We compress the rotated files     in the copy_log script
+# because logrotate won't do the compression until after
+# the postrotate script   runs.
+#
+/mnt/apt/logs/*.log /mnt/apt/logs/*.json {
+  rotate 10
+  daily
+  nocompress
+  dateext
+  missingok
+  notifempty
+  nosharedscripts
+  postrotate
+        /usr/local/bin/copy_log_to_s3.sh $1
+  endscript
+}
+```
+
+The postrotate script at /usr/local/bin/copy_log_to_s3.sh is actually
+a symlink to the copy_log_to_s3.sh script in this directory. You can
+create the symlink with this command:
+
+```
+sudo ln -s /home/ubuntu/go/src/github.com/APTrust/bagman/copy_log_to_s3.sh /usr/local/bin/copy_log_to_s3.sh
+```
+
+You can test the logrotate configuration with this command:
+
+```
+logrotate --debug --force /etc/logrotate.d/aptrust
+```
+
+Omit the debug flag if you don't like chatty output.
+
+### TODO
+
+* For log rotation, use logrotate's "copytrucate" instead of the Go
+  package github.com/mipearson/rfw, which calls stat every time it
+  writes.
