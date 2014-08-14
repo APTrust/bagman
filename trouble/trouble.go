@@ -20,6 +20,7 @@ var messageLog *logging.Logger
 func main() {
 
 	loadConfig()
+	messageLog.Info("Trouble started")
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
@@ -36,8 +37,6 @@ func main() {
 	handler := &RecordProcessor{}
 	consumer.SetHandler(handler)
 	consumer.ConnectToNSQLookupd(config.NsqLookupd)
-
-	messageLog.Info("Trouble has begun!")
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan

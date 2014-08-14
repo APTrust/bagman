@@ -83,6 +83,7 @@ var syncMap *bagman.SynchronizedMap
 func main() {
 
 	loadConfig()
+	messageLog.Info("Bag Processor started")
 	err := config.EnsureFluctusConfig()
 	if err != nil {
 		messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)

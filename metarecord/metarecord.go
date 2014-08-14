@@ -36,6 +36,7 @@ var fluctusClient *client.Client
 func main() {
 
 	loadConfig()
+	messageLog.Info("Metarecord started")
 	err := config.EnsureFluctusConfig()
 	if err != nil {
 		messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)

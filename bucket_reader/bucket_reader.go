@@ -49,6 +49,7 @@ func initialize() (err error) {
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
 	messageLog = bagman.InitLogger(config)
+	messageLog.Info("Bucket reader started")
 	fluctusClient, err = client.New(
 		config.FluctusURL,
 		config.FluctusAPIVersion,
