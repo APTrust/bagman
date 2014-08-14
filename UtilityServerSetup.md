@@ -21,14 +21,15 @@ packages.  Install those, along with libmagic-dev, which we need
 for determining file mime types. We'll need gcc to build the
 magicmime go package later.
 
-We also need mailutils so that cron jobs can send email, and
-alpine is handy for reading email:
+We also need mailutils so that cron jobs can send email, alpine is
+handy for reading email, and the AWS CLI is useful for automating tasks.
 
 ```
     sudo apt-get install git bzr mercurial
     sudo apt-get install gcc libmagic-dev
     sudo apt-get install mailutils
     sudo apt-get install alpine
+    sudo apt-get install awscli
 ```
 
 Install go, but don't use apt-get.
