@@ -1,5 +1,13 @@
 #!/bin/bash
 #
-# Copy rolled log files to S3.
+# Compress and copy rolled log files to S3.
+# First line loads AWS variables out of our bash profile,
+# so the AWS CLI tools can get our credentials.
 # ----------------------------------------------------------------------
-aws s3 cp --region=us-east-1 $1 s3://aptrust.s3.logs/bag_processing/
+. /home/ubuntu/.bash_profile
+DATE=`date +%Y%m%d`
+FILE=${1}-${DATE}
+gzip $FILE
+COMPRESSED_FILE=${FILE}.gz
+aws s3 cp --region=us-east-1 $COMPRESSED_FILE s3://aptrust.s3.logs/bag_processi\
+ng/
