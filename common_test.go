@@ -446,6 +446,25 @@ func TestGenericFilePaths(t *testing.T) {
 	}
 }
 
+func TestGetFileByPath(t *testing.T) {
+	filepath := filepath.Join("testdata", "result_good.json")
+	result, err := bagman.LoadResult(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	gf := result.TarResult.GetFileByPath("data/ORIGINAL/1")
+	if gf == nil {
+		t.Errorf("GetFileByPath() did not return expected file")
+	}
+	if gf.Path != "data/ORIGINAL/1" {
+		t.Errorf("GetFileByPath() returned the wrong file")
+	}
+	gf2 := result.TarResult.GetFileByPath("file/does/not/exist")
+	if gf2 != nil {
+		t.Errorf("GetFileByPath() returned a file when it shouldn't have")
+	}
+}
+
 func TestMetadataRecordSucceeded(t *testing.T) {
 	record := &bagman.MetadataRecord{
 		Type:         "PremisEvent",

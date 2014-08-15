@@ -3,6 +3,7 @@ package bagman
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/APTrust/bagman/fluctus/models"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -47,16 +48,30 @@ func LoadRelativeFile(relativePath string) ([]byte, error) {
 // Loads a result from the test data directory.
 // This is used primarily for tests.
 func LoadResult(filename string) (result *ProcessResult, err error) {
-	file, err := LoadRelativeFile(filename)
+	data, err := LoadRelativeFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	err = json.Unmarshal(file, &result)
+	err = json.Unmarshal(data, &result)
 	if err != nil {
 		return nil, err
 	}
 	return result, nil
 }
+
+func LoadIntelObjFixture(filename string) (*models.IntellectualObject, error) {
+	data, err := LoadRelativeFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	intelObj := &models.IntellectualObject{}
+	err = json.Unmarshal(data, intelObj)
+	if err != nil {
+		return nil, err
+	}
+	return intelObj, nil
+}
+
 
 type SynchronizedMap struct {
 	data  map[string]string

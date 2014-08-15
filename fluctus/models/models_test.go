@@ -3,6 +3,7 @@ package models_test
 import (
 	"encoding/json"
 	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/fluctus/models"
 	"path/filepath"
 	"testing"
 )
@@ -108,4 +109,78 @@ func TestSerializeForCreate(t *testing.T) {
 		t.Errorf("Expected 5 file events but found %d", len(events))
 	}
 
+}
+
+func TestGFBagName(t *testing.T) {
+	gf := models.GenericFile{}
+	gf.Identifier = "uc.edu/cin.675812/data/object.properties"
+	bagname, err := gf.BagName()
+	if err != nil {
+		t.Error(err)
+	}
+	if bagname != "cin.675812" {
+		t.Errorf("BagName returned '%s'; expected 'cin.675812'", bagname)
+	}
+}
+
+func TestGFInstitutionId(t *testing.T) {
+	gf := models.GenericFile{}
+	gf.Identifier = "uc.edu/cin.675812/data/object.properties"
+	instId, err := gf.InstitutionId()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if instId != "uc.edu" {
+		t.Errorf("BagName returned '%s'; expected 'uc.edu'", instId)
+	}
+}
+
+func TestGFOriginalPath(t *testing.T) {
+	gf := models.GenericFile{}
+	gf.Identifier = "uc.edu/cin.675812/data/object.properties"
+	origPath, err := gf.OriginalPath()
+	if err != nil {
+		t.Errorf(err.Error())
+	}
+	if origPath != "data/object.properties" {
+		t.Errorf("OriginalPath returned some kinda shizzle. Expected 'data/object.properties', got '%s'",
+			origPath)
+	}
+}
+
+
+func TestGFGetChecksum(t *testing.T) {
+	filename := filepath.Join("testdata", "intel_obj.json")
+	intelObj, err := bagman.LoadIntelObjFixture(filename)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filename, err)
+	}
+	if intelObj == nil {
+		return
+	}
+	gf := intelObj.GenericFiles[1]
+
+	// MD5
+	md5Checksum := gf.GetChecksum("md5")
+	if md5Checksum == nil {
+		t.Errorf("GetChecksum did not return md5 sum")
+	}
+	if md5Checksum.Digest != "c6d8080a39a0622f299750e13aa9c200" {
+		t.Errorf("GetChecksum did not return md5 sum")
+	}
+
+	// SHA256
+	sha256Checksum := gf.GetChecksum("sha256")
+	if sha256Checksum == nil {
+		t.Errorf("GetChecksum did not return sha256 sum")
+	}
+	if sha256Checksum.Digest != "a418d61067718141d7254d7376d5499369706e3ade27cb84c4d5519f7cfed790" {
+		t.Errorf("GetChecksum did not return sha256 sum")
+	}
+
+	// bogus checksum
+	bogusChecksum := gf.GetChecksum("bogus")
+	if bogusChecksum != nil {
+		t.Errorf("GetChecksum returned something it shouldn't have")
+	}
 }

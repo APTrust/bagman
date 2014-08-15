@@ -267,7 +267,7 @@ func saveFile(destination string, tarReader *tar.Reader) error {
 // then returns a struct with data we'll need to construct the
 // GenericFile object in Fedora later.
 func buildGenericFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (gf *GenericFile) {
-	gf = &GenericFile{}
+	gf = NewGenericFile()
 	gf.Path = fileName[strings.Index(fileName, "/data/")+1 : len(fileName)]
 	absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
 	if err != nil {

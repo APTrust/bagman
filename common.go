@@ -396,7 +396,25 @@ type GenericFile struct {
 	// "." + bag name.
 	Identifier         string
 	IdentifierAssigned time.Time
+
+	// If true, some version of this file already exists in the S3
+	// preservation bucket and its metadata is in Fedora.
+	ExistingFile bool
+
+	// If true, this file needs to be saved to the S3 preservation
+	// bucket, and its metadata and events must be saved to Fedora.
+	// This will be true if the file is new, or if its an existing
+	// file whose contents have changed since it was last ingested.
+	NeedsSave bool
 }
+
+func NewGenericFile() (*GenericFile) {
+	return &GenericFile{
+		ExistingFile: false,
+		NeedsSave: true,
+	}
+}
+
 
 // Converts bagman.GenericFile to models.GenericFile, which is what
 // Fluctus understands.
@@ -449,6 +467,38 @@ func (result *TarResult) GenericFilePaths() []string {
 		paths[index] = gf.Path
 	}
 	return paths
+}
+
+// Returns the GenericFile with the specified path, if it exists.
+func (result *TarResult) GetFileByPath(filePath string) (*GenericFile) {
+	for index, gf := range result.GenericFiles {
+		if gf.Path == filePath {
+			// Be sure to return to original, and not a copy!
+			return result.GenericFiles[index]
+		}
+	}
+	return nil
+}
+
+// MergeExistingFiles merges data from generic files that
+// already exist in Fedora. This is necessary when an existing
+// bag is reprocessed or re-uploaded.
+func (result *TarResult) MergeExistingFiles(gfModels []*models.GenericFile) {
+	for _, gfModel := range gfModels {
+		origPath, _ := gfModel.OriginalPath()
+		gf := result.GetFileByPath(origPath)
+		if gf != nil {
+			gf.ExistingFile = true
+			// Files have the same path and name. If the checksum
+			// has not changed, there is no reason to re-upload
+			// this file to the preservation bucket, nor is there
+			// any reason to create new ingest events in Fedora.
+			existingMd5 := gfModel.GetChecksum("md5")
+			if gf.Md5 == existingMd5.Digest {
+				gf.NeedsSave = false
+			}
+		}
+	}
 }
 
 // Returns true if any generic files were successfully copied
