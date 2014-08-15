@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/diamondap/goamz/s3"
 	"io/ioutil"
 	"path/filepath"
@@ -700,6 +701,100 @@ func TestDeleteAttemptedAndSucceeded(t *testing.T) {
 		if file.DeleteAttempted() == true {
 			t.Error("file.DeleteAttempted() should have returned false")
 		}
+	}
+
+}
+
+func buildGfModels() ([]*models.GenericFile) {
+	// Changed file
+	md5_1 := &models.ChecksumAttribute{
+		Algorithm: "md5",
+		DateTime: time.Now(),
+		Digest: "TestMd5Digest",
+	}
+	sha256_1 := &models.ChecksumAttribute{
+		Algorithm: "sha256",
+		DateTime: time.Now(),
+		Digest: "TestSha256Digest",
+	}
+	checksums1 := make([]*models.ChecksumAttribute, 2)
+	checksums1[0] = md5_1
+	checksums1[1] = sha256_1
+	gfModel1 := &models.GenericFile{
+		Identifier: "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml",
+		ChecksumAttributes: checksums1,
+	}
+
+	// Existing file, unchanged
+	md5_2 := &models.ChecksumAttribute{
+		Algorithm: "md5",
+		DateTime: time.Now(),
+		Digest: "a340203a24dcd6f6ca2bc95a4956c65d",
+	}
+	sha256_2 := &models.ChecksumAttribute{
+		Algorithm: "sha256",
+		DateTime: time.Now(),
+		Digest: "54536211e3ad308e8509091a1db393cbcc7fadd4a9b7f434bec8097d149a2039",
+	}
+	checksums2 := make([]*models.ChecksumAttribute, 2)
+	checksums2[0] = md5_2
+	checksums2[1] = sha256_2
+	gfModel2 := &models.GenericFile{
+		Identifier: "ncsu.edu/ncsu.1840.16-2928/data/object.properties",
+		ChecksumAttributes: checksums2,
+	}
+
+	gfModels := make([]*models.GenericFile, 2)
+	gfModels[0] = gfModel1
+	gfModels[1] = gfModel2
+	return gfModels
+}
+
+func TestMergeExistingFiles(t *testing.T) {
+	filepath := filepath.Join("testdata", "result_good.json")
+	result, err := bagman.LoadResult(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	gfModels := buildGfModels()
+	result.TarResult.MergeExistingFiles(gfModels)
+
+	// Existing and changed.
+	// File "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml"
+	gf := result.TarResult.GenericFiles[0]
+	if gf.ExistingFile == false {
+		t.Errorf("GenericFile should have been marked as an existing file")
+	}
+	if gf.NeedsSave == false {
+		t.Errorf("GenericFile should have been marked as needing to be saved")
+	}
+
+	// Existing but unchanged.
+	// File "ncsu.edu/ncsu.1840.16-2928/data/object.properties"
+	gf = result.TarResult.GenericFiles[1]
+	if gf.ExistingFile == false {
+		t.Errorf("GenericFile should have been marked as an existing file")
+	}
+	if gf.NeedsSave == true {
+		t.Errorf("GenericFile should have been marked as NOT needing to be saved")
+	}
+
+	// New file "data/ORIGINAL/1"
+	gf = result.TarResult.GenericFiles[2]
+	if gf.ExistingFile == true {
+		t.Errorf("GenericFile NOT should have been marked as an existing file")
+	}
+	if gf.NeedsSave == false {
+		t.Errorf("GenericFile should have been marked as needing to be saved")
+	}
+
+	// New file "data/ORIGINAL/1-metadata.xml"
+	gf = result.TarResult.GenericFiles[3]
+	if gf.ExistingFile == true {
+		t.Errorf("GenericFile NOT should have been marked as an existing file")
+	}
+	if gf.NeedsSave == false {
+		t.Errorf("GenericFile should have been marked as needing to be saved")
 	}
 
 }
