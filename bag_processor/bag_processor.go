@@ -466,20 +466,25 @@ func saveToStorage() {
 			}
 		}
 
-		// If some but not all files were copied to preservation, add an
-		// entry to the trouble queue. We should review the items that
-		// were copied and decide whether to delete them.
-		if result.TarResult.AnyFilesCopiedToPreservation() == true &&
-			result.TarResult.AllFilesCopiedToPreservation() == false {
+		// Pass problem cases off to the trouble queue
+		copyToS3Incomplete := (result.TarResult.AnyFilesCopiedToPreservation() == true &&
+			result.TarResult.AllFilesCopiedToPreservation() == false)
+		failedAndNoMoreRetries := (result.ErrorMessage != "" &&
+			result.NsqMessage.Attempts >= uint16(config.MaxBagAttempts))
+		if copyToS3Incomplete || failedAndNoMoreRetries {
 			err := bagman.Enqueue(config.NsqdHttpAddress, config.TroubleTopic, result)
 			if err != nil {
 				messageLog.Error("Could not send '%s' to trouble queue: %v\n",
 					result.S3File.Key.Key, err)
 			} else {
-				messageLog.Warning("Sent '%s' to trouble queue because some but not "+
-					"all generic files were copied to preservation bucket\n", result.S3File.Key.Key)
+				reason := "Processing failed and we reached the maximum number of retries."
+				if copyToS3Incomplete {
+					reason = "Some files could not be copied to S3."
+				}
+				result.ErrorMessage += fmt.Sprintf("%s This item has been queued for administrative review.",
+					reason)
+				messageLog.Warning("Sent '%s' to trouble queue: %s", result.S3File.Key.Key, reason)
 			}
-
 		}
 
 		// Record the results.
