@@ -315,7 +315,7 @@ func buildGenericFile(tarReader *tar.Reader, tarDirectory string, fileName strin
 
 	gf.MimeType = "application/binary"
 	mimetype, _ := magicMime.TypeByFile(absPath)
-	if gf.MimeType != "" {
+	if mimetype != "" {
 		gf.MimeType = mimetype
 	}
 
