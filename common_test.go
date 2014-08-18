@@ -798,3 +798,21 @@ func TestMergeExistingFiles(t *testing.T) {
 	}
 
 }
+
+
+func TestAnyFilesNeedSaving(t *testing.T) {
+	filepath := filepath.Join("testdata", "result_good.json")
+	result, err := bagman.LoadResult(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	if result.TarResult.AnyFilesNeedSaving() == false {
+		t.Errorf("AnyFilesNeedSaving should have returned true.")
+	}
+	for i := range result.TarResult.GenericFiles {
+		result.TarResult.GenericFiles[i].NeedsSave = false
+	}
+	if result.TarResult.AnyFilesNeedSaving() == true {
+		t.Errorf("AnyFilesNeedSaving should have returned false.")
+	}
+}

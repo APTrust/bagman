@@ -458,6 +458,16 @@ type TarResult struct {
 	GenericFiles  []*GenericFile
 }
 
+// Returns true if any of the untarred files are new or updated.
+func (result *TarResult) AnyFilesNeedSaving() (bool) {
+	for _, gf := range result.GenericFiles {
+		if gf.NeedsSave == true {
+			return true
+		}
+	}
+	return false
+}
+
 // GenericFilePaths returns a list of all the GenericFile paths
 // that were untarred from the bag. The list will look something
 // like "data/file1.gif", "data/file2.pdf", etc.
