@@ -526,7 +526,7 @@ func (result *TarResult) AnyFilesCopiedToPreservation() bool {
 // to S3 long term storage.
 func (result *TarResult) AllFilesCopiedToPreservation() bool {
 	for _, gf := range result.GenericFiles {
-		if gf.StorageURL == "" {
+		if gf.NeedsSave && gf.StorageURL == "" {
 			return false
 		}
 	}

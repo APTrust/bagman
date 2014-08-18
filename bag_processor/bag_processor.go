@@ -358,13 +358,36 @@ func doUnpack() {
 // the state of all of the files.
 func saveToStorage() {
 	for result := range channels.StorageChannel {
+		result.Stage = "Store"
+		// See what Fedora knows about this object's files.
+		// If none are new/changed, there's no need to save.
+		err := mergeFedoraRecord(result)
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf("%v ", err)
+			channels.ResultsChannel <- result
+			continue
+		}
+		if result.TarResult.AnyFilesNeedSaving() == false {
+			messageLog.Info("Nothing to save to S3 for %s: " +
+				"files have not changed since they were last saved",
+				result.S3File.Key.Key)
+			channels.ResultsChannel <- result
+			continue
+		}
+
+		// TODO: Way too much code here for a single function!
+		// Break it up!
 		messageLog.Info("Storing %s", result.S3File.Key.Key)
 		result.NsqMessage.Touch()
-		result.Stage = "Store"
 		re := regexp.MustCompile("\\.tar$")
 		// Copy each generic file to S3
 		for i := range result.TarResult.GenericFiles {
 			gf := result.TarResult.GenericFiles[i]
+			if gf.NeedsSave == false {
+				messageLog.Info("Not saving %s to S3, because it has not " +
+					"changed since it was last saved.", gf.Identifier)
+				continue
+			}
 			bagDir := re.ReplaceAllString(result.S3File.Key.Key, "")
 			file := filepath.Join(
 				config.TarDirectory,
@@ -633,4 +656,27 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 			}
 		}
 	}
+}
+
+// Our result object contains information about the bag we just unpacked.
+// Fedora may have information about a previous version of this bag, or
+// about the same version of the same bag from an earlier round of processing.
+// This function merges data from Fedora into our result, so we can know
+// whether any of the generic files have been updated.
+func mergeFedoraRecord(result *bagman.ProcessResult) (error) {
+	intelObj, err := result.IntellectualObject()
+	if err != nil {
+		return err
+	}
+	fedoraObj, err := fluctusClient.IntellectualObjectGet(intelObj.Identifier, true)
+	if err != nil {
+		detailedError := fmt.Errorf(
+			"[ERROR] Error checking Fluctus for existing IntellectualObject '%s': %v",
+			intelObj.Identifier, err)
+		return detailedError
+	}
+	if fedoraObj != nil {
+		result.TarResult.MergeExistingFiles(fedoraObj.GenericFiles)
+	}
+	return nil
 }

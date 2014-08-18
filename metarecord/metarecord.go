@@ -145,22 +145,29 @@ func recordInFedora() {
 			result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		result.Stage = "Record"
-		err := recordAllFedoraData(result)
-		if err != nil {
-			result.ErrorMessage += fmt.Sprintf(" %s", err.Error())
-		}
-		if result.FedoraResult.AllRecordsSucceeded() == false {
-			result.ErrorMessage += " When recording IntellectualObject, GenericFiles and " +
-				"PremisEvents, one or more calls to Fluctus failed."
-		}
-		if result.ErrorMessage == "" {
-			messageLog.Info("Successfully recorded Fedora metadata for %s",
-				result.S3File.Key.Key)
+		// Save to Fedora only if there are new or updated items in this bag.
+		// TODO: What if some items were deleted?
+		if result.TarResult.AnyFilesNeedSaving() {
+			err := recordAllFedoraData(result)
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf(" %s", err.Error())
+			}
+			if result.FedoraResult.AllRecordsSucceeded() == false {
+				result.ErrorMessage += " When recording IntellectualObject, GenericFiles and " +
+					"PremisEvents, one or more calls to Fluctus failed."
+			}
+			if result.ErrorMessage == "" {
+				messageLog.Info("Successfully recorded Fedora metadata for %s",
+					result.S3File.Key.Key)
+			} else {
+				// If any errors in occur while talking to Fluctus,
+				// we'll want to requeue and try again. Just leave
+				// the result.Retry flag alone, and that will happen.
+				messageLog.Error(result.ErrorMessage)
+			}
 		} else {
-			// If any errors in occur while talking to Fluctus,
-			// we'll want to requeue and try again. Just leave
-			// the result.Retry flag alone, and that will happen.
-			messageLog.Error(result.ErrorMessage)
+			messageLog.Info("Nothing to update for %s: no items changed since last ingest.",
+				result.S3File.Key.Key)
 		}
 		channels.ResultsChannel <- result
 	}
@@ -248,7 +255,7 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 		intellectualObject.Identifier,
 		result.TarResult.GenericFilePaths())
 	existingObj, err := fluctusClient.IntellectualObjectGet(
-		intellectualObject.Identifier, false)
+		intellectualObject.Identifier, true)
 	if err != nil {
 		result.FedoraResult.ErrorMessage = fmt.Sprintf(
 			"[ERROR] Error checking Fluctus for existing IntellectualObject '%s': %v",
@@ -257,39 +264,25 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 	}
 	if existingObj != nil {
 		result.FedoraResult.IsNewObject = false
-		fedoraUpdateIntellectualObject(result, intellectualObject)
-		for i := range result.TarResult.GenericFiles {
-			genericFile := result.TarResult.GenericFiles[i]
-			// -------------------------------------------------------------------------
-			// TEMP - For debugging a specific error
-			// -------------------------------------------------------------------------
-			if genericFile.MimeType == "" {
-				messageLog.Warning("Generic file %s of object %s has no mime type",
-					genericFile.Path, intellectualObject.Identifier)
+		result.TarResult.MergeExistingFiles(existingObj.GenericFiles)
+		if result.TarResult.AnyFilesNeedSaving() {
+			fedoraUpdateIntellectualObject(result, intellectualObject)
+			for i := range result.TarResult.GenericFiles {
+				genericFile := result.TarResult.GenericFiles[i]
+				// Save generic file data to Fedora only if the file is new or changed.
+				if genericFile.NeedsSave {
+					fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
+				} else {
+					messageLog.Debug("Nothing to do for %s: no change since last ingest",
+						genericFile.Identifier)
+				}
 			}
-			// -------------------------------------------------------------------------
-			// END OF TEMP CODE
-			// -------------------------------------------------------------------------
-
-			fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
+		} else {
+			messageLog.Debug("Not saving object, files or events for %s: no change since last ingest",
+				existingObj.Identifier)
 		}
 	} else {
 		result.FedoraResult.IsNewObject = true
-
-		// -------------------------------------------------------------------------
-		// TEMP - For debugging a specific error
-		// -------------------------------------------------------------------------
-		for i := range result.TarResult.GenericFiles {
-			genericFile := result.TarResult.GenericFiles[i]
-			if genericFile.MimeType == "" {
-				messageLog.Warning("[WARN] Generic file %s of object %s has no mime type",
-					genericFile.Path, intellectualObject.Identifier)
-			}
-		}
-		// -------------------------------------------------------------------------
-		// END OF TEMP CODE
-		// -------------------------------------------------------------------------
-
 		newObj, err := fluctusClient.IntellectualObjectCreate(intellectualObject)
 		if err != nil {
 			result.FedoraResult.ErrorMessage = fmt.Sprintf(
