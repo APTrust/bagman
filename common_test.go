@@ -282,11 +282,13 @@ func TestGenericFiles(t *testing.T) {
 	}
 
 	// Look more closely at one GenericFile
+	// A normal generic file URI would end with a UUID, but this
+	// is an actual file in a fixture bucket used for testing.
 	gf1 := genericFiles[0]
-	if gf1.URI != "https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc" {
+	if gf1.URI != "https://s3.amazonaws.com/aptrust.test.fixtures/ncsu_files/data/metadata.xml" {
 		t.Errorf("GenericFile.URI is '%s', expected '%s'",
 			gf1.URI,
-			"https://s3.amazonaws.com/aptrust.storage/b21fdb34-1f79-4101-62c5-56918f4782fc")
+			"https://s3.amazonaws.com/aptrust.test.fixtures/ncsu_files/data/metadata.xml")
 	}
 	if gf1.Size != 5105 {
 		t.Errorf("GenericFile.Size is %d, expected %d", gf1.Size, 5105)
