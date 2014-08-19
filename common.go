@@ -12,9 +12,12 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
+
+var MultipartSuffix = regexp.MustCompile("\\.b\\d+\\.of\\d+$")
 
 const (
 	APTrustNamespace    = "urn:mace:aptrust.org"
@@ -31,6 +34,21 @@ const (
 type S3File struct {
 	BucketName string
 	Key        s3.Key
+}
+
+// Returns the object identifier that will identify this bag
+// in fedora. That's the institution identifier, followed by
+// a slash and the tar file name, minus the .tar extension
+// and the ".bag1of12" multipart extension. So for BucketName
+// "aptrust.receiving.unc.edu" and Key.Key "nc_bag.001.of030.tar",
+// this would return "unc.edu/nc_bag"
+func (s3File *S3File) ObjectName() (string, error) {
+	institution := OwnerOf(s3File.BucketName)
+	cleanBagName, err := CleanBagName(s3File.Key.Key)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s/%s", institution, cleanBagName), nil
 }
 
 // Status enumerations match values defined in
@@ -169,11 +187,10 @@ func (result *ProcessResult) IntellectualObject() (obj *models.IntellectualObjec
 	institution := &models.Institution{
 		BriefName: OwnerOf(result.S3File.BucketName),
 	}
-	// For now, object identifier is institution domain, plus the name
-	// of the tar file, with ".tar" truncated.
-	identifier := fmt.Sprintf("%s/%s",
-		institution.BriefName,
-		result.S3File.Key.Key[0:len(result.S3File.Key.Key)-4])
+	identifier, err := result.S3File.ObjectName()
+	if err != nil {
+		return nil, err
+	}
 	files, err := result.GenericFiles()
 	if err != nil {
 		return nil, err
@@ -602,6 +619,19 @@ func ReceivingBucketFor(institution string) (bucketName string) {
 // E.g. institution 'unc.edu' returns bucketName 'aptrust.restore.unc.edu'
 func RestorationBucketFor(institution string) (bucketName string) {
 	return RestoreBucketPrefix + institution
+}
+
+// Given the name of a tar file, returns the clean bag name. That's
+// the tar file name minus the tar extension and any ".bagN.ofN" suffix.
+func CleanBagName(bagName string) (string, error) {
+	if len(bagName) < 5 {
+		return "", fmt.Errorf("'%s' is not a valid tar file name", bagName)
+	}
+	// Strip the .tar suffix
+	nameWithoutTar := bagName[0:len(bagName)-4]
+	// Now get rid of the .b001.of200 suffix if this is a multi-part bag.
+	cleanName := MultipartSuffix.ReplaceAll([]byte(nameWithoutTar), []byte(""))
+	return string(cleanName), nil
 }
 
 // MetadataRecord describes the result of an attempt to record metadata

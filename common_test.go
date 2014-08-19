@@ -217,6 +217,18 @@ func TestIntellectualObject(t *testing.T) {
 			obj.Access,
 			"consortia")
 	}
+
+	// Special test for Identifier
+	result.S3File.Key.Key = "ncsu.1840.16-2928-blah.b12.of79.tar"
+	obj, err = result.IntellectualObject()
+	if err != nil {
+		t.Errorf("Error creating intellectual object from result: %v", err)
+	}
+	if obj.Identifier != "ncsu.edu/ncsu.1840.16-2928-blah" {
+		t.Errorf("IntellectualObject.Identifier is '%s', expected '%s'.",
+			obj.Identifier,
+			"ncsu.edu.ncsu.1840.16-2928-blah")
+	}
 }
 
 func TestGenericFiles(t *testing.T) {
@@ -814,5 +826,43 @@ func TestAnyFilesNeedSaving(t *testing.T) {
 	}
 	if result.TarResult.AnyFilesNeedSaving() == true {
 		t.Errorf("AnyFilesNeedSaving should have returned false.")
+	}
+}
+
+func TestCleanBagName(t *testing.T) {
+	expected := "some.file"
+	actual, _ := bagman.CleanBagName("some.file.b001.of200.tar")
+	if actual != expected {
+		t.Error("CleanBagName should have returned '%s', but returned '%s'",
+			expected, actual)
+	}
+	actual, _ = bagman.CleanBagName("some.file.b1.of2.tar")
+	if actual != expected {
+		t.Error("CleanBagName should have returned '%s', but returned '%s'",
+			expected, actual)
+	}
+}
+
+func TestS3ObjectName(t *testing.T) {
+	s3File := bagman.S3File {
+		BucketName: "aptrust.receiving.virginia.edu",
+		Key: s3.Key {
+			Key: "some.file.b001.of200.tar",
+		},
+	}
+	expected := "virginia.edu/some.file"
+	actual, err := s3File.ObjectName()
+	if err != nil {
+		t.Error("S3File.ObjectName() returned error %v", err)
+	}
+	if actual != expected {
+		t.Error("S3File.ObjectName() should have returned '%s', but returned '%s'",
+			expected, actual)
+	}
+	s3File.Key.Key = "some.file.b1.of2.tar"
+	actual, _ = s3File.ObjectName()
+	if actual != expected {
+		t.Error("S3File.ObjectName() should have returned '%s', but returned '%s'",
+			expected, actual)
 	}
 }
