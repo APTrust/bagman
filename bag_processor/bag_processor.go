@@ -225,6 +225,9 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Don't start working on a message that we're already working on.
+	// Note that the key we include in the syncMap includes multipart
+	// bag endings, so we can be working on ncsu.edu/obj.b1of2.tar and
+	// ncsu.edu/obj.b2of2.tar at the same time. This is what we want.
 	key := fmt.Sprintf("%s/%s", bagman.OwnerOf(s3File.BucketName), s3File.Key.Key)
 	messageId := make([]byte, nsq.MsgIDLength)
 	for i := range messageId {
