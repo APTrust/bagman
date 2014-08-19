@@ -25,6 +25,9 @@ _testmain.go
 # Emacs detritus
 *~
 
+# Mac Crap
+.DS_Store
+
 # Test data that might have been untarred and not cleaned up
 testdata/sample_bad_checksums/
 testdata/sample_good/
