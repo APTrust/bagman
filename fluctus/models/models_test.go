@@ -184,3 +184,14 @@ func TestGFGetChecksum(t *testing.T) {
 		t.Errorf("GetChecksum returned something it shouldn't have")
 	}
 }
+
+func TestTotalFileSize(t *testing.T) {
+	filepath := filepath.Join("testdata", "intel_obj.json")
+	obj, err := bagman.LoadIntelObjFixture(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	if obj.TotalFileSize() != 686 {
+		t.Errorf("TotalFileSize() returned '%d', expected 686", obj.TotalFileSize())
+	}
+}

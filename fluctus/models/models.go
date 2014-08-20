@@ -121,6 +121,18 @@ type IntellectualObject struct {
 	Events        []*PremisEvent `json:"events"`
 }
 
+// Returns the total number of bytes of all of the generic
+// files in this object. The object's bag size will be slightly
+// larger than this, because it will include a manifest, tag
+// files and tar header.
+func (obj *IntellectualObject) TotalFileSize() (int64) {
+	total := int64(0)
+	for _, gf := range obj.GenericFiles {
+		total += gf.Size
+	}
+	return total
+}
+
 // AccessValid returns true or false to indicate whether the
 // structure's Access property contains a valid value.
 func (obj *IntellectualObject) AccessValid() bool {
