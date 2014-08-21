@@ -1,11 +1,13 @@
 package bagman
 
 import (
+	"archive/tar"
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/diamondap/goamz/aws"
 	"github.com/op/go-logging"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -296,11 +298,72 @@ func (restorer *BagRestorer) Cleanup() {
 // plus a suffix like .b001.of125, if necessary. Param setNumber is the
 // index of the fileset whose files should go into the bag.
 func (restorer *BagRestorer) bagName(setNumber int) (string) {
-	instPrefix := fmt.Sprintf("%s/", restorer.IntellectualObject.InstitutionId)
-	bagName := strings.Replace(restorer.IntellectualObject.Identifier, instPrefix, "", 1)
+	//instPrefix := fmt.Sprintf("%s/", restorer.IntellectualObject.InstitutionId)
+	//bagName := strings.Replace(restorer.IntellectualObject.Identifier, instPrefix, "", 1)
+	bagName := restorer.IntellectualObject.Identifier
 	if len(restorer.fileSets) > 1 {
 		partNumber := setNumber + 1
 		return fmt.Sprintf("%s.b%04d.of%04d", bagName, partNumber, len(restorer.fileSets))
 	}
 	return bagName
+}
+
+// Tars the bag specified by bagNumber, which is zero-based.
+// Returns the path to the tar file it just created.
+//
+// Restore() returns a slice of strings, each of which is the
+// path to a bag. To tar all the bags, you'd do this:
+//
+// paths, _ := restorer.Restore()
+// for i := range paths {
+//    pathToTarFile, _ := restorer.TarBag(i)
+// }
+func (restorer *BagRestorer) TarBag(bagNumber int) (string, error) {
+	bagName := restorer.bagName(bagNumber)
+	tarFileName := fmt.Sprintf("%s.tar", bagName)
+	tarFilePath := filepath.Join(restorer.workingDir, tarFileName)
+	tarFile, err := os.Create(tarFilePath)
+	if err != nil {
+		return "", fmt.Errorf("Error creating tar file: %v", err)
+	}
+	tarWriter := tar.NewWriter(tarFile)
+	for _, gf := range restorer.fileSets[bagNumber].Files {
+		gfPath, _ := gf.OriginalPath()
+		filePath := filepath.Join(restorer.workingDir, bagName, gfPath)
+		fmt.Println(filePath)
+		finfo, err := os.Stat(filePath)
+		if err != nil {
+			tarFile.Close()
+			os.Remove(tarFilePath)
+			return "", err
+		}
+		header := &tar.Header{
+			Name: gfPath,
+			Size: finfo.Size(),
+			//Mode: finfo.Mode(),
+			ModTime: finfo.ModTime(),
+		}
+		if err := tarWriter.WriteHeader(header); err != nil {
+			tarFile.Close()
+			os.Remove(tarFilePath)
+			return "", err
+		}
+		data, err := ioutil.ReadFile(filePath)
+		if err != nil {
+			tarFile.Close()
+			os.Remove(tarFilePath)
+			return "", err
+		}
+		if _, err := tarWriter.Write(data); err != nil {
+			tarFile.Close()
+			os.Remove(tarFilePath)
+			return "", err
+		}
+	}
+	if err := tarWriter.Close(); err != nil {
+		tarFile.Close()
+		os.Remove(tarFilePath)
+		return "", err
+	}
+	return tarFilePath, nil
 }

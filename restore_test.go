@@ -210,3 +210,29 @@ func TestRestoreMultipart(t *testing.T) {
 	}
 
 }
+
+func TestTarBag (t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("restore_test.go")
+		return
+	}
+
+	// Make sure we clean up after ourselves
+	//outputDir := filepath.Join("testdata", "tmp")
+	//defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
+
+	restorer, bagPaths, err := restoreBag(true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	for i := range bagPaths {
+		tarFilePath, err := restorer.TarBag(i)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		fmt.Println(tarFilePath)
+	}
+}
