@@ -25,7 +25,7 @@ func TestRestore(t *testing.T) {
 	outputDir := filepath.Join("testdata", "tmp")
 	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
 
-	_, bagPaths, err := restoreBag()
+	_, bagPaths, err := restoreBag(false)
 	if err != nil {
 		t.Error(err)
 		return
@@ -63,7 +63,7 @@ func TestRestore(t *testing.T) {
 	}
 }
 
-func restoreBag() (*bagman.BagRestorer, []string, error){
+func restoreBag(multipart bool) (*bagman.BagRestorer, []string, error){
 	testfile := filepath.Join("testdata", "intel_obj.json")
 	obj, err := bagman.LoadIntelObjFixture(testfile)
 	if err != nil {
@@ -76,6 +76,14 @@ func restoreBag() (*bagman.BagRestorer, []string, error){
 	if err != nil {
 		detailedErr := fmt.Errorf("NewBagRestorer() returned an error: %v", err)
 		return nil, nil, detailedErr
+	}
+
+	if multipart == true {
+		// Set the bag size to something very small,
+		// so the restorer will be forced to restore
+		// the object as more than one bag.
+		restorer.SetBagSizeLimit(50) // 50 bytes
+		restorer.SetBagPadding(0)    //  0 bytes
 	}
 
 	bagPaths, err := restorer.Restore()
@@ -109,7 +117,6 @@ func md5Digest (filePath string) (string, error) {
 }
 
 func TestCleanup(t *testing.T) {
-	// TODO: Fix other test file where we clobber filepath.
 	if !awsEnvAvailable() {
 		printSkipMessage("restore_test.go")
 		return
@@ -119,7 +126,7 @@ func TestCleanup(t *testing.T) {
 	outputDir := filepath.Join("testdata", "tmp")
 	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
 
-	restorer, bagPaths, err := restoreBag()
+	restorer, bagPaths, err := restoreBag(false)
 	if err != nil {
 		t.Error(err)
 		return
@@ -132,6 +139,72 @@ func TestCleanup(t *testing.T) {
 
 	restorer.Cleanup()
 	_, err = os.Stat(bagPaths[0])
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not clean up the bag at %s", bagPaths[0])
+	}
+
+}
+
+
+func TestRestoreMultipart(t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("restore_test.go")
+		return
+	}
+
+	// Make sure we clean up after ourselves
+	outputDir := filepath.Join("testdata", "tmp")
+	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
+
+	restorer, bagPaths, err := restoreBag(true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if len(bagPaths) != 2 {
+		t.Errorf("Restore() should have produced 2 bags but produced %d", len(bagPaths))
+		return
+	}
+
+	// Check existence of both bags before calling cleanup.
+	// First bag should have just the object.properties file.
+	_, err = os.Stat(bagPaths[0])
+	if err != nil && os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not created the expected bag at %s", bagPaths[0])
+	}
+	fileName := filepath.Join(bagPaths[0], "data", "object.properties")
+	_, err = os.Stat(fileName)
+	if err != nil && os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not created the expected file at %s", fileName)
+	}
+	// Make sure manifest-md5.txt is correct
+	expectedManifest := "8d7b0e3a24fc899b1d92a73537401805 data/object.properties\n"
+	verifyFileContent(t, bagPaths[0], "manifest-md5.txt", expectedManifest)
+
+
+	// Second bag should have just the metadata.xml file
+	_, err = os.Stat(bagPaths[1])
+	if err != nil && os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not created the expected bag at %s", bagPaths[1])
+	}
+	fileName = filepath.Join(bagPaths[1], "data", "metadata.xml")
+	_, err = os.Stat(fileName)
+	if err != nil && os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not created the expected file at %s", fileName)
+	}
+	// Make sure manifest-md5.txt is correct
+	expectedManifest = "c6d8080a39a0622f299750e13aa9c200 data/metadata.xml\n"
+	verifyFileContent(t, bagPaths[1], "manifest-md5.txt", expectedManifest)
+
+
+	// Make sure Cleanup() cleans up both bags
+	restorer.Cleanup()
+	_, err = os.Stat(bagPaths[0])
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not clean up the bag at %s", bagPaths[0])
+	}
+	_, err = os.Stat(bagPaths[1])
 	if err == nil || !os.IsNotExist(err) {
 		t.Errorf("Bag restorer did not clean up the bag at %s", bagPaths[0])
 	}

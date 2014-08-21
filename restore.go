@@ -12,16 +12,12 @@ import (
 )
 
 const (
-	// BagSizeLimit is 250GB.
-	BagSizeLimit = int64(268435456000)
+	// DefaultBagSizeLimit is 250GB.
+	DefaultBagSizeLimit = int64(268435456000)
 
 	// Allox approx 1MB padding for tag files,
 	// manifest, and tar file headers.
-	BagPadding   = int64(1000000)
-
-	// The max number of bytes files can occupy
-	// in a bag.
-	FileSetSizeLimit = BagSizeLimit - BagPadding
+	DefaultBagPadding   = int64(1000000)
 
 	S3UriPrefix = "https://s3.amazonaws.com/"
 )
@@ -52,6 +48,8 @@ type BagRestorer struct {
 	fileSets           []*FileSet
 	bags               []*bagins.Bag
 	logger             *logging.Logger
+	bagSizeLimit       int64
+	bagPadding         int64
 }
 
 // Creates a new bag restorer from the intellectual object.
@@ -74,6 +72,8 @@ func NewBagRestorer(intelObj *models.IntellectualObject, workingDir string) (*Ba
 		IntellectualObject: intelObj,
 		s3Client: s3Client,
 		workingDir: absWorkingDir,
+		bagSizeLimit: DefaultBagSizeLimit,
+		bagPadding: DefaultBagPadding,
 	}
 	return &restorer, nil
 }
@@ -84,11 +84,39 @@ func (restorer *BagRestorer) SetLogger(logger *logging.Logger) {
 	restorer.logger = logger
 }
 
+// Prints debug messages to the log
 func (restorer *BagRestorer) debug (message string) {
 	if restorer.logger != nil {
 		restorer.logger.Debug(message)
 	}
 }
+
+// Sets the size limit for a bag. Default is 250GB. This is used
+// primarily for testing.
+func (restorer *BagRestorer) SetBagSizeLimit(limit int64) {
+	restorer.bagSizeLimit = limit
+}
+
+func (restorer *BagRestorer) GetBagSizeLimit() (int64) {
+	return restorer.bagSizeLimit
+}
+
+// Set the padding for the bag. This is the amount of space you
+// think tag files, manifests and tar file headers may occupy.
+func (restorer *BagRestorer) SetBagPadding(limit int64) {
+	restorer.bagPadding = limit
+}
+
+func (restorer *BagRestorer) GetBagPadding() (int64) {
+	return restorer.bagPadding
+}
+
+// Returns the total number of bytes the files in the data directory
+// may occupy for this bag, which is calculated as bagSizeLimit - bagPadding.
+func (restorer *BagRestorer) GetFileSetSizeLimit() (int64) {
+	return restorer.bagSizeLimit - restorer.bagPadding
+}
+
 
 // Fills restorer.fileSets with lists of files that can be packaged
 // into individual bags.
@@ -96,7 +124,7 @@ func (restorer *BagRestorer) buildFileSets() {
 	bytesInSet := int64(0)
 	fileSet := &FileSet{}
 	for _, gf := range restorer.IntellectualObject.GenericFiles {
-		if bytesInSet + gf.Size > FileSetSizeLimit {
+		if len(fileSet.Files) > 0 && bytesInSet + gf.Size > restorer.GetFileSetSizeLimit() {
 			restorer.fileSets = append(restorer.fileSets, fileSet)
 			fileSet = &FileSet{}
 			bytesInSet = 0
@@ -199,7 +227,7 @@ func (restorer *BagRestorer) fetchAllFiles(setNumber int) ([]string, error) {
 		// TODO: Use go-routines to fetch multiple files at once?
 		// If we are restoring many bags simultaneously, we could
 		// wind up with too many open connections/file handles.
-		fetchResult := restorer.fetchFile(gf)
+		fetchResult := restorer.fetchFile(gf, setNumber)
 		if fetchResult.ErrorMessage != "" {
 			restorer.cleanup(setNumber)
 			err := fmt.Errorf("Error fetching file %s from %s: %s",
@@ -226,11 +254,13 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 }
 
 // Fetches the requested file from S3 and returns a FetchResult.
-func (restorer *BagRestorer) fetchFile(gf *models.GenericFile) (*FetchResult) {
-	localPath := filepath.Join(restorer.workingDir, gf.Identifier)
+func (restorer *BagRestorer) fetchFile(gf *models.GenericFile, setNumber int) (*FetchResult) {
+	prefix := strings.SplitN(gf.Identifier, "/data/", 2)
+	subdir := strings.Replace(gf.Identifier, prefix[0], restorer.bagName(setNumber), 1)
+	localPath := filepath.Join(restorer.workingDir, subdir)
 	bucketName, key := bucketNameAndKey(gf.URI)
-	restorer.debug(fmt.Sprintf("Fetching key %s from bucket %s for file %s",
-		key, bucketName, gf.Identifier))
+	restorer.debug(fmt.Sprintf("Fetching key %s from bucket %s for file %s into %s",
+		key, bucketName, gf.Identifier, localPath))
 	s3Key, err := restorer.s3Client.GetKey(bucketName, key)
 	if err != nil {
 		errMsg := fmt.Sprintf("Could not get key info for %s: %v", gf.URI, err)
