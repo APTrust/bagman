@@ -1,6 +1,7 @@
 package bagman_test
 
 import (
+	"archive/tar"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
@@ -233,6 +234,77 @@ func TestTarBag (t *testing.T) {
 			t.Error(err)
 			return
 		}
-		fmt.Println(tarFilePath)
+		verifyTarFile(t, i, tarFilePath)
 	}
+}
+
+func verifyTarFile(t *testing.T, bagNumber int, tarFilePath string) {
+	_, err := os.Stat(tarFilePath)
+	if err != nil {
+		t.Errorf("Tar file does not exist at %s", tarFilePath)
+	}
+	file, err := os.Open(tarFilePath)
+	if err != nil {
+		t.Error(err)
+	}
+	defer file.Close()
+
+	tarReader := tar.NewReader(file)
+
+	files := make([]string, 0)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Errorf("Error reading tar archive header: %v", err)
+		}
+		files = append(files, header.Name)
+
+		// Verify contents
+		buffer := make([]byte, 1000)
+		tarReader.Read(buffer)
+
+		actualFileLength := bufferCharLength(buffer)
+		if int64(actualFileLength) != header.Size {
+			t.Errorf("Tar archive file '%s' has %d bytes. It should have %d.",
+				header.Name, actualFileLength, header.Size)
+			return
+		}
+	}
+
+	verifyFilePresence(t, "bagit.txt", files)
+	verifyFilePresence(t, "aptrust-info.txt", files)
+
+	if bagNumber == 0 {
+		verifyFilePresence(t, "data/object.properties", files)
+	} else {
+		verifyFilePresence(t, "data/metadata.xml", files)
+	}
+}
+
+// Verifies a file is in the tar header
+func verifyFilePresence(t *testing.T, fileName string, fileList []string) {
+	if !contains(fileName, fileList) {
+		t.Errorf("%s is missing from tar archive", fileName)
+	}
+}
+
+func bufferCharLength (buffer []byte) (int) {
+	for i, val := range(buffer) {
+		if val == 0 {
+			return i
+		}
+	}
+	return len(buffer)
+}
+
+func contains(str string, list []string) bool {
+    for _, value := range list {
+        if value == str {
+            return true
+        }
+    }
+    return false
 }

@@ -327,34 +327,27 @@ func (restorer *BagRestorer) TarBag(bagNumber int) (string, error) {
 		return "", fmt.Errorf("Error creating tar file: %v", err)
 	}
 	tarWriter := tar.NewWriter(tarFile)
+
+	// Add the tag files and the manifest
+	bagPath := filepath.Join(restorer.workingDir, bagName)
+	textFiles, err := filepath.Glob(filepath.Join(bagPath, "*.txt"))
+	for _, textFile := range textFiles {
+		textFileBase := filepath.Base(textFile)
+		filePath := filepath.Join(restorer.workingDir, bagName, textFileBase)
+		err = addToArchive(tarWriter, filePath, textFileBase)
+		if err != nil {
+			tarFile.Close()
+			os.Remove(tarFilePath)
+			return "", err
+		}
+	}
+
+	// Add all the generic files
 	for _, gf := range restorer.fileSets[bagNumber].Files {
 		gfPath, _ := gf.OriginalPath()
 		filePath := filepath.Join(restorer.workingDir, bagName, gfPath)
-		fmt.Println(filePath)
-		finfo, err := os.Stat(filePath)
+		err = addToArchive(tarWriter, filePath, gfPath)
 		if err != nil {
-			tarFile.Close()
-			os.Remove(tarFilePath)
-			return "", err
-		}
-		header := &tar.Header{
-			Name: gfPath,
-			Size: finfo.Size(),
-			//Mode: finfo.Mode(),
-			ModTime: finfo.ModTime(),
-		}
-		if err := tarWriter.WriteHeader(header); err != nil {
-			tarFile.Close()
-			os.Remove(tarFilePath)
-			return "", err
-		}
-		data, err := ioutil.ReadFile(filePath)
-		if err != nil {
-			tarFile.Close()
-			os.Remove(tarFilePath)
-			return "", err
-		}
-		if _, err := tarWriter.Write(data); err != nil {
 			tarFile.Close()
 			os.Remove(tarFilePath)
 			return "", err
@@ -366,4 +359,28 @@ func (restorer *BagRestorer) TarBag(bagNumber int) (string, error) {
 		return "", err
 	}
 	return tarFilePath, nil
+}
+
+func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (error) {
+	finfo, err := os.Stat(filePath)
+	if err != nil {
+		return err
+	}
+	header := &tar.Header{
+		Name: pathWithinArchive,
+		Size: finfo.Size(),
+		//Mode: finfo.Mode(),
+		ModTime: finfo.ModTime(),
+	}
+	if err := tarWriter.WriteHeader(header); err != nil {
+		return err
+	}
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return err
+	}
+	if _, err := tarWriter.Write(data); err != nil {
+		return err
+	}
+	return nil
 }
