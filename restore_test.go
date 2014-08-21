@@ -12,30 +12,22 @@ import (
 	"testing"
 )
 
+
 func TestRestore(t *testing.T) {
-	// TODO: Don't run this test unless we have S3 credentials.
 	// TODO: Fix other test file where we clobber filepath.
+	// awsEnvAvailable and printSkipMessage are from S3_test.go
+	if !awsEnvAvailable() {
+		printSkipMessage("restore_test.go")
+		return
+	}
 
 	// Make sure we clean up after ourselves
 	outputDir := filepath.Join("testdata", "tmp")
 	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
 
-	testfile := filepath.Join("testdata", "intel_obj.json")
-	obj, err := bagman.LoadIntelObjFixture(testfile)
+	_, bagPaths, err := restoreBag()
 	if err != nil {
-		t.Errorf("Error loading test data file '%s': %v", testfile, err)
-		return
-	}
-
-	restorer, err := bagman.NewBagRestorer(obj, outputDir)
-	if err != nil {
-		t.Errorf("NewBagRestorer() returned an error: %v", err)
-		return
-	}
-
-	bagPaths, err := restorer.Restore()
-	if err != nil {
-		t.Errorf("Restore() returned an error: %v", err)
+		t.Error(err)
 		return
 	}
 
@@ -71,6 +63,28 @@ func TestRestore(t *testing.T) {
 	}
 }
 
+func restoreBag() (*bagman.BagRestorer, []string, error){
+	testfile := filepath.Join("testdata", "intel_obj.json")
+	obj, err := bagman.LoadIntelObjFixture(testfile)
+	if err != nil {
+		detailedErr := fmt.Errorf("Error loading test data file '%s': %v", testfile, err)
+		return nil, nil, detailedErr
+	}
+
+	outputDir := filepath.Join("testdata", "tmp")
+	restorer, err := bagman.NewBagRestorer(obj, outputDir)
+	if err != nil {
+		detailedErr := fmt.Errorf("NewBagRestorer() returned an error: %v", err)
+		return nil, nil, detailedErr
+	}
+
+	bagPaths, err := restorer.Restore()
+	if err != nil {
+		detailedErr := fmt.Errorf("Restore() returned an error: %v", err)
+		return nil, nil, detailedErr
+	}
+	return restorer, bagPaths, nil
+}
 
 func verifyFileContent(t *testing.T, bagPath, fileName, expectedContent string) {
 	filePath := filepath.Join(bagPath, fileName)
@@ -92,4 +106,34 @@ func md5Digest (filePath string) (string, error) {
     hash := md5.New()
     io.WriteString(hash, string(data))
     return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func TestCleanup(t *testing.T) {
+	// TODO: Fix other test file where we clobber filepath.
+	if !awsEnvAvailable() {
+		printSkipMessage("restore_test.go")
+		return
+	}
+
+	// Make sure we clean up after ourselves
+	outputDir := filepath.Join("testdata", "tmp")
+	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
+
+	restorer, bagPaths, err := restoreBag()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	_, err = os.Stat(bagPaths[0])
+	if err != nil && os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not created the expected bag at %s", bagPaths[0])
+	}
+
+	restorer.Cleanup()
+	_, err = os.Stat(bagPaths[0])
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not clean up the bag at %s", bagPaths[0])
+	}
+
 }

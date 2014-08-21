@@ -98,6 +98,9 @@ func (restorer *BagRestorer) buildFileSets() {
 	}
 }
 
+// Restores an IntellectualObject by downloading all of its files
+// and assembling them into one or more bags. Returns a slice of
+// strings, each of which is the path to a bag.
 func (restorer *BagRestorer) Restore() ([]string, error) {
 	restorer.buildFileSets()
 	paths := make([]string, len(restorer.fileSets))
@@ -111,6 +114,7 @@ func (restorer *BagRestorer) Restore() ([]string, error) {
 	return paths, nil
 }
 
+// Creates a single bag and returns a reference to the bag object.
 func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 	bagName := restorer.bagName(setNumber)
 	err := restorer.makeDirectory(bagName)
@@ -172,6 +176,7 @@ func (restorer *BagRestorer) writeAPTrustTagFile(bag *bagins.Bag) (error) {
 	return nil
 }
 
+// Fetches all of the data files for a bag.
 func (restorer *BagRestorer) fetchAllFiles(setNumber int) ([]string, error) {
 	fileSet := restorer.fileSets[setNumber]
 	localFilePaths := make([]string, len(fileSet.Files))
@@ -191,6 +196,7 @@ func (restorer *BagRestorer) fetchAllFiles(setNumber int) ([]string, error) {
 	return localFilePaths, nil
 }
 
+// Creates the directories necessary to restore a bag.
 func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 	localPath := filepath.Join(restorer.workingDir, bagName)
 	localDir := filepath.Dir(localPath)
@@ -203,6 +209,7 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 	return nil
 }
 
+// Fetches the requested file from S3 and returns a FetchResult.
 func (restorer *BagRestorer) fetchFile(gf *models.GenericFile) (*FetchResult) {
 	localPath := filepath.Join(restorer.workingDir, gf.Identifier)
 	bucketName, key := bucketNameAndKey(gf.URI)
@@ -216,15 +223,24 @@ func (restorer *BagRestorer) fetchFile(gf *models.GenericFile) (*FetchResult) {
 	return restorer.s3Client.FetchToFile(bucketName, *s3Key, localPath)
 }
 
+// Given an S3 URI, returns the bucket name and key.
 func bucketNameAndKey(uri string) (string, string) {
 	relativeUri := strings.Replace(uri, S3UriPrefix, "", 1)
 	parts := strings.SplitN(relativeUri, "/", 2)
 	return parts[0], parts[1]
 }
 
+// Deletes a single bag created by Restore()
 func (restorer *BagRestorer) cleanup(setNumber int) {
 	bagDir := filepath.Join(restorer.workingDir, restorer.bagName(setNumber))
 	_ = os.RemoveAll(bagDir)
+}
+
+// Deletes all of the bags created by Restore()
+func (restorer *BagRestorer) Cleanup() {
+	for i := range restorer.fileSets {
+		restorer.cleanup(i)
+	}
 }
 
 // BagName returns the IntelObj identifier, minus the institution name prefix,

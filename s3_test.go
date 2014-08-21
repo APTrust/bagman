@@ -26,11 +26,11 @@ func awsEnvAvailable() (envVarsOk bool) {
 
 // This prints a message saying S3 integration tests
 // will be skipped.
-func printSkipMessage() {
+func printSkipMessage(testname string) {
 	if !skipMessagePrinted {
-		fmt.Fprintln(os.Stderr,
-			"Skipping S3 integration tests because environment variables "+
-				"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not set.")
+		msg := fmt.Sprintf("Skipping %s because environment variables "+
+			"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not set.", testname)
+		fmt.Fprintln(os.Stderr, msg)
 		skipMessagePrinted = true
 	}
 }
@@ -38,7 +38,7 @@ func printSkipMessage() {
 // Test that we can get an S3 client.
 func TestNewS3Client(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 	_, err := bagman.NewS3Client(aws.APNortheast)
@@ -51,7 +51,7 @@ func TestNewS3Client(t *testing.T) {
 // TODO: Test listing a bucket with >1000 items.
 func TestListBucket(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 	s3Client, err := bagman.NewS3Client(aws.USEast)
@@ -73,7 +73,7 @@ func TestListBucket(t *testing.T) {
 // TODO: Test case where md5 sum cannot be verified.
 func TestFetchToFile(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 	s3Client, err := bagman.NewS3Client(aws.USEast)
@@ -144,7 +144,7 @@ func TestFetchToFile(t *testing.T) {
 
 func TestFetchNonExistentFile(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 	s3Client, err := bagman.NewS3Client(aws.USEast)
@@ -185,7 +185,7 @@ func TestFetchNonExistentFile(t *testing.T) {
 
 func TestSaveToS3(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 	// Copy this file from the testdata directory to the
@@ -198,7 +198,7 @@ func TestSaveToS3(t *testing.T) {
 
 func TestGetKey(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 	s3Client, err := bagman.NewS3Client(aws.USEast)
@@ -224,7 +224,7 @@ func TestGetKey(t *testing.T) {
 
 func TestDeleteFromS3(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 	// Make sure we have a file there to delete.
@@ -286,7 +286,7 @@ func SaveToS3(localFile, bucketName string) error {
 
 func TestSaveLargeFileToS3(t *testing.T) {
 	if !awsEnvAvailable() {
-		printSkipMessage()
+		printSkipMessage("s3_test.go")
 		return
 	}
 
