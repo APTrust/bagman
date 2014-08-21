@@ -7,6 +7,8 @@ import (
 )
 
 func TestRestore(t *testing.T) {
+	// TODO: Don't run this test unless we have S3 credentials.
+	// TODO: Fix other test file where we clobber filepath.
 	testfile := filepath.Join("testdata", "intel_obj.json")
 	obj, err := bagman.LoadIntelObjFixture(testfile)
 	if err != nil {

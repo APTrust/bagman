@@ -105,13 +105,17 @@ func (restorer *BagRestorer) Restore() (error) {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Bag is at %s", bag.Path())
+		fmt.Printf("Bag is at %s\n", bag.Path())
 	}
 	return nil
 }
 
 func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 	bagName := restorer.bagName(setNumber)
+	err := restorer.makeDirectory(bagName)
+	if err != nil {
+		return nil, err
+	}
 	bag, err := bagins.NewBag(restorer.workingDir, bagName, "md5")
 	if err != nil {
 	 	return nil, err
@@ -130,7 +134,8 @@ func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 
 	// Add the fetched files to the bag
 	for _, fileName := range filesFetched {
-		err = bag.AddFile(fileName, fileName)
+		fmt.Printf("Adding %s -> %s \n", fileName, filepath.Base(fileName))
+		err = bag.AddFile(fileName, filepath.Base(fileName))
 		if err != nil {
 			return nil, err
 		}
@@ -186,12 +191,20 @@ func (restorer *BagRestorer) fetchAllFiles(setNumber int) ([]string, error) {
 	return localFilePaths, nil
 }
 
-func (restorer *BagRestorer) fetchFile(gf *models.GenericFile) (*FetchResult) {
-	localPath := filepath.Join(restorer.workingDir, gf.Identifier)
+func (restorer *BagRestorer) makeDirectory(bagName string) (error){
+	localPath := filepath.Join(restorer.workingDir, bagName)
 	localDir := filepath.Dir(localPath)
 	if _, err := os.Stat(localDir); os.IsNotExist(err) {
-		os.MkdirAll(localDir, 0755)
+		err = os.MkdirAll(localDir, 0755)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
+}
+
+func (restorer *BagRestorer) fetchFile(gf *models.GenericFile) (*FetchResult) {
+	localPath := filepath.Join(restorer.workingDir, gf.Identifier)
 	bucketName, key := bucketNameAndKey(gf.URI)
 	s3Key, err := restorer.s3Client.GetKey(bucketName, key)
 	if err != nil {
