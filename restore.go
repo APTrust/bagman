@@ -5,6 +5,7 @@ import (
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/diamondap/goamz/aws"
+	"github.com/op/go-logging"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,6 +51,7 @@ type BagRestorer struct {
 	tarFiles           []string
 	fileSets           []*FileSet
 	bags               []*bagins.Bag
+	logger             *logging.Logger
 }
 
 // Creates a new bag restorer from the intellectual object.
@@ -63,9 +65,6 @@ func NewBagRestorer(intelObj *models.IntellectualObject, workingDir string) (*Ba
 	if err != nil {
 		return nil, err
 	}
-	// if _, err := os.Stat(absWorkingDir); os.IsNotExist(err) {
-	// 	return nil, fmt.Errorf("The bag restoration working directory, '%s', does not exist", absWorkingDir)
-	// }
 	s3Client, err := NewS3Client(aws.USEast)
 	if err != nil {
 		return nil, err
@@ -77,6 +76,18 @@ func NewBagRestorer(intelObj *models.IntellectualObject, workingDir string) (*Ba
 		workingDir: absWorkingDir,
 	}
 	return &restorer, nil
+}
+
+// Sets a logger to which the BagRestorer will print debug messages.
+// This is optional.
+func (restorer *BagRestorer) SetLogger(logger *logging.Logger) {
+	restorer.logger = logger
+}
+
+func (restorer *BagRestorer) debug (message string) {
+	if restorer.logger != nil {
+		restorer.logger.Debug(message)
+	}
 }
 
 // Fills restorer.fileSets with lists of files that can be packaged
@@ -92,6 +103,7 @@ func (restorer *BagRestorer) buildFileSets() {
 		}
 		fileSet.Files = append(fileSet.Files, gf)
 		bytesInSet += gf.Size
+		restorer.debug(fmt.Sprintf("Added %s to fileset %d", gf.Identifier, len(restorer.fileSets) + 1))
 	}
 	if bytesInSet > 0 {
 		restorer.fileSets = append(restorer.fileSets, fileSet)
@@ -110,6 +122,7 @@ func (restorer *BagRestorer) Restore() ([]string, error) {
 			return nil, err
 		}
 		paths[i] = bag.Path()
+		restorer.debug(fmt.Sprintf("Finished bag %s", bag.Path()))
 	}
 	return paths, nil
 }
@@ -121,6 +134,7 @@ func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 	if err != nil {
 		return nil, err
 	}
+	restorer.debug(fmt.Sprintf("Creating bag %s", bagName))
 	bag, err := bagins.NewBag(restorer.workingDir, bagName, "md5")
 	if err != nil {
 	 	return nil, err
@@ -161,6 +175,7 @@ func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 
 // Writes the aptrust-info.txt tag file.
 func (restorer *BagRestorer) writeAPTrustTagFile(bag *bagins.Bag) (error) {
+	restorer.debug(fmt.Sprintf("Creating aptrust-info.txt"))
 	if err := bag.AddTagfile("aptrust-info.txt"); err != nil {
 		return err
 	}
@@ -201,6 +216,7 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 	localPath := filepath.Join(restorer.workingDir, bagName)
 	localDir := filepath.Dir(localPath)
 	if _, err := os.Stat(localDir); os.IsNotExist(err) {
+		restorer.debug(fmt.Sprintf("Creating directory %s", localDir))
 		err = os.MkdirAll(localDir, 0755)
 		if err != nil {
 			return err
@@ -213,6 +229,8 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 func (restorer *BagRestorer) fetchFile(gf *models.GenericFile) (*FetchResult) {
 	localPath := filepath.Join(restorer.workingDir, gf.Identifier)
 	bucketName, key := bucketNameAndKey(gf.URI)
+	restorer.debug(fmt.Sprintf("Fetching key %s from bucket %s for file %s",
+		key, bucketName, gf.Identifier))
 	s3Key, err := restorer.s3Client.GetKey(bucketName, key)
 	if err != nil {
 		errMsg := fmt.Sprintf("Could not get key info for %s: %v", gf.URI, err)
@@ -233,6 +251,7 @@ func bucketNameAndKey(uri string) (string, string) {
 // Deletes a single bag created by Restore()
 func (restorer *BagRestorer) cleanup(setNumber int) {
 	bagDir := filepath.Join(restorer.workingDir, restorer.bagName(setNumber))
+	restorer.debug(fmt.Sprintf("Cleaning up %s", bagDir))
 	_ = os.RemoveAll(bagDir)
 }
 
@@ -254,10 +273,4 @@ func (restorer *BagRestorer) bagName(setNumber int) (string) {
 		return fmt.Sprintf("%s.b%04d.of%04d", bagName, partNumber, len(restorer.fileSets))
 	}
 	return bagName
-}
-
-// Returns the path to the tar file. This is the file that should
-// be copied to the S3 restoration bucket.
-func (bagRestorer *BagRestorer) TarFiles() ([]string) {
-	return bagRestorer.tarFiles
 }
