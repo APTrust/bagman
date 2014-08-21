@@ -98,16 +98,17 @@ func (restorer *BagRestorer) buildFileSets() {
 	}
 }
 
-func (restorer *BagRestorer) Restore() (error) {
+func (restorer *BagRestorer) Restore() ([]string, error) {
 	restorer.buildFileSets()
+	paths := make([]string, len(restorer.fileSets))
 	for i := range(restorer.fileSets) {
 		bag, err := restorer.buildBag(i)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		fmt.Printf("Bag is at %s\n", bag.Path())
+		paths[i] = bag.Path()
 	}
-	return nil
+	return paths, nil
 }
 
 func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
@@ -134,7 +135,6 @@ func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 
 	// Add the fetched files to the bag
 	for _, fileName := range filesFetched {
-		fmt.Printf("Adding %s -> %s \n", fileName, filepath.Base(fileName))
 		err = bag.AddFile(fileName, filepath.Base(fileName))
 		if err != nil {
 			return nil, err
@@ -160,7 +160,7 @@ func (restorer *BagRestorer) writeAPTrustTagFile(bag *bagins.Bag) (error) {
 	if err := bag.AddTagfile("aptrust-info.txt"); err != nil {
 		return err
 	}
-	tagFile, err := bag.TagFile("bagit.txt")
+	tagFile, err := bag.TagFile("aptrust-info.txt")
 	if err != nil {
 		return err
 	}
