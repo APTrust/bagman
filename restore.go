@@ -283,8 +283,15 @@ func bucketNameAndKey(uri string) (string, string) {
 // Deletes a single bag created by Restore()
 func (restorer *BagRestorer) cleanup(setNumber int) {
 	bagDir := filepath.Join(restorer.workingDir, restorer.bagName(setNumber))
+	tarFile := fmt.Sprintf("%s.tar", bagDir)
+
+	// Remove the entire bag directory
 	restorer.debug(fmt.Sprintf("Cleaning up %s", bagDir))
 	_ = os.RemoveAll(bagDir)
+
+	// Remove the tar file, if it exists
+	restorer.debug(fmt.Sprintf("Cleaning up %s", tarFile))
+	os.Remove(tarFile)
 }
 
 // Deletes all of the bags created by Restore()
@@ -298,8 +305,6 @@ func (restorer *BagRestorer) Cleanup() {
 // plus a suffix like .b001.of125, if necessary. Param setNumber is the
 // index of the fileset whose files should go into the bag.
 func (restorer *BagRestorer) bagName(setNumber int) (string) {
-	//instPrefix := fmt.Sprintf("%s/", restorer.IntellectualObject.InstitutionId)
-	//bagName := strings.Replace(restorer.IntellectualObject.Identifier, instPrefix, "", 1)
 	bagName := restorer.IntellectualObject.Identifier
 	if len(restorer.fileSets) > 1 {
 		partNumber := setNumber + 1

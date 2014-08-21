@@ -219,8 +219,8 @@ func TestTarBag (t *testing.T) {
 	}
 
 	// Make sure we clean up after ourselves
-	//outputDir := filepath.Join("testdata", "tmp")
-	//defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
+	outputDir := filepath.Join("testdata", "tmp")
+	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
 
 	restorer, bagPaths, err := restoreBag(true)
 	if err != nil {
@@ -228,6 +228,7 @@ func TestTarBag (t *testing.T) {
 		return
 	}
 
+	tarFilePaths := make([]string, 2)
 	for i := range bagPaths {
 		tarFilePath, err := restorer.TarBag(i)
 		if err != nil {
@@ -235,7 +236,20 @@ func TestTarBag (t *testing.T) {
 			return
 		}
 		verifyTarFile(t, i, tarFilePath)
+		tarFilePaths[i] = tarFilePath
 	}
+
+	// Make sure cleanup gets all the tar files
+	restorer.Cleanup()
+	_, err = os.Stat(tarFilePaths[0])
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not clean up the tar file at %s", bagPaths[0])
+	}
+	_, err = os.Stat(tarFilePaths[1])
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not clean up the tar file at %s", bagPaths[0])
+	}
+
 }
 
 func verifyTarFile(t *testing.T, bagNumber int, tarFilePath string) {
