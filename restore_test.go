@@ -27,22 +27,25 @@ func TestRestore(t *testing.T) {
 		t.Errorf("Restore() returned an error: %v", err)
 	}
 
-	verifyAPTInfoFile(t, bagPaths[0])
-//	expectedBagit = "BagIt-Version:  0.97\nTag-File-Character-Encoding:  UTF-8"
+	expectedAPT := "Title:  Notes from the Oesper Collections\nAccess:  institution\n"
+	verifyFileContent(t, bagPaths[0], "aptrust-info.txt", expectedAPT)
 
-//	expectedManifest = "8d7b0e3a24fc899b1d92a73537401805 data/object.properties\nc6d8080a39a0622f299750e13aa9c200 data/metadata.xml"
+	expectedBagit := "BagIt-Version:  0.97\nTag-File-Character-Encoding:  UTF-8\n"
+	verifyFileContent(t, bagPaths[0], "bagit.txt", expectedBagit)
 
+	expectedManifest := "8d7b0e3a24fc899b1d92a73537401805 data/object.properties\nc6d8080a39a0622f299750e13aa9c200 data/metadata.xml\n"
+	verifyFileContent(t, bagPaths[0], "manifest-md5.txt", expectedManifest)
 }
 
-func verifyAPTInfoFile(t *testing.T, bagPath string) {
-	aptInfoPath := filepath.Join(bagPath, "aptrust-info.txt")
-	actualAPTInfo, err := ioutil.ReadFile(aptInfoPath)
+
+func verifyFileContent(t *testing.T, bagPath, fileName, expectedContent string) {
+	filePath := filepath.Join(bagPath, fileName)
+	actualContent, err := ioutil.ReadFile(filePath)
 	if err != nil {
-		t.Error("Could not read aptrust-info.txt: %v", err)
+		t.Error("Could not read file %s: %v", fileName, err)
 	}
-	expectedAPTInfo := "Title:  Notes from the Oesper Collections\nAccess:  institution\n"
-	if string(actualAPTInfo) != expectedAPTInfo {
-		t.Errorf("aptrust-info.txt contains the wrong data. Expected \n%s\nGot \n%s\n",
-			expectedAPTInfo, string(actualAPTInfo))
+	if string(actualContent) != expectedContent {
+		t.Errorf("%s contains the wrong data. Expected \n%s\nGot \n%s\n",
+			fileName, expectedContent, string(actualContent))
 	}
 }
