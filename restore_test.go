@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/APTrust/bagman"
+	"github.com/diamondap/goamz/aws"
 	"io"
 	"io/ioutil"
 	"os"
@@ -340,5 +341,60 @@ func TestRestorationBucketName (t *testing.T) {
 			"'bucket-o-worms', got '%s'",
 			restorer.RestorationBucketName())
 	}
+}
 
+func TestCopyToS3 (t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("restore_test.go")
+		return
+	}
+
+	expectedSizes := []int64 { int64(5120), int64(5632) }
+
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanupRestorationBucket(s3Client)
+
+	restorer, bagPaths, err := restoreBag(true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	restorer.SetCustomRestoreBucket("aptrust.test.restore")
+	for i := range bagPaths {
+		_, err = restorer.TarBag(i)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		s3Url, err := restorer.CopyToS3(i)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		bagName := filepath.Base(bagPaths[i]) + ".tar"
+		expectedUrl := fmt.Sprintf("https://s3.amazonaws.com/aptrust.test.restore/%s",
+			bagName)
+		if s3Url != expectedUrl {
+			t.Errorf("CopyToS3() returned incorrect URL: %s", s3Url)
+		}
+
+		key, err := s3Client.GetKey("aptrust.test.restore", bagName)
+		if key == nil {
+			t.Errorf("Bag %s was not uploaded to S3", bagName)
+		}
+		if key.Size != expectedSizes[i] {
+			t.Errorf("Size for bag %s is incorrect. Expected %s, got %s.",
+				bagName, expectedSizes[i], key.Size)
+		}
+	}
+}
+
+func cleanupRestorationBucket (s3Client *bagman.S3Client) {
+	s3Client.Delete("aptrust.test.restore", "cin.675812.b0001.of0002.tar")
+	s3Client.Delete("aptrust.test.restore", "cin.675812.b0002.of0002.tar")
 }

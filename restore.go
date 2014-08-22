@@ -6,6 +6,7 @@ import (
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/diamondap/goamz/aws"
+	"github.com/diamondap/goamz/s3"
 	"github.com/op/go-logging"
 	"io/ioutil"
 	"os"
@@ -408,9 +409,40 @@ func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (er
 	return nil
 }
 
-// func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
-// 	bagName := restorer.bagName(setNumber)
-// 	tarFileName := fmt.Sprintf("%s.tar", bagName)
-// 	tarFilePath := filepath.Join(restorer.workingDir, tarFileName)
-
-// }
+func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
+	bagName := restorer.bagName(setNumber)
+	tarFileName := fmt.Sprintf("%s.tar", bagName)
+	tarFilePath := filepath.Join(restorer.workingDir, tarFileName)
+	fileInfo, err := os.Stat(tarFilePath)
+	if err != nil {
+		return "", nil
+	}
+	reader, err := os.Open(tarFilePath)
+	if err != nil {
+		return "", nil
+	}
+	defer reader.Close()
+	url := ""
+	if fileInfo.Size() < S3_LARGE_FILE {
+		url, err = restorer.s3Client.SaveToS3(
+			restorer.RestorationBucketName(),
+			filepath.Base(bagName) + ".tar",
+			"application/binary",
+			reader,
+			fileInfo.Size(),
+			s3.Options{})
+	} else {
+		url, err = restorer.s3Client.SaveLargeFileToS3(
+			restorer.RestorationBucketName(),
+			filepath.Base(bagName) + ".tar",
+			"application/binary",
+			reader,
+			fileInfo.Size(),
+			s3.Options{},
+			S3_CHUNK_SIZE)
+	}
+	if err != nil {
+		return "", nil
+	}
+	return url, nil
+}
