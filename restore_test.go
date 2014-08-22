@@ -322,3 +322,23 @@ func contains(str string, list []string) bool {
     }
     return false
 }
+
+func TestRestorationBucketName (t *testing.T) {
+	restorer, _, err := restoreBag(false)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if restorer.RestorationBucketName() != "aptrust.restore.uc.edu" {
+		t.Errorf("RestorationBucketName() expected " +
+			"'aptrust.restore.uc.edu', got '%s'",
+			restorer.RestorationBucketName())
+	}
+	restorer.SetCustomRestoreBucket("bucket-o-worms")
+	if restorer.RestorationBucketName() != "bucket-o-worms" {
+		t.Errorf("RestorationBucketName() expected " +
+			"'bucket-o-worms', got '%s'",
+			restorer.RestorationBucketName())
+	}
+
+}

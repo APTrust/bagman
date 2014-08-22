@@ -22,6 +22,8 @@ const (
 	DefaultBagPadding   = int64(1000000)
 
 	S3UriPrefix = "https://s3.amazonaws.com/"
+
+	RestorationBucketPrefix = "aptrust.restore"
 )
 
 // (nsq worker) Make sure we have enough disk space.
@@ -42,16 +44,17 @@ type FileSet struct {
 
 type BagRestorer struct {
 	// The intellectual object we'll be restoring.
-	IntellectualObject *models.IntellectualObject
-	s3Client           *S3Client
-	workingDir         string
-	errorMessage       string
-	tarFiles           []string
-	fileSets           []*FileSet
-	bags               []*bagins.Bag
-	logger             *logging.Logger
-	bagSizeLimit       int64
-	bagPadding         int64
+	IntellectualObject  *models.IntellectualObject
+	s3Client            *S3Client
+	workingDir          string
+	errorMessage        string
+	tarFiles            []string
+	fileSets            []*FileSet
+	bags                []*bagins.Bag
+	logger              *logging.Logger
+	bagSizeLimit        int64
+	bagPadding          int64
+	customRestoreBucket string
 }
 
 // Creates a new bag restorer from the intellectual object.
@@ -111,6 +114,21 @@ func (restorer *BagRestorer) SetBagPadding(limit int64) {
 
 func (restorer *BagRestorer) GetBagPadding() (int64) {
 	return restorer.bagPadding
+}
+
+func (restorer *BagRestorer) SetCustomRestoreBucket (bucketName string) {
+	restorer.customRestoreBucket = bucketName
+}
+
+func (restorer *BagRestorer) RestorationBucketName () (string) {
+	if restorer.customRestoreBucket != "" {
+		return restorer.customRestoreBucket
+	}
+	// Get institution name from bag id. It's the
+	// part before the first slash.
+	idParts := strings.SplitN(restorer.IntellectualObject.Identifier, "/", 2)
+	institution := idParts[0]
+	return fmt.Sprintf("%s.%s", RestorationBucketPrefix, institution)
 }
 
 // Returns the total number of bytes the files in the data directory
@@ -301,8 +319,8 @@ func (restorer *BagRestorer) Cleanup() {
 	}
 }
 
-// BagName returns the IntelObj identifier, minus the institution name prefix,
-// plus a suffix like .b001.of125, if necessary. Param setNumber is the
+// BagName returns the IntelObj identifier, plus a suffix like
+// .b001.of125, if necessary. Param setNumber is the
 // index of the fileset whose files should go into the bag.
 func (restorer *BagRestorer) bagName(setNumber int) (string) {
 	bagName := restorer.IntellectualObject.Identifier
@@ -313,7 +331,7 @@ func (restorer *BagRestorer) bagName(setNumber int) (string) {
 	return bagName
 }
 
-// Tars the bag specified by bagNumber, which is zero-based.
+// Tars the bag specified by setNumber, which is zero-based.
 // Returns the path to the tar file it just created.
 //
 // Restore() returns a slice of strings, each of which is the
@@ -323,8 +341,8 @@ func (restorer *BagRestorer) bagName(setNumber int) (string) {
 // for i := range paths {
 //    pathToTarFile, _ := restorer.TarBag(i)
 // }
-func (restorer *BagRestorer) TarBag(bagNumber int) (string, error) {
-	bagName := restorer.bagName(bagNumber)
+func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
+	bagName := restorer.bagName(setNumber)
 	tarFileName := fmt.Sprintf("%s.tar", bagName)
 	tarFilePath := filepath.Join(restorer.workingDir, tarFileName)
 	tarFile, err := os.Create(tarFilePath)
@@ -348,7 +366,7 @@ func (restorer *BagRestorer) TarBag(bagNumber int) (string, error) {
 	}
 
 	// Add all the generic files
-	for _, gf := range restorer.fileSets[bagNumber].Files {
+	for _, gf := range restorer.fileSets[setNumber].Files {
 		gfPath, _ := gf.OriginalPath()
 		filePath := filepath.Join(restorer.workingDir, bagName, gfPath)
 		err = addToArchive(tarWriter, filePath, gfPath)
@@ -389,3 +407,10 @@ func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (er
 	}
 	return nil
 }
+
+// func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
+// 	bagName := restorer.bagName(setNumber)
+// 	tarFileName := fmt.Sprintf("%s.tar", bagName)
+// 	tarFilePath := filepath.Join(restorer.workingDir, tarFileName)
+
+// }
