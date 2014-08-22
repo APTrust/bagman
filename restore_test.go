@@ -356,7 +356,10 @@ func TestCopyToS3 (t *testing.T) {
 		t.Error(err)
 		return
 	}
+
 	defer cleanupRestorationBucket(s3Client)
+	outputDir := filepath.Join("testdata", "tmp")
+	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
 
 	restorer, bagPaths, err := restoreBag(true)
 	if err != nil {
@@ -393,6 +396,81 @@ func TestCopyToS3 (t *testing.T) {
 		}
 	}
 }
+
+
+func TestRestoreAndPublish (t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("restore_test.go")
+		return
+	}
+
+	// Set up an S3Client, so we can see if our bags made it to S3.
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	defer cleanupRestorationBucket(s3Client)
+
+	// Load the test fixture.
+	testfile := filepath.Join("testdata", "intel_obj.json")
+	obj, err := bagman.LoadIntelObjFixture(testfile)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", testfile, err)
+	}
+
+	// Create a BagRestorer that will send files to aptrust.test.restore
+	outputDir := filepath.Join("testdata", "tmp")
+	restorer, err := bagman.NewBagRestorer(obj, outputDir)
+	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
+
+	// Restore to this bucket
+	restorer.SetCustomRestoreBucket("aptrust.test.restore")
+
+	// Set small bag size limit to force creation of two bags
+	restorer.SetBagSizeLimit(50)
+	restorer.SetBagPadding(0)
+
+
+	// Tell it restore, tar, copy to S3 and clean up after itself.
+	urls, err := restorer.RestoreAndPublish()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Make sure we got the right URLs
+	if urls[0] != "https://s3.amazonaws.com/aptrust.test.restore/cin.675812.b0001.of0002.tar" {
+		t.Errorf("RestoreAndPublish() returned incorrect URL: %s", urls[0])
+	}
+	if urls[1] != "https://s3.amazonaws.com/aptrust.test.restore/cin.675812.b0002.of0002.tar" {
+		t.Errorf("RestoreAndPublish() returned incorrect URL: %s", urls[1])
+	}
+
+	// Make sure the files are on S3
+	key, err := s3Client.GetKey("aptrust.test.restore", "cin.675812.b0001.of0002.tar")
+	if key == nil {
+		t.Errorf("Bag cin.675812.b0001.of0002.tar was not uploaded to S3")
+	}
+	key, err = s3Client.GetKey("aptrust.test.restore", "cin.675812.b0002.of0002.tar")
+	if key == nil {
+		t.Errorf("Bag cin.675812.b0002.of0002.tar was not uploaded to S3")
+	}
+
+	// Make sure it cleaned up the local files
+	_, err = os.Stat(filepath.Join(outputDir, "uc.edu", "cin.675812.b0001.of0002.tar"))
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not clean up cin.675812.b0001.of0002.tar")
+	}
+	_, err = os.Stat(filepath.Join(outputDir, "uc.edu", "cin.675812.b0002.of0002.tar"))
+	if err == nil || !os.IsNotExist(err) {
+		t.Errorf("Bag restorer did not clean up cin.675812.b0002.of0002.tar")
+	}
+
+
+}
+
 
 func cleanupRestorationBucket (s3Client *bagman.S3Client) {
 	s3Client.Delete("aptrust.test.restore", "cin.675812.b0001.of0002.tar")

@@ -22,39 +22,87 @@ const (
 	// manifest, and tar file headers.
 	DefaultBagPadding   = int64(1000000)
 
+	// All S3 urls begin with this.
 	S3UriPrefix = "https://s3.amazonaws.com/"
 
+	// The default restoration bucket prefix.
 	RestorationBucketPrefix = "aptrust.restore"
 )
 
-// (nsq worker) Make sure we have enough disk space.
-// Create the bag (baggins).
-// Create tag file with title and description.
-// Create subdirectories.
-// Download files from S3 to tmp area.
-// Copy files into subdirectories.
-// Save bag.
-// (nsq worker) Tar the bag.
-// (nsq worker) Copy the tar file to S3 restoration bucket.
-// (nsq worker) Log results.
-// (nsq worker) Clean up all temp files.
-
+// FileSet is a set of files that will be put into a
+// single bag upon restoration. Some large intellectual
+// objects will have to be split into multiple bags
+// during restoration to accomodate the 250GB bag size limit.
 type FileSet struct {
 	Files []*models.GenericFile
 }
 
+/*
+BagRestorer exposes methods for restoring bags and publishing them to S3
+restoration buckets. There are separate methods below for restoring a bag
+locally, copying the restored files to S3, and cleaning up.
+
+Generally, you'll want to do all that in one step, which you can do like
+this:
+
+    restorer, err := bagman.NewBagRestorer(intellectualObject, outputDir)
+    if err != nil {
+        return err
+    }
+    urls, err := RestoreAndPublish()
+
+
+Here's a fuller example:
+
+    restorer, err := bagman.NewBagRestorer(intellectualObject, outputDir)
+    if err != nil {
+        return err
+    }
+
+    // Optional, if you want to log debug statements.
+    // Default is no logging.
+    restorer.SetLogger(myCustomLogger)
+
+    // Optional, if you wan to constrain bag size to 50000000 bytes
+    // The following aims for total bag sizes of 50000000 bytes
+    // that include 100k or so of non-payload data (manifests, tag
+    // files, tar file headers). Default is <= 250GB bag size.
+    restorer.SetBagSizeLimit(50000000)
+    restorer.SetBagPadding(100000)
+
+    // Optional, if you want to restore to a non-standard bucket.
+    // Default is aptrust.restore.some.edu
+    restorer.SetCustomRestoreBucket("aptrust.test.restore")
+
+    // This creates the bags, copies them to S3, and cleans up.
+    // Return value urls is a slice of strings, each of which
+    // is a URL pointing to a restored bag on S3.
+    urls, err := RestoreAndPublish()
+
+*/
 type BagRestorer struct {
 	// The intellectual object we'll be restoring.
 	IntellectualObject  *models.IntellectualObject
+	// s3Client lets us publish restored bags to S3.
 	s3Client            *S3Client
+	// workingDir is the root directory under which
+	// we build and tar our bags.
 	workingDir          string
-	errorMessage        string
-	tarFiles            []string
+	// fileSets is a list of FileSet structs. We'll
+	// have one for each bag we need to create.
 	fileSets            []*FileSet
-	bags                []*bagins.Bag
+	// logger is optional. If provided, the functions
+	// below will log debug messages to it.
 	logger              *logging.Logger
+	// The maximum allowed bag size. Default is 250GB,
+	// but you can set it smaller to force multiple bags.
 	bagSizeLimit        int64
+	// The estimated amount of space required by manifest
+	// files, tag files and tar file headers in a tarred
+	// bag.
 	bagPadding          int64
+	// The bucket into which restored, tarred bags
+	// should be published.
 	customRestoreBucket string
 }
 
@@ -159,9 +207,15 @@ func (restorer *BagRestorer) buildFileSets() {
 	}
 }
 
-// Restores an IntellectualObject by downloading all of its files
-// and assembling them into one or more bags. Returns a slice of
-// strings, each of which is the path to a bag.
+/*
+Restores an IntellectualObject by downloading all of its files
+and assembling them into one or more bags. Returns a slice of
+strings, each of which is the path to a bag.
+
+This function restores the entire bag at once, and will use
+about 2 * bag_size bytes of disk space. To avoid using so much
+disk space, you can use RestoreAndPublish below.
+*/
 func (restorer *BagRestorer) Restore() ([]string, error) {
 	restorer.buildFileSets()
 	paths := make([]string, len(restorer.fileSets))
@@ -171,7 +225,7 @@ func (restorer *BagRestorer) Restore() ([]string, error) {
 			return nil, err
 		}
 		paths[i] = bag.Path()
-		restorer.debug(fmt.Sprintf("Finished bag %s", bag.Path()))
+		restorer.debug(fmt.Sprintf("Created local bag %s", bag.Path()))
 	}
 	return paths, nil
 }
@@ -332,16 +386,18 @@ func (restorer *BagRestorer) bagName(setNumber int) (string) {
 	return bagName
 }
 
-// Tars the bag specified by setNumber, which is zero-based.
-// Returns the path to the tar file it just created.
-//
-// Restore() returns a slice of strings, each of which is the
-// path to a bag. To tar all the bags, you'd do this:
-//
-// paths, _ := restorer.Restore()
-// for i := range paths {
-//    pathToTarFile, _ := restorer.TarBag(i)
-// }
+/*
+Tars the bag specified by setNumber, which is zero-based.
+Returns the path to the tar file it just created.
+
+Restore() returns a slice of strings, each of which is the
+path to a bag. To tar all the bags, you'd do this:
+
+    paths, _ := restorer.Restore()
+    for i := range paths {
+        pathToTarFile, _ := restorer.TarBag(i)
+    }
+*/
 func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 	bagName := restorer.bagName(setNumber)
 	tarFileName := fmt.Sprintf("%s.tar", bagName)
@@ -385,6 +441,7 @@ func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 	return tarFilePath, nil
 }
 
+// Adds a file to the tar archive.
 func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (error) {
 	finfo, err := os.Stat(filePath)
 	if err != nil {
@@ -409,6 +466,18 @@ func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (er
 	return nil
 }
 
+/*
+Copies a tarred bag file to S3. In most cases, you'll want RestoreAndPublish()
+to do this for you. But if you want to do it manually, do something like this
+(but don't ignore the errors):
+
+    paths, _ := restorer.Restore()
+    for i := range paths {
+        pathToTarFile, _ := restorer.TarBag(i)
+        s3Url, _ := restorer.CopyToS3(i)
+    }
+    restorer.Cleanup()
+*/
 func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
 	bagName := restorer.bagName(setNumber)
 	tarFileName := fmt.Sprintf("%s.tar", bagName)
@@ -421,20 +490,24 @@ func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
 	if err != nil {
 		return "", nil
 	}
+	bucketName := restorer.RestorationBucketName()
+	keyName := filepath.Base(bagName) + ".tar"
 	defer reader.Close()
 	url := ""
 	if fileInfo.Size() < S3_LARGE_FILE {
+		restorer.debug(fmt.Sprintf("Starting S3 put to %s/%s", bucketName, keyName))
 		url, err = restorer.s3Client.SaveToS3(
-			restorer.RestorationBucketName(),
-			filepath.Base(bagName) + ".tar",
+			bucketName,
+			keyName,
 			"application/binary",
 			reader,
 			fileInfo.Size(),
 			s3.Options{})
 	} else {
+		restorer.debug(fmt.Sprintf("Starting S3 multipart put to %s/%s", bucketName, keyName))
 		url, err = restorer.s3Client.SaveLargeFileToS3(
-			restorer.RestorationBucketName(),
-			filepath.Base(bagName) + ".tar",
+			bucketName,
+			keyName,
 			"application/binary",
 			reader,
 			fileInfo.Size(),
@@ -445,4 +518,35 @@ func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
 		return "", nil
 	}
 	return url, nil
+}
+
+// Restores a bag (including multi-part bags), publishes them to the
+// restoration bucket, and returns the URLs to access them.
+func (restorer *BagRestorer) RestoreAndPublish() (urls []string, err error) {
+	// Make sure we clean up, no matter what happens.
+	defer restorer.Cleanup()
+	restorer.buildFileSets()
+
+	// Fully process each bag as we go, including cleanup,
+	// so we can preserve disk space.
+	for i := range(restorer.fileSets) {
+		bag, err := restorer.buildBag(i)
+		if err != nil {
+			return nil, err
+		}
+		restorer.debug(fmt.Sprintf("Created local bag %s", bag.Path()))
+		_, err = restorer.TarBag(i)
+		if err != nil {
+			return nil, err
+		}
+		s3Url, err := restorer.CopyToS3(i)
+		if err != nil {
+			return nil, err
+		}
+		urls = append(urls, s3Url)
+
+		// Cleanup now, so we don't fill up the disk.
+		restorer.cleanup(i)
+	}
+	return urls, nil
 }
