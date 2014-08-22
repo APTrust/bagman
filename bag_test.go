@@ -254,8 +254,6 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 func TestBadBagReturnsError(t *testing.T) {
 	setup()
 	defer teardown()
-	fmt.Fprintf(os.Stderr, "Warnings below about missing bag-info/bagit files are expected.\n")
-	fmt.Fprintf(os.Stderr, "Tests are checking to see if the bag reader handles these cases.\n\n")
 	for _, tarFile := range badFiles {
 		tarResult := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
 		result := bagman.ReadBag(tarResult.OutputDir)
@@ -264,7 +262,6 @@ func TestBadBagReturnsError(t *testing.T) {
 				tarResult.OutputDir)
 		}
 	}
-	fmt.Fprintf(os.Stderr, "\n")
 }
 
 // If the top-level directory of the untarred file does not
