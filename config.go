@@ -18,6 +18,11 @@ type Config struct {
 	// with lots of free disk space.
 	TarDirectory string
 
+	// RestoreDirectory is the directory in which we will
+	// rebuild IntellectualObject before sending them
+	// off to the S3 restoration bucket.
+	RestoreDirectory string
+
 	// LogDirectory is where we'll write our log files.
 	LogDirectory string
 
@@ -126,6 +131,16 @@ type Config struct {
 
 	// Maximum number of times we'll try to process a trouble item.
 	MaxTroubleAttempts int
+
+	// NSQ topic for IntellectualObject restoration
+	RestoreTopic string
+
+	// NSQ channel for IntellectualObject restoration
+	RestoreChannel string
+
+	// How many times should our NSQ worker try to restore
+	// an IntellectualObject
+	MaxRestoreAttempts int
 
 	// SkipAlreadyProcessed indicates whether or not the
 	// bucket_reader should  put successfully-processed items into

@@ -34,7 +34,7 @@ var (
 func main() {
 	err := initialize()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Initialization failed for bucket_reader: %v", err)
+		fmt.Fprintf(os.Stderr, "Initialization failed for cleanup_reader: %v", err)
 		os.Exit(1)
 	}
 	run()

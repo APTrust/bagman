@@ -14,6 +14,11 @@ import (
 // accomodate the file it just pulled off the queue. We want to
 // avoid downloading 100GB files when we know ahead of time that
 // we don't have enough space to process them.
+//
+// (BUG) If the config file specifies a TarDirectory and a RestorDirectory
+// that are on the same physical or logical volume, this volume
+// manager may not give accurate information about the amount of
+// available space.
 type Volume struct {
 	path        string
 	mutex       *sync.Mutex
