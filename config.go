@@ -153,6 +153,12 @@ type Config struct {
 	// copy files for long-term storage.
 	PreservationBucket string
 
+	// Set this in non-production environments to restore
+	// intellectual objects to a custom bucket. If this is set,
+	// all intellectual objects from all institutions will be
+	// restored to this bucket.
+	CustomRestoreBucket string
+
 	// Should we delete the uploaded tar file from the receiving
 	// bucket after successfully processing this bag?
 	DeleteOnSuccess bool
