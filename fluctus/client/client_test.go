@@ -506,6 +506,7 @@ func TestGetReviewedItems(t *testing.T) {
 	}
 	if len(records) < 2 {
 		t.Errorf("Expected at least 2 status records. Abandoning TestGetReviewedItems")
+		return
 	}
 	records[0].Reviewed = true
 	records[1].Reviewed = true
