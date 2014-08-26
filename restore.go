@@ -342,6 +342,16 @@ func (restorer *BagRestorer) fetchFile(gf *models.GenericFile, setNumber int) (*
 	bucketName, key := bucketNameAndKey(gf.URI)
 	restorer.debug(fmt.Sprintf("Fetching key %s from bucket %s for file %s into %s",
 		key, bucketName, gf.Identifier, localPath))
+
+	// Make sure we have a place to put this file, or we'll
+	// have problems with directories nested under data/
+	err := os.MkdirAll(filepath.Dir(localPath), 0755)
+	if err != nil {
+		return &FetchResult {
+			ErrorMessage: err.Error(),
+		}
+	}
+
 	s3Key, err := restorer.s3Client.GetKey(bucketName, key)
 	if err != nil {
 		errMsg := fmt.Sprintf("Could not get key info for %s: %v", gf.URI, err)
