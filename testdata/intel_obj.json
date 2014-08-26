@@ -56,7 +56,7 @@
     "generic_files": [
         {
             "id": "changeme:5843",
-            "uri": "https://s3.amazonaws.com/aptrust.test.preservation/089515b3-66a8-4eea-50be-cd9703eed1b7",
+            "uri": "https://s3.amazonaws.com/aptrust.test.fixtures/restore_test/data/object.properties",
             "size": 80,
             "created": "1980-01-01T00:00:00-05:00",
             "modified": "1980-01-01T00:00:00-05:00",
@@ -189,7 +189,7 @@
         },
         {
             "id": "changeme:5844",
-            "uri": "https://s3.amazonaws.com/aptrust.test.preservation/2925e9f9-4414-4780-5af7-87f2eb7ee42e",
+            "uri": "https://s3.amazonaws.com/aptrust.test.fixtures/restore_test/data/metadata.xml",
             "size": 606,
             "created": "1980-01-01T00:00:00-05:00",
             "modified": "1980-01-01T00:00:00-05:00",
