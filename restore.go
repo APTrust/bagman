@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 const (
@@ -455,9 +456,15 @@ func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (er
 	header := &tar.Header{
 		Name: pathWithinArchive,
 		Size: finfo.Size(),
-		//Mode: finfo.Mode(),
+		Mode: int64(finfo.Mode().Perm()),
 		ModTime: finfo.ModTime(),
 	}
+	systat := finfo.Sys().(*syscall.Stat_t)
+	if systat != nil {
+		header.Uid = int(systat.Uid)
+		header.Gid = int(systat.Gid)
+	}
+
 	if err := tarWriter.WriteHeader(header); err != nil {
 		return err
 	}
