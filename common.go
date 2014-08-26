@@ -68,14 +68,15 @@ const (
 type StageType string
 
 const (
-	StageReceive  StageType = "Receive"
-	StageFetch              = "Fetch"
-	StageUnpack             = "Unpack"
-	StageValidate           = "Validate"
-	StageStore              = "Store"
-	StageRecord             = "Record"
-	StageCleanup            = "Cleanup"
-	StageResolve            = "Resolve"
+	StageRequested StageType = "Requested"
+	StageReceive             = "Receive"
+	StageFetch               = "Fetch"
+	StageUnpack              = "Unpack"
+	StageValidate            = "Validate"
+	StageStore               = "Store"
+	StageRecord              = "Record"
+	StageCleanup             = "Cleanup"
+	StageResolve             = "Resolve"
 )
 
 // Action enumerations match values defined in

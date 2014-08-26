@@ -306,6 +306,49 @@ func (client *Client) BulkStatusGet(since time.Time) (statusRecords []*bagman.Pr
 	return statusRecords, nil
 }
 
+
+func (client *Client) RestorationItemsGet() (statusRecords []*bagman.ProcessStatus, err error) {
+	objUrl := client.BuildUrl("/api/v1/itemresults/restore.json")
+	client.logger.Debug("Getting list of items to be restored from fluctus: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read & close body to avoid hanging TCP connections.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Check for error response
+	if response.StatusCode != 200 {
+		if len(body) < 1000 {
+			return nil, fmt.Errorf("Request for bulk status returned status code %d. "+
+				"Response body: %s", response.StatusCode, string(body))
+		} else {
+			return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
+		}
+	}
+
+	// Build and return the data structure
+	err = json.Unmarshal(body, &statusRecords)
+	if err != nil {
+		return nil, err
+	}
+	return statusRecords, nil
+}
+
+
+
 // Returns the IntellectualObject with the specified id, or nil of no
 // such object exists. If includeRelations is false, this returns only
 // the IntellectualObject. If includeRelations is true, this returns

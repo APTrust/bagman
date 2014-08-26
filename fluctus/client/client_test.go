@@ -523,3 +523,43 @@ func TestGetReviewedItems(t *testing.T) {
 		t.Errorf("GetReviewedItems returned %d items; expected at least two", len(reviewed))
 	}
 }
+
+
+func TestRestorationItemsGet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+
+	// Make sure we have a couple of items to be restored...
+	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
+	records, err := client.BulkStatusGet(sinceWhen)
+
+	if err != nil {
+		t.Errorf("Error getting bulk status: %v", err)
+	}
+	records[0].Action = bagman.ActionRestore
+	records[0].Stage = bagman.StageRequested
+	records[0].Status = bagman.StatusPending
+	err = client.SendProcessedItem(records[0])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+	records[1].Action = bagman.ActionRestore
+	records[1].Stage = bagman.StageRequested
+	records[1].Status = bagman.StatusPending
+	err = client.SendProcessedItem(records[1])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+
+	// Get items to be restored. There should be at least
+	// the two we just saved.
+	itemsToRestore, err := client.RestorationItemsGet()
+	if err != nil {
+		t.Errorf("Error getting restoration items: %v", err)
+	}
+	if len(itemsToRestore) < 2 {
+		t.Error("RestorationItemsGet returned no records when it should have returned something.")
+	}
+}
