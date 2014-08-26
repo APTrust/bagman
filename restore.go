@@ -190,8 +190,11 @@ func (restorer *BagRestorer) GetFileSetSizeLimit() (int64) {
 // Fills restorer.fileSets with lists of files that can be packaged
 // into individual bags.
 func (restorer *BagRestorer) buildFileSets() {
+	totalBytes := int64(0)
 	bytesInSet := int64(0)
 	fileSet := &FileSet{}
+	restorer.debug(fmt.Sprintf("Object %s has %d generic files",
+		restorer.IntellectualObject.Identifier, len(restorer.IntellectualObject.GenericFiles)))
 	for _, gf := range restorer.IntellectualObject.GenericFiles {
 		if len(fileSet.Files) > 0 && bytesInSet + gf.Size > restorer.GetFileSetSizeLimit() {
 			restorer.fileSets = append(restorer.fileSets, fileSet)
@@ -199,12 +202,14 @@ func (restorer *BagRestorer) buildFileSets() {
 			bytesInSet = 0
 		}
 		fileSet.Files = append(fileSet.Files, gf)
+		totalBytes += gf.Size
 		bytesInSet += gf.Size
 		restorer.debug(fmt.Sprintf("Added %s to fileset %d", gf.Identifier, len(restorer.fileSets) + 1))
 	}
 	if bytesInSet > 0 {
 		restorer.fileSets = append(restorer.fileSets, fileSet)
 	}
+	restorer.debug(fmt.Sprintf("Built %d file sets with %d bytes", len(restorer.fileSets), totalBytes))
 }
 
 /*
