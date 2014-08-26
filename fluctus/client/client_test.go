@@ -504,6 +504,9 @@ func TestGetReviewedItems(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
 	}
+	if len(records) < 2 {
+		t.Errorf("Expected at least 2 status records. Abandoning TestGetReviewedItems")
+	}
 	records[0].Reviewed = true
 	records[1].Reviewed = true
 	err = client.SendProcessedItem(records[0])
