@@ -559,7 +559,7 @@ func TestRestorationItemsGet(t *testing.T) {
 
 	// Get items to be restored. There should be at least
 	// the two we just saved.
-	itemsToRestore, err := client.RestorationItemsGet()
+	itemsToRestore, err := client.RestorationItemsGet("")
 	if err != nil {
 		t.Errorf("Error getting restoration items: %v", err)
 	}

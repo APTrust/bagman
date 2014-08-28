@@ -61,7 +61,7 @@ func run() {
 		config.RestoreTopic)
 	messageLog.Info("Asking Fluctus for objects to restore to %s", url)
 
-	results, err := fluctusClient.RestorationItemsGet()
+	results, err := fluctusClient.RestorationItemsGet("")
 	if err != nil {
 		messageLog.Fatalf("Error getting items for restoration: %v", err)
 	}

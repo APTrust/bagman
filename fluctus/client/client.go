@@ -307,8 +307,29 @@ func (client *Client) BulkStatusGet(since time.Time) (statusRecords []*bagman.Pr
 }
 
 
-func (client *Client) RestorationItemsGet() (statusRecords []*bagman.ProcessStatus, err error) {
+/*
+Returns a list of items that need to be restored.
+If param objectIdentifier is not an empty string, this
+will return all ProcessedItem records for the intellectual
+object that are in action "Restore".
+
+If no objectIdentifier is supplied, this returns all ProcessedItem
+records in action "Restore" with stage "Requested" and status
+"Pending".
+
+This will return zero items in either of the following cases:
+
+1. No objectIdentifier is supplied and there are no pending
+restoration requests in Fluctus' ProcessedItems table.
+
+2. An objectIdentifier is supplied, and there are no
+ProcessedItem records for that object in stage Restore.
+*/
+func (client *Client) RestorationItemsGet(objectIdentifier string) (statusRecords []*bagman.ProcessStatus, err error) {
 	objUrl := client.BuildUrl("/api/v1/itemresults/restore.json")
+	if objectIdentifier != "" {
+		objUrl = fmt.Sprintf("%s?object_identifier=%s", objUrl, objectIdentifier)
+	}
 	client.logger.Debug("Getting list of items to be restored from fluctus: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
