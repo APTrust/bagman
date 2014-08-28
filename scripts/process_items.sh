@@ -19,6 +19,9 @@ cd ~/go/src/github.com/APTrust/bagman/bag_processor
 go run bag_processor.go -config apd4n &
 PROCESSOR_PID=$!
 
+echo "Waiting 20 seconds to start metarecord"
+sleep 20
+
 echo "Starting metarecord"
 cd ~/go/src/github.com/APTrust/bagman/metarecord
 go run metarecord.go -config apd4n &
