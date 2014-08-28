@@ -111,20 +111,21 @@ const (
 // Status may have one of the following values: Pending,
 // Success, Failed.
 type ProcessStatus struct {
-	Id          int        `json:"id"`
-	Name        string     `json:"name"`
-	Bucket      string     `json:"bucket"`
-	ETag        string     `json:"etag"`
-	BagDate     time.Time  `json:"bag_date"`
-	Institution string     `json:"institution"`
-	Date        time.Time  `json:"date"`
-	Note        string     `json:"note"`
-	Action      ActionType `json:"action"`
-	Stage       StageType  `json:"stage"`
-	Status      StatusType `json:"status"`
-	Outcome     string     `json:"outcome"`
-	Retry       bool       `json:"retry"`
-	Reviewed    bool       `json:"reviewed"`
+	Id                int        `json:"id"`
+	ObjectIdentifier  string     `json:"object_identifier"`
+	Name              string     `json:"name"`
+	Bucket            string     `json:"bucket"`
+	ETag              string     `json:"etag"`
+	BagDate           time.Time  `json:"bag_date"`
+	Institution       string     `json:"institution"`
+	Date              time.Time  `json:"date"`
+	Note              string     `json:"note"`
+	Action            ActionType `json:"action"`
+	Stage             StageType  `json:"stage"`
+	Status            StatusType `json:"status"`
+	Outcome           string     `json:"outcome"`
+	Retry             bool       `json:"retry"`
+	Reviewed          bool       `json:"reviewed"`
 }
 
 // Convert ProcessStatus to JSON, omitting id, which Rails won't permit.

@@ -566,4 +566,40 @@ func TestRestorationItemsGet(t *testing.T) {
 	if len(itemsToRestore) < 2 {
 		t.Error("RestorationItemsGet returned no records when it should have returned something.")
 	}
+
+	// Ask for records with a specific object identifier.
+	// We should get at least the one we set up here.
+	lastRecord := records[len(records)-1]
+	lastRecord.Action = bagman.ActionRestore
+	lastRecord.Stage = bagman.StageResolve
+	lastRecord.Status = bagman.StatusFailed
+	lastRecord.Retry = true
+	err = client.SendProcessedItem(records[1])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+
+	itemsToRestore, err = client.RestorationItemsGet(lastRecord.ObjectIdentifier)
+	if err != nil {
+		t.Errorf("Error getting restoration items: %v", err)
+	}
+	if len(itemsToRestore) < 1 {
+		t.Error("RestorationItemsGet returned no records when it should have returned something.")
+	}
+
+	// Make sure we get empty list and not error when there are no items
+	lastRecord.Retry = false
+	err = client.SendProcessedItem(records[1])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+
+	itemsToRestore, err = client.RestorationItemsGet(lastRecord.ObjectIdentifier)
+	if err != nil {
+		t.Errorf("Error getting restoration items: %v", err)
+	}
+	if len(itemsToRestore) == 0 {
+		t.Error("RestorationItemsGet returned no records when it should have returned something.")
+	}
+
 }
