@@ -769,3 +769,55 @@ func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err 
 		localStatus.Name, localStatus.Stage, localStatus.Status)
 	return nil
 }
+
+/*
+This sets the status of the bag restore operation on all
+ProcessedItem records for all bag parts that make up the
+current object. If an object was uploaded as a series of
+100 bags, this sets the status on the processed item records
+for the latest ingested version of each of those 100 bags.
+*/
+func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman.StageType, status bagman.StatusType, retry bool) (error) {
+	if objectIdentifier == "" {
+		return fmt.Errorf("Object identifier cannot be empty.")
+	}
+	objUrl := client.BuildUrl(fmt.Sprintf("/api/v1/itemresults/restoration_status/%s",
+		escapeSlashes(objectIdentifier)))
+	client.logger.Debug("Setting restoration status: %s - stage = %s, status = %s, retry = %s",
+		objUrl, stage, status, retry)
+	data := make(map[string]interface{})
+	data["stage"] = stage
+	data["status"] = status
+	data["retry"] = retry
+	jsonData, err := json.Marshal(data)
+	request, err := client.NewJsonRequest("POST", objUrl, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return err
+	}
+	response, err := client.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+
+	// Read & close body to avoid hanging TCP connections.
+	var body []byte
+	if response.Body != nil {
+		body, err = ioutil.ReadAll(response.Body)
+		response.Body.Close()
+		if err != nil {
+			return err
+		}
+	}
+
+	// Check for error response
+	if response.StatusCode != 200 {
+		if len(body) < 1000 {
+			return fmt.Errorf("Request for bulk status returned status code %d. "+
+				"Response body: %s", response.StatusCode, string(body))
+		} else {
+			return fmt.Errorf("Request returned status code %d", response.StatusCode)
+		}
+	}
+
+	return nil
+}

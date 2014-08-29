@@ -165,6 +165,27 @@ func (*RestoreProcessor) HandleMessage(message *nsq.Message) error {
 		return detailedError
 	}
 
+	// If this item has already been restored, or is in process
+	// of being restored, just finish the message and return.
+	items, err := fluctusClient.RestorationItemsGet(object.ProcessStatus.ObjectIdentifier)
+	if err != nil {
+		detailedError := fmt.Errorf(
+			"[ERROR] Could not get current status of object %s from Fluctus: %v.",
+			object.ProcessStatus.ObjectIdentifier, err)
+		messageLog.Error(detailedError.Error())
+		message.Finish()
+		return detailedError
+	}
+	// How can we know if another process is currently restoring the same object?
+	// addToSyncmap below will tell us if this process is already working on it.
+	if len(items) == 0 {
+		messageLog.Info("Marking %s as complete because Fluctus says it "+
+			"has been restored, or restoration should not be retried",
+			object.Key())
+		message.Finish()
+		return nil
+	}
+
 	// Make a note that we're working on this item
 	err = addToSyncMap(&object)
 	if err != nil {
@@ -204,6 +225,12 @@ func (*RestoreProcessor) HandleMessage(message *nsq.Message) error {
 		channels.ResultsChannel <- &object
 		return nil
 	}
+
+	// --------------------------------------------------------------------
+	// TODO: Mark all ProcessedItems related to this object as started.
+	// Add GetRestorationStatus/SetRestorationStatus endpoints in Fluctus?
+	// Will have to add them in fluctus client as well.
+	// --------------------------------------------------------------------
 
 	// Now put the object into the channel for processing
 	channels.RestoreChannel <- &object
@@ -268,6 +295,11 @@ func doRestore() {
 	}
 }
 
+
+// --------------------------------------------------------------------
+// TODO: Ensure that all ProcessedItems associated with this object
+// are updated.
+// --------------------------------------------------------------------
 
 // Tell Fluctus this item has been restored
 func MarkItemResolved(object *RestoreObject) error {

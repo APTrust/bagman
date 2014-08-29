@@ -1,3 +1,5 @@
+// Integration tests for Fluctus client.
+// Requires a running Fluctus server.
 package client_test
 
 import (
@@ -458,10 +460,11 @@ func TestSendProcessedItem(t *testing.T) {
 	status := &bagman.ProcessStatus{
 		Id:          0,
 		Name:        itemName.String(),
-		Bucket:      "aptrust.receiving.ncsu.edu",
+		ObjectIdentifier:  fmt.Sprintf("test.edu/%s", itemName.String()),
+		Bucket:      "aptrust.receiving.test.edu",
 		ETag:        "0000000000",
 		BagDate:     time.Now(),
-		Institution: "ncsu.edu",
+		Institution: "test.edu",
 		Date:        time.Now(),
 		Note:        "Test item",
 		Action:      "Ingest",
@@ -542,9 +545,14 @@ func TestRestorationItemsGet(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
 	}
+	if len(records) < 2 {
+		t.Errorf("Not enough records in Fluctus to test RestorationItemsGet")
+		return
+	}
 	records[0].Action = bagman.ActionRestore
 	records[0].Stage = bagman.StageRequested
 	records[0].Status = bagman.StatusPending
+	records[0].Retry = true
 	err = client.SendProcessedItem(records[0])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
@@ -552,6 +560,7 @@ func TestRestorationItemsGet(t *testing.T) {
 	records[1].Action = bagman.ActionRestore
 	records[1].Stage = bagman.StageRequested
 	records[1].Status = bagman.StatusPending
+	records[1].Retry = true
 	err = client.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
@@ -601,5 +610,69 @@ func TestRestorationItemsGet(t *testing.T) {
 	if len(itemsToRestore) == 0 {
 		t.Error("RestorationItemsGet returned no records when it should have returned something.")
 	}
+}
 
+func TestRestorationStatusSet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+
+	// Create a test record
+	itemName, err := uuid.NewV4()
+	if err != nil {
+		t.Errorf("Error generating UUID: %v", err)
+	}
+	record := &bagman.ProcessStatus{
+		Id:          0,
+		Name:        itemName.String(),
+		ObjectIdentifier: fmt.Sprintf("test.edu/%s", itemName.String()),
+		Bucket:      "aptrust.receiving.test.edu",
+		ETag:        "0000000000",
+		BagDate:     time.Now(),
+		Institution: "test.edu",
+		Date:        time.Now(),
+		Note:        "Test item",
+		Action:      "Restore",
+		Stage:       "Requested",
+		Status:      "Pending",
+		Outcome:     "la de da",
+		Retry:       true,
+		Reviewed:    false,
+	}
+
+	err = client.SendProcessedItem(record)
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+		return
+	}
+	if record.Id != 0 {
+		t.Error("record.Id was reassigned when it should not have been")
+	}
+
+	// Now update the status on that record
+	err = client.RestorationStatusSet(record.ObjectIdentifier, bagman.StageFetch, bagman.StatusStarted, false)
+	if err != nil {
+		t.Errorf("Error setting restoration status: %v", err)
+		return
+	}
+
+	updatedRecords, err := client.RestorationItemsGet(record.ObjectIdentifier)
+	if err != nil {
+		t.Errorf("Error getting restoration items: %v", err)
+	}
+	if len(updatedRecords) == 0 {
+		t.Error("RestorationItemsGet should have returned an updated record.")
+		return
+	}
+
+	if updatedRecords[0].Stage != bagman.StageFetch {
+		t.Errorf("Stage should be '%s', but is '%s'", bagman.StageFetch, updatedRecords[0].Stage)
+	}
+	if updatedRecords[0].Status != bagman.StatusStarted {
+		t.Errorf("Status should be '%s', but is '%s'", bagman.StatusStarted, updatedRecords[0].Status)
+	}
+	if updatedRecords[0].Retry != false {
+		t.Error("Retry should be false, but is true")
+	}
 }
