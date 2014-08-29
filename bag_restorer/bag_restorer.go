@@ -262,9 +262,14 @@ func addToSyncMap(object *RestoreObject) (error) {
 func logResult() {
 	for object := range channels.ResultsChannel {
 		// Mark item as resolved in Fluctus & tell the queue what happened.
-		// Last param (false) sets retry to false, so we don't try to restore again.
+		var status bagman.StatusType = bagman.StatusSuccess
+		var stage bagman.StageType = bagman.StageResolve
+		if object.ErrorMessage != "" {
+			status = bagman.StatusFailed
+			stage = bagman.StageRequested
+		}
 		err := fluctusClient.RestorationStatusSet(object.ProcessStatus.ObjectIdentifier,
-			bagman.StageResolve, bagman.StatusSuccess, false)
+			stage, status, false)
 		if err != nil {
 			// Do we really want to go through the whole process
 			// of restoring this again?
