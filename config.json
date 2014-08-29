@@ -83,6 +83,7 @@
         "MaxRestoreAttempts": 3,
         "SkipAlreadyProcessed": true,
         "PreservationBucket": "aptrust.test.preservation",
+        "CustomRestoreBucket": "aptrust.test.restore",
         "DeleteOnSuccess": false,
         "Buckets": [
             "aptrust.receiving.columbia.edu",
@@ -135,6 +136,7 @@
         "MaxRestoreAttempts": 3,
         "SkipAlreadyProcessed": true,
         "PreservationBucket": "aptrust.test.preservation",
+        "CustomRestoreBucket": "aptrust.test.restore",
         "DeleteOnSuccess": false,
         "Buckets": [
             "aptrust.receiving.columbia.edu",
