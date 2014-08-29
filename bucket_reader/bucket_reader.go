@@ -219,7 +219,7 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	// Strip the quotes off the ETag
 	status.ETag = strings.Replace(s3File.Key.ETag, "\"", "", 2)
 	status.Stage = bagman.StageReceive
-	status.Status = bagman.StatusSuccess
+	status.Status = bagman.StatusPending
 	status.Note = "Item is in receiving bucket. Processing has not started."
 	status.Institution = bagman.OwnerOf(s3File.BucketName)
 	status.Outcome = string(status.Status)
