@@ -226,11 +226,16 @@ func (*RestoreProcessor) HandleMessage(message *nsq.Message) error {
 		return nil
 	}
 
-	// --------------------------------------------------------------------
-	// TODO: Mark all ProcessedItems related to this object as started.
-	// Add GetRestorationStatus/SetRestorationStatus endpoints in Fluctus?
-	// Will have to add them in fluctus client as well.
-	// --------------------------------------------------------------------
+	// Mark all ProcessedItems related to this object as started
+	err = fluctusClient.RestorationStatusSet(object.ProcessStatus.ObjectIdentifier,
+		bagman.StageRequested, bagman.StatusStarted, false)
+	if err != nil {
+		detailedError := fmt.Errorf("Cannot register restoration start with Fluctus for %s: %v",
+			object.Key(), err)
+		object.ErrorMessage = detailedError.Error()
+		channels.ResultsChannel <- &object
+		return detailedError
+	}
 
 	// Now put the object into the channel for processing
 	channels.RestoreChannel <- &object
@@ -256,8 +261,10 @@ func addToSyncMap(object *RestoreObject) (error) {
 
 func logResult() {
 	for object := range channels.ResultsChannel {
-		// Mark item as resolved in Fluctus & tell the queue what happened
-		err := MarkItemResolved(object)
+		// Mark item as resolved in Fluctus & tell the queue what happened.
+		// Last param (false) sets retry to false, so we don't try to restore again.
+		err := fluctusClient.RestorationStatusSet(object.ProcessStatus.ObjectIdentifier,
+			bagman.StageResolve, bagman.StatusSuccess, false)
 		if err != nil {
 			// Do we really want to go through the whole process
 			// of restoring this again?
@@ -293,40 +300,4 @@ func doRestore() {
 		}
 		channels.ResultsChannel <- object
 	}
-}
-
-
-// --------------------------------------------------------------------
-// TODO: Ensure that all ProcessedItems associated with this object
-// are updated.
-// --------------------------------------------------------------------
-
-// Tell Fluctus this item has been restored
-func MarkItemResolved(object *RestoreObject) error {
-	remoteStatus, err := fluctusClient.GetBagStatus(
-		object.ProcessStatus.ETag, object.ProcessStatus.Name,
-		object.ProcessStatus.BagDate)
-	if err != nil {
-		messageLog.Error("Error getting ProcessedItem to Fluctus: %s", err.Error())
-		return err
-	}
-	if object.ErrorMessage == "" {
-		remoteStatus.Action = bagman.ActionRestore
-		remoteStatus.Stage = bagman.StageResolve
-		remoteStatus.Status = bagman.StatusSuccess
-		remoteStatus.Note = fmt.Sprintf("Object restored to %s", object.RestoredBagUrls())
-	} else {
-		remoteStatus.Action = bagman.ActionRestore
-		remoteStatus.Stage = bagman.StageResolve
-		remoteStatus.Status = bagman.StatusFailed
-		remoteStatus.Note = object.ErrorMessage
-	}
-	err = fluctusClient.UpdateBagStatus(remoteStatus)
-	if err != nil {
-		messageLog.Error("Error sending ProcessedItem to Fluctus: %s", err.Error())
-	} else {
-		messageLog.Info("Updated status in Fluctus for %s: %s/%s",
-			object.Key(), remoteStatus.Stage, remoteStatus.Status)
-	}
-	return err
 }
