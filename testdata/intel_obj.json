@@ -60,7 +60,7 @@
             "size": 80,
             "created": "1980-01-01T00:00:00-05:00",
             "modified": "1980-01-01T00:00:00-05:00",
-            "format": "text/plain",
+            "file_format": "text/plain",
             "identifier": "uc.edu/cin.675812/data/object.properties",
             "checksum": [
                 {
@@ -193,7 +193,7 @@
             "size": 606,
             "created": "1980-01-01T00:00:00-05:00",
             "modified": "1980-01-01T00:00:00-05:00",
-            "format": "application/xml",
+            "file_format": "application/xml",
             "identifier": "uc.edu/cin.675812/data/metadata.xml",
             "checksum": [
                 {

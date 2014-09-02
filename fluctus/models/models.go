@@ -153,7 +153,7 @@ func (obj *IntellectualObject) SerializeForCreate() ([]byte, error) {
 	for i, gf := range obj.GenericFiles {
 		genericFileMaps[i] = map[string]interface{}{
 			"identifier":   gf.Identifier,
-			"format":       gf.Format,
+			"file_format":  gf.Format,
 			"uri":          gf.URI,
 			"size":         gf.Size,
 			"created":      gf.Created,
@@ -285,7 +285,7 @@ such as:
 type GenericFile struct {
 	Id                 string               `json:"id"`
 	Identifier         string               `json:"identifier"`
-	Format             string               `json:"format"`
+	Format             string               `json:"file_format"`
 	URI                string               `json:"uri"`
 	Size               int64                `json:"size"`
 	Created            time.Time            `json:"created"`
@@ -298,7 +298,7 @@ type GenericFile struct {
 func (gf *GenericFile) SerializeForFluctus() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"identifier":          gf.Identifier,
-		"format":              gf.Format,
+		"file_format":         gf.Format,
 		"uri":                 gf.URI,
 		"size":                gf.Size,
 		"created":             gf.Created,

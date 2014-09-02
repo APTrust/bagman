@@ -61,7 +61,7 @@ func TestSerializeForCreate(t *testing.T) {
 	files := data[0]["generic_files"].([]interface{})
 	file1 := files[0].(map[string]interface{})
 	assertValue(t, file1, "created", "2014-04-25T18:05:51Z")
-	assertValue(t, file1, "format", "application/xml")
+	assertValue(t, file1, "file_format", "application/xml")
 	assertValue(t, file1, "identifier", "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml")
 	assertValue(t, file1, "modified", "2014-04-25T18:05:51Z")
 	assertValue(t, file1, "uri", "https://s3.amazonaws.com/aptrust.test.fixtures/ncsu_files/data/metadata.xml")
