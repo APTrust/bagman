@@ -212,6 +212,7 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	tagFiles := []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}
 	accessRights := ""
+	bagTitle := ""
 	for _, file := range tagFiles {
 		tagFile, err := bag.TagFile(file)
 		if err != nil {
@@ -229,6 +230,8 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 				accessRights = strings.ToLower(tag.Value)
 			} else if accessRights == "" && lcLabel == "rights" {
 				accessRights = strings.ToLower(tag.Value)
+			} else if lcLabel == "title" {
+				bagTitle = tag.Value
 			}
 		}
 	}
@@ -243,6 +246,11 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	}
 	if false == accessValid {
 		bagReadResult.ErrorMessage += fmt.Sprintf("Access (rights) value '%s' is not valid. ", accessRights)
+	}
+
+	// Fluctus will reject IntellectualObjects that don't have a title.
+	if bagTitle == "" {
+		bagReadResult.ErrorMessage += "Title is required. This bag has no title. "
 	}
 }
 

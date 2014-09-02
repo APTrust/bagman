@@ -20,6 +20,8 @@ var sampleMissingDataFile string = filepath.Join(testDataPath, "sample_missing_d
 var sampleNoBagInfo string = filepath.Join(testDataPath, "sample_no_bag_info.tar")
 var sampleNoBagit string = filepath.Join(testDataPath, "sample_no_bagit.tar")
 var sampleWrongFolderName string = filepath.Join(testDataPath, "sample_wrong_folder_name.tar")
+var sampleNoTitle string = filepath.Join(testDataPath, "sample_no_title.tar")
+var sampleBadAccess string = filepath.Join(testDataPath, "sample_bad_access.tar")
 var invalidTarFile string = filepath.Join(testDataPath, "not_a_tar_file.tar")
 var badFiles []string = []string{
 	sampleBadChecksums,
@@ -276,5 +278,27 @@ func TestErrorOnBadFolderName(t *testing.T) {
 	if !strings.Contains(result.ErrorMessage, "should untar to a folder named") {
 		t.Errorf("Untarring file '%s' should have generated an 'incorrect file name' error.",
 			sampleWrongFolderName)
+	}
+}
+
+func TestErrorOnBadAccessValue(t *testing.T) {
+	setup()
+	defer teardown()
+	tarResult := bagman.Untar(sampleBadAccess, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	readResult := bagman.ReadBag(tarResult.OutputDir)
+	if !strings.Contains(readResult.ErrorMessage, "Access (rights) value") {
+		t.Errorf("File '%s' should have generated an 'invalid access value' error.",
+			sampleBadAccess)
+	}
+}
+
+func TestErrorOnMissingTitle(t *testing.T) {
+	setup()
+	defer teardown()
+	tarResult := bagman.Untar(sampleNoTitle, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	readResult := bagman.ReadBag(tarResult.OutputDir)
+	if !strings.Contains(readResult.ErrorMessage, "Title is required") {
+		t.Errorf("File '%s' should have generated a missing title error.",
+			sampleNoTitle)
 	}
 }
