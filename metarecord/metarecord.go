@@ -21,6 +21,7 @@ type Channels struct {
 	FedoraChannel  chan *bagman.ProcessResult
 	CleanUpChannel chan *bagman.ProcessResult
 	ResultsChannel chan *bagman.ProcessResult
+	StatusChannel  chan *bagman.ProcessResult
 }
 
 // Global vars.
@@ -97,6 +98,7 @@ func initChannels() {
 	channels.FedoraChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	channels.CleanUpChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	channels.ResultsChannel = make(chan *bagman.ProcessResult, workerBufferSize)
+	channels.StatusChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 }
 
 // Set up our go routines. We want to limit the number of
@@ -107,6 +109,7 @@ func initGoRoutines() {
 		go recordInFedora()
 		go logResult()
 		go doCleanUp()
+		go recordStatus()
 	}
 }
 
@@ -213,17 +216,21 @@ func logResult() {
 			}
 		}
 
-		// Tell Fluctus what happened
-		go func() {
-			err := fluctusClient.SendProcessedItem(result.IngestStatus())
-			if err != nil {
-				result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
-					"item status returned error %v. ", err)
-				messageLog.Error("Error sending ProcessedItem to Fluctus: %s",
-					err.Error())
-			}
-		}()
+		// Tell the fluctopus what happened
+		channels.StatusChannel <- result
+	}
+}
 
+func recordStatus() {
+	for result := range channels.StatusChannel {
+		messageLog.Debug("Updating Ingest status for %s", result.S3File.Key.Key)
+		err := fluctusClient.SendProcessedItem(result.IngestStatus())
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
+				"item status returned error %v. ", err)
+			messageLog.Error("Error sending ProcessedItem to Fluctus: %s",
+				err.Error())
+		}
 		// Clean up the bag/tar files
 		channels.CleanUpChannel <- result
 	}

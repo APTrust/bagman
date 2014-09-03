@@ -363,8 +363,9 @@ func saveToStorage() {
 		}
 		if result.TarResult.AnyFilesNeedSaving() == false {
 			messageLog.Info("Nothing to save to S3 for %s: " +
-				"files have not changed since they were last saved",
+				"files have not changed since they were last ingested",
 				result.S3File.Key.Key)
+			queueForMetadata(result)
 			channels.ResultsChannel <- result
 			continue
 		}
@@ -471,16 +472,7 @@ func saveToStorage() {
 		// If there were no errors, put this into the metadata
 		// queue, so we can record the events in Fluctus.
 		if result.ErrorMessage == "" {
-			err := bagman.Enqueue(config.NsqdHttpAddress, config.MetadataTopic, result)
-			if err != nil {
-				errMsg := fmt.Sprintf("Error adding '%s' to metadata queue: %v ",
-					result.S3File.Key.Key, err)
-				messageLog.Error(errMsg)
-				result.ErrorMessage += errMsg
-			} else {
-				messageLog.Debug("Sent '%s' to metadata queue",
-					result.S3File.Key.Key)
-			}
+			queueForMetadata(result)
 		}
 
 		// Pass problem cases off to the trouble queue
@@ -649,6 +641,20 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 				gf.Md5Verified = time.Now()
 			}
 		}
+	}
+}
+
+// Puts an item into the queue for Fluctus/Fedora metadata processing.
+func queueForMetadata(result *bagman.ProcessResult) {
+	err := bagman.Enqueue(config.NsqdHttpAddress, config.MetadataTopic, result)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error adding '%s' to metadata queue: %v ",
+			result.S3File.Key.Key, err)
+		messageLog.Error(errMsg)
+		result.ErrorMessage += errMsg
+	} else {
+		messageLog.Debug("Sent '%s' to metadata queue",
+			result.S3File.Key.Key)
 	}
 }
 

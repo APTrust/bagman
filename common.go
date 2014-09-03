@@ -148,13 +148,21 @@ func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
 	})
 }
 
-// Retry will be set to true if the attempt to process the file
-// failed and should be tried again. This would be case, for example,
-// if the failure was due to a network error. Retry is
-// set to false if processing failed for some reason that
-// will not change: for example, if the file cannot be
-// untarred, checksums were bad, or data files were missing.
-// If processing succeeded, Retry is irrelevant.
+/*
+Retry will be set to true if the attempt to process the file
+failed and should be tried again. This would be case, for example,
+if the failure was due to a network error. Retry is
+set to false if processing failed for some reason that
+will not change: for example, if the file cannot be
+untarred, checksums were bad, or data files were missing.
+If processing succeeded, Retry is irrelevant.
+
+ReingestNoOop tells us if we've hit a special case in which
+an already-ingested bag is reprocessed, but none of the GenericFiles
+have changed. In this case, ingest was a no-op, since no files were
+copied to S3, no metadata should be recorded in Fedora, and no events
+should be generated.
+*/
 type ProcessResult struct {
 	NsqMessage    *nsq.Message `json:"-"` // Don't serialize
 	S3File        *S3File
@@ -361,6 +369,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	status.Outcome = string(status.Status)
 	return status
 }
+
 
 // BucketSummary contains information about an S3 bucket and its contents.
 type BucketSummary struct {

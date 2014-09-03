@@ -73,9 +73,9 @@ func run() {
 	loadStatusCache()
 	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
 		config.BagProcessorTopic)
-	messageLog.Debug("Sending S3 file info to %s \n", url)
+	messageLog.Debug("Sending S3 file info to %s", url)
 	s3Files := filterLargeFiles(bucketSummaries)
-	messageLog.Debug("%d S3 Files are within our size limit\n",
+	messageLog.Debug("%d S3 Files are within our size limit",
 		len(s3Files))
 	filesToProcess := s3Files
 	// SkipAlreadyProcessed will almost always be true.
@@ -88,10 +88,10 @@ func run() {
 	}
 	start := 0
 	end := min(len(filesToProcess), batchSize)
-	messageLog.Info("%d Unprocessed files\n", len(filesToProcess))
+	messageLog.Info("%d Unprocessed files", len(filesToProcess))
 	for start <= end {
 		batch := filesToProcess[start:end]
-		messageLog.Info("Queuing batch of %d items\n", len(batch))
+		messageLog.Info("Queuing batch of %d items", len(batch))
 		enqueue(url, batch)
 		start = end + 1
 		if start < len(filesToProcess) {
@@ -167,7 +167,9 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			}
 			messageLog.Info("Will process bag %s: %s", s3File.Key.Key, reason)
 			filesToProcess = append(filesToProcess, s3File)
-		} else if status.Status != "Failed" {
+		} else if status.Status == "Pending" {
+			messageLog.Debug("Skipping %s: ingest is pending.", s3File.Key.Key)
+		} else if status.Status != "Failed" && config.SkipAlreadyProcessed == true {
 			messageLog.Debug("Skipping %s: already processed successfully.", s3File.Key.Key)
 		} else if status.Retry == false {
 			messageLog.Debug("Skipping %s: retry flag is set to false.", s3File.Key.Key)
