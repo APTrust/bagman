@@ -1,8 +1,6 @@
 package processutil
 
 import (
-	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/client"
@@ -26,8 +24,8 @@ type ProcessUtil struct {
 	Volume          *bagman.Volume
 	S3Client        *bagman.S3Client
 	FluctusClient   *client.Client
-	Succeeded       int64
-	Failed          int64
+	succeeded       int64
+	failed          int64
 }
 
 /*
@@ -40,26 +38,21 @@ essential services, such as logging.
 This object is meant to used as a singleton with any of the
 stand-along processing services (bag_processor, bag_restorer,
 cleanup, etc.).
+
+Param requestedConfig should be the name of a valid configuration
+in the config.json file ("dev", "test", etc.).
 */
-func NewProcessUtil() (procUtil *ProcessUtil) {
+func NewProcessUtil(requestedConfig string) (procUtil *ProcessUtil) {
 	procUtil = &ProcessUtil {
-		Succeeded: int64(0),
-		Failed: int64(0),
+		succeeded: int64(0),
+		failed: int64(0),
 	}
-	procUtil.loadConfig()
+	procUtil.Config = bagman.LoadRequestedConfig(&requestedConfig)
 	procUtil.initLogging()
 	procUtil.initVolume()
 	procUtil.initS3Client()
 	procUtil.initFluctusClient()
 	return procUtil
-}
-
-// Loads whatever config was requested on the command line.
-// WILL DIE IF CONFIG IS MISSING OR INVALID!!
-func (procUtil *ProcessUtil) loadConfig() {
-	requestedConfig := flag.String("config", "", "configuration to run")
-	flag.Parse()
-	procUtil.Config = bagman.LoadRequestedConfig(requestedConfig)
 }
 
 // Initializes the loggers.
@@ -106,28 +99,22 @@ func (procUtil *ProcessUtil) initFluctusClient() {
 	procUtil.FluctusClient = fluctusClient
 }
 
-// TODO: This code is duplicated in bag_processor.go
-func (procUtil *ProcessUtil) LogResult(result *bagman.ProcessResult) {
-	// Log full results to the JSON log
-	json, err := json.Marshal(result)
-	if err != nil {
-		procUtil.MessageLog.Error(err.Error())
-	}
-	procUtil.JsonLog.Println(string(json))
+// Returns the number of processed items that succeeded.
+func (procUtil *ProcessUtil) Succeeded() (int64) {
+	return procUtil.succeeded
+}
 
-	// Add a message to the message log
-	if result.ErrorMessage != "" {
-		atomic.AddInt64(&procUtil.Failed, 1)
-		procUtil.MessageLog.Error("%s %s -> %s",
-			result.S3File.BucketName,
-			result.S3File.Key.Key,
-			result.ErrorMessage)
-	} else {
-		atomic.AddInt64(&procUtil.Succeeded, 1)
-		procUtil.MessageLog.Info("%s -> finished OK", result.S3File.Key.Key)
-	}
+// Returns the number of processed items that failed.
+func (procUtil *ProcessUtil) Failed() (int64) {
+	return procUtil.failed
+}
 
-	// Add some stats to the message log
-	procUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d",
-		procUtil.Succeeded, procUtil.Failed)
+func (procUtil *ProcessUtil) IncrementSucceeded() (int64) {
+	atomic.AddInt64(&procUtil.succeeded, 1)
+	return procUtil.succeeded
+}
+
+func (procUtil *ProcessUtil) IncrementFailed() (int64) {
+	atomic.AddInt64(&procUtil.failed, 1)
+	return procUtil.succeeded
 }
