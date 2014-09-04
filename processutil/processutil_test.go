@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/processutil"
+	"github.com/bitly/go-nsq"
 	"path"
 	"path/filepath"
 	"os"
@@ -66,5 +67,64 @@ func TestIncrementSucceededAndFailed(t *testing.T) {
 	}
 	if procUtil.Failed() - initialValue != 3 {
 		t.Errorf("Failed() returned %d, expected 3", procUtil.Failed() - initialValue)
+	}
+}
+
+func TestMessageIdString(t *testing.T) {
+	procUtil := processutil.NewProcessUtil("test")
+	defer deleteTestLogs(procUtil.Config)
+
+	messageId := nsq.MessageID{'s', 'i', 'x', 't', 'e', 'e', 'n', 's', 'i', 'x', 't', 'e', 'e', 'n', '1', '6'}
+	if procUtil.MessageIdString(messageId) != "sixteensixteen16" {
+		t.Errorf("MessageIdString should have returned 'sixteensixteen16', but returned '%s'",
+			procUtil.MessageIdString(messageId))
+	}
+}
+
+func TestSyncMapFunctions(t *testing.T) {
+	procUtil := processutil.NewProcessUtil("test")
+	defer deleteTestLogs(procUtil.Config)
+
+	messageId1 := nsq.MessageID{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 's', 'd', 'f', 'g', 'h'}
+	messageId2 := nsq.MessageID{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '9', '8', '7', '1', 'x', 'y'}
+	messageId1String := procUtil.MessageIdString(messageId1)
+	messageId2String := procUtil.MessageIdString(messageId2)
+
+	err := procUtil.RegisterItem("Item1", messageId1)
+	if err != nil {
+		t.Errorf("RegisterItem returned an unexpected error: %v", err)
+	}
+
+	// Trying to register the same key with a different messageId should cause an error.
+	err = procUtil.RegisterItem("Item1", messageId2)
+	if err == nil {
+		t.Errorf("RegisterItem should have returned an error but did not")
+	}
+
+	// Register new key with new messageId
+	err = procUtil.RegisterItem("Item2", messageId2)
+	if err != nil {
+		t.Errorf("RegisterItem returned an unexpected error: %v", err)
+	}
+
+	// Make sure it's all there.
+	if procUtil.MessageIdFor("Item1") != messageId1String {
+		t.Errorf("Expected messageId '%s' for Item1, but got '%s'",
+			messageId1String, procUtil.MessageIdFor("Item1"))
+	}
+	if procUtil.MessageIdFor("Item2") != messageId2String {
+		t.Errorf("Expected messageId '%s' for Item2, but got '%s'",
+			messageId2String, procUtil.MessageIdFor("Item2"))
+	}
+
+	// Make sure Unregister works
+	procUtil.UnregisterItem("Item1")
+	if procUtil.MessageIdFor("Item1") != "" {
+		t.Errorf("Item1 was not unregistered")
+	}
+
+	procUtil.UnregisterItem("Item2")
+	if procUtil.MessageIdFor("Item2") != "" {
+		t.Errorf("Item2 was not unregistered")
 	}
 }

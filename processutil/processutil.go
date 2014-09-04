@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/client"
+	"github.com/bitly/go-nsq"
 	"github.com/diamondap/goamz/aws"
 	"github.com/op/go-logging"
 	"log"
@@ -24,6 +25,7 @@ type ProcessUtil struct {
 	Volume          *bagman.Volume
 	S3Client        *bagman.S3Client
 	FluctusClient   *client.Client
+	syncMap         *bagman.SynchronizedMap
 	succeeded       int64
 	failed          int64
 }
@@ -52,6 +54,7 @@ func NewProcessUtil(requestedConfig string) (procUtil *ProcessUtil) {
 	procUtil.initVolume()
 	procUtil.initS3Client()
 	procUtil.initFluctusClient()
+	procUtil.syncMap = bagman.NewSynchronizedMap()
 	return procUtil
 }
 
@@ -109,12 +112,73 @@ func (procUtil *ProcessUtil) Failed() (int64) {
 	return procUtil.failed
 }
 
+// Increases the count of successfully processed items by one.
 func (procUtil *ProcessUtil) IncrementSucceeded() (int64) {
 	atomic.AddInt64(&procUtil.succeeded, 1)
 	return procUtil.succeeded
 }
 
+// Increases the count of unsuccessfully processed items by one.
 func (procUtil *ProcessUtil) IncrementFailed() (int64) {
 	atomic.AddInt64(&procUtil.failed, 1)
 	return procUtil.succeeded
+}
+
+/*
+Registers an item currently being processed so we can keep track
+of duplicates. Many requests for ingest, restoration, etc. may be
+queued more than once. Register an item here to note that it is
+being processed under a specific message id. If they item comes in
+again before we're done processing, and you try to register it here,
+you'll get an error saying the item is already in process.
+
+The key should be a unique identifier. For intellectual objects,
+this can be the IntellectualObject.Identifier. For S3 files, it can
+be bucket_name/file_name.
+*/
+func (procUtil *ProcessUtil) RegisterItem(key string, messageId nsq.MessageID) (error) {
+	messageIdString := procUtil.MessageIdString(messageId)
+	if procUtil.syncMap.HasKey(key) {
+		otherId := procUtil.syncMap.Get(key)
+		sameOrDifferent := "a different"
+		if otherId == messageIdString {
+			sameOrDifferent = "the same"
+		}
+		return fmt.Errorf("Item is already being processed under %s messageId (%s)",
+			sameOrDifferent, otherId)
+	}
+	// Make a note that we're processing this file.
+	procUtil.syncMap.Add(key, messageIdString)
+	return nil
+}
+
+/*
+UnregisterItem removes the item with specified key from the list
+of items we are currently processing. Be sure to call this when you're
+done processing any item you've registered so we know we're finished
+with it and we can reprocess it later, under a different message id.
+*/
+func (procUtil *ProcessUtil) UnregisterItem(key string) {
+	procUtil.syncMap.Delete(key)
+}
+
+/*
+Returns the NSQ MessageId under which the current item is being
+processed, or an empty string if no item with that key is currently
+being processed.
+*/
+func (procUtil *ProcessUtil) MessageIdFor(key string) (string) {
+	if procUtil.syncMap.HasKey(key) {
+		return procUtil.syncMap.Get(key)
+	}
+	return ""
+}
+
+// Converts an NSQ MessageID to a string.
+func (procUtil *ProcessUtil) MessageIdString(messageId nsq.MessageID) (string) {
+	messageIdBytes := make([]byte, nsq.MsgIDLength)
+	for i := range messageId {
+		messageIdBytes[i] = messageId[i]
+	}
+	return string(messageIdBytes)
 }
