@@ -44,12 +44,12 @@ cleanup, etc.).
 Param requestedConfig should be the name of a valid configuration
 in the config.json file ("dev", "test", etc.).
 */
-func NewProcessUtil(requestedConfig string) (procUtil *ProcessUtil) {
+func NewProcessUtil(requestedConfig *string) (procUtil *ProcessUtil) {
 	procUtil = &ProcessUtil {
 		succeeded: int64(0),
 		failed: int64(0),
 	}
-	procUtil.Config = bagman.LoadRequestedConfig(&requestedConfig)
+	procUtil.Config = bagman.LoadRequestedConfig(requestedConfig)
 	procUtil.initLogging()
 	procUtil.initVolume()
 	procUtil.initS3Client()

@@ -11,6 +11,8 @@ import (
 	"testing"
 )
 
+var testConfig string = "test"
+
 func deleteTestLogs(config bagman.Config) {
 	processName := path.Base(os.Args[0])
 	jsonLog := fmt.Sprintf("%s.json", processName)
@@ -23,7 +25,7 @@ func deleteTestLogs(config bagman.Config) {
 }
 
 func TestNewProcessUtil(t *testing.T) {
-	procUtil := processutil.NewProcessUtil("test")
+	procUtil := processutil.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 	if procUtil.Config.ActiveConfig != "test" {
 		t.Errorf("NewProcessUtil did not load the test config")
@@ -52,7 +54,7 @@ func TestNewProcessUtil(t *testing.T) {
 }
 
 func TestIncrementSucceededAndFailed(t *testing.T) {
-	procUtil := processutil.NewProcessUtil("test")
+	procUtil := processutil.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 	initialValue := procUtil.Succeeded()
 	for i:=0; i < 3; i++ {
@@ -71,7 +73,7 @@ func TestIncrementSucceededAndFailed(t *testing.T) {
 }
 
 func TestMessageIdString(t *testing.T) {
-	procUtil := processutil.NewProcessUtil("test")
+	procUtil := processutil.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 
 	messageId := nsq.MessageID{'s', 'i', 'x', 't', 'e', 'e', 'n', 's', 'i', 'x', 't', 'e', 'e', 'n', '1', '6'}
@@ -82,7 +84,7 @@ func TestMessageIdString(t *testing.T) {
 }
 
 func TestSyncMapFunctions(t *testing.T) {
-	procUtil := processutil.NewProcessUtil("test")
+	procUtil := processutil.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 
 	messageId1 := nsq.MessageID{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 's', 'd', 'f', 'g', 'h'}
