@@ -5,13 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
+	"github.com/APTrust/bagman/processutil"
 	"github.com/bitly/go-nsq"
-	"github.com/diamondap/goamz/aws"
-	"github.com/op/go-logging"
-	"log"
-	"os"
-	"sync/atomic"
 	"time"
 )
 
@@ -22,74 +17,46 @@ type Channels struct {
 
 // Global vars.
 var channels *Channels
-var config bagman.Config
-var jsonLog *log.Logger
-var messageLog *logging.Logger
-var succeeded = int64(0)
-var failed = int64(0)
-var s3Client *bagman.S3Client
-var fluctusClient *client.Client
+var procUtil *processutil.ProcessUtil
 
 func main() {
+	requestedConfig := flag.String("config", "", "configuration to run")
+	flag.Parse()
+	procUtil = processutil.NewProcessUtil(requestedConfig)
 
-	loadConfig()
-	messageLog.Info("Cleanup started")
-	err := config.EnsureFluctusConfig()
+	procUtil.MessageLog.Info("Cleanup started")
+	err := procUtil.Config.EnsureFluctusConfig()
 	if err != nil {
-		messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
-	}
-
-	fluctusClient, err = client.New(
-		config.FluctusURL,
-		config.FluctusAPIVersion,
-		os.Getenv("FLUCTUS_API_USER"),
-		os.Getenv("FLUCTUS_API_KEY"),
-		messageLog)
-	if err != nil {
-		messageLog.Fatalf("Cannot initialize Fluctus Client: %v", err)
+		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
 	}
 
 	initChannels()
 	initGoRoutines()
 
-	err = initS3Client()
-	if err != nil {
-		messageLog.Fatalf("Cannot initialize S3Client: %v", err)
-	}
-
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(config.MaxCleanupAttempts))
+	nsqConfig.Set("max_attempts", uint16(procUtil.Config.MaxCleanupAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
 	nsqConfig.Set("msg_timeout", "60m")
-	consumer, err := nsq.NewConsumer(config.CleanupTopic,
-		config.CleanupChannel, nsqConfig)
+	consumer, err := nsq.NewConsumer(procUtil.Config.CleanupTopic,
+		procUtil.Config.CleanupChannel, nsqConfig)
 	if err != nil {
-		messageLog.Fatalf(err.Error())
+		procUtil.MessageLog.Fatalf(err.Error())
 	}
 
 	handler := &CleanupProcessor{}
 	consumer.SetHandler(handler)
-	consumer.ConnectToNSQLookupd(config.NsqLookupd)
+	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan
 }
 
-func loadConfig() {
-	// Load the config or die.
-	requestedConfig := flag.String("config", "", "configuration to run")
-	flag.Parse()
-	config = bagman.LoadRequestedConfig(requestedConfig)
-	messageLog = bagman.InitLogger(config)
-	jsonLog = bagman.InitJsonLogger(config)
-}
-
 // Set up the channels.
 func initChannels() {
-	workerBufferSize := config.Workers * 10
+	workerBufferSize := procUtil.Config.Workers * 10
 	channels = &Channels{}
 	channels.CleanupChannel = make(chan *bagman.CleanupResult, workerBufferSize)
 	channels.ResultsChannel = make(chan *bagman.CleanupResult, workerBufferSize)
@@ -99,16 +66,10 @@ func initChannels() {
 // go routines so we do not have 1000+ simultaneous connections
 // to Fluctus. That would just cause Fluctus to crash.
 func initGoRoutines() {
-	for i := 0; i < config.Workers; i++ {
+	for i := 0; i < procUtil.Config.Workers; i++ {
 		go logResult()
 		go doCleanUp()
 	}
-}
-
-// Initialize the reusable S3 client.
-func initS3Client() (err error) {
-	s3Client, err = bagman.NewS3Client(aws.USEast)
-	return err
 }
 
 type CleanupProcessor struct {
@@ -124,37 +85,37 @@ func (*CleanupProcessor) HandleMessage(message *nsq.Message) error {
 		detailedError := fmt.Errorf(
 			"[ERROR] Could not unmarshal JSON data from nsq: %v. JSON: %s",
 			err, string(message.Body))
-		messageLog.Error(detailedError.Error())
+		procUtil.MessageLog.Error(detailedError.Error())
 		message.Finish()
 		return detailedError
 	}
 	result.NsqMessage = message
 	channels.CleanupChannel <- &result
-	messageLog.Info("Put %s into cleanup channel", result.BagName)
+	procUtil.MessageLog.Info("Put %s into cleanup channel", result.BagName)
 	return nil
 }
 
-// TODO: This code is duplicated in bag_processor.go
+// TODO: Don't requeue if config.DeleteOnSuccess == false
 func logResult() {
 	for result := range channels.ResultsChannel {
 		// Log full results to the JSON log
 		json, err := json.Marshal(result)
 		if err != nil {
-			messageLog.Error(err.Error())
-			messageLog.Info("Requeueing %s due to error", result.BagName)
+			procUtil.MessageLog.Error(err.Error())
+			procUtil.MessageLog.Info("Requeueing %s due to error", result.BagName)
 			result.NsqMessage.Requeue(1 * time.Minute)
-			atomic.AddInt64(&failed, 1)
+			procUtil.IncrementFailed()
 			logStats()
 			continue
 		}
-		jsonLog.Println(string(json))
+		procUtil.JsonLog.Println(string(json))
 
 		// Log & requeue if something failed.
 		if result.Succeeded() == false {
-			messageLog.Info("Requeueing %s because at least one S3 delete failed",
+			procUtil.MessageLog.Info("Requeueing %s because at least one S3 delete failed",
 				result.BagName)
 			result.NsqMessage.Requeue(1 * time.Minute)
-			atomic.AddInt64(&failed, 1)
+			procUtil.IncrementFailed()
 			logStats()
 			continue
 		}
@@ -163,32 +124,32 @@ func logResult() {
 		err = MarkItemResolved(result)
 		if err != nil {
 			// TODO: This will just get retried forever, won't it?
-			messageLog.Error("Requeueing %s because we could not update Fluctus",
+			procUtil.MessageLog.Error("Requeueing %s because we could not update Fluctus",
 				result.BagName)
 			result.NsqMessage.Requeue(1 * time.Minute)
-			atomic.AddInt64(&failed, 1)
+			procUtil.IncrementFailed()
 		} else {
-			messageLog.Info("Cleanup of %s succeeded", result.BagName)
+			procUtil.MessageLog.Info("Cleanup of %s succeeded", result.BagName)
 			result.NsqMessage.Finish()
-			atomic.AddInt64(&succeeded, 1)
+			procUtil.IncrementSucceeded()
 		}
 		logStats()
 	}
 }
 
 func logStats() {
-	messageLog.Info("**STATS** Succeeded: %d, Failed: %d", succeeded, failed)
+	procUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d", procUtil.Succeeded(), procUtil.Failed())
 }
 
 func doCleanUp() {
 	for result := range channels.CleanupChannel {
-		messageLog.Info("Cleaning up %s", result.BagName)
-		if config.DeleteOnSuccess == true {
+		procUtil.MessageLog.Info("Cleaning up %s", result.BagName)
+		if procUtil.Config.DeleteOnSuccess == true {
 			DeleteS3Files(result)
 		} else {
 			// For testing...
 			// result.Files[0].DeletedAt = time.Now()
-			messageLog.Info("Not deleting %s because config.DeleteOnSuccess == false", result.BagName)
+			procUtil.MessageLog.Info("Not deleting %s because config.DeleteOnSuccess == false", result.BagName)
 		}
 		channels.ResultsChannel <- result
 	}
@@ -198,14 +159,14 @@ func doCleanUp() {
 func DeleteS3Files(result *bagman.CleanupResult) {
 	for i := range result.Files {
 		file := result.Files[i]
-		err := s3Client.Delete(file.BucketName, file.Key)
+		err := procUtil.S3Client.Delete(file.BucketName, file.Key)
 		if err != nil {
 			file.ErrorMessage += fmt.Sprintf("Error deleting file '%s' from "+
 				"bucket '%s': %v ", file.Key, file.BucketName)
-			messageLog.Error(file.ErrorMessage)
+			procUtil.MessageLog.Error(file.ErrorMessage)
 		} else {
 			file.DeletedAt = time.Now()
-			messageLog.Info("Deleted original file '%s' from bucket '%s'",
+			procUtil.MessageLog.Info("Deleted original file '%s' from bucket '%s'",
 				file.Key, file.BucketName)
 		}
 	}
@@ -213,10 +174,10 @@ func DeleteS3Files(result *bagman.CleanupResult) {
 
 // Tell Fluctus this ProcessedItem is resolved
 func MarkItemResolved(result *bagman.CleanupResult) error {
-	remoteStatus, err := fluctusClient.GetBagStatus(
+	remoteStatus, err := procUtil.FluctusClient.GetBagStatus(
 		result.ETag, result.BagName, result.BagDate)
 	if err != nil {
-		messageLog.Error("Error getting ProcessedItem to Fluctus: %s", err.Error())
+		procUtil.MessageLog.Error("Error getting ProcessedItem to Fluctus: %s", err.Error())
 		return err
 	}
 	if remoteStatus != nil {
@@ -224,11 +185,11 @@ func MarkItemResolved(result *bagman.CleanupResult) error {
 		remoteStatus.Stage = bagman.StageCleanup
 		remoteStatus.Status = bagman.StatusSuccess
 	}
-	err = fluctusClient.UpdateBagStatus(remoteStatus)
+	err = procUtil.FluctusClient.UpdateBagStatus(remoteStatus)
 	if err != nil {
-		messageLog.Error("Error sending ProcessedItem to Fluctus: %s", err.Error())
+		procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %s", err.Error())
 	} else {
-		messageLog.Info("Updated status in Fluctus for %s: %s/%s\n",
+		procUtil.MessageLog.Info("Updated status in Fluctus for %s: %s/%s\n",
 			remoteStatus.Name, remoteStatus.Stage, remoteStatus.Status)
 	}
 	return err
