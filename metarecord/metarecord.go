@@ -5,15 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
+	"github.com/APTrust/bagman/processutil"
 	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/bitly/go-nsq"
-	"github.com/diamondap/goamz/aws"
 	"github.com/nu7hatch/gouuid"
-	"github.com/op/go-logging"
-	"log"
-	"os"
-	"sync/atomic"
 	"time"
 )
 
@@ -26,74 +21,46 @@ type Channels struct {
 
 // Global vars.
 var channels *Channels
-var config bagman.Config
-var jsonLog *log.Logger
-var messageLog *logging.Logger
-var succeeded = int64(0)
-var failed = int64(0)
-var s3Client *bagman.S3Client
-var fluctusClient *client.Client
+var procUtil *processutil.ProcessUtil
 
 func main() {
+	requestedConfig := flag.String("config", "", "configuration to run")
+	flag.Parse()
+	procUtil = processutil.NewProcessUtil(requestedConfig)
 
-	loadConfig()
-	messageLog.Info("Metarecord started")
-	err := config.EnsureFluctusConfig()
+	procUtil.MessageLog.Info("Metarecord started")
+	err := procUtil.Config.EnsureFluctusConfig()
 	if err != nil {
-		messageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
-	}
-
-	fluctusClient, err = client.New(
-		config.FluctusURL,
-		config.FluctusAPIVersion,
-		os.Getenv("FLUCTUS_API_USER"),
-		os.Getenv("FLUCTUS_API_KEY"),
-		messageLog)
-	if err != nil {
-		messageLog.Fatalf("Cannot initialize Fluctus Client: %v", err)
+		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
 	}
 
 	initChannels()
 	initGoRoutines()
 
-	err = initS3Client()
-	if err != nil {
-		messageLog.Fatalf("Cannot initialize S3Client: %v", err)
-	}
-
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(config.MaxMetadataAttempts))
+	nsqConfig.Set("max_attempts", uint16(procUtil.Config.MaxMetadataAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
 	nsqConfig.Set("msg_timeout", "60m")
-	consumer, err := nsq.NewConsumer(config.MetadataTopic,
-		config.MetadataChannel, nsqConfig)
+	consumer, err := nsq.NewConsumer(procUtil.Config.MetadataTopic,
+		procUtil.Config.MetadataChannel, nsqConfig)
 	if err != nil {
-		messageLog.Fatalf(err.Error())
+		procUtil.MessageLog.Fatalf(err.Error())
 	}
 
 	handler := &RecordProcessor{}
 	consumer.SetHandler(handler)
-	consumer.ConnectToNSQLookupd(config.NsqLookupd)
+	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan
 }
 
-func loadConfig() {
-	// Load the config or die.
-	requestedConfig := flag.String("config", "", "configuration to run")
-	flag.Parse()
-	config = bagman.LoadRequestedConfig(requestedConfig)
-	messageLog = bagman.InitLogger(config)
-	jsonLog = bagman.InitJsonLogger(config)
-}
-
 // Set up the channels.
 func initChannels() {
-	workerBufferSize := config.Workers * 10
+	workerBufferSize := procUtil.Config.Workers * 10
 	channels = &Channels{}
 	channels.FedoraChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	channels.CleanUpChannel = make(chan *bagman.ProcessResult, workerBufferSize)
@@ -105,18 +72,12 @@ func initChannels() {
 // go routines so we do not have 1000+ simultaneous connections
 // to Fluctus. That would just cause Fluctus to crash.
 func initGoRoutines() {
-	for i := 0; i < config.Workers; i++ {
+	for i := 0; i < procUtil.Config.Workers; i++ {
 		go recordInFedora()
 		go logResult()
 		go doCleanUp()
 		go recordStatus()
 	}
-}
-
-// Initialize the reusable S3 client.
-func initS3Client() (err error) {
-	s3Client, err = bagman.NewS3Client(aws.USEast)
-	return err
 }
 
 type RecordProcessor struct {
@@ -132,19 +93,19 @@ func (*RecordProcessor) HandleMessage(message *nsq.Message) error {
 		detailedError := fmt.Errorf(
 			"[ERROR] Could not unmarshal JSON data from nsq: %v. JSON: %s",
 			err, string(message.Body))
-		messageLog.Error(detailedError.Error())
+		procUtil.MessageLog.Error(detailedError.Error())
 		message.Finish()
 		return detailedError
 	}
 	result.NsqMessage = message
 	channels.FedoraChannel <- &result
-	messageLog.Debug("Put %s into Fluctus channel", result.S3File.Key.Key)
+	procUtil.MessageLog.Debug("Put %s into Fluctus channel", result.S3File.Key.Key)
 	return nil
 }
 
 func recordInFedora() {
 	for result := range channels.FedoraChannel {
-		messageLog.Info("Recording Fedora metadata for %s",
+		procUtil.MessageLog.Info("Recording Fedora metadata for %s",
 			result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		result.Stage = "Record"
@@ -160,16 +121,16 @@ func recordInFedora() {
 					"PremisEvents, one or more calls to Fluctus failed."
 			}
 			if result.ErrorMessage == "" {
-				messageLog.Info("Successfully recorded Fedora metadata for %s",
+				procUtil.MessageLog.Info("Successfully recorded Fedora metadata for %s",
 					result.S3File.Key.Key)
 			} else {
 				// If any errors in occur while talking to Fluctus,
 				// we'll want to requeue and try again. Just leave
 				// the result.Retry flag alone, and that will happen.
-				messageLog.Error(result.ErrorMessage)
+				procUtil.MessageLog.Error(result.ErrorMessage)
 			}
 		} else {
-			messageLog.Info("Nothing to update for %s: no items changed since last ingest.",
+			procUtil.MessageLog.Info("Nothing to update for %s: no items changed since last ingest.",
 				result.S3File.Key.Key)
 		}
 		channels.ResultsChannel <- result
@@ -182,37 +143,38 @@ func logResult() {
 		// Log full results to the JSON log
 		json, err := json.Marshal(result)
 		if err != nil {
-			messageLog.Error(err.Error())
+			procUtil.MessageLog.Error(err.Error())
 		}
-		jsonLog.Println(string(json))
+		procUtil.JsonLog.Println(string(json))
 
 		// Add a message to the message log
 		if result.ErrorMessage != "" {
-			atomic.AddInt64(&failed, 1)
-			messageLog.Error("%s %s -> %s",
+			procUtil.IncrementFailed()
+			procUtil.MessageLog.Error("%s %s -> %s",
 				result.S3File.BucketName,
 				result.S3File.Key.Key,
 				result.ErrorMessage)
 		} else {
-			atomic.AddInt64(&succeeded, 1)
-			messageLog.Info("%s -> finished OK", result.S3File.Key.Key)
+			procUtil.IncrementSucceeded()
+			procUtil.MessageLog.Info("%s -> finished OK", result.S3File.Key.Key)
 		}
 
 		// Add some stats to the message log
-		messageLog.Info("**STATS** Succeeded: %d, Failed: %d", succeeded, failed)
+		procUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d",
+			procUtil.Succeeded(), procUtil.Failed())
 
-		if result.NsqMessage.Attempts >= uint16(config.MaxMetadataAttempts) && result.ErrorMessage != "" {
+		if result.NsqMessage.Attempts >= uint16(procUtil.Config.MaxMetadataAttempts) && result.ErrorMessage != "" {
 			result.Retry = false
 			result.ErrorMessage += fmt.Sprintf("Failure is due to a technical error "+
 				"in Fedora. Giving up after %d failed attempts. This item has been "+
 				"queued for administrative review. ",
 				result.NsqMessage.Attempts)
-			err = bagman.Enqueue(config.NsqdHttpAddress, config.TroubleTopic, result)
+			err = bagman.Enqueue(procUtil.Config.NsqdHttpAddress, procUtil.Config.TroubleTopic, result)
 			if err != nil {
-				messageLog.Error("Could not send '%s' to trouble queue: %v",
+				procUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
 					result.S3File.Key.Key, err)
 			} else {
-				messageLog.Warning("Sent '%s' to trouble queue", result.S3File.Key.Key)
+				procUtil.MessageLog.Warning("Sent '%s' to trouble queue", result.S3File.Key.Key)
 			}
 		}
 
@@ -223,12 +185,12 @@ func logResult() {
 
 func recordStatus() {
 	for result := range channels.StatusChannel {
-		messageLog.Debug("Updating Ingest status for %s", result.S3File.Key.Key)
-		err := fluctusClient.SendProcessedItem(result.IngestStatus())
+		procUtil.MessageLog.Debug("Updating Ingest status for %s", result.S3File.Key.Key)
+		err := procUtil.FluctusClient.SendProcessedItem(result.IngestStatus())
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
 				"item status returned error %v. ", err)
-			messageLog.Error("Error sending ProcessedItem to Fluctus: %s",
+			procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %s",
 				err.Error())
 		}
 		// Clean up the bag/tar files
@@ -238,11 +200,11 @@ func recordStatus() {
 
 func doCleanUp() {
 	for result := range channels.CleanUpChannel {
-		messageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
+		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		// Build and send message back to NSQ, indicating whether
 		// processing succeeded.
 		if result.ErrorMessage != "" && result.Retry == true {
-			messageLog.Info("Requeueing %s", result.S3File.Key.Key)
+			procUtil.MessageLog.Info("Requeueing %s", result.S3File.Key.Key)
 			result.NsqMessage.Requeue(1 * time.Minute)
 		} else {
 			result.NsqMessage.Finish()
@@ -261,7 +223,7 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 	result.FedoraResult = bagman.NewFedoraResult(
 		intellectualObject.Identifier,
 		result.TarResult.GenericFilePaths())
-	existingObj, err := fluctusClient.IntellectualObjectGet(
+	existingObj, err := procUtil.FluctusClient.IntellectualObjectGet(
 		intellectualObject.Identifier, true)
 	if err != nil {
 		result.FedoraResult.ErrorMessage = fmt.Sprintf(
@@ -280,17 +242,17 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 				if genericFile.NeedsSave {
 					fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
 				} else {
-					messageLog.Debug("Nothing to do for %s: no change since last ingest",
+					procUtil.MessageLog.Debug("Nothing to do for %s: no change since last ingest",
 						genericFile.Identifier)
 				}
 			}
 		} else {
-			messageLog.Debug("Not saving object, files or events for %s: no change since last ingest",
+			procUtil.MessageLog.Debug("Not saving object, files or events for %s: no change since last ingest",
 				existingObj.Identifier)
 		}
 	} else {
 		result.FedoraResult.IsNewObject = true
-		newObj, err := fluctusClient.IntellectualObjectCreate(intellectualObject)
+		newObj, err := procUtil.FluctusClient.IntellectualObjectCreate(intellectualObject)
 		if err != nil {
 			result.FedoraResult.ErrorMessage = fmt.Sprintf(
 				"[ERROR] Error creating new IntellectualObject '%s' in Fluctus: %v",
@@ -310,7 +272,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, objId string, gf *bag
 	if err != nil {
 		return fmt.Errorf("Error converting GenericFile to Fluctus model: %v", err)
 	}
-	_, err = fluctusClient.GenericFileSave(objId, fluctusGenericFile)
+	_, err = procUtil.FluctusClient.GenericFileSave(objId, fluctusGenericFile)
 	if err != nil {
 		handleFedoraError(result,
 			fmt.Sprintf("Error saving generic file '%s' to Fedora", objId),
@@ -320,7 +282,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, objId string, gf *bag
 	addMetadataRecord(result, "GenericFile", "file_registered", gf.Path, err)
 
 	for _, event := range fluctusGenericFile.Events {
-		_, err = fluctusClient.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", event)
+		_, err = procUtil.FluctusClient.PremisEventSave(fluctusGenericFile.Identifier, "GenericFile", event)
 		if err != nil {
 			message := fmt.Sprintf("Error saving event '%s' for generic file "+
 				"'%s' to Fedora", event, objId)
@@ -337,7 +299,7 @@ func fedoraRecordGenericFile(result *bagman.ProcessResult, objId string, gf *bag
 // Ingest PremisEvent to Fedora.
 func fedoraUpdateIntellectualObject(result *bagman.ProcessResult, intellectualObject *models.IntellectualObject) error {
 	// Create/Update the IntellectualObject
-	savedObj, err := fluctusClient.IntellectualObjectUpdate(intellectualObject)
+	savedObj, err := procUtil.FluctusClient.IntellectualObjectUpdate(intellectualObject)
 	if err != nil {
 		message := fmt.Sprintf("Error saving intellectual object '%s' to Fedora",
 			intellectualObject.Identifier)
@@ -365,7 +327,8 @@ func fedoraUpdateIntellectualObject(result *bagman.ProcessResult, intellectualOb
 		Agent:              "https://launchpad.net/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
-	_, err = fluctusClient.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", ingestEvent)
+	_, err = procUtil.FluctusClient.PremisEventSave(intellectualObject.Identifier,
+		"IntellectualObject", ingestEvent)
 	if err != nil {
 		message := fmt.Sprintf("Error saving ingest event for intellectual "+
 			"object '%s' to Fedora", intellectualObject.Identifier)
@@ -385,7 +348,8 @@ func fedoraUpdateIntellectualObject(result *bagman.ProcessResult, intellectualOb
 		Agent:              "https://github.com/APTrust/bagman",
 		OutcomeInformation: "Institution domain + tar file name",
 	}
-	_, err = fluctusClient.PremisEventSave(intellectualObject.Identifier, "IntellectualObject", idEvent)
+	_, err = procUtil.FluctusClient.PremisEventSave(intellectualObject.Identifier,
+		"IntellectualObject", idEvent)
 	if err != nil {
 		message := fmt.Sprintf("Error saving identifier_assignment event for "+
 			"intellectual object '%s' to Fedora", intellectualObject.Identifier)
@@ -406,7 +370,7 @@ func addMetadataRecord(result *bagman.ProcessResult, eventType, action, eventObj
 	// and should never happen.
 	recError := result.FedoraResult.AddRecord(eventType, action, eventObject, errMsg)
 	if recError != nil {
-		messageLog.Fatal(recError)
+		procUtil.MessageLog.Fatal(recError)
 	}
 }
 
