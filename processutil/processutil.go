@@ -182,3 +182,9 @@ func (procUtil *ProcessUtil) MessageIdString(messageId nsq.MessageID) (string) {
 	}
 	return string(messageIdBytes)
 }
+
+// Logs info about the number of items that have succeeded and failed.
+func (procUtil *ProcessUtil) LogStats() {
+	procUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d",
+		procUtil.Succeeded(), procUtil.Failed())
+}

@@ -51,6 +51,15 @@ func (s3File *S3File) ObjectName() (string, error) {
 	return fmt.Sprintf("%s/%s", institution, cleanBagName), nil
 }
 
+// The name of the owning institution, followed by a slash, followed
+// by the name of the tar file. This differs from the ObjectName,
+// because it will have the .tar or bag.001.of030.tar suffix.
+func (s3File *S3File) BagName() (string) {
+	return fmt.Sprintf("%s/%s", OwnerOf(s3File.BucketName), s3File.Key.Key)
+}
+
+
+
 // Status enumerations match values defined in
 // https://github.com/APTrust/fluctus/blob/develop/config/application.rb
 type StatusType string

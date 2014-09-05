@@ -855,16 +855,39 @@ func TestS3ObjectName(t *testing.T) {
 	expected := "virginia.edu/some.file"
 	actual, err := s3File.ObjectName()
 	if err != nil {
-		t.Error("S3File.ObjectName() returned error %v", err)
+		t.Errorf("S3File.ObjectName() returned error %v", err)
 	}
 	if actual != expected {
-		t.Error("S3File.ObjectName() should have returned '%s', but returned '%s'",
+		t.Errorf("S3File.ObjectName() should have returned '%s', but returned '%s'",
 			expected, actual)
 	}
 	s3File.Key.Key = "some.file.b1.of2.tar"
 	actual, _ = s3File.ObjectName()
 	if actual != expected {
-		t.Error("S3File.ObjectName() should have returned '%s', but returned '%s'",
+		t.Errorf("S3File.ObjectName() should have returned '%s', but returned '%s'",
+			expected, actual)
+	}
+}
+
+func TestS3BagName(t *testing.T) {
+	s3File := bagman.S3File {
+		BucketName: "aptrust.receiving.virginia.edu",
+		Key: s3.Key {
+			Key: "some.file.b001.of200.tar",
+		},
+	}
+	expected := "virginia.edu/some.file.b001.of200.tar"
+	actual := s3File.BagName()
+	if actual != expected {
+		t.Errorf("S3File.BagName() should have returned '%s', but returned '%s'",
+			expected, actual)
+	}
+
+	s3File.Key.Key = "some.file.b1.of2.tar"
+	expected = "virginia.edu/some.file.b1.of2.tar"
+	actual = s3File.BagName()
+	if actual != expected {
+		t.Errorf("S3File.BagName() should have returned '%s', but returned '%s'",
 			expected, actual)
 	}
 }

@@ -165,8 +165,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 	// Note that the key we include in the syncMap includes multipart
 	// bag endings, so we can be working on ncsu.edu/obj.b1of2.tar and
 	// ncsu.edu/obj.b2of2.tar at the same time. This is what we want.
-	key := fmt.Sprintf("%s/%s", bagman.OwnerOf(s3File.BucketName), s3File.Key.Key)
-	mapErr := procUtil.RegisterItem(key, message.ID)
+	mapErr := procUtil.RegisterItem(s3File.BagName(), message.ID)
 	if mapErr != nil {
 		procUtil.MessageLog.Info("Marking %s as complete because the file is already "+
 			"being processed under another message id.\n", s3File.Key.Key)
@@ -175,9 +174,16 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Create the result struct and pass it down the pipeline
-	result := &bagman.ProcessResult{
+	result := newResult(message, &s3File)
+	channels.FetchChannel <- result
+	procUtil.MessageLog.Debug("Put %s into fetch queue", s3File.Key.Key)
+	return nil
+}
+
+func newResult(message *nsq.Message, s3File *bagman.S3File) (*bagman.ProcessResult) {
+	return &bagman.ProcessResult{
 		NsqMessage:    message,
-		S3File:        &s3File,
+		S3File:        s3File,
 		ErrorMessage:  "",
 		FetchResult:   nil,
 		TarResult:     nil,
@@ -186,9 +192,6 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 		Stage:         "",
 		Retry:         true,
 	}
-	channels.FetchChannel <- result
-	procUtil.MessageLog.Debug("Put %s into fetch queue", s3File.Key.Key)
-	return nil
 }
 
 // Returns true if the file needs processing. We check this
@@ -314,7 +317,6 @@ func saveToStorage() {
 		// Break it up!
 		procUtil.MessageLog.Info("Storing %s", result.S3File.Key.Key)
 		result.NsqMessage.Touch()
-		re := regexp.MustCompile("\\.tar$")
 		// Copy each generic file to S3
 		for i := range result.TarResult.GenericFiles {
 			gf := result.TarResult.GenericFiles[i]
@@ -323,76 +325,30 @@ func saveToStorage() {
 					"changed since it was last saved.", gf.Identifier)
 				continue
 			}
-			bagDir := re.ReplaceAllString(result.S3File.Key.Key, "")
-			file := filepath.Join(
-				procUtil.Config.TarDirectory,
-				bagDir,
-				gf.Path)
-			absPath, err := filepath.Abs(file)
+
+			// Create the S3 metadata to save with the file
+			options, err := getS3Options(result, gf)
 			if err != nil {
-				// Consider this error transient. Leave retry = true.
-				result.ErrorMessage += fmt.Sprintf("Cannot get absolute "+
-					"path to file '%s'. "+
-					"File cannot be copied to long-term storage: %v",
-					file, err)
+				procUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
+				result.ErrorMessage += fmt.Sprintf("%v ", err)
 				continue
 			}
-			reader, err := os.Open(absPath)
+
+			// Open the local file for reading
+			reader, absPath, err := getFileReader(result, gf)
 			if err != nil {
 				// Consider this error transient. Leave retry = true.
-				result.ErrorMessage += fmt.Sprintf("Error opening file '%s'"+
-					". File cannot be copied to long-term storage: %v",
-					absPath, err)
+				procUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
+				result.ErrorMessage += fmt.Sprintf("%v ", err)
 				continue
 			}
+
+			// Tweet to all our fans
 			procUtil.MessageLog.Debug("Sending %d bytes to S3 for file %s (UUID %s)",
 				gf.Size, gf.Path, gf.Uuid)
 
-			// Prepare metadata for save to S3
-			bagName := result.S3File.Key.Key[0 : len(result.S3File.Key.Key)-4]
-			instDomain := bagman.OwnerOf(result.S3File.BucketName)
-			s3Metadata := make(map[string][]string)
-			s3Metadata["md5"] = []string{gf.Md5}
-			s3Metadata["institution"] = []string{instDomain}
-			s3Metadata["bag"] = []string{bagName}
-			s3Metadata["bagpath"] = []string{gf.Path}
-
-			// We'll get error if md5 contains non-hex characters. Catch
-			// that below, when S3 tells us our md5 sum is invalid.
-			md5Bytes, err := hex.DecodeString(gf.Md5)
-			if err != nil {
-				msg := fmt.Sprintf("Md5 sum '%s' contains invalid characters. "+
-					"S3 will reject this!", gf.Md5)
-				result.ErrorMessage += msg
-				procUtil.MessageLog.Error(msg)
-			}
-
-			// Save to S3 with the base64-encoded md5 sum
-			base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
-			options := procUtil.S3Client.MakeOptions(base64md5, s3Metadata)
-			var url string = ""
-			// Standard put to S3 for files < 5GB
-			if gf.Size < bagman.S3_LARGE_FILE {
-				url, err = procUtil.S3Client.SaveToS3(
-					procUtil.Config.PreservationBucket,
-					gf.Uuid,
-					gf.MimeType,
-					reader,
-					gf.Size,
-					options)
-			} else {
-				// Multi-part put for files >= 5GB
-				procUtil.MessageLog.Debug("File %s is %d bytes. Using multi-part put.\n",
-					gf.Path, gf.Size)
-				url, err = procUtil.S3Client.SaveLargeFileToS3(
-					procUtil.Config.PreservationBucket,
-					gf.Uuid,
-					gf.MimeType,
-					reader,
-					gf.Size,
-					options,
-					bagman.S3_CHUNK_SIZE)
-			}
+			// Copy the file to preservation
+			url, err := copyToPreservationBucket(gf, reader, options)
 			reader.Close()
 			if err != nil {
 				// Consider this error transient. Leave retry = true.
@@ -416,28 +372,111 @@ func saveToStorage() {
 		}
 
 		// Pass problem cases off to the trouble queue
-		copyToS3Incomplete := (result.TarResult.AnyFilesCopiedToPreservation() == true &&
-			result.TarResult.AllFilesCopiedToPreservation() == false)
-		failedAndNoMoreRetries := (result.ErrorMessage != "" &&
-			result.NsqMessage.Attempts >= uint16(procUtil.Config.MaxBagAttempts))
-		if copyToS3Incomplete || failedAndNoMoreRetries {
-			err := bagman.Enqueue(procUtil.Config.NsqdHttpAddress, procUtil.Config.TroubleTopic, result)
-			if err != nil {
-				procUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v\n",
-					result.S3File.Key.Key, err)
-			} else {
-				reason := "Processing failed and we reached the maximum number of retries."
-				if copyToS3Incomplete {
-					reason = "Some files could not be copied to S3."
-				}
-				result.ErrorMessage += fmt.Sprintf("%s This item has been queued for administrative review.",
-					reason)
-				procUtil.MessageLog.Warning("Sent '%s' to trouble queue: %s", result.S3File.Key.Key, reason)
-			}
-		}
+		queueTroubledItems(result)
 
 		// Record the results.
 		channels.ResultsChannel <- result
+	}
+}
+
+func queueTroubledItems(result *bagman.ProcessResult) {
+	copyToS3Incomplete := (result.TarResult.AnyFilesCopiedToPreservation() == true &&
+		result.TarResult.AllFilesCopiedToPreservation() == false)
+	failedAndNoMoreRetries := (result.ErrorMessage != "" &&
+		result.NsqMessage.Attempts >= uint16(procUtil.Config.MaxBagAttempts))
+	if copyToS3Incomplete || failedAndNoMoreRetries {
+		err := bagman.Enqueue(procUtil.Config.NsqdHttpAddress, procUtil.Config.TroubleTopic, result)
+		if err != nil {
+			procUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v\n",
+				result.S3File.Key.Key, err)
+		} else {
+			reason := "Processing failed and we reached the maximum number of retries."
+			if copyToS3Incomplete {
+				reason = "Some files could not be copied to S3."
+			}
+			result.ErrorMessage += fmt.Sprintf("%s This item has been queued for administrative review.",
+				reason)
+			procUtil.MessageLog.Warning("Sent '%s' to trouble queue: %s", result.S3File.Key.Key, reason)
+		}
+	}
+}
+
+func getFileReader(result *bagman.ProcessResult, gf *bagman.GenericFile) (*os.File, string, error) {
+	re := regexp.MustCompile("\\.tar$")
+	bagDir := re.ReplaceAllString(result.S3File.Key.Key, "")
+	file := filepath.Join( procUtil.Config.TarDirectory, bagDir, gf.Path)
+	absPath, err := filepath.Abs(file)
+	if err != nil {
+		// Consider this error transient. Leave retry = true.
+		detailedError := fmt.Errorf("Cannot get absolute "+
+			"path to file '%s'. "+
+			"File cannot be copied to long-term storage: %v",
+			file, err)
+		return nil, "", detailedError
+	}
+	reader, err := os.Open(absPath)
+	if err != nil {
+		// Consider this error transient. Leave retry = true.
+		detailedError := fmt.Errorf("Error opening file '%s'"+
+			". File cannot be copied to long-term storage: %v",
+			absPath, err)
+		return nil, absPath, detailedError
+	}
+	return reader, absPath, nil
+}
+
+func getS3Options(result *bagman.ProcessResult, gf *bagman.GenericFile) (*s3.Options, error) {
+	// Prepare metadata for save to S3
+	bagName, err := bagman.CleanBagName(result.S3File.Key.Key)
+	if err != nil {
+		return nil, err
+	}
+	instDomain := bagman.OwnerOf(result.S3File.BucketName)
+	s3Metadata := make(map[string][]string)
+	s3Metadata["md5"] = []string{gf.Md5}
+	s3Metadata["institution"] = []string{instDomain}
+	s3Metadata["bag"] = []string{bagName}
+	s3Metadata["bagpath"] = []string{gf.Path}
+
+	// We'll get error if md5 contains non-hex characters. Catch
+	// that below, when S3 tells us our md5 sum is invalid.
+	md5Bytes, err := hex.DecodeString(gf.Md5)
+	if err != nil {
+		detailedError := fmt.Errorf("Md5 sum '%s' contains invalid characters. "+
+			"S3 will reject this!", gf.Md5)
+		return nil, detailedError
+	}
+
+	// Save to S3 with the base64-encoded md5 sum
+	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
+
+	options := procUtil.S3Client.MakeOptions(base64md5, s3Metadata)
+	return &options, nil
+}
+
+// Returns the S# URL of the file that was copied to
+// the preservation bucket, or an error.
+func copyToPreservationBucket(gf *bagman.GenericFile, reader *os.File, options *s3.Options) (string, error) {
+	if gf.Size < bagman.S3_LARGE_FILE {
+		return procUtil.S3Client.SaveToS3(
+			procUtil.Config.PreservationBucket,
+			gf.Uuid,
+			gf.MimeType,
+			reader,
+			gf.Size,
+			*options)
+	} else {
+		// Multi-part put for files >= 5GB
+		procUtil.MessageLog.Debug("File %s is %d bytes. Using multi-part put.\n",
+			gf.Path, gf.Size)
+		return procUtil.S3Client.SaveLargeFileToS3(
+			procUtil.Config.PreservationBucket,
+			gf.Uuid,
+			gf.MimeType,
+			reader,
+			gf.Size,
+			*options,
+			bagman.S3_CHUNK_SIZE)
 	}
 }
 
@@ -459,30 +498,25 @@ func logResult() {
 		atomic.AddInt64(&bytesInS3, int64(result.S3File.Key.Size))
 		if result.ErrorMessage != "" {
 			procUtil.IncrementFailed()
-			procUtil.MessageLog.Error("%s %s -> %s",
-				result.S3File.BucketName,
-				result.S3File.Key.Key,
-				result.ErrorMessage)
+			procUtil.MessageLog.Error("%s -> %s", result.S3File.BagName(), result.ErrorMessage)
 		} else {
 			procUtil.IncrementSucceeded()
 			atomic.AddInt64(&bytesProcessed, int64(result.S3File.Key.Size))
-			procUtil.MessageLog.Info("%s -> finished OK", result.S3File.Key.Key)
+			procUtil.MessageLog.Info("%s -> finished OK", result.S3File.BagName())
 		}
 
 		// Add some stats to the message log
-		procUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d, Bytes Processed: %d",
-			procUtil.Succeeded(), procUtil.Failed(), bytesProcessed)
+		procUtil.LogStats()
+		procUtil.MessageLog.Info("Total Bytes Processed: %d", bytesProcessed)
 
 		// Tell Fluctus what happened
-		go func() {
-			err := procUtil.FluctusClient.SendProcessedItem(result.IngestStatus())
-			if err != nil {
-				result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
-					"item status returned error %v. ", err)
-				procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %v",
-					err)
-			}
-		}()
+		err = procUtil.FluctusClient.SendProcessedItem(result.IngestStatus())
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
+				"item status returned error %v. ", err)
+			procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %v",
+				err)
+		}
 
 		// Clean up the bag/tar files
 		channels.CleanUpChannel <- result
@@ -522,8 +556,7 @@ func doCleanUp() {
 
 		// We're done processing this, so remove it from the map.
 		// If it comes in again, we'll reprocess it again.
-		key := fmt.Sprintf("%s/%s", bagman.OwnerOf(result.S3File.BucketName), result.S3File.Key.Key)
-		procUtil.UnregisterItem(key)
+		procUtil.UnregisterItem(result.S3File.BagName())
 	}
 }
 
