@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/base64"
-	"encoding/hex"
+//	"encoding/base64"
+//	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -14,8 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
-	"sync/atomic"
 	"time"
 )
 
@@ -30,8 +28,6 @@ type Channels struct {
 // Global vars.
 var procUtil *processutil.ProcessUtil
 var channels *Channels
-var bytesInS3 = int64(0)
-var bytesProcessed = int64(0)
 
 // bag_processor receives messages from nsqd describing
 // items in the S3 receiving buckets. Each item/message
@@ -154,7 +150,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 	// been successfully processed, skip it. There are certain timing
 	// conditions that can cause the bucket reader to add items to the
 	// queue twice. If we get rid of NSQ, we can get rid of this check.
-	if procUtil.Config.SkipAlreadyProcessed == true && needsProcessing(&s3File) == false {
+	if procUtil.Config.SkipAlreadyProcessed == true && ingesthelper.BagNeedsProcessing(&s3File, procUtil) == false {
 		procUtil.MessageLog.Info("Marking %s as complete, without processing because "+
 			"this bag was successfully processed previously and Config.SkipAlreadyProcessed "+
 			"= true", s3File.Key.Key)
@@ -179,31 +175,6 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 	channels.FetchChannel <- ingestHelper
 	procUtil.MessageLog.Debug("Put %s into fetch queue", s3File.Key.Key)
 	return nil
-}
-
-// Returns true if the file needs processing. We check this
-// because the bucket reader may add duplicate items to the
-// queue when the queue is long and the reader refills it hourly.
-// If we get rid of NSQ and read directly from the
-// database, we can get rid of this.
-func needsProcessing(s3File *bagman.S3File) bool {
-	bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
-	if err != nil {
-		procUtil.MessageLog.Error("Cannot parse S3File mod date '%s'. "+
-			"File %s will be re-processed.",
-			s3File.Key.LastModified, s3File.Key.Key)
-		return true
-	}
-	etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
-	status, err := procUtil.FluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
-	if err != nil {
-		procUtil.MessageLog.Error("Error getting status for file %s. Will reprocess.",
-			s3File.Key.Key)
-	}
-	if status != nil && (status.Stage == bagman.StageRecord && status.Status == bagman.StatusSuccess) {
-		return false
-	}
-	return true
 }
 
 // -- Step 1 of 5 --
@@ -298,13 +269,11 @@ func saveToStorage() {
 			procUtil.MessageLog.Info("Nothing to save to S3 for %s: " +
 				"files have not changed since they were last ingested",
 				result.S3File.Key.Key)
-			queueForMetadata(result)
+			ingestHelper.QueueForMetadata()
 			channels.ResultsChannel <- ingestHelper
 			continue
 		}
 
-		// TODO: Way too much code here for a single function!
-		// Break it up!
 		procUtil.MessageLog.Info("Storing %s", result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		// Copy each generic file to S3
@@ -315,160 +284,26 @@ func saveToStorage() {
 					"changed since it was last saved.", gf.Identifier)
 				continue
 			}
-
-			// Create the S3 metadata to save with the file
-			options, err := getS3Options(result, gf)
+			_, err := ingestHelper.SaveFile(gf)
 			if err != nil {
-				procUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
-				result.ErrorMessage += fmt.Sprintf("%v ", err)
 				continue
-			}
-
-			// Open the local file for reading
-			reader, absPath, err := getFileReader(result, gf)
-			if err != nil {
-				// Consider this error transient. Leave retry = true.
-				procUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
-				result.ErrorMessage += fmt.Sprintf("%v ", err)
-				continue
-			}
-
-			// Tweet to all our fans
-			procUtil.MessageLog.Debug("Sending %d bytes to S3 for file %s (UUID %s)",
-				gf.Size, gf.Path, gf.Uuid)
-
-			// Copy the file to preservation
-			url, err := copyToPreservationBucket(gf, reader, options)
-			reader.Close()
-			if err != nil {
-				// Consider this error transient. Leave retry = true.
-				result.ErrorMessage += fmt.Sprintf("Error copying file '%s'"+
-					"to long-term storage: %v ", absPath, err)
-				procUtil.MessageLog.Warning("Failed to send %s to long-term storage: %s",
-					result.S3File.Key.Key,
-					err.Error())
-			} else {
-				gf.StorageURL = url
-				gf.StoredAt = time.Now()
-				procUtil.MessageLog.Debug("Successfully sent %s (UUID %s)"+
-					"to long-term storage bucket.", gf.Path, gf.Uuid)
 			}
 		}
 
 		// If there were no errors, put this into the metadata
 		// queue, so we can record the events in Fluctus.
 		if result.ErrorMessage == "" {
-			queueForMetadata(result)
+			ingestHelper.QueueForMetadata()
 		}
 
 		// Pass problem cases off to the trouble queue
-		queueTroubledItems(result)
+		ingestHelper.QueueIfTroubled()
 
 		// Record the results.
 		channels.ResultsChannel <- ingestHelper
 	}
 }
 
-func queueTroubledItems(result *bagman.ProcessResult) {
-	copyToS3Incomplete := (result.TarResult.AnyFilesCopiedToPreservation() == true &&
-		result.TarResult.AllFilesCopiedToPreservation() == false)
-	failedAndNoMoreRetries := (result.ErrorMessage != "" &&
-		result.NsqMessage.Attempts >= uint16(procUtil.Config.MaxBagAttempts))
-	if copyToS3Incomplete || failedAndNoMoreRetries {
-		err := bagman.Enqueue(procUtil.Config.NsqdHttpAddress, procUtil.Config.TroubleTopic, result)
-		if err != nil {
-			procUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v\n",
-				result.S3File.Key.Key, err)
-		} else {
-			reason := "Processing failed and we reached the maximum number of retries."
-			if copyToS3Incomplete {
-				reason = "Some files could not be copied to S3."
-			}
-			result.ErrorMessage += fmt.Sprintf("%s This item has been queued for administrative review.",
-				reason)
-			procUtil.MessageLog.Warning("Sent '%s' to trouble queue: %s", result.S3File.Key.Key, reason)
-		}
-	}
-}
-
-func getFileReader(result *bagman.ProcessResult, gf *bagman.GenericFile) (*os.File, string, error) {
-	re := regexp.MustCompile("\\.tar$")
-	bagDir := re.ReplaceAllString(result.S3File.Key.Key, "")
-	file := filepath.Join( procUtil.Config.TarDirectory, bagDir, gf.Path)
-	absPath, err := filepath.Abs(file)
-	if err != nil {
-		// Consider this error transient. Leave retry = true.
-		detailedError := fmt.Errorf("Cannot get absolute "+
-			"path to file '%s'. "+
-			"File cannot be copied to long-term storage: %v",
-			file, err)
-		return nil, "", detailedError
-	}
-	reader, err := os.Open(absPath)
-	if err != nil {
-		// Consider this error transient. Leave retry = true.
-		detailedError := fmt.Errorf("Error opening file '%s'"+
-			". File cannot be copied to long-term storage: %v",
-			absPath, err)
-		return nil, absPath, detailedError
-	}
-	return reader, absPath, nil
-}
-
-func getS3Options(result *bagman.ProcessResult, gf *bagman.GenericFile) (*s3.Options, error) {
-	// Prepare metadata for save to S3
-	bagName, err := bagman.CleanBagName(result.S3File.Key.Key)
-	if err != nil {
-		return nil, err
-	}
-	instDomain := bagman.OwnerOf(result.S3File.BucketName)
-	s3Metadata := make(map[string][]string)
-	s3Metadata["md5"] = []string{gf.Md5}
-	s3Metadata["institution"] = []string{instDomain}
-	s3Metadata["bag"] = []string{bagName}
-	s3Metadata["bagpath"] = []string{gf.Path}
-
-	// We'll get error if md5 contains non-hex characters. Catch
-	// that below, when S3 tells us our md5 sum is invalid.
-	md5Bytes, err := hex.DecodeString(gf.Md5)
-	if err != nil {
-		detailedError := fmt.Errorf("Md5 sum '%s' contains invalid characters. "+
-			"S3 will reject this!", gf.Md5)
-		return nil, detailedError
-	}
-
-	// Save to S3 with the base64-encoded md5 sum
-	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
-
-	options := procUtil.S3Client.MakeOptions(base64md5, s3Metadata)
-	return &options, nil
-}
-
-// Returns the S# URL of the file that was copied to
-// the preservation bucket, or an error.
-func copyToPreservationBucket(gf *bagman.GenericFile, reader *os.File, options *s3.Options) (string, error) {
-	if gf.Size < bagman.S3_LARGE_FILE {
-		return procUtil.S3Client.SaveToS3(
-			procUtil.Config.PreservationBucket,
-			gf.Uuid,
-			gf.MimeType,
-			reader,
-			gf.Size,
-			*options)
-	} else {
-		// Multi-part put for files >= 5GB
-		procUtil.MessageLog.Debug("File %s is %d bytes. Using multi-part put.\n",
-			gf.Path, gf.Size)
-		return procUtil.S3Client.SaveLargeFileToS3(
-			procUtil.Config.PreservationBucket,
-			gf.Uuid,
-			gf.MimeType,
-			reader,
-			gf.Size,
-			*options,
-			bagman.S3_CHUNK_SIZE)
-	}
-}
 
 // -- Step 4 of 5 --
 // TODO: This code is duplicated in metarecord.go
@@ -477,39 +312,7 @@ func copyToPreservationBucket(gf *bagman.GenericFile, reader *os.File, options *
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
 func logResult() {
 	for ingestHelper := range channels.ResultsChannel {
-		result := ingestHelper.Result
-		// Log full results to the JSON log
-		json, err := json.Marshal(result)
-		if err != nil {
-			procUtil.MessageLog.Error(err.Error())
-		}
-		procUtil.JsonLog.Println(string(json))
-
-		// Add a message to the message log
-		atomic.AddInt64(&bytesInS3, int64(result.S3File.Key.Size))
-		if result.ErrorMessage != "" {
-			procUtil.IncrementFailed()
-			procUtil.MessageLog.Error("%s -> %s", result.S3File.BagName(), result.ErrorMessage)
-		} else {
-			procUtil.IncrementSucceeded()
-			atomic.AddInt64(&bytesProcessed, int64(result.S3File.Key.Size))
-			procUtil.MessageLog.Info("%s -> finished OK", result.S3File.BagName())
-		}
-
-		// Add some stats to the message log
-		procUtil.LogStats()
-		procUtil.MessageLog.Info("Total Bytes Processed: %d", bytesProcessed)
-
-		// Tell Fluctus what happened
-		err = procUtil.FluctusClient.SendProcessedItem(result.IngestStatus())
-		if err != nil {
-			result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
-				"item status returned error %v. ", err)
-			procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %v",
-				err)
-		}
-
-		// Clean up the bag/tar files
+		ingestHelper.LogResult()
 		channels.CleanUpChannel <- ingestHelper
 	}
 }
@@ -609,19 +412,6 @@ func ProcessBagFile(result *bagman.ProcessResult) {
 	}
 }
 
-// Puts an item into the queue for Fluctus/Fedora metadata processing.
-func queueForMetadata(result *bagman.ProcessResult) {
-	err := bagman.Enqueue(procUtil.Config.NsqdHttpAddress, procUtil.Config.MetadataTopic, result)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error adding '%s' to metadata queue: %v ",
-			result.S3File.Key.Key, err)
-		procUtil.MessageLog.Error(errMsg)
-		result.ErrorMessage += errMsg
-	} else {
-		procUtil.MessageLog.Debug("Sent '%s' to metadata queue",
-			result.S3File.Key.Key)
-	}
-}
 
 // Our result object contains information about the bag we just unpacked.
 // Fedora may have information about a previous version of this bag, or
