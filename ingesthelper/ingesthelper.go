@@ -240,7 +240,35 @@ func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
 	return url, nil
 }
 
-
+// Runs tests on the bag file at path and returns information about
+// whether it was successfully unpacked, valid and complete.
+func (helper *IngestHelper) ProcessBagFile() {
+	helper.Result.Stage = "Unpack"
+	instDomain := bagman.OwnerOf(helper.Result.S3File.BucketName)
+	helper.Result.TarResult = bagman.Untar(helper.Result.FetchResult.LocalTarFile,
+		instDomain, helper.Result.S3File.BagName())
+	if helper.Result.TarResult.ErrorMessage != "" {
+		helper.Result.ErrorMessage = helper.Result.TarResult.ErrorMessage
+		// If we can't untar this, there's no reason to retry...
+		// but we'll have to revisit this. There may be cases
+		// where we do want to retry, such as if disk was full.
+		helper.Result.Retry = false
+	} else {
+		helper.Result.Stage = "Validate"
+		helper.Result.BagReadResult = bagman.ReadBag(helper.Result.TarResult.OutputDir)
+		if helper.Result.BagReadResult.ErrorMessage != "" {
+			helper.Result.ErrorMessage = helper.Result.BagReadResult.ErrorMessage
+			// Something was wrong with this bag. Bad checksum,
+			// missing file, etc. Don't reprocess it.
+			helper.Result.Retry = false
+		} else {
+			for i := range helper.Result.TarResult.GenericFiles {
+				gf := helper.Result.TarResult.GenericFiles[i]
+				gf.Md5Verified = time.Now()
+			}
+		}
+	}
+}
 
 func (helper *IngestHelper) LogResult() {
 		// Log full results to the JSON log
@@ -273,4 +301,27 @@ func (helper *IngestHelper) LogResult() {
 			helper.ProcUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %v",
 				err)
 		}
+}
+
+// Our result object contains information about the bag we just unpacked.
+// Fedora may have information about a previous version of this bag, or
+// about the same version of the same bag from an earlier round of processing.
+// This function merges data from Fedora into our result, so we can know
+// whether any of the generic files have been updated.
+func (helper *IngestHelper) MergeFedoraRecord() (error) {
+	intelObj, err := helper.Result.IntellectualObject()
+	if err != nil {
+		return err
+	}
+	fedoraObj, err := helper.ProcUtil.FluctusClient.IntellectualObjectGet(intelObj.Identifier, true)
+	if err != nil {
+		detailedError := fmt.Errorf(
+			"[ERROR] Error checking Fluctus for existing IntellectualObject '%s': %v",
+			intelObj.Identifier, err)
+		return detailedError
+	}
+	if fedoraObj != nil {
+		helper.Result.TarResult.MergeExistingFiles(fedoraObj.GenericFiles)
+	}
+	return nil
 }

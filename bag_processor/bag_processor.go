@@ -229,7 +229,7 @@ func doUnpack() {
 			// so nsqd knows we're making progress.
 			procUtil.MessageLog.Info("Unpacking %s", result.S3File.Key.Key)
 			result.NsqMessage.Touch()
-			ProcessBagFile(result)
+			ingestHelper.ProcessBagFile()
 			if result.ErrorMessage == "" {
 				// Move to permanent storage if bag processing succeeded
 				channels.StorageChannel <- ingestHelper
@@ -259,7 +259,7 @@ func saveToStorage() {
 		result.Stage = "Store"
 		// See what Fedora knows about this object's files.
 		// If none are new/changed, there's no need to save.
-		err := mergeFedoraRecord(result)
+		err := ingestHelper.MergeFedoraRecord()
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("%v ", err)
 			channels.ResultsChannel <- ingestHelper
@@ -379,59 +379,4 @@ func CleanUp(file string) (errors []error) {
 		errors = append(errors, err)
 	}
 	return errors
-}
-
-// Runs tests on the bag file at path and returns information about
-// whether it was successfully unpacked, valid and complete.
-func ProcessBagFile(result *bagman.ProcessResult) {
-	result.Stage = "Unpack"
-	instDomain := bagman.OwnerOf(result.S3File.BucketName)
-	bagName := result.S3File.Key.Key[0 : len(result.S3File.Key.Key)-4]
-	result.TarResult = bagman.Untar(result.FetchResult.LocalTarFile,
-		instDomain, bagName)
-	if result.TarResult.ErrorMessage != "" {
-		result.ErrorMessage = result.TarResult.ErrorMessage
-		// If we can't untar this, there's no reason to retry...
-		// but we'll have to revisit this. There may be cases
-		// where we do want to retry, such as if disk was full.
-		result.Retry = false
-	} else {
-		result.Stage = "Validate"
-		result.BagReadResult = bagman.ReadBag(result.TarResult.OutputDir)
-		if result.BagReadResult.ErrorMessage != "" {
-			result.ErrorMessage = result.BagReadResult.ErrorMessage
-			// Something was wrong with this bag. Bad checksum,
-			// missing file, etc. Don't reprocess it.
-			result.Retry = false
-		} else {
-			for i := range result.TarResult.GenericFiles {
-				gf := result.TarResult.GenericFiles[i]
-				gf.Md5Verified = time.Now()
-			}
-		}
-	}
-}
-
-
-// Our result object contains information about the bag we just unpacked.
-// Fedora may have information about a previous version of this bag, or
-// about the same version of the same bag from an earlier round of processing.
-// This function merges data from Fedora into our result, so we can know
-// whether any of the generic files have been updated.
-func mergeFedoraRecord(result *bagman.ProcessResult) (error) {
-	intelObj, err := result.IntellectualObject()
-	if err != nil {
-		return err
-	}
-	fedoraObj, err := procUtil.FluctusClient.IntellectualObjectGet(intelObj.Identifier, true)
-	if err != nil {
-		detailedError := fmt.Errorf(
-			"[ERROR] Error checking Fluctus for existing IntellectualObject '%s': %v",
-			intelObj.Identifier, err)
-		return detailedError
-	}
-	if fedoraObj != nil {
-		result.TarResult.MergeExistingFiles(fedoraObj.GenericFiles)
-	}
-	return nil
 }
