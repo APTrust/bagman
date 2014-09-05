@@ -1,8 +1,6 @@
 package main
 
 import (
-//	"encoding/base64"
-//	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -10,10 +8,6 @@ import (
 	"github.com/APTrust/bagman/processutil"
 	"github.com/APTrust/bagman/ingesthelper"
 	"github.com/bitly/go-nsq"
-	"github.com/diamondap/goamz/s3"
-	"os"
-	"path/filepath"
-	"regexp"
 	"time"
 )
 
@@ -195,7 +189,7 @@ func doFetch() {
 			channels.ResultsChannel <- ingestHelper
 		} else {
 			procUtil.MessageLog.Info("Fetching %s", s3Key.Key)
-			fetchResult := Fetch(result.S3File.BucketName, s3Key)
+			fetchResult := ingestHelper.FetchTarFile(result.S3File.BucketName, s3Key)
 			result.FetchResult = fetchResult
 			result.Retry = fetchResult.Retry
 			if fetchResult.ErrorMessage != "" {
@@ -327,7 +321,7 @@ func doCleanUp() {
 		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
 			// Clean up any files we downloaded and unpacked
-			errors := CleanUp(result.FetchResult.LocalTarFile)
+			errors := ingestHelper.DeleteLocalFiles(result.FetchResult.LocalTarFile)
 			if errors != nil && len(errors) > 0 {
 				procUtil.MessageLog.Warning("Errors cleaning up %s",
 					result.FetchResult.LocalTarFile)
@@ -353,30 +347,4 @@ func doCleanUp() {
 		// If it comes in again, we'll reprocess it again.
 		procUtil.UnregisterItem(result.S3File.BagName())
 	}
-}
-
-// This fetches a file from S3 and stores it locally.
-func Fetch(bucketName string, key s3.Key) (result *bagman.FetchResult) {
-	tarFilePath := filepath.Join(procUtil.Config.TarDirectory, key.Key)
-	return procUtil.S3Client.FetchToFile(bucketName, key, tarFilePath)
-}
-
-// This deletes the tar file and all of the files that were
-// unpacked from it. Param file is the path the tar file.
-func CleanUp(file string) (errors []error) {
-	errors = make([]error, 0)
-	err := os.Remove(file)
-	if err != nil {
-		errors = append(errors, err)
-	}
-	// The untarred dir name is the same as the tar file, minus
-	// the .tar extension. This is guaranteed by bag.Untar.
-	re := regexp.MustCompile("\\.tar$")
-	untarredDir := re.ReplaceAllString(file, "")
-	err = os.RemoveAll(untarredDir)
-	if err != nil {
-		procUtil.MessageLog.Error("Error deleting dir %s: %s\n", untarredDir, err.Error())
-		errors = append(errors, err)
-	}
-	return errors
 }
