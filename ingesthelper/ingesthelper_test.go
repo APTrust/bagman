@@ -173,7 +173,35 @@ func TestGetS3Options(t *testing.T) {
 	if environmentReady() == false {
 		return
 	}
-
+	helper := getIngestHelper()
+	gf := &bagman.GenericFile{
+		Md5: "b4f8f3072f73598fc5b65bf416b6019a",
+		Path: "/data/hansel/und/gretel.pdf",
+	}
+	opts, err := helper.GetS3Options(gf)
+	if err != nil {
+		t.Error(err)
+	}
+	if opts.ContentMD5 != "tPjzBy9zWY/Ftlv0FrYBmg==" {
+		t.Error("Got incorrect base64-encoded md5 string")
+	}
+	expectedMd5 := "b4f8f3072f73598fc5b65bf416b6019a"
+	if opts.Meta["md5"][0] != expectedMd5 {
+		t.Errorf("Expected md5 metadata '%s', but found '%s'",
+			expectedMd5, opts.Meta["md5"][0])
+	}
+	if opts.Meta["institution"][0] != "test.edu" {
+		t.Errorf("Expected institution metadata 'test.edu', but found '%s'",
+			opts.Meta["institution"][0])
+	}
+	if opts.Meta["bag"][0] != "ncsu.1840.16-2928" {
+		t.Errorf("Expected bag metadata 'ncsu.1840.16-2928', but found '%s'",
+			opts.Meta["bag"][0])
+	}
+	if opts.Meta["bagpath"][0] != gf.Path {
+		t.Errorf("Expected bag metadata '%s', but found '%s'",
+			gf.Path, opts.Meta["bagpath"][0])
+	}
 }
 
 func TestProcessBagFile(t *testing.T) {
