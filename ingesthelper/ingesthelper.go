@@ -22,7 +22,6 @@ type IngestHelper struct {
 	Result          *bagman.ProcessResult
 	bytesInS3       int64
 	bytesProcessed  int64
-
 }
 
 // Returns a new IngestHelper
@@ -77,29 +76,18 @@ func BagNeedsProcessing(s3File *bagman.S3File, procUtil *processutil.ProcessUtil
 	return true
 }
 
-
-func (helper *IngestHelper) QueueIfTroubled() {
-	copyToS3Incomplete := (helper.Result.TarResult.AnyFilesCopiedToPreservation() == true &&
+func (helper *IngestHelper) IncompleteCopyToS3() (bool) {
+	return (helper.Result.TarResult.AnyFilesCopiedToPreservation() == true &&
 		helper.Result.TarResult.AllFilesCopiedToPreservation() == false)
-	failedAndNoMoreRetries := (helper.Result.ErrorMessage != "" &&
-		helper.Result.NsqMessage.Attempts >= uint16(helper.ProcUtil.Config.MaxBagAttempts))
-	if copyToS3Incomplete || failedAndNoMoreRetries {
-		err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress, helper.ProcUtil.Config.TroubleTopic, helper.Result)
-		if err != nil {
-			helper.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v\n",
-				helper.Result.S3File.Key.Key, err)
-		} else {
-			reason := "Processing failed and we reached the maximum number of retries."
-			if copyToS3Incomplete {
-				reason = "Some files could not be copied to S3."
-			}
-			helper.Result.ErrorMessage += fmt.Sprintf("%s This item has been queued for administrative review.",
-				reason)
-			helper.ProcUtil.MessageLog.Warning("Sent '%s' to trouble queue: %s", helper.Result.S3File.Key.Key, reason)
-		}
-	}
 }
 
+func (helper *IngestHelper) FailedAndNoMoreRetries() (bool) {
+	return (helper.Result.ErrorMessage != "" &&
+		helper.Result.NsqMessage.Attempts >= uint16(helper.ProcUtil.Config.MaxBagAttempts))
+}
+
+// Returns an OPEN reader for the specified GenericFile (reading it from
+// the local disk). Caller is responsible for closing the reader.
 func (helper *IngestHelper) GetFileReader(gf *bagman.GenericFile) (*os.File, string, error) {
 	re := regexp.MustCompile("\\.tar$")
 	bagDir := re.ReplaceAllString(helper.Result.S3File.Key.Key, "")
@@ -153,95 +141,8 @@ func (helper *IngestHelper) GetS3Options(gf *bagman.GenericFile) (*s3.Options, e
 	return &options, nil
 }
 
-// Returns the S# URL of the file that was copied to
-// the preservation bucket, or an error.
-func (helper *IngestHelper) CopyToPreservationBucket(gf *bagman.GenericFile, reader *os.File, options *s3.Options) (string, error) {
-	if gf.Size < bagman.S3_LARGE_FILE {
-		return helper.ProcUtil.S3Client.SaveToS3(
-			helper.ProcUtil.Config.PreservationBucket,
-			gf.Uuid,
-			gf.MimeType,
-			reader,
-			gf.Size,
-			*options)
-	} else {
-		// Multi-part put for files >= 5GB
-		helper.ProcUtil.MessageLog.Debug("File %s is %d bytes. Using multi-part put.\n",
-			gf.Path, gf.Size)
-		return helper.ProcUtil.S3Client.SaveLargeFileToS3(
-			helper.ProcUtil.Config.PreservationBucket,
-			gf.Uuid,
-			gf.MimeType,
-			reader,
-			gf.Size,
-			*options,
-			bagman.S3_CHUNK_SIZE)
-	}
-}
-
-// Puts an item into the queue for Fluctus/Fedora metadata processing.
-func (helper *IngestHelper) QueueForMetadata() {
-	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
-		helper.ProcUtil.Config.MetadataTopic, helper.Result)
-	if err != nil {
-		errMsg := fmt.Sprintf("Error adding '%s' to metadata queue: %v ",
-			helper.Result.S3File.Key.Key, err)
-		helper.ProcUtil.MessageLog.Error(errMsg)
-		helper.Result.ErrorMessage += errMsg
-	} else {
-		helper.ProcUtil.MessageLog.Debug("Sent '%s' to metadata queue",
-			helper.Result.S3File.Key.Key)
-	}
-}
-
-
-// Saves a file to the preservation bucket.
-// Returns the url of the file that was saved. Returns an error if there
-// was a problem.
-func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
-	// Create the S3 metadata to save with the file
-	options, err := helper.GetS3Options(gf)
-	if err != nil {
-		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
-		helper.Result.ErrorMessage += fmt.Sprintf("%v ", err)
-		return "", err
-	}
-
-	// Open the local file for reading
-	reader, absPath, err := helper.GetFileReader(gf)
-	if err != nil {
-		// Consider this error transient. Leave retry = true.
-		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
-		helper.Result.ErrorMessage += fmt.Sprintf("%v ", err)
-		return "", err
-	}
-
-	// Tweet to all our fans
-	helper.ProcUtil.MessageLog.Debug("Sending %d bytes to S3 for file %s (UUID %s)",
-		gf.Size, gf.Path, gf.Uuid)
-
-	// Copy the file to preservation
-	url, err := helper.CopyToPreservationBucket(gf, reader, options)
-	reader.Close()
-	if err != nil {
-		// Consider this error transient. Leave retry = true.
-		helper.Result.ErrorMessage += fmt.Sprintf("Error copying file '%s'"+
-			"to long-term storage: %v ", absPath, err)
-		helper.ProcUtil.MessageLog.Warning("Failed to send %s to long-term storage: %s",
-			helper.Result.S3File.Key.Key,
-			err.Error())
-		return "", err
-	} else {
-		gf.StorageURL = url
-		gf.StoredAt = time.Now()
-		helper.ProcUtil.MessageLog.Debug("Successfully sent %s (UUID %s)"+
-			"to long-term storage bucket.", gf.Path, gf.Uuid)
-	}
-	return url, nil
-}
-
-// Runs tests on the bag file at path and returns information about
-// whether it was successfully unpacked, valid and complete.
+// Unpacks the bag file at path, extracts tag info and returns information
+// about whether it was successfully unpacked, valid and complete.
 func (helper *IngestHelper) ProcessBagFile() {
 	helper.Result.Stage = "Unpack"
 	instDomain := bagman.OwnerOf(helper.Result.S3File.BucketName)
@@ -350,4 +251,111 @@ func (helper *IngestHelper) DeleteLocalFiles(tarFile string) (errors []error) {
 func (helper *IngestHelper) FetchTarFile(bucketName string, key s3.Key) (result *bagman.FetchResult) {
 	tarFilePath := filepath.Join(helper.ProcUtil.Config.TarDirectory, key.Key)
 	return helper.ProcUtil.S3Client.FetchToFile(bucketName, key, tarFilePath)
+}
+
+func (helper *IngestHelper) SaveGenericFiles() (error) {
+	result := helper.Result
+	result.Stage = "Store"
+	// See what Fedora knows about this object's files.
+	// If none are new/changed, there's no need to save.
+	err := helper.MergeFedoraRecord()
+	if err != nil {
+		helper.Result.ErrorMessage += fmt.Sprintf("%v ", err)
+		return err
+	}
+	if result.TarResult.AnyFilesNeedSaving() == false {
+		helper.ProcUtil.MessageLog.Info("Nothing to save to S3 for %s: " +
+			"files have not changed since they were last ingested",
+			result.S3File.Key.Key)
+		return nil
+	}
+
+	helper.ProcUtil.MessageLog.Info("Storing %s", result.S3File.Key.Key)
+
+	// Copy each generic file to S3
+	for i := range result.TarResult.GenericFiles {
+		gf := result.TarResult.GenericFiles[i]
+		if gf.NeedsSave == false {
+			helper.ProcUtil.MessageLog.Info("Not saving %s to S3, because it has not " +
+				"changed since it was last saved.", gf.Identifier)
+			continue
+		}
+		_, err := helper.SaveFile(gf)
+		if err != nil {
+			continue
+		}
+	}
+	return nil
+}
+
+// Saves a file to the preservation bucket.
+// Returns the url of the file that was saved. Returns an error if there
+// was a problem.
+func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
+	// Create the S3 metadata to save with the file
+	options, err := helper.GetS3Options(gf)
+	if err != nil {
+		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
+		helper.Result.ErrorMessage += fmt.Sprintf("%v ", err)
+		return "", err
+	}
+
+	// Open the local file for reading
+	reader, absPath, err := helper.GetFileReader(gf)
+	if err != nil {
+		// Consider this error transient. Leave retry = true.
+		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
+		helper.Result.ErrorMessage += fmt.Sprintf("%v ", err)
+		return "", err
+	}
+
+	// Tweet to all our fans
+	helper.ProcUtil.MessageLog.Debug("Sending %d bytes to S3 for file %s (UUID %s)",
+		gf.Size, gf.Path, gf.Uuid)
+
+	// Copy the file to preservation
+	url, err := helper.CopyToPreservationBucket(gf, reader, options)
+	reader.Close()
+	if err != nil {
+		// Consider this error transient. Leave retry = true.
+		helper.Result.ErrorMessage += fmt.Sprintf("Error copying file '%s'"+
+			"to long-term storage: %v ", absPath, err)
+		helper.ProcUtil.MessageLog.Warning("Failed to send %s to long-term storage: %s",
+			helper.Result.S3File.Key.Key,
+			err.Error())
+		return "", err
+	} else {
+		gf.StorageURL = url
+		gf.StoredAt = time.Now()
+		helper.ProcUtil.MessageLog.Debug("Successfully sent %s (UUID %s)"+
+			"to long-term storage bucket.", gf.Path, gf.Uuid)
+	}
+	return url, nil
+}
+
+
+// Returns the S# URL of the file that was copied to
+// the preservation bucket, or an error.
+func (helper *IngestHelper) CopyToPreservationBucket(gf *bagman.GenericFile, reader *os.File, options *s3.Options) (string, error) {
+	if gf.Size < bagman.S3_LARGE_FILE {
+		return helper.ProcUtil.S3Client.SaveToS3(
+			helper.ProcUtil.Config.PreservationBucket,
+			gf.Uuid,
+			gf.MimeType,
+			reader,
+			gf.Size,
+			*options)
+	} else {
+		// Multi-part put for files >= 5GB
+		helper.ProcUtil.MessageLog.Debug("File %s is %d bytes. Using multi-part put.\n",
+			gf.Path, gf.Size)
+		return helper.ProcUtil.S3Client.SaveLargeFileToS3(
+			helper.ProcUtil.Config.PreservationBucket,
+			gf.Uuid,
+			gf.MimeType,
+			reader,
+			gf.Size,
+			*options,
+			bagman.S3_CHUNK_SIZE)
+	}
 }

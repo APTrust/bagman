@@ -165,8 +165,8 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Create the result struct and pass it down the pipeline
-	ingestHelper := ingesthelper.NewIngestHelper(procUtil, message, &s3File)
-	channels.FetchChannel <- ingestHelper
+	helper := ingesthelper.NewIngestHelper(procUtil, message, &s3File)
+	channels.FetchChannel <- helper
 	procUtil.MessageLog.Debug("Put %s into fetch queue", s3File.Key.Key)
 	return nil
 }
@@ -174,8 +174,8 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 // -- Step 1 of 5 --
 // This runs as a go routine to fetch files from S3.
 func doFetch() {
-	for ingestHelper := range channels.FetchChannel {
-		result := ingestHelper.Result
+	for helper := range channels.FetchChannel {
+		result := helper.Result
 		result.Stage = "Fetch"
 		s3Key := result.S3File.Key
 		result.FetchResult = &bagman.FetchResult{}
@@ -186,21 +186,21 @@ func doFetch() {
 			procUtil.MessageLog.Warning("Requeueing %s - not enough disk space", s3Key.Key)
 			result.ErrorMessage = err.Error()
 			result.Retry = true
-			channels.ResultsChannel <- ingestHelper
+			channels.ResultsChannel <- helper
 		} else {
 			procUtil.MessageLog.Info("Fetching %s", s3Key.Key)
-			fetchResult := ingestHelper.FetchTarFile(result.S3File.BucketName, s3Key)
+			fetchResult := helper.FetchTarFile(result.S3File.BucketName, s3Key)
 			result.FetchResult = fetchResult
 			result.Retry = fetchResult.Retry
 			if fetchResult.ErrorMessage != "" {
 				// Fetch from S3 failed. Requeue.
 				result.ErrorMessage = fetchResult.ErrorMessage
-				channels.ResultsChannel <- ingestHelper
+				channels.ResultsChannel <- helper
 			} else {
 				// Got S3 file. Untar it.
 				// And touch the message, so nsqd knows we're making progress.
 				result.NsqMessage.Touch()
-				channels.UnpackChannel <- ingestHelper
+				channels.UnpackChannel <- helper
 			}
 		}
 	}
@@ -211,24 +211,24 @@ func doFetch() {
 // We calculate checksums and create generic files during the unpack
 // stage to avoid having to reprocess large streams of data several times.
 func doUnpack() {
-	for ingestHelper := range channels.UnpackChannel {
-		result := ingestHelper.Result
+	for helper := range channels.UnpackChannel {
+		result := helper.Result
 		if result.ErrorMessage != "" {
 			// Unpack failed. Go to end.
 			procUtil.MessageLog.Warning("Nothing to unpack for %s",
 				result.S3File.Key.Key)
-			channels.ResultsChannel <- ingestHelper
+			channels.ResultsChannel <- helper
 		} else {
 			// Unpacked! Now process the bag and touch message
 			// so nsqd knows we're making progress.
 			procUtil.MessageLog.Info("Unpacking %s", result.S3File.Key.Key)
 			result.NsqMessage.Touch()
-			ingestHelper.ProcessBagFile()
+			helper.ProcessBagFile()
 			if result.ErrorMessage == "" {
 				// Move to permanent storage if bag processing succeeded
-				channels.StorageChannel <- ingestHelper
+				channels.StorageChannel <- helper
 			} else {
-				channels.ResultsChannel <- ingestHelper
+				channels.ResultsChannel <- helper
 			}
 		}
 	}
@@ -248,53 +248,26 @@ func doUnpack() {
 // an admin in these cases. The JSON log will have full information about
 // the state of all of the files.
 func saveToStorage() {
-	for ingestHelper := range channels.StorageChannel {
-		result := ingestHelper.Result
-		result.Stage = "Store"
-		// See what Fedora knows about this object's files.
-		// If none are new/changed, there's no need to save.
-		err := ingestHelper.MergeFedoraRecord()
+	for helper := range channels.StorageChannel {
+		helper.Result.NsqMessage.Touch()
+		err := helper.SaveGenericFiles()
 		if err != nil {
-			result.ErrorMessage += fmt.Sprintf("%v ", err)
-			channels.ResultsChannel <- ingestHelper
+			channels.ResultsChannel <- helper
 			continue
 		}
-		if result.TarResult.AnyFilesNeedSaving() == false {
-			procUtil.MessageLog.Info("Nothing to save to S3 for %s: " +
-				"files have not changed since they were last ingested",
-				result.S3File.Key.Key)
-			ingestHelper.QueueForMetadata()
-			channels.ResultsChannel <- ingestHelper
-			continue
-		}
-
-		procUtil.MessageLog.Info("Storing %s", result.S3File.Key.Key)
-		result.NsqMessage.Touch()
-		// Copy each generic file to S3
-		for i := range result.TarResult.GenericFiles {
-			gf := result.TarResult.GenericFiles[i]
-			if gf.NeedsSave == false {
-				procUtil.MessageLog.Info("Not saving %s to S3, because it has not " +
-					"changed since it was last saved.", gf.Identifier)
-				continue
-			}
-			_, err := ingestHelper.SaveFile(gf)
-			if err != nil {
-				continue
-			}
-		}
-
 		// If there were no errors, put this into the metadata
 		// queue, so we can record the events in Fluctus.
-		if result.ErrorMessage == "" {
-			ingestHelper.QueueForMetadata()
+		if helper.Result.ErrorMessage == "" {
+			SendToMetadataQueue(helper)
 		}
 
 		// Pass problem cases off to the trouble queue
-		ingestHelper.QueueIfTroubled()
+		if helper.IncompleteCopyToS3() || helper.FailedAndNoMoreRetries() {
+			SendToTroubleQueue(helper)
+		}
 
 		// Record the results.
-		channels.ResultsChannel <- ingestHelper
+		channels.ResultsChannel <- helper
 	}
 }
 
@@ -305,9 +278,9 @@ func saveToStorage() {
 // untar, unbag and verify an individual S3 tar file.
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
 func logResult() {
-	for ingestHelper := range channels.ResultsChannel {
-		ingestHelper.LogResult()
-		channels.CleanUpChannel <- ingestHelper
+	for helper := range channels.ResultsChannel {
+		helper.LogResult()
+		channels.CleanUpChannel <- helper
 	}
 }
 
@@ -316,12 +289,12 @@ func logResult() {
 // and untarred.
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
 func doCleanUp() {
-	for ingestHelper := range channels.CleanUpChannel {
-		result := ingestHelper.Result
+	for helper := range channels.CleanUpChannel {
+		result := helper.Result
 		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
 			// Clean up any files we downloaded and unpacked
-			errors := ingestHelper.DeleteLocalFiles(result.FetchResult.LocalTarFile)
+			errors := helper.DeleteLocalFiles(result.FetchResult.LocalTarFile)
 			if errors != nil && len(errors) > 0 {
 				procUtil.MessageLog.Warning("Errors cleaning up %s",
 					result.FetchResult.LocalTarFile)
@@ -346,5 +319,40 @@ func doCleanUp() {
 		// We're done processing this, so remove it from the map.
 		// If it comes in again, we'll reprocess it again.
 		procUtil.UnregisterItem(result.S3File.BagName())
+	}
+}
+
+
+// Puts an item into the queue for Fluctus/Fedora metadata processing.
+func SendToMetadataQueue(helper *ingesthelper.IngestHelper) {
+	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
+		helper.ProcUtil.Config.MetadataTopic, helper.Result)
+	if err != nil {
+		errMsg := fmt.Sprintf("Error adding '%s' to metadata queue: %v ",
+			helper.Result.S3File.Key.Key, err)
+		helper.ProcUtil.MessageLog.Error(errMsg)
+		helper.Result.ErrorMessage += errMsg
+	} else {
+		helper.ProcUtil.MessageLog.Debug("Sent '%s' to metadata queue",
+			helper.Result.S3File.Key.Key)
+	}
+}
+
+// Puts an item into the trouble queue.
+func SendToTroubleQueue(helper *ingesthelper.IngestHelper) {
+	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
+		helper.ProcUtil.Config.TroubleTopic, helper.Result)
+	if err != nil {
+		helper.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v\n",
+			helper.Result.S3File.Key.Key, err)
+	} else {
+		reason := "Processing failed and we reached the maximum number of retries."
+		if helper.IncompleteCopyToS3() {
+			reason = "Some files could not be copied to S3."
+		}
+		helper.Result.ErrorMessage += fmt.Sprintf("%s This item has been queued for administrative review.",
+			reason)
+		helper.ProcUtil.MessageLog.Warning("Sent '%s' to trouble queue: %s",
+			helper.Result.S3File.Key.Key, reason)
 	}
 }
