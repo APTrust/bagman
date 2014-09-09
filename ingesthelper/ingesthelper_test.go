@@ -12,6 +12,7 @@ import (
 	"github.com/diamondap/goamz/s3"
 	"os"
 	"net/http"
+	"strconv"
 	"testing"
 )
 
@@ -205,7 +206,10 @@ func TestFullProcess(t *testing.T) {
 	helper := getIngestHelper()
 
 	helper.FetchTarFile()
-	// Tests
+	if helper.Result.ErrorMessage != "" {
+		t.Errorf(helper.Result.ErrorMessage)
+	}
+	verifyFetchResult(t, helper.Result.FetchResult)
 
 	helper.ProcessBagFile()
 	// Tests
@@ -219,4 +223,23 @@ func TestFullProcess(t *testing.T) {
 	helper.DeleteLocalFiles()
 	// Tests
 
+}
+
+func verifyResult(t *testing.T, itemName, expected, actual string) {
+	if expected != actual {
+		t.Errorf("%s expected '%s' but got '%s'", itemName, expected, actual)
+	}
+}
+
+func verifyFetchResult(t *testing.T, fetchResult *bagman.FetchResult) {
+	verifyResult(t, "BucketName", "aptrust.receiving.test.edu", fetchResult.BucketName)
+	verifyResult(t, "Key", "ncsu.1840.16-2928.tar", fetchResult.Key)
+	verifyResult(t, "LocalTarFile", "tmp/ncsu.1840.16-2928.tar", fetchResult.LocalTarFile)
+	verifyResult(t, "RemoteMd5", "b4f8f3072f73598fc5b65bf416b6019a", fetchResult.RemoteMd5)
+	verifyResult(t, "LocalMd5", "b4f8f3072f73598fc5b65bf416b6019a", fetchResult.LocalMd5)
+	verifyResult(t, "Md5Verified", "true", strconv.FormatBool(fetchResult.Md5Verified))
+	verifyResult(t, "Md5Verifiable", "true", strconv.FormatBool(fetchResult.Md5Verifiable))
+	verifyResult(t, "ErrorMessage", "", fetchResult.ErrorMessage)
+	verifyResult(t, "Warning", "", fetchResult.Warning)
+	verifyResult(t, "Retry", "true", strconv.FormatBool(fetchResult.Retry))
 }
