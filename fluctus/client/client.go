@@ -821,3 +821,34 @@ func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman
 
 	return nil
 }
+
+// Delete the data we created with our integration tests
+func (client *Client) DeleteFluctusTestData() error {
+	urls := make([]string, 1)
+	urls[0] = client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/delete_test_items.json", client.apiVersion))
+	for _, url := range urls {
+		request, err := client.NewJsonRequest("POST", url, nil)
+		if err != nil {
+			client.logger.Error("Error building request for %s: %v", url, err.Error())
+			return err
+		}
+		response, err := client.httpClient.Do(request)
+		if err != nil {
+			client.logger.Error("Error posting to %s: %v", url, err.Error())
+			return err
+		}
+
+		if response.StatusCode != 200 {
+			return fmt.Errorf("Fluctus replied to POST %s with status code %d",
+				url, response.StatusCode)
+		}
+
+		// Read the json response
+		defer response.Body.Close()
+		_, err = ioutil.ReadAll(response.Body)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

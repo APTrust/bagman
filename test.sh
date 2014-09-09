@@ -9,7 +9,7 @@ go test
 echo "Testing fluctus/models"
 cd fluctus/models
 go test
-echo "Testing fluctus/client (Is Fluctus running on localhost:3000?)"
+echo "Testing fluctus/client"
 cd ../client
 go test
 echo "Testing ingesthelper"
