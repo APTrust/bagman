@@ -176,9 +176,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 func doFetch() {
 	for helper := range channels.FetchChannel {
 		result := helper.Result
-		result.Stage = "Fetch"
 		s3Key := result.S3File.Key
-		result.FetchResult = &bagman.FetchResult{}
 		// Disk needs filesize * 2 disk space to accomodate tar file & untarred files
 		err := procUtil.Volume.Reserve(uint64(s3Key.Size * 2))
 		if err != nil {
@@ -189,12 +187,9 @@ func doFetch() {
 			channels.ResultsChannel <- helper
 		} else {
 			procUtil.MessageLog.Info("Fetching %s", s3Key.Key)
-			fetchResult := helper.FetchTarFile(result.S3File.BucketName, s3Key)
-			result.FetchResult = fetchResult
-			result.Retry = fetchResult.Retry
-			if fetchResult.ErrorMessage != "" {
+			helper.FetchTarFile()
+			if result.ErrorMessage != "" {
 				// Fetch from S3 failed. Requeue.
-				result.ErrorMessage = fetchResult.ErrorMessage
 				channels.ResultsChannel <- helper
 			} else {
 				// Got S3 file. Untar it.
@@ -294,7 +289,7 @@ func doCleanUp() {
 		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
 			// Clean up any files we downloaded and unpacked
-			errors := helper.DeleteLocalFiles(result.FetchResult.LocalTarFile)
+			errors := helper.DeleteLocalFiles()
 			if errors != nil && len(errors) > 0 {
 				procUtil.MessageLog.Warning("Errors cleaning up %s",
 					result.FetchResult.LocalTarFile)

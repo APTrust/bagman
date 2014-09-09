@@ -162,12 +162,6 @@ func TestFailedAndNoMoreRetries(t *testing.T) {
 
 }
 
-func TestGetFileReader(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
-
-}
 
 func TestGetS3Options(t *testing.T) {
 	if environmentReady() == false {
@@ -204,58 +198,25 @@ func TestGetS3Options(t *testing.T) {
 	}
 }
 
-func TestProcessBagFile(t *testing.T) {
+func TestFullProcess(t *testing.T) {
 	if environmentReady() == false {
 		return
 	}
+	helper := getIngestHelper()
 
-}
+	helper.FetchTarFile()
+	// Tests
 
-func TestLogResult(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
+	helper.ProcessBagFile()
+	// Tests
 
-}
+	helper.SaveGenericFiles()
+	// Tests
 
-func TestMergeFedoraRecord(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
+	helper.LogResult()
+	// Tests
 
-}
-
-func TestDeleteLocalFiles(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
-
-}
-
-func TestFetchTarFile(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
-
-}
-
-func TestSaveGenericFiles(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
-
-}
-
-func TestSaveFile(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
-
-}
-
-func TestCopyToPreservationBucket(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
+	helper.DeleteLocalFiles()
+	// Tests
 
 }

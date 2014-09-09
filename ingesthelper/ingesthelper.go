@@ -229,16 +229,16 @@ func (helper *IngestHelper) MergeFedoraRecord() (error) {
 
 // This deletes the tar file and all of the files that were
 // unpacked from it. Param file is the path the tar file.
-func (helper *IngestHelper) DeleteLocalFiles(tarFile string) (errors []error) {
+func (helper *IngestHelper) DeleteLocalFiles() (errors []error) {
 	errors = make([]error, 0)
-	err := os.Remove(tarFile)
+	err := os.Remove(helper.Result.FetchResult.LocalTarFile)
 	if err != nil {
 		errors = append(errors, err)
 	}
 	// The untarred dir name is the same as the tar file, minus
 	// the .tar extension. This is guaranteed by bag.Untar.
 	re := regexp.MustCompile("\\.tar$")
-	untarredDir := re.ReplaceAllString(tarFile, "")
+	untarredDir := re.ReplaceAllString(helper.Result.FetchResult.LocalTarFile, "")
 	err = os.RemoveAll(untarredDir)
 	if err != nil {
 		helper.ProcUtil.MessageLog.Error("Error deleting dir %s: %s\n", untarredDir, err.Error())
@@ -248,9 +248,16 @@ func (helper *IngestHelper) DeleteLocalFiles(tarFile string) (errors []error) {
 }
 
 // This fetches a file from S3 and stores it locally.
-func (helper *IngestHelper) FetchTarFile(bucketName string, key s3.Key) (result *bagman.FetchResult) {
-	tarFilePath := filepath.Join(helper.ProcUtil.Config.TarDirectory, key.Key)
-	return helper.ProcUtil.S3Client.FetchToFile(bucketName, key, tarFilePath)
+func (helper *IngestHelper) FetchTarFile() {
+	helper.Result.Stage = "Fetch"
+	tarFilePath := filepath.Join(helper.ProcUtil.Config.TarDirectory, helper.Result.S3File.Key.Key)
+	helper.Result.FetchResult = helper.ProcUtil.S3Client.FetchToFile(helper.Result.S3File.BucketName,
+		helper.Result.S3File.Key, tarFilePath)
+	helper.Result.Retry = helper.Result.FetchResult.Retry
+	if helper.Result.FetchResult.ErrorMessage != "" {
+		// Copy all errors up to the top level
+		helper.Result.ErrorMessage = helper.Result.FetchResult.ErrorMessage
+	}
 }
 
 func (helper *IngestHelper) SaveGenericFiles() (error) {
