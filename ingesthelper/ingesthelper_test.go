@@ -13,6 +13,7 @@ import (
 	"os"
 	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -212,7 +213,10 @@ func TestFullProcess(t *testing.T) {
 	verifyFetchResult(t, helper.Result.FetchResult)
 
 	helper.ProcessBagFile()
-	// Tests
+	if helper.Result.ErrorMessage != "" {
+		t.Errorf(helper.Result.ErrorMessage)
+	}
+	verifyBagReadResult(t, helper.Result.BagReadResult)
 
 	helper.SaveGenericFiles()
 	// Tests
@@ -242,4 +246,15 @@ func verifyFetchResult(t *testing.T, fetchResult *bagman.FetchResult) {
 	verifyResult(t, "ErrorMessage", "", fetchResult.ErrorMessage)
 	verifyResult(t, "Warning", "", fetchResult.Warning)
 	verifyResult(t, "Retry", "true", strconv.FormatBool(fetchResult.Retry))
+}
+
+// Do a high-level check. Other unit tests cover the details
+func verifyBagReadResult(t *testing.T, bagReadResult *bagman.BagReadResult) {
+	if !strings.HasSuffix(bagReadResult.Path, "/bagman/ingesthelper/tmp/ncsu.1840.16-2928") {
+		t.Errorf("Wrong BagReadResult.Path: '%s'", bagReadResult.Path)
+	}
+	verifyResult(t, "ErrorMessage", "", bagReadResult.ErrorMessage)
+	verifyResult(t, "File Count", "9", strconv.FormatInt(int64(len(bagReadResult.Files)), 10))
+	verifyResult(t, "Tag Count", "7", strconv.FormatInt(int64(len(bagReadResult.Tags)), 10))
+	verifyResult(t, "Checksum Error Count", "0", strconv.FormatInt(int64(len(bagReadResult.ChecksumErrors)), 10))
 }
