@@ -244,14 +244,6 @@ func TestGetS3Options(t *testing.T) {
 	deleteLocalFiles()
 }
 
-func TestMergeFedoraRecord(t *testing.T) {
-	if environmentReady() == false {
-		return
-	}
-	//helper := getIngestHelper()
-
-	//deleteLocalFiles()
-}
 
 func TestFullProcess(t *testing.T) {
 	if environmentReady() == false {
@@ -297,13 +289,17 @@ func TestFullProcess(t *testing.T) {
 		}
 	}
 
-	// Tests
-
 	helper.LogResult()
-	// Tests
+	if helper.Result.ErrorMessage != "" {
+		t.Errorf(helper.Result.ErrorMessage)
+	}
 
-	helper.DeleteLocalFiles()
-	// Tests
+	errors := helper.DeleteLocalFiles()
+	if len(errors) > 0 {
+		for _, err := range errors {
+			t.Error(err)
+		}
+	}
 
 	deleteLocalFiles()
 	deleteS3Files(helper.Result.TarResult.GenericFiles, helper.ProcUtil.S3Client)
