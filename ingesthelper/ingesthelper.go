@@ -334,6 +334,12 @@ func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
 	} else {
 		gf.StorageURL = url
 		gf.StoredAt = time.Now()
+		// We send the md5 checksum with the file to S3.
+		// If S3 calculates a different checksum, it returns an error.
+		// Since there was no error, we know S3 calculated the same checksum
+		// that we calculated.
+		gf.StorageMd5 = gf.Md5
+
 		helper.ProcUtil.MessageLog.Debug("Successfully sent %s (UUID %s)"+
 			"to long-term storage bucket.", gf.Path, gf.Uuid)
 	}

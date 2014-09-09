@@ -10,6 +10,7 @@ import (
 	"github.com/bitly/go-nsq"
 	"github.com/diamondap/goamz/aws"
 	"github.com/diamondap/goamz/s3"
+	"io/ioutil"
 	"os"
 	"net/http"
 	"strconv"
@@ -19,6 +20,7 @@ import (
 
 var fluctusUrl string = "http://localhost:3000"
 var skipMessagePrinted bool = false
+var config *bagman.Config = nil
 
 func fluctusAvailable() bool {
 	_, err := http.Get(fluctusUrl)
@@ -69,6 +71,7 @@ func getS3File() (*bagman.S3File) {
 }
 
 func getProcessUtil() (*processutil.ProcessUtil) {
+	makeTestDir()
 	testConfig := "test"
 	return processutil.NewProcessUtil(&testConfig)
 }
@@ -79,6 +82,44 @@ func getIngestHelper() (*ingesthelper.IngestHelper) {
 	body := []byte{'h', 'e', 'l', 'l', 'o'}
 	nsqMessage := nsq.NewMessage(msgId, body)
 	return ingesthelper.NewIngestHelper(getProcessUtil(), nsqMessage, getS3File())
+}
+
+func getConfig() (*bagman.Config) {
+	if config == nil {
+		requestedConfig := "test"
+		conf := bagman.LoadRequestedConfig(&requestedConfig)
+		config = &conf
+	}
+	return config
+}
+
+func makeTestDir() {
+	config := getConfig()
+	os.Mkdir(config.TarDirectory, 0755)
+}
+
+// Delete the local files our tests created during processing.
+func deleteLocalFiles() {
+	config := getConfig()
+	files, _ := ioutil.ReadDir(config.TarDirectory)
+	for _, file := range files {
+		//fmt.Printf("Deleting local file %s\n", file.Name())
+		os.RemoveAll(file.Name())
+	}
+}
+
+// Delete the GenericFiles that our tests stored in aptrust.test.preservation.
+func deleteS3Files(genericFiles []*bagman.GenericFile, s3Client *bagman.S3Client) {
+	for _, gf := range genericFiles {
+		parts := strings.Split(gf.StorageURL, "/")
+		bucket := parts[3]
+		file := parts[len(parts) - 1]
+		//fmt.Printf("Deleting S3 file %s/%s\n", bucket, file)
+		err := s3Client.Delete(bucket, file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error cleaning up file %s/%s: %v", bucket, file, err)
+		}
+	}
 }
 
 func TestBagNeedsProcessing(t *testing.T) {
@@ -97,6 +138,7 @@ func TestIncompleteCopyToS3(t *testing.T) {
 		return
 	}
 	helper := getIngestHelper()
+
 	helper.Result.TarResult = &bagman.TarResult{}
 	helper.Result.TarResult.GenericFiles = make([]*bagman.GenericFile, 2)
 	gf0 := &bagman.GenericFile{
@@ -128,6 +170,7 @@ func TestIncompleteCopyToS3(t *testing.T) {
 		t.Error("helper.IncompleteCopyToS3() should have returned true")
 	}
 
+	deleteLocalFiles()
 }
 
 func TestFailedAndNoMoreRetries(t *testing.T) {
@@ -162,8 +205,8 @@ func TestFailedAndNoMoreRetries(t *testing.T) {
 		t.Error("helper.FailedAndNoMoreRetries() should have returned true")
 	}
 
+	deleteLocalFiles()
 }
-
 
 func TestGetS3Options(t *testing.T) {
 	if environmentReady() == false {
@@ -198,17 +241,31 @@ func TestGetS3Options(t *testing.T) {
 		t.Errorf("Expected bag metadata '%s', but found '%s'",
 			gf.Path, opts.Meta["bagpath"][0])
 	}
+	deleteLocalFiles()
+}
+
+func TestMergeFedoraRecord(t *testing.T) {
+	if environmentReady() == false {
+		return
+	}
+	//helper := getIngestHelper()
+
+	//deleteLocalFiles()
 }
 
 func TestFullProcess(t *testing.T) {
 	if environmentReady() == false {
 		return
 	}
+
 	helper := getIngestHelper()
 
 	helper.FetchTarFile()
 	if helper.Result.ErrorMessage != "" {
 		t.Errorf(helper.Result.ErrorMessage)
+	}
+	if helper.Result.Stage != "Fetch" {
+		t.Errorf("Stage should be 'Fetch' but is '%s'", helper.Result.Stage)
 	}
 	verifyFetchResult(t, helper.Result.FetchResult)
 
@@ -216,9 +273,30 @@ func TestFullProcess(t *testing.T) {
 	if helper.Result.ErrorMessage != "" {
 		t.Errorf(helper.Result.ErrorMessage)
 	}
+	if helper.Result.Stage != "Validate" {
+		t.Errorf("Stage should be 'Validate' but is '%s'", helper.Result.Stage)
+	}
 	verifyBagReadResult(t, helper.Result.BagReadResult)
 
 	helper.SaveGenericFiles()
+	if helper.Result.ErrorMessage != "" {
+		t.Errorf(helper.Result.ErrorMessage)
+	}
+	if helper.Result.Stage != "Store" {
+		t.Errorf("Stage should be 'Store' but is '%s'", helper.Result.Stage)
+	}
+	for _, gf := range helper.Result.TarResult.GenericFiles {
+		if gf.StorageURL == "" {
+			t.Errorf("File '%s' is missing S3 URL", gf.Path)
+		}
+		if gf.StoredAt.IsZero() {
+			t.Errorf("File '%s' is missing StoredAt time", gf.Path)
+		}
+		if gf.StorageMd5 == "" {
+			t.Errorf("File '%s' is missing StorageMd5", gf.Path)
+		}
+	}
+
 	// Tests
 
 	helper.LogResult()
@@ -227,6 +305,8 @@ func TestFullProcess(t *testing.T) {
 	helper.DeleteLocalFiles()
 	// Tests
 
+	deleteLocalFiles()
+	deleteS3Files(helper.Result.TarResult.GenericFiles, helper.ProcUtil.S3Client)
 }
 
 func verifyResult(t *testing.T, itemName, expected, actual string) {
