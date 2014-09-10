@@ -312,13 +312,11 @@ func (gf *GenericFile) SerializeForFluctus() ([]byte, error) {
 // For example, if the identifier is "uc.edu/cin.675812/data/object.properties",
 // this returns "data/object.properties"
 func (gf *GenericFile) OriginalPath() (string, error) {
-	instId, err := gf.InstitutionId()
-	bagName, err := gf.BagName()
-	if err != nil {
-		return "", err
+	parts := strings.SplitN(gf.Identifier, "/data/", 2)
+	if len(parts) < 2 {
+		return "", fmt.Errorf("GenericFile identifier '%s' is not valid", gf.Identifier)
 	}
-	prefix := fmt.Sprintf("%s/%s/", instId, bagName)
-	return strings.Replace(gf.Identifier, prefix, "", 1), nil
+	return fmt.Sprintf("data/%s", parts[1]), nil
 }
 
 // Returns the name of the original bag.
