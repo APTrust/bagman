@@ -120,40 +120,43 @@ const (
 // Status may have one of the following values: Pending,
 // Success, Failed.
 type ProcessStatus struct {
-	Id                int        `json:"id"`
-	ObjectIdentifier  string     `json:"object_identifier"`
-	Name              string     `json:"name"`
-	Bucket            string     `json:"bucket"`
-	ETag              string     `json:"etag"`
-	BagDate           time.Time  `json:"bag_date"`
-	Institution       string     `json:"institution"`
-	Date              time.Time  `json:"date"`
-	Note              string     `json:"note"`
-	Action            ActionType `json:"action"`
-	Stage             StageType  `json:"stage"`
-	Status            StatusType `json:"status"`
-	Outcome           string     `json:"outcome"`
-	Retry             bool       `json:"retry"`
-	Reviewed          bool       `json:"reviewed"`
+	Id                     int        `json:"id"`
+	ObjectIdentifier       string     `json:"object_identifier"`
+	GenericFileIdentifier  string     `json:"generic_file_identifier"`
+	Name                   string     `json:"name"`
+	Bucket                 string     `json:"bucket"`
+	ETag                   string     `json:"etag"`
+	BagDate                time.Time  `json:"bag_date"`
+	Institution            string     `json:"institution"`
+	Date                   time.Time  `json:"date"`
+	Note                   string     `json:"note"`
+	Action                 ActionType `json:"action"`
+	Stage                  StageType  `json:"stage"`
+	Status                 StatusType `json:"status"`
+	Outcome                string     `json:"outcome"`
+	Retry                  bool       `json:"retry"`
+	Reviewed               bool       `json:"reviewed"`
 }
 
 // Convert ProcessStatus to JSON, omitting id, which Rails won't permit.
 // For internal use, json.Marshal() works fine.
 func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"name":        status.Name,
-		"bucket":      status.Bucket,
-		"etag":        status.ETag,
-		"bag_date":    status.BagDate,
-		"institution": status.Institution,
-		"date":        status.Date,
-		"note":        status.Note,
-		"action":      status.Action,
-		"stage":       status.Stage,
-		"status":      status.Status,
-		"outcome":     status.Outcome,
-		"retry":       status.Retry,
-		"reviewed":    status.Reviewed,
+		"name":                    status.Name,
+		"bucket":                  status.Bucket,
+		"etag":                    status.ETag,
+		"bag_date":                status.BagDate,
+		"institution":             status.Institution,
+		"object_identifier":       status.ObjectIdentifier,
+		"generic_file_identifier": status.GenericFileIdentifier,
+		"date":                    status.Date,
+		"note":                    status.Note,
+		"action":                  status.Action,
+		"stage":                   status.Stage,
+		"status":                  status.Status,
+		"outcome":                 status.Outcome,
+		"retry":                   status.Retry,
+		"reviewed":                status.Reviewed,
 	})
 }
 
