@@ -612,6 +612,87 @@ func TestRestorationItemsGet(t *testing.T) {
 	}
 }
 
+func TestDeletionItemsGet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	client := getClient(t)
+
+	// Make sure we have a couple of items to be restored...
+	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
+	records, err := client.BulkStatusGet(sinceWhen)
+
+	if err != nil {
+		t.Errorf("Error getting bulk status: %v", err)
+	}
+	if len(records) < 2 {
+		t.Errorf("Not enough records in Fluctus to test DeletionItemsGet")
+		return
+	}
+	records[0].Action = bagman.ActionDelete
+	records[0].Stage = bagman.StageRequested
+	records[0].Status = bagman.StatusPending
+	records[0].Retry = true
+	err = client.SendProcessedItem(records[0])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+	records[1].Action = bagman.ActionDelete
+	records[1].Stage = bagman.StageRequested
+	records[1].Status = bagman.StatusPending
+	records[1].Retry = true
+	err = client.SendProcessedItem(records[1])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+
+	// Get items to be restored. There should be at least
+	// the two we just saved.
+	itemsToRestore, err := client.DeletionItemsGet("")
+	if err != nil {
+		t.Errorf("Error getting deletion items: %v", err)
+	}
+	if len(itemsToRestore) < 2 {
+		t.Error("DeletionItemsGet returned no records when it should have returned something.")
+	}
+
+	// Ask for records with a specific object identifier.
+	// We should get at least the one we set up here.
+	lastRecord := records[len(records)-1]
+	lastRecord.Action = bagman.ActionDelete
+	lastRecord.Stage = bagman.StageResolve
+	lastRecord.Status = bagman.StatusFailed
+	lastRecord.Retry = true
+	err = client.SendProcessedItem(records[1])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+
+	itemsToRestore, err = client.DeletionItemsGet(lastRecord.GenericFileIdentifier)
+	if err != nil {
+		t.Errorf("Error getting deletion items: %v", err)
+	}
+	if len(itemsToRestore) < 1 {
+		t.Error("DeletionItemsGet returned no records when it should have returned something.")
+	}
+
+	// Make sure we get empty list and not error when there are no items
+	lastRecord.Retry = false
+	err = client.SendProcessedItem(records[1])
+	if err != nil {
+		t.Errorf("Error sending processed item: %v", err)
+	}
+
+	itemsToRestore, err = client.DeletionItemsGet(lastRecord.GenericFileIdentifier)
+	if err != nil {
+		t.Errorf("Error getting restoration items: %v", err)
+	}
+	if len(itemsToRestore) == 0 {
+		t.Error("DeletionItemsGet returned no records when it should have returned something.")
+	}
+}
+
+
 func TestRestorationStatusSet(t *testing.T) {
 	if runFluctusTests() == false {
 		return

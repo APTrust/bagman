@@ -326,11 +326,44 @@ restoration requests in Fluctus' ProcessedItems table.
 ProcessedItem records for that object in stage Restore.
 */
 func (client *Client) RestorationItemsGet(objectIdentifier string) (statusRecords []*bagman.ProcessStatus, err error) {
-	objUrl := client.BuildUrl("/api/v1/itemresults/restore.json")
-	if objectIdentifier != "" {
-		objUrl = fmt.Sprintf("%s?object_identifier=%s", objUrl, objectIdentifier)
+	return client.getStatusItemsForQueue("restore", objectIdentifier)
+}
+
+
+/*
+Returns a list of items that need to be deleted.
+If param genericFileIdentifier is not an empty string, this
+will return all ProcessedItem records for the generic file
+that have Action == "Delete".
+
+If no genericFileIdentifier is supplied, this returns all ProcessedItem
+records in action "Delete" with stage "Requested" and status
+"Pending".
+
+This will return zero items in either of the following cases:
+
+1. No genericFileIdentifier is supplied and there are no pending
+restoration requests in Fluctus' ProcessedItems table.
+
+2. A genericFileIdentifier is supplied, and there are no
+ProcessedItem records for that object in stage Restore.
+*/
+func (client *Client) DeletionItemsGet(genericFileIdentifier string) (statusRecords []*bagman.ProcessStatus, err error) {
+	return client.getStatusItemsForQueue("delete", genericFileIdentifier)
+}
+
+// Calls one of the ProcessedItem endpoints that returns a list of ProcessedItems.
+func (client *Client) getStatusItemsForQueue(itemType, identifier string) (statusRecords []*bagman.ProcessStatus, err error) {
+	objUrl := client.BuildUrl("/api/v1/itemresults/items_for_restore.json")
+	paramName := "object_identifier"
+	if itemType == "delete" {
+		objUrl = client.BuildUrl("/api/v1/itemresults/items_for_delete.json")
+		paramName = "generic_file_identifier"
 	}
-	client.logger.Debug("Getting list of items to be restored from fluctus: %s", objUrl)
+	if identifier != "" {
+		objUrl = fmt.Sprintf("%s?%s=%s", objUrl, paramName, identifier)
+	}
+	client.logger.Debug("Getting list of %s items from fluctus: %s", itemType, objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
 		return nil, err
@@ -353,8 +386,8 @@ func (client *Client) RestorationItemsGet(objectIdentifier string) (statusRecord
 	// Check for error response
 	if response.StatusCode != 200 {
 		if len(body) < 1000 {
-			return nil, fmt.Errorf("Request for bulk status returned status code %d. "+
-				"Response body: %s", response.StatusCode, string(body))
+			return nil, fmt.Errorf("Request for %s records returned status code %d. "+
+				"Response body: %s", itemType, response.StatusCode, string(body))
 		} else {
 			return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
 		}
