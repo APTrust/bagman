@@ -461,7 +461,7 @@ func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (error) {
 	finfo, err := os.Stat(filePath)
 	if err != nil {
-		return err
+		return fmt.Errorf("Cannot add '%s' to archive: %v", filePath, err)
 	}
 	header := &tar.Header{
 		Name: pathWithinArchive,

@@ -825,11 +825,11 @@ func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman
 	jsonData, err := json.Marshal(data)
 	request, err := client.NewJsonRequest("POST", objUrl, bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
+		return fmt.Errorf("Could not build POST request for %s: %v", objUrl, err)
 	}
 	response, err := client.httpClient.Do(request)
 	if err != nil {
-		return err
+		return fmt.Errorf("Error executing POST request for %s: %v", objUrl, err)
 	}
 
 	// Read & close body to avoid hanging TCP connections.
@@ -838,14 +838,14 @@ func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman
 		body, err = ioutil.ReadAll(response.Body)
 		response.Body.Close()
 		if err != nil {
-			return err
+			return fmt.Errorf("Error reading response body from %s: %v", objUrl, err)
 		}
 	}
 
 	// Check for error response
 	if response.StatusCode != 200 {
 		if len(body) < 1000 {
-			return fmt.Errorf("Request for bulk status returned status code %d. "+
+			return fmt.Errorf("RestorationStatusSet returned status code %d. "+
 				"Response body: %s", response.StatusCode, string(body))
 		} else {
 			return fmt.Errorf("Request returned status code %d", response.StatusCode)
