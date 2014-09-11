@@ -231,7 +231,7 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	// is something wrong with the bag.
 	status.Retry = true
 
-	err = fluctusClient.UpdateBagStatus(status)
+	err = fluctusClient.UpdateProcessedItem(status)
 	if err != nil {
 		return err
 	}

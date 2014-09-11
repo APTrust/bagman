@@ -185,7 +185,7 @@ func MarkItemResolved(result *bagman.CleanupResult) error {
 		remoteStatus.Stage = bagman.StageCleanup
 		remoteStatus.Status = bagman.StatusSuccess
 	}
-	err = procUtil.FluctusClient.UpdateBagStatus(remoteStatus)
+	err = procUtil.FluctusClient.UpdateProcessedItem(remoteStatus)
 	if err != nil {
 		procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %s", err.Error())
 	} else {

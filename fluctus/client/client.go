@@ -190,17 +190,21 @@ func (client *Client) GetReviewedItems() (results []*bagman.CleanupResult, err e
 	return results, nil
 }
 
-// UpdateBagStatus sends a message to Fluctus describing whether bag
+// UpdateProcessedItem sends a message to Fluctus describing whether bag
 // processing succeeded or failed. If it failed, the ProcessStatus
 // object includes some details of what went wrong.
-func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) {
+func (client *Client) UpdateProcessedItem(status *bagman.ProcessStatus) (err error) {
 	relativeUrl := fmt.Sprintf("/api/%s/itemresults", client.apiVersion)
 	httpMethod := "POST"
+	expectedResponseCode := 201
 	if status.Id > 0 {
-		relativeUrl = fmt.Sprintf("/api/%s/itemresults/%s/%s/%s",
-			client.apiVersion, status.ETag, status.Name,
-			status.BagDate.Format(time.RFC3339))
+		// relativeUrl = fmt.Sprintf("/api/%s/itemresults/%s/%s/%s",
+		// 	client.apiVersion, status.ETag, status.Name,
+		// 	status.BagDate.Format(time.RFC3339))
+		relativeUrl = fmt.Sprintf("/api/%s/itemresults/%d",
+			client.apiVersion, status.Id)
 		httpMethod = "PUT"
+		expectedResponseCode = 200
 	}
 	statusUrl := client.BuildUrl(relativeUrl)
 	postData, err := status.SerializeForFluctus()
@@ -211,7 +215,7 @@ func (client *Client) UpdateBagStatus(status *bagman.ProcessStatus) (err error) 
 	if err != nil {
 		return err
 	}
-	status, err = client.doStatusRequest(req, 201)
+	status, err = client.doStatusRequest(req, expectedResponseCode)
 	if err != nil {
 		client.logger.Error("JSON for failed Fluctus request: %s",
 			string(postData))
@@ -354,10 +358,10 @@ func (client *Client) DeletionItemsGet(genericFileIdentifier string) (statusReco
 
 // Calls one of the ProcessedItem endpoints that returns a list of ProcessedItems.
 func (client *Client) getStatusItemsForQueue(itemType, identifier string) (statusRecords []*bagman.ProcessStatus, err error) {
-	objUrl := client.BuildUrl("/api/v1/itemresults/items_for_restore.json")
+	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/items_for_restore.json", client.apiVersion))
 	paramName := "object_identifier"
 	if itemType == "delete" {
-		objUrl = client.BuildUrl("/api/v1/itemresults/items_for_delete.json")
+		objUrl = client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/items_for_delete.json", client.apiVersion))
 		paramName = "generic_file_identifier"
 	}
 	if identifier != "" {
@@ -794,7 +798,7 @@ func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err 
 	if remoteStatus != nil {
 		localStatus.Id = remoteStatus.Id
 	}
-	err = client.UpdateBagStatus(localStatus)
+	err = client.UpdateProcessedItem(localStatus)
 	if err != nil {
 		return err
 	}
@@ -814,8 +818,8 @@ func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman
 	if objectIdentifier == "" {
 		return fmt.Errorf("Object identifier cannot be empty.")
 	}
-	objUrl := client.BuildUrl(fmt.Sprintf("/api/v1/itemresults/restoration_status/%s",
-		escapeSlashes(objectIdentifier)))
+	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/restoration_status/%s",
+		client.apiVersion, escapeSlashes(objectIdentifier)))
 	client.logger.Debug("Setting restoration status: %s - stage = %s, status = %s, retry = %s",
 		objUrl, stage, status, retry)
 	data := make(map[string]interface{})
