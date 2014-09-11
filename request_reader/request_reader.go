@@ -1,5 +1,9 @@
-// restore_reader periodically checks the processed items list
-// in Fluctus for intellectual objects that users want to restore.
+// request_reader periodically checks the processed items list
+// in Fluctus for the following:
+//
+// 1. Intellectual objects that users want to restore.
+// 2. Generic files that users want to delete.
+//
 // It queues those items in nsqd.
 package main
 
@@ -34,10 +38,11 @@ var (
 func main() {
 	err := initialize()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Initialization failed for restore_reader: %v", err)
+		fmt.Fprintf(os.Stderr, "Initialization failed for request_reader: %v", err)
 		os.Exit(1)
 	}
-	run()
+	queueAllRestorationItems()
+	queueAllDeletionItems()
 }
 
 func initialize() (err error) {
@@ -46,7 +51,7 @@ func initialize() (err error) {
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
 	messageLog = bagman.InitLogger(config)
-	messageLog.Info("Restore reader started")
+	messageLog.Info("Request reader started")
 	fluctusClient, err = client.New(
 		config.FluctusURL,
 		config.FluctusAPIVersion,
@@ -56,24 +61,40 @@ func initialize() (err error) {
 	return err
 }
 
-func run() {
-	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
-		config.RestoreTopic)
-	messageLog.Info("Asking Fluctus for objects to restore to %s", url)
-
+// Find all the Intellectual Objects that need to be restored & add them to
+// the NSQ restoration queue.
+func queueAllRestorationItems() {
+	messageLog.Info("Asking Fluctus for objects to restore")
 	results, err := fluctusClient.RestorationItemsGet("")
 	if err != nil {
 		messageLog.Fatalf("Error getting items for restoration: %v", err)
 	}
-
 	messageLog.Info("Found %d items to restore", len(results))
+	queueBatch(results, "restoration")
+}
 
+// Find all the Generic Files that need to be deleted & add them to
+// the NSQ restoration queue.
+func queueAllDeletionItems() {
+	messageLog.Info("Asking Fluctus for files to delete")
+	results, err := fluctusClient.DeletionItemsGet("")
+	if err != nil {
+		messageLog.Fatalf("Error getting items for deletion: %v", err)
+	}
+	messageLog.Info("Found %d items to delete", len(results))
+	queueBatch(results, "delete")
+}
+
+
+// Queues a batch of items for restoration or deletion,
+// depending on the url param.
+func queueBatch(results []*bagman.ProcessStatus, queueName string) {
 	start := 0
 	end := min(len(results), batchSize)
 	for start <= end {
 		batch := results[start:end]
 		messageLog.Info("Queuing batch of %d items", len(batch))
-		enqueue(url, batch)
+	enqueue(batch, queueName)
 		start = end + 1
 		if start < len(results) {
 			end = min(len(results), start+batchSize)
@@ -93,7 +114,14 @@ func min(x, y int) int {
 }
 
 // enqueue adds a batch of items to the nsqd work queue
-func enqueue(url string, statusList []*bagman.ProcessStatus) {
+func enqueue(statusList []*bagman.ProcessStatus, queueName string) {
+	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
+		config.RestoreTopic)
+	if queueName == "delete" {
+		url = fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
+			config.DeleteTopic)
+	}
+
 	jsonData := make([]string, len(statusList))
 	for i, processStatus := range statusList {
 		json, err := json.Marshal(processStatus)
@@ -101,8 +129,8 @@ func enqueue(url string, statusList []*bagman.ProcessStatus) {
 			messageLog.Error("Error marshalling ProcessStatus to JSON: %v", err)
 		} else {
 			jsonData[i] = string(json)
-			messageLog.Info("Put %s/%s into restoration queue",
-				processStatus.Institution, processStatus.Name)
+			messageLog.Info("Put %s/%s into %s queue",
+				processStatus.Institution, processStatus.Name, queueName)
 		}
 	}
 	batch := strings.Join(jsonData, "\n")

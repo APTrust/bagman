@@ -10,17 +10,25 @@ NSQ_PID=$!
 sleep 3
 
 # Wait for this one to finish
-echo "Starting restore reader"
-cd ~/go/src/github.com/APTrust/bagman/restore_reader
-go run restore_reader.go -config apd4n
+echo "Starting request reader"
+cd ~/go/src/github.com/APTrust/bagman/request_reader
+go run request_reader.go -config apd4n
 
 echo "Starting bag restorer"
 cd ~/go/src/github.com/APTrust/bagman/bag_restorer
 go run bag_restorer.go -config apd4n &
 RESTORER_PID=$!
 
+echo "Starting generic file deleter"
+cd ~/go/src/github.com/APTrust/bagman/gf_deleter
+go run gf_deleter.go -config apd4n &
+DELETER_PID=$!
+
 kill_all()
 {
+    echo "Shutting down deleter"
+    kill -s SIGINT $DELETER_PID
+
     echo "Shutting down bag restorer"
     kill -s SIGINT $RESTORER_PID
 
