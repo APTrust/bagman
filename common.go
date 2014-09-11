@@ -128,6 +128,7 @@ type ProcessStatus struct {
 	ETag                   string     `json:"etag"`
 	BagDate                time.Time  `json:"bag_date"`
 	Institution            string     `json:"institution"`
+	User                   string     `json:"user"`
 	Date                   time.Time  `json:"date"`
 	Note                   string     `json:"note"`
 	Action                 ActionType `json:"action"`
