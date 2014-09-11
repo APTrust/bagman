@@ -142,6 +142,16 @@ type Config struct {
 	// an IntellectualObject
 	MaxRestoreAttempts int
 
+	// NSQ topic for deleting generic files
+	DeleteTopic string
+
+	// NSQ channel for deleting generic files
+    DeleteChannel string
+
+	// Max number of times to try to delete a generic file
+	// from the preservation bucket.
+    MaxDeleteAttempts int
+
 	// SkipAlreadyProcessed indicates whether or not the
 	// bucket_reader should  put successfully-processed items into
 	// NSQ for re-processing. This is amost always set to false.
