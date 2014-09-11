@@ -198,9 +198,6 @@ func (client *Client) UpdateProcessedItem(status *bagman.ProcessStatus) (err err
 	httpMethod := "POST"
 	expectedResponseCode := 201
 	if status.Id > 0 {
-		// relativeUrl = fmt.Sprintf("/api/%s/itemresults/%s/%s/%s",
-		// 	client.apiVersion, status.ETag, status.Name,
-		// 	status.BagDate.Format(time.RFC3339))
 		relativeUrl = fmt.Sprintf("/api/%s/itemresults/%d",
 			client.apiVersion, status.Id)
 		httpMethod = "PUT"
