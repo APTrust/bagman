@@ -347,6 +347,17 @@ func (gf *GenericFile) GetChecksum(algorithm string) (*ChecksumAttribute) {
 	return nil
 }
 
+// Returns the name of this file in the preservation storage bucket
+// (that should be a UUID), or an error if the GenericFile does not
+// have a valid preservation storage URL.
+func (gf *GenericFile) PreservationStorageFileName() (string, error) {
+	if strings.Index(gf.URI, "/") < 0 {
+		return "", fmt.Errorf("Cannot get preservation storage file name because GenericFile has an invalid URI")
+	}
+	parts := strings.Split(gf.URI, "/")
+	return parts[len(parts) - 1], nil
+}
+
 // User struct is used for logging in to fluctus.
 type User struct {
 	Email     string `json:"email"`

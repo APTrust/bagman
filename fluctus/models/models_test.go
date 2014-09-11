@@ -185,6 +185,25 @@ func TestGFGetChecksum(t *testing.T) {
 	}
 }
 
+func TestGFPreservationStorageFileName(t *testing.T) {
+	gf := models.GenericFile{}
+	gf.URI = ""
+	fileName, err := gf.PreservationStorageFileName()
+	if err == nil {
+		t.Errorf("PreservationStorageFileName() should have returned an error")
+	}
+	gf.URI = "https://s3.amazonaws.com/aptrust.test.preservation/a58a7c00-392f-11e4-916c-0800200c9a66"
+	fileName, err = gf.PreservationStorageFileName()
+	if err != nil {
+		t.Errorf("PreservationStorageFileName() returned an error: %v", err)
+	}
+	expected := "a58a7c00-392f-11e4-916c-0800200c9a66"
+	if fileName != expected {
+		t.Errorf("PreservationStorageFileName() returned '%s', expected '%s'",
+			fileName, expected)
+	}
+}
+
 func TestTotalFileSize(t *testing.T) {
 	filepath := filepath.Join("testdata", "intel_obj.json")
 	obj, err := bagman.LoadIntelObjFixture(filepath)
