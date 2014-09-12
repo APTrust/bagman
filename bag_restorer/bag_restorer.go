@@ -187,7 +187,7 @@ func (*RestoreProcessor) HandleMessage(message *nsq.Message) error {
 
 	// Mark all ProcessedItems related to this object as started
 	err = procUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus.ObjectIdentifier,
-		bagman.StageRequested, bagman.StatusStarted, false)
+		bagman.StageRequested, bagman.StatusStarted, "Restoration in process", false)
 	if err != nil {
 		detailedError := fmt.Errorf("Cannot register restoration start with Fluctus for %s: %v",
 			object.Key(), err)
@@ -208,12 +208,16 @@ func logResult() {
 		// Mark item as resolved in Fluctus & tell the queue what happened.
 		var status bagman.StatusType = bagman.StatusSuccess
 		var stage bagman.StageType = bagman.StageResolve
+		note := ""
 		if object.ErrorMessage != "" {
 			status = bagman.StatusFailed
 			stage = bagman.StageRequested
+			note = object.ErrorMessage
+		} else {
+			note = fmt.Sprintf("Object restored to %s", strings.Join(object.RestorationUrls, ", "))
 		}
 		err := procUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus.ObjectIdentifier,
-			stage, status, false)
+			stage, status, note, false)
 		if err != nil {
 			// Do we really want to go through the whole process
 			// of restoring this again?

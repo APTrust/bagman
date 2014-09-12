@@ -811,7 +811,7 @@ current object. If an object was uploaded as a series of
 100 bags, this sets the status on the processed item records
 for the latest ingested version of each of those 100 bags.
 */
-func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman.StageType, status bagman.StatusType, retry bool) (error) {
+func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman.StageType, status bagman.StatusType, note string, retry bool) (error) {
 	if objectIdentifier == "" {
 		return fmt.Errorf("Object identifier cannot be empty.")
 	}
@@ -823,6 +823,7 @@ func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman
 	data["stage"] = stage
 	data["status"] = status
 	data["retry"] = retry
+	data["note"] = note
 	jsonData, err := json.Marshal(data)
 	request, err := client.NewJsonRequest("POST", objUrl, bytes.NewBuffer(jsonData))
 	if err != nil {

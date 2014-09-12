@@ -732,7 +732,8 @@ func TestRestorationStatusSet(t *testing.T) {
 	}
 
 	// Now update the status on that record
-	err = client.RestorationStatusSet(record.ObjectIdentifier, bagman.StageFetch, bagman.StatusStarted, false)
+	err = client.RestorationStatusSet(record.ObjectIdentifier, bagman.StageFetch,
+		bagman.StatusStarted, "Updated note", false)
 	if err != nil {
 		t.Errorf("Error setting restoration status: %v", err)
 		return
@@ -755,5 +756,8 @@ func TestRestorationStatusSet(t *testing.T) {
 	}
 	if updatedRecords[0].Retry != false {
 		t.Error("Retry should be false, but is true")
+	}
+	if updatedRecords[0].Note != "Updated note" {
+		t.Errorf("Note should be 'Updated note', but is '%s'", updatedRecords[0].Note)
 	}
 }
