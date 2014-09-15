@@ -287,7 +287,8 @@ func doCleanUp() {
 	for helper := range channels.CleanUpChannel {
 		result := helper.Result
 		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
-		if result.S3File.Key.Key != "" && result.FetchResult.LocalTarFile != "" {
+		if (result.S3File.Key.Key != "" && result.FetchResult != nil &&
+			result.FetchResult.LocalTarFile != "") {
 			// Clean up any files we downloaded and unpacked
 			errors := helper.DeleteLocalFiles()
 			if errors != nil && len(errors) > 0 {
