@@ -71,7 +71,7 @@ func main() {
 	nsqConfig.Set("max_attempts", uint16(procUtil.Config.MaxBagAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "60m")
+	nsqConfig.Set("msg_timeout", "180m")
 	consumer, err := nsq.NewConsumer(procUtil.Config.BagProcessorTopic, procUtil.Config.BagProcessorChannel, nsqConfig)
 	if err != nil {
 		procUtil.MessageLog.Fatalf(err.Error())
@@ -176,6 +176,7 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 func doFetch() {
 	for helper := range channels.FetchChannel {
 		result := helper.Result
+		result.NsqMessage.Touch()
 		s3Key := result.S3File.Key
 		// Disk needs filesize * 2 disk space to accomodate tar file & untarred files
 		err := procUtil.Volume.Reserve(uint64(s3Key.Size * 2))
@@ -217,8 +218,12 @@ func doUnpack() {
 			// Unpacked! Now process the bag and touch message
 			// so nsqd knows we're making progress.
 			procUtil.MessageLog.Info("Unpacking %s", result.S3File.Key.Key)
+			// Touch when we start
 			result.NsqMessage.Touch()
+			// Processing can take 90+ minutes for very large files!
 			helper.ProcessBagFile()
+			// And touch again when we're done
+			result.NsqMessage.Touch()
 			if result.ErrorMessage == "" {
 				// Move to permanent storage if bag processing succeeded
 				channels.StorageChannel <- helper
@@ -244,8 +249,11 @@ func doUnpack() {
 // the state of all of the files.
 func saveToStorage() {
 	for helper := range channels.StorageChannel {
+		// Touch before and after sending generic files,
+		// since that process can take a long time for large bags.
 		helper.Result.NsqMessage.Touch()
 		err := helper.SaveGenericFiles()
+		helper.Result.NsqMessage.Touch()
 		if err != nil {
 			channels.ResultsChannel <- helper
 			continue
@@ -286,6 +294,7 @@ func logResult() {
 func doCleanUp() {
 	for helper := range channels.CleanUpChannel {
 		result := helper.Result
+		result.Touch()
 		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if (result.S3File.Key.Key != "" && result.FetchResult != nil &&
 			result.FetchResult.LocalTarFile != "") {
