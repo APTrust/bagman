@@ -294,7 +294,7 @@ func logResult() {
 func doCleanUp() {
 	for helper := range channels.CleanUpChannel {
 		result := helper.Result
-		result.Touch()
+		result.NsqMessage.Touch()
 		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if (result.S3File.Key.Key != "" && result.FetchResult != nil &&
 			result.FetchResult.LocalTarFile != "") {
