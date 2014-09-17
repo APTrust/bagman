@@ -8,7 +8,6 @@ import (
 	"io"
 	"os"
 	"strings"
-	"time"
 )
 
 // Constants
