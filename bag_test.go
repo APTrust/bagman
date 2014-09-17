@@ -95,6 +95,12 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 		"data/datastream-MARC",
 		"data/datastream-RELS-EXT",
 	}
+	expectedIdentifier := []string{
+		"ncsu.1840.16-2928/data/datastream-DC",
+		"ncsu.1840.16-2928/data/datastream-descMetadata",
+		"ncsu.1840.16-2928/data/datastream-MARC",
+		"ncsu.1840.16-2928/data/datastream-RELS-EXT",
+	}
 	expectedMd5 := []string{
 		"44d85cf4810d6c6fe87750117633e461",
 		"4bd0ad5f85c00ce84a455466b24c8960",
@@ -128,6 +134,10 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 	for index, gf := range tarResult.GenericFiles {
 		if gf.Path != expectedPath[index] {
 			t.Errorf("GenericFile path '%s' is incorrect, expected '%s'", gf.Path, expectedPath[index])
+		}
+		if gf.Identifier != expectedIdentifier[index] {
+			t.Errorf("GenericFile identifier '%s' is incorrect, expected '%s'",
+				gf.Identifier, expectedIdentifier[index])
 		}
 		if gf.Md5 != expectedMd5[index] {
 			t.Errorf("GenericFile md5 sum '%s' should be '%s'", gf.Md5, expectedMd5[index])

@@ -114,7 +114,8 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 			if strings.Contains(header.Name, "data/") {
 				genericFile := buildGenericFile(tarReader, filepath.Dir(absInputFile), header.Name,
 					header.Size, header.ModTime)
-				genericFile.Identifier = fmt.Sprintf("%s/%s", bagName, genericFile.Path)
+				cleanBagName, _ := CleanBagName(bagName)
+				genericFile.Identifier = fmt.Sprintf("%s/%s", cleanBagName, genericFile.Path)
 				genericFile.IdentifierAssigned = time.Now()
 				tarResult.GenericFiles = append(tarResult.GenericFiles, genericFile)
 			} else {
