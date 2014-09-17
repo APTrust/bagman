@@ -802,12 +802,17 @@ func Enqueue(nsqdHttpAddress, topic string, result *ProcessResult) error {
 
 	// nsqd sends a simple OK. We have to read the response body,
 	// or the connection will hang open forever.
-	_, _ = ioutil.ReadAll(resp.Body)
+	body, _ := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("nsqd returned status code %d when attempting to queue %s",
-			resp.StatusCode, key)
+		bodyText := "[no response body]"
+		if len(body) > 0 {
+			bodyText = string(body)
+		}
+		return fmt.Errorf("nsqd returned status code %d when attempting to queue %s. " +
+			"Response body: %s",
+			resp.StatusCode, key, bodyText)
 	}
 	return nil
 }
