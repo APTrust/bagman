@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 )
 
 // Constants
@@ -19,6 +20,8 @@ const S3_LARGE_FILE int64 = int64(5 * GIGABYTE)
 // Chunk size for multipart puts to S3: 100 MB
 const S3_CHUNK_SIZE = int64(100000000)
 
+const S3_CONNECT_TIMEOUT = time.Second * 5
+const S3_READ_TIMEOUT = time.Second * 90
 
 type S3Client struct {
 	S3 *s3.S3
@@ -34,8 +37,10 @@ func NewS3Client(region aws.Region) (*S3Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	S3 := s3.New(auth, region)
-	return &S3Client{S3}, nil
+	s3Client := s3.New(auth, region)
+	s3Client.ConnectTimeout = S3_CONNECT_TIMEOUT
+	s3Client.ReadTimeout = S3_READ_TIMEOUT
+	return &S3Client{S3: s3Client}, nil
 }
 
 // Returns a list of keys in the specified bucket.
