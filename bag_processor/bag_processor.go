@@ -152,6 +152,18 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 		return nil
 	}
 
+	// Special case for very large bags: the bag is in process under
+	// the same ID. NSQ thinks it timed out and has re-sent it. In this
+	// case, return nil so NSQ knows we're OK, but don't finish the message.
+	// The original process will call Finish() on the message when it's
+	// done. If we call Finish() here, NSQ will throw a "not-in-flight"
+	// error when the processor calls Finish() on the original message later.
+	if procUtil.BagAlreadyInProgress(&s3File) {
+		procUtil.MessageLog.Info("Bag %s is already in progress under message id '%s'",
+			s3File.Key.Key, procUtil.MessageIdFor(s3File.BagName()))
+		return nil
+	}
+
 	// Don't start working on a message that we're already working on.
 	// Note that the key we include in the syncMap includes multipart
 	// bag endings, so we can be working on ncsu.edu/obj.b1of2.tar and

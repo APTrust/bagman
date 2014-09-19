@@ -72,6 +72,15 @@ func LoadIntelObjFixture(filename string) (*models.IntellectualObject, error) {
 	return intelObj, nil
 }
 
+// Returns true if the file at path exists, false if not.
+func FileExists(path string) bool {
+	_, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
 
 type SynchronizedMap struct {
 	data  map[string]string

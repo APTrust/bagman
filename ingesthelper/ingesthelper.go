@@ -91,7 +91,7 @@ func (helper *IngestHelper) FailedAndNoMoreRetries() (bool) {
 func (helper *IngestHelper) GetFileReader(gf *bagman.GenericFile) (*os.File, string, error) {
 	re := regexp.MustCompile("\\.tar$")
 	bagDir := re.ReplaceAllString(helper.Result.S3File.Key.Key, "")
-	file := filepath.Join( helper.ProcUtil.Config.TarDirectory, bagDir, gf.Path)
+	file := filepath.Join(helper.ProcUtil.Config.TarDirectory, bagDir, gf.Path)
 	absPath, err := filepath.Abs(file)
 	if err != nil {
 		// Consider this error transient. Leave retry = true.

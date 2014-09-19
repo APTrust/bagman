@@ -5,6 +5,7 @@ import (
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/processutil"
 	"github.com/bitly/go-nsq"
+	"github.com/diamondap/goamz/s3"
 	"path"
 	"path/filepath"
 	"os"
@@ -129,4 +130,40 @@ func TestSyncMapFunctions(t *testing.T) {
 	if procUtil.MessageIdFor("Item2") != "" {
 		t.Errorf("Item2 was not unregistered")
 	}
+}
+
+func TestBagAlreadyInProgress(t *testing.T) {
+	procUtil := processutil.NewProcessUtil(&testConfig)
+	defer deleteTestLogs(procUtil.Config)
+
+	s3File := &bagman.S3File {
+		BucketName: "aptrust.receiving.miami.edu",
+		Key: s3.Key {
+			Key: "big_ol_file.tar",
+		},
+	}
+	messageId1 := nsq.MessageID{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 's', 'd', 'f', 'g', 'h'}
+
+	if procUtil.BagAlreadyInProgress(s3File) == true {
+		t.Errorf("BagAlreadyInProgress() should have returned false")
+	}
+
+	_ = procUtil.RegisterItem(s3File.BagName(), messageId1)
+	if procUtil.BagAlreadyInProgress(s3File) == false {
+		t.Errorf("BagAlreadyInProgress() should have returned true")
+	}
+	procUtil.UnregisterItem(s3File.BagName())
+
+	tarFile := filepath.Join(procUtil.Config.TarDirectory, s3File.Key.Key)
+	file, err := os.Create(tarFile)
+	if err != nil {
+		t.Errorf("Could not create file necessary for testing: %v", err)
+	}
+
+	if procUtil.BagAlreadyInProgress(s3File) == false {
+		t.Errorf("BagAlreadyInProgress() should have returned true")
+	}
+
+	file.Close()
+	os.Remove(tarFile)
 }

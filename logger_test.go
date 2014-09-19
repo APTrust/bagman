@@ -24,21 +24,13 @@ func teardownLoggerTest() {
 	os.RemoveAll(config.AbsLogDirectory())
 }
 
-func fileExists(filename string) bool {
-	_, err := os.Stat(filename)
-	if err != nil {
-		return false
-	}
-	return true
-}
-
 func TestInitLogger(t *testing.T) {
 	setupLoggerTest()
 	defer teardownLoggerTest()
 	log := bagman.InitLogger(config)
 	log.Error("Test Message")
 	logFile := filepath.Join(config.AbsLogDirectory(), path.Base(os.Args[0])+".log")
-	if !fileExists(logFile) {
+	if !bagman.FileExists(logFile) {
 		t.Errorf("Log file does not exist at %s", logFile)
 	}
 	data, err := ioutil.ReadFile(logFile)
@@ -56,7 +48,7 @@ func TestInitJsonLogger(t *testing.T) {
 	log := bagman.InitJsonLogger(config)
 	log.Println("{a:100}")
 	logFile := filepath.Join(config.AbsLogDirectory(), path.Base(os.Args[0])+".json")
-	if !fileExists(logFile) {
+	if !bagman.FileExists(logFile) {
 		t.Errorf("Log file does not exist at %s", logFile)
 	}
 	data, err := ioutil.ReadFile(logFile)

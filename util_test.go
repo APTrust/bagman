@@ -109,3 +109,12 @@ func TestSyncMapDelete(t *testing.T) {
 		t.Errorf("SyncMap should have 0 values, but it has %d", len(syncMap.Values()))
 	}
 }
+
+func TestFileExists(t *testing.T) {
+	if bagman.FileExists("util_test.go") == false {
+		t.Errorf("FileExists returned false for util_test.go")
+	}
+	if bagman.FileExists("NonExistentFile.xyz") == true {
+		t.Errorf("FileExists returned true for NonExistentFile.xyz")
+	}
+}

@@ -9,6 +9,8 @@ import (
 	"github.com/op/go-logging"
 	"log"
 	"os"
+	"path/filepath"
+	"regexp"
 	"sync/atomic"
 )
 
@@ -187,4 +189,30 @@ func (procUtil *ProcessUtil) MessageIdString(messageId nsq.MessageID) (string) {
 func (procUtil *ProcessUtil) LogStats() {
 	procUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d",
 		procUtil.Succeeded(), procUtil.Failed())
+}
+
+
+/*
+Returns true if the bag is currently being processed. This handles a
+special case where a very large bag is in process for a long time,
+the NSQ message times out, then NSQ re-sends the same message with
+the same ID to this worker. Without these checks, the worker will
+accept the message and will be processing it twice. This causes
+problems because the first working will be deleting files while the
+second working is trying to run checksums on them.
+*/
+func (procUtil *ProcessUtil) BagAlreadyInProgress(s3File *bagman.S3File) (bool) {
+	// Bag is in process if it's in the registry.
+	messageId := procUtil.MessageIdFor(s3File.BagName())
+	if messageId != "" {
+		return true
+	}
+
+	re := regexp.MustCompile("\\.tar$")
+	bagDir := re.ReplaceAllString(s3File.Key.Key, "")
+	tarFilePath := filepath.Join(procUtil.Config.TarDirectory, s3File.Key.Key)
+	unpackDir := filepath.Join(procUtil.Config.TarDirectory, bagDir)
+
+	// Bag is in process if we have its files on disk.
+	return bagman.FileExists(unpackDir) || bagman.FileExists(tarFilePath)
 }
