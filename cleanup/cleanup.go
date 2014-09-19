@@ -1,3 +1,10 @@
+/*
+cleanup.go deletes tar files from the partners' S3 receiving buckets
+after those files have been successfully ingested.
+
+If you want to clean up failed bits of multipart S3 uploads in the
+preservation bucket, see multiclean.go.
+*/
 package main
 
 import (
