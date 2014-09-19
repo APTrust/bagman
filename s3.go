@@ -3,8 +3,8 @@ package bagman
 import (
 	"crypto/md5"
 	"fmt"
-	"github.com/diamondap/goamz/aws"
-	"github.com/diamondap/goamz/s3"
+	"github.com/crowdmob/goamz/aws"
+	"github.com/crowdmob/goamz/s3"
 	"io"
 	"os"
 	"strings"

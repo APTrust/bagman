@@ -5,7 +5,7 @@ import (
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/client"
 	"github.com/bitly/go-nsq"
-	"github.com/diamondap/goamz/aws"
+	"github.com/crowdmob/goamz/aws"
 	"github.com/op/go-logging"
 	"log"
 	"os"

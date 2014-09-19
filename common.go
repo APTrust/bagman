@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/bitly/go-nsq"
-	"github.com/diamondap/goamz/s3"
+	"github.com/crowdmob/goamz/s3"
 	"github.com/nu7hatch/gouuid"
 	"io/ioutil"
 	"net/http"

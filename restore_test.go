@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/APTrust/bagman"
-	"github.com/diamondap/goamz/aws"
+	"github.com/crowdmob/goamz/aws"
 	"io"
 	"io/ioutil"
 	"os"

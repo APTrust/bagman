@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/fluctus/models"
-	"github.com/diamondap/goamz/s3"
+	"github.com/crowdmob/goamz/s3"
 	"io/ioutil"
 	"path/filepath"
 	"strings"

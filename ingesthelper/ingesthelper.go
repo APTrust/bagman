@@ -8,7 +8,7 @@ import (
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/processutil"
 	"github.com/bitly/go-nsq"
-	"github.com/diamondap/goamz/s3"
+	"github.com/crowdmob/goamz/s3"
 	"os"
 	"path/filepath"
 	"regexp"
