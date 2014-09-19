@@ -201,10 +201,10 @@ accept the message and will be processing it twice. This causes
 problems because the first working will be deleting files while the
 second working is trying to run checksums on them.
 */
-func (procUtil *ProcessUtil) BagAlreadyInProgress(s3File *bagman.S3File) (bool) {
+func (procUtil *ProcessUtil) BagAlreadyInProgress(s3File *bagman.S3File, currentMessageId string) (bool) {
 	// Bag is in process if it's in the registry.
 	messageId := procUtil.MessageIdFor(s3File.BagName())
-	if messageId != "" {
+	if messageId == currentMessageId {
 		return true
 	}
 

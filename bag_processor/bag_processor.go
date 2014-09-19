@@ -158,7 +158,8 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 	// The original process will call Finish() on the message when it's
 	// done. If we call Finish() here, NSQ will throw a "not-in-flight"
 	// error when the processor calls Finish() on the original message later.
-	if procUtil.BagAlreadyInProgress(&s3File) {
+	currentMessageId := procUtil.MessageIdString(message.ID)
+	if procUtil.BagAlreadyInProgress(&s3File, currentMessageId) {
 		procUtil.MessageLog.Info("Bag %s is already in progress under message id '%s'",
 			s3File.Key.Key, procUtil.MessageIdFor(s3File.BagName()))
 		return nil

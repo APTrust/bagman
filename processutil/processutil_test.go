@@ -142,15 +142,19 @@ func TestBagAlreadyInProgress(t *testing.T) {
 			Key: "big_ol_file.tar",
 		},
 	}
-	messageId1 := nsq.MessageID{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 's', 'd', 'f', 'g', 'h'}
+	messageId := nsq.MessageID{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 's', 'd', 'f', 'g', 'h'}
+	messageIdString := procUtil.MessageIdString(messageId)
 
-	if procUtil.BagAlreadyInProgress(s3File) == true {
+	if procUtil.BagAlreadyInProgress(s3File, messageIdString) == true {
 		t.Errorf("BagAlreadyInProgress() should have returned false")
 	}
 
-	_ = procUtil.RegisterItem(s3File.BagName(), messageId1)
-	if procUtil.BagAlreadyInProgress(s3File) == false {
+	_ = procUtil.RegisterItem(s3File.BagName(), messageId)
+	if procUtil.BagAlreadyInProgress(s3File, messageIdString) == false {
 		t.Errorf("BagAlreadyInProgress() should have returned true")
+	}
+	if procUtil.BagAlreadyInProgress(s3File, "SomeRandomString") == true {
+		t.Errorf("BagAlreadyInProgress() should have returned false")
 	}
 	procUtil.UnregisterItem(s3File.BagName())
 
@@ -160,7 +164,7 @@ func TestBagAlreadyInProgress(t *testing.T) {
 		t.Errorf("Could not create file necessary for testing: %v", err)
 	}
 
-	if procUtil.BagAlreadyInProgress(s3File) == false {
+	if procUtil.BagAlreadyInProgress(s3File, messageIdString) == false {
 		t.Errorf("BagAlreadyInProgress() should have returned true")
 	}
 
