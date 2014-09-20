@@ -320,8 +320,15 @@ func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
 	helper.ProcUtil.MessageLog.Debug("Sending %d bytes to S3 for file %s (UUID %s)",
 		gf.Size, gf.Path, gf.Uuid)
 
-	// Copy the file to preservation
-	url, err := helper.CopyToPreservationBucket(gf, reader, options)
+	// Copy the file to preservation.
+	// This fails often with 'connection reset by peer', so try several times
+	var url string = ""
+	for attemptNumber := 0; attemptNumber < 5; attemptNumber++ {
+		url, err = helper.CopyToPreservationBucket(gf, reader, options)
+		if err == nil {
+			break
+		}
+	}
 	reader.Close()
 	if err != nil {
 		// Consider this error transient. Leave retry = true.
