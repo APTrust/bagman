@@ -381,6 +381,8 @@ func (helper *IngestHelper) CopyToPreservationBucket(gf *bagman.GenericFile, rea
 }
 
 func (helper *IngestHelper) UpdateFluctusStatus(stage bagman.StageType, status bagman.StatusType) {
+	helper.ProcUtil.MessageLog.Debug("Setting status for %s to %s/%s in Fluctus",
+		helper.Result.S3File.Key.Key, stage, status)
 	ingestStatus := helper.Result.IngestStatus()
 	ingestStatus.Stage = stage
 	ingestStatus.Status = status
