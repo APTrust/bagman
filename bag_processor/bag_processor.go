@@ -19,9 +19,14 @@ type Channels struct {
 	ResultsChannel chan *ingesthelper.IngestHelper
 }
 
+// Large file is ~50GB
+const LARGE_FILE_SIZE = int64(50000000000)
+
 // Global vars.
 var procUtil *processutil.ProcessUtil
 var channels *Channels
+var largeFile1 string = ""
+var largeFile2 string = ""
 
 // bag_processor receives messages from nsqd describing
 // items in the S3 receiving buckets. Each item/message
@@ -163,6 +168,23 @@ func (*BagProcessor) HandleMessage(message *nsq.Message) error {
 		procUtil.MessageLog.Info("Bag %s is already in progress under message id '%s'",
 			s3File.Key.Key, procUtil.MessageIdFor(s3File.BagName()))
 		return nil
+	}
+
+	// For very large files, do max two at a time so we don't get cut off
+	// from S3 for going 20+ seconds without a read. If we do multiple
+	// large files at once, we get cut off from S3 often. We can do lots
+	// of small files while one or two large ones are processing.
+	if s3File.Key.Size > LARGE_FILE_SIZE {
+		if largeFile1 == "" {
+			largeFile1 = s3File.BagName()
+		} else if largeFile2 == "" {
+			largeFile2 = s3File.BagName()
+		} else {
+			procUtil.MessageLog.Info("Requeueing %s because is >50GB and there are " +
+				"already two large files in progress.", s3File.Key.Key)
+			message.Requeue(60 * time.Minute)
+			return nil
+		}
 	}
 
 	// Don't start working on a message that we're already working on.
@@ -337,6 +359,13 @@ func doCleanUp() {
 		// We're done processing this, so remove it from the map.
 		// If it comes in again, we'll reprocess it again.
 		procUtil.UnregisterItem(result.S3File.BagName())
+		if largeFile1 == result.S3File.BagName() {
+			procUtil.MessageLog.Info("Done with largeFile1 %s", result.S3File.Key.Key)
+			largeFile1 = ""
+		} else if largeFile2 == result.S3File.BagName() {
+			procUtil.MessageLog.Info("Done with largeFile2 %s", result.S3File.Key.Key)
+			largeFile2 = ""
+		}
 	}
 }
 

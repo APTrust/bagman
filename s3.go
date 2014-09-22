@@ -97,8 +97,15 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 	// Fetch the file into a reader instead of using the usual bucket.Get().
 	// Files may be up to 250GB, so we want to process them as streams.
 	// If we get an error here, it's typically a network error, and we
-	// will want to retry later.
-	readCloser, err := bucket.GetReader(key.Key)
+	// will want to retry later. Try up to 5 times to download the file.
+	var readCloser io.ReadCloser = nil
+	var err error = nil
+	for attemptNumber := 0; attemptNumber < 5; attemptNumber++ {
+		readCloser, err = bucket.GetReader(key.Key)
+		if err == nil {
+			break
+		}
+	}
 	if readCloser != nil {
 		defer readCloser.Close()
 	}
