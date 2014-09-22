@@ -109,6 +109,7 @@ func recordInFedora() {
 			result.S3File.Key.Key)
 		result.NsqMessage.Touch()
 		result.Stage = "Record"
+		updateFluctusStatus(result, bagman.StageRecord, bagman.StatusStarted)
 		// Save to Fedora only if there are new or updated items in this bag.
 		// TODO: What if some items were deleted?
 		if result.TarResult.AnyFilesNeedSaving() {
@@ -133,11 +134,11 @@ func recordInFedora() {
 			procUtil.MessageLog.Info("Nothing to update for %s: no items changed since last ingest.",
 				result.S3File.Key.Key)
 		}
+		updateFluctusStatus(result, bagman.StageRecord, bagman.StatusPending)
 		channels.ResultsChannel <- result
 	}
 }
 
-// TODO: This code is duplicated in bag_processor.go
 func logResult() {
 	for result := range channels.ResultsChannel {
 		// Log full results to the JSON log
@@ -185,16 +186,24 @@ func logResult() {
 
 func recordStatus() {
 	for result := range channels.StatusChannel {
-		procUtil.MessageLog.Debug("Updating Ingest status for %s", result.S3File.Key.Key)
-		err := procUtil.FluctusClient.SendProcessedItem(result.IngestStatus())
-		if err != nil {
-			result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
-				"item status returned error %v. ", err)
-			procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %s",
-				err.Error())
-		}
+		ingestStatus := result.IngestStatus()
+		updateFluctusStatus(result, ingestStatus.Stage, ingestStatus.Status)
 		// Clean up the bag/tar files
 		channels.CleanUpChannel <- result
+	}
+}
+
+func updateFluctusStatus(result *bagman.ProcessResult, stage bagman.StageType, status bagman.StatusType) {
+	procUtil.MessageLog.Debug("Setting Ingest status to %s/%s for %s", stage, status, result.S3File.Key.Key)
+	ingestStatus := result.IngestStatus()
+	ingestStatus.Stage = stage
+	ingestStatus.Status = status
+	err := procUtil.FluctusClient.SendProcessedItem(ingestStatus)
+	if err != nil {
+		result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
+			"item status returned error %v. ", err)
+		procUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %s",
+			err.Error())
 	}
 }
 

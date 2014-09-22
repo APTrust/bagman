@@ -379,3 +379,16 @@ func (helper *IngestHelper) CopyToPreservationBucket(gf *bagman.GenericFile, rea
 			bagman.S3_CHUNK_SIZE)
 	}
 }
+
+func (helper *IngestHelper) UpdateFluctusStatus(stage bagman.StageType, status bagman.StatusType) {
+	ingestStatus := helper.Result.IngestStatus()
+	ingestStatus.Stage = stage
+	ingestStatus.Status = status
+	err := helper.ProcUtil.FluctusClient.SendProcessedItem(ingestStatus)
+	if err != nil {
+		helper.Result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
+			"item status returned error %v. ", err)
+		helper.ProcUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %v",
+			err)
+	}
+}

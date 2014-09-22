@@ -223,6 +223,7 @@ func doFetch() {
 			channels.ResultsChannel <- helper
 		} else {
 			procUtil.MessageLog.Info("Fetching %s", s3Key.Key)
+			helper.UpdateFluctusStatus(bagman.StageFetch, bagman.StatusStarted)
 			helper.FetchTarFile()
 			if result.ErrorMessage != "" {
 				// Fetch from S3 failed. Requeue.
@@ -231,6 +232,7 @@ func doFetch() {
 				// Got S3 file. Untar it.
 				// And touch the message, so nsqd knows we're making progress.
 				result.NsqMessage.Touch()
+				helper.UpdateFluctusStatus(bagman.StageFetch, bagman.StatusPending)
 				channels.UnpackChannel <- helper
 			}
 		}
@@ -255,8 +257,10 @@ func doUnpack() {
 			procUtil.MessageLog.Info("Unpacking %s", result.S3File.Key.Key)
 			// Touch when we start
 			result.NsqMessage.Touch()
-			// Processing can take 90+ minutes for very large files!
+			// Processing can take 3+ hours for very large files!
+			helper.UpdateFluctusStatus(bagman.StageUnpack, bagman.StatusStarted)
 			helper.ProcessBagFile()
+			helper.UpdateFluctusStatus(bagman.StageValidate, bagman.StatusPending)
 			// And touch again when we're done
 			result.NsqMessage.Touch()
 			if result.ErrorMessage == "" {
@@ -287,6 +291,7 @@ func saveToStorage() {
 		// Touch before and after sending generic files,
 		// since that process can take a long time for large bags.
 		helper.Result.NsqMessage.Touch()
+		helper.UpdateFluctusStatus(bagman.StageStore, bagman.StatusStarted)
 		err := helper.SaveGenericFiles()
 		helper.Result.NsqMessage.Touch()
 		if err != nil {
@@ -296,6 +301,7 @@ func saveToStorage() {
 		// If there were no errors, put this into the metadata
 		// queue, so we can record the events in Fluctus.
 		if helper.Result.ErrorMessage == "" {
+			helper.UpdateFluctusStatus(bagman.StageStore, bagman.StatusPending)
 			SendToMetadataQueue(helper)
 		}
 
@@ -311,9 +317,11 @@ func saveToStorage() {
 
 
 // -- Step 4 of 5 --
-// TODO: This code is duplicated in metarecord.go
 // This prints to the log the result of the program's attempt to fetch,
-// untar, unbag and verify an individual S3 tar file.
+// untar, unbag and verify an individual S3 tar file. It logs state info
+// about this bag to a json file on the local file system. Also logs
+// a text message to the local bag_processor.log file and sends info
+// to Fluctus saying whether the bag succeeded or failed.
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
 func logResult() {
 	for helper := range channels.ResultsChannel {

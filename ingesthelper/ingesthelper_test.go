@@ -244,6 +244,14 @@ func TestGetS3Options(t *testing.T) {
 	deleteLocalFiles()
 }
 
+func TestUpdateFluctusStatus(t *testing.T) {
+	if environmentReady() == false {
+		return
+	}
+	helper := getIngestHelper()
+	helper.UpdateFluctusStatus(bagman.StageRecord, bagman.StatusStarted)
+
+}
 
 func TestFullProcess(t *testing.T) {
 	if environmentReady() == false {
