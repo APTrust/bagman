@@ -161,6 +161,17 @@ func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
 	})
 }
 
+// Returns true if an object's files have been stored in S3 preservation bucket.
+func (status *ProcessStatus) HasBeenStored() (bool) {
+	if status.Action == ActionIngest {
+		return status.Stage == StageRecord || status.Stage == StageCleanup ||
+			(status.Stage == StageStore && status.Status == StatusPending)
+	} else {
+		return true
+	}
+}
+
+
 /*
 Retry will be set to true if the attempt to process the file
 failed and should be tried again. This would be case, for example,
@@ -356,6 +367,7 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	status.Stage = result.Stage
 	status.Status = StatusPending
 	if result.ErrorMessage != "" {
+		status.Status = StatusStarted // Did not complete this stage
 		status.Note = result.ErrorMessage
 		// Indicate whether we want to try re-processing this bag.
 		// For transient errors (e.g. network problems), we retry.

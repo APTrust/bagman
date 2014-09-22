@@ -155,7 +155,7 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			messageLog.Error("Cannot get Fluctus bag status for %s. "+
 				"Will re-process bag. Error was %v", s3File.Key.Key, err)
 			filesToProcess = append(filesToProcess, s3File)
-		} else if status == nil || (status.Status == "Pending" && status.Retry == true) {
+		} else if status == nil || (status.HasBeenStored() == false && status.Retry == true) {
 			reason := "Bag has not yet been successfully processed."
 			if status == nil {
 				err = createFluctusRecord(s3File)
@@ -167,8 +167,6 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			}
 			messageLog.Info("Will process bag %s: %s", s3File.Key.Key, reason)
 			filesToProcess = append(filesToProcess, s3File)
-		} else if status.Status == "Pending" {
-			messageLog.Debug("Skipping %s: ingest is pending.", s3File.Key.Key)
 		} else if status.Status != "Failed" && config.SkipAlreadyProcessed == true {
 			messageLog.Debug("Skipping %s: already processed successfully.", s3File.Key.Key)
 		} else if status.Retry == false {

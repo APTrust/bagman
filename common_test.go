@@ -923,3 +923,40 @@ func TestProcessStatusSerializeForFluctus(t *testing.T) {
 		t.Errorf("ProcessStatus.SerializeForFluctus expected:\n'%s'\nbut got:\n'%s'", expected, actual)
 	}
 }
+
+func TestProcessStatusHasBeenStored(t *testing.T) {
+	ps := bagman.ProcessStatus{
+		Action: "Ingest",
+		Stage: "Record",
+		Status: "Success",
+	}
+	if ps.HasBeenStored() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+	ps.Stage = bagman.StageCleanup
+	if ps.HasBeenStored() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+	ps.Stage = bagman.StageStore
+	ps.Status = bagman.StatusPending
+	if ps.HasBeenStored() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+	ps.Stage = bagman.StageStore
+	ps.Status = bagman.StatusStarted
+	if ps.HasBeenStored() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+	ps.Stage = bagman.StageFetch
+	if ps.HasBeenStored() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+	ps.Stage = bagman.StageUnpack
+	if ps.HasBeenStored() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+	ps.Stage = bagman.StageValidate
+	if ps.HasBeenStored() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+}
