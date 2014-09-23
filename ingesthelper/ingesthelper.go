@@ -324,6 +324,13 @@ func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
 	// This fails often with 'connection reset by peer', so try several times
 	var url string = ""
 	for attemptNumber := 0; attemptNumber < 5; attemptNumber++ {
+		_, err := reader.Seek(0,0)
+		if err != nil {
+			detailedError := fmt.Errorf("IngestHelper.SaveFile(): " +
+				"Cannot rewind to beginning of file: %v", err)
+			err = detailedError
+			break
+		}
 		url, err = helper.CopyToPreservationBucket(gf, reader, options)
 		if err == nil {
 			break
