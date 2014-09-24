@@ -164,13 +164,19 @@ func (status *ProcessStatus) SerializeForFluctus() ([]byte, error) {
 // Returns true if an object's files have been stored in S3 preservation bucket.
 func (status *ProcessStatus) HasBeenStored() (bool) {
 	if status.Action == ActionIngest {
-		return status.Stage == StageRecord || status.Stage == StageCleanup ||
+		return status.Stage == StageRecord ||
+			status.Stage == StageCleanup ||
+			status.Stage == StageResolve ||
 			(status.Stage == StageStore && status.Status == StatusPending)
 	} else {
 		return true
 	}
 }
 
+// Returns true if we should try to ingest this item.
+func (status *ProcessStatus) ShouldTryIngest() (bool) {
+	return status.HasBeenStored() == false && status.Retry == true
+}
 
 /*
 Retry will be set to true if the attempt to process the file

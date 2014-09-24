@@ -960,3 +960,77 @@ func TestProcessStatusHasBeenStored(t *testing.T) {
 		t.Error("HasBeenStored() should have returned false")
 	}
 }
+
+func TestProcessStatusShouldTryIngest(t *testing.T) {
+	ps := bagman.ProcessStatus{
+		Action: "Ingest",
+		Stage: "Receive",
+		Status: "Pending",
+		Retry: true,
+	}
+
+	// Test stages
+	if ps.ShouldTryIngest() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+	ps.Stage = "Fetch"
+	if ps.ShouldTryIngest() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+	ps.Stage = "Unpack"
+	if ps.ShouldTryIngest() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+	ps.Stage = "Validate"
+	if ps.ShouldTryIngest() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+	ps.Stage = "Record"
+	if ps.ShouldTryIngest() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+
+	// Test Store/Pending and Store/Started
+	ps.Stage = "Store"
+	ps.Status = "Started"
+	if ps.ShouldTryIngest() == false {
+		t.Error("HasBeenStored() should have returned true")
+	}
+
+	ps.Stage = "Store"
+	ps.Status = "Pending"
+	if ps.ShouldTryIngest() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+
+	// Test Retry = false
+	ps.Status = "Started"
+	ps.Retry = false
+
+	ps.Stage = "Receive"
+	if ps.ShouldTryIngest() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+
+	ps.Stage = "Fetch"
+	if ps.ShouldTryIngest() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+
+	ps.Stage = "Unpack"
+	if ps.ShouldTryIngest() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+
+	ps.Stage = "Validate"
+	if ps.ShouldTryIngest() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+
+	ps.Stage = "Record"
+	if ps.ShouldTryIngest() == true {
+		t.Error("HasBeenStored() should have returned false")
+	}
+
+
+}

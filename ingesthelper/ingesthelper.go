@@ -70,9 +70,10 @@ func BagNeedsProcessing(s3File *bagman.S3File, procUtil *processutil.ProcessUtil
 		procUtil.MessageLog.Error("Error getting status for file %s. Will reprocess.",
 			s3File.Key.Key)
 	}
-	if status != nil && (status.Stage == bagman.StageRecord && status.Status == bagman.StatusSuccess) {
-		return false
+	if status != nil {
+		return status.ShouldTryIngest()
 	}
+	// If status is nil, we have not ingested this bag.
 	return true
 }
 

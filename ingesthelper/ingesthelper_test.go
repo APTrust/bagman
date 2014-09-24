@@ -128,8 +128,8 @@ func TestBagNeedsProcessing(t *testing.T) {
 	}
 	processUtil := getProcessUtil()
 	s3File := getS3File()
-	if ingesthelper.BagNeedsProcessing(s3File, processUtil) == false {
-		t.Error("BagNeedsProcessing should have returned true")
+	if ingesthelper.BagNeedsProcessing(s3File, processUtil) == true {
+		t.Error("BagNeedsProcessing should have returned false")
 	}
 }
 
