@@ -80,10 +80,15 @@ func (volume *Volume) currentFreeSpace() (numBytes uint64, err error) {
 // will never be 100% accurate, because other processes may be writing
 // to the volume.
 func (volume *Volume) AvailableSpace() (numBytes uint64) {
+	available := volume.initialFree
+	currentlyAvailable, err := volume.currentFreeSpace()
+	if err == nil {
+		available = currentlyAvailable
+	}
 	volume.mutex.Lock()
-	numBytes = volume.initialFree - volume.claimed
+	numBytes = available - volume.claimed
 	volume.mutex.Unlock()
-	volume.messageLog.Info("Storage volume has %d bytes available",
+	volume.messageLog.Debug("Storage volume has %d bytes available",
 		numBytes)
 	return numBytes
 }
@@ -103,7 +108,7 @@ func (volume *Volume) Reserve(numBytes uint64) (err error) {
 		volume.mutex.Lock()
 		volume.claimed += numBytes
 		volume.mutex.Unlock()
-		volume.messageLog.Info("Reserved %d bytes on storage volume",
+		volume.messageLog.Debug("Reserved %d bytes on storage volume",
 			numBytes)
 	}
 	return err
@@ -118,6 +123,6 @@ func (volume *Volume) Release(numBytes uint64) {
 	volume.mutex.Lock()
 	volume.claimed = volume.claimed - numBytes
 	volume.mutex.Unlock()
-	volume.messageLog.Info("Freed %d bytes on storage volume",
+	volume.messageLog.Debug("Freed %d bytes on storage volume",
 		numBytes)
 }
