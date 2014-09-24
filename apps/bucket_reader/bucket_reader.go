@@ -71,8 +71,7 @@ func run() {
 		return
 	}
 	loadStatusCache()
-	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
-		config.BagProcessorTopic)
+	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress, config.PrepareTopic)
 	messageLog.Debug("Sending S3 file info to %s", url)
 	s3Files := filterLargeFiles(bucketSummaries)
 	messageLog.Debug("%d S3 Files are within our size limit",

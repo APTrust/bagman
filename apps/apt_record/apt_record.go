@@ -28,7 +28,7 @@ func main() {
 	flag.Parse()
 	procUtil = processutil.NewProcessUtil(requestedConfig)
 
-	procUtil.MessageLog.Info("Metarecord started")
+	procUtil.MessageLog.Info("apt_record started")
 	err := procUtil.Config.EnsureFluctusConfig()
 	if err != nil {
 		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)

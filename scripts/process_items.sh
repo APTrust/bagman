@@ -19,7 +19,15 @@ cd ~/go/src/github.com/APTrust/bagman/apps/apt_prepare
 go run apt_prepare.go -config apd4n &
 PREPARE_PID=$!
 
-echo "Waiting 20 seconds to start metarecord"
+echo "Waiting 20 seconds to start apt_store"
+sleep 20
+
+echo "Starting apt_store"
+cd ~/go/src/github.com/APTrust/bagman/apps/apt_store
+go run apt_store.go -config apd4n &
+STORE_PID=$!
+
+echo "Waiting 20 seconds to start apt_record"
 sleep 20
 
 echo "Starting apt_record"
@@ -44,16 +52,19 @@ CLEANUP_PID=$!
 
 kill_all()
 {
-    echo "Shutting down cleanup processor"
+    echo "Shutting down cleanup worker"
     kill -s SIGINT $CLEANUP_PID
 
-    echo "Shutting down trouble processor"
+    echo "Shutting down trouble worker"
     kill -s SIGINT $TROUBLE_PID
 
-    echo "Shutting down metarecord processor"
+    echo "Shutting down record worker"
     kill -s SIGINT $RECORD_PID
 
-    echo "Shutting down bag processor"
+    echo "Shutting down storage worker"
+    kill -s SIGINT $STORE_PID
+
+    echo "Shutting down prepare"
     kill -s SIGINT $PREPARE_PID
 
     echo "Shutting down NSQ"

@@ -84,7 +84,7 @@ func (helper *IngestHelper) IncompleteCopyToS3() (bool) {
 
 func (helper *IngestHelper) FailedAndNoMoreRetries() (bool) {
 	return (helper.Result.ErrorMessage != "" &&
-		helper.Result.NsqMessage.Attempts >= uint16(helper.ProcUtil.Config.MaxBagAttempts))
+		helper.Result.NsqMessage.Attempts >= uint16(helper.ProcUtil.Config.MaxStoreAttempts))
 }
 
 // Returns an OPEN reader for the specified GenericFile (reading it from
@@ -232,15 +232,17 @@ func (helper *IngestHelper) MergeFedoraRecord() (error) {
 // unpacked from it. Param file is the path the tar file.
 func (helper *IngestHelper) DeleteLocalFiles() (errors []error) {
 	errors = make([]error, 0)
-	err := os.Remove(helper.Result.FetchResult.LocalTarFile)
-	if err != nil {
-		errors = append(errors, err)
+	if bagman.FileExists(helper.Result.FetchResult.LocalTarFile) {
+		err := os.Remove(helper.Result.FetchResult.LocalTarFile)
+		if err != nil {
+			errors = append(errors, err)
+		}
 	}
 	// The untarred dir name is the same as the tar file, minus
 	// the .tar extension. This is guaranteed by bag.Untar.
 	re := regexp.MustCompile("\\.tar$")
 	untarredDir := re.ReplaceAllString(helper.Result.FetchResult.LocalTarFile, "")
-	err = os.RemoveAll(untarredDir)
+	err := os.RemoveAll(untarredDir)
 	if err != nil {
 		helper.ProcUtil.MessageLog.Error("Error deleting dir %s: %s\n", untarredDir, err.Error())
 		errors = append(errors, err)

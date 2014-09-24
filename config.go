@@ -83,17 +83,32 @@ type Config struct {
 	// discover available queues.
 	NsqLookupd string
 
-	// BagProcessorTopic is the name of the NSQ topic the bag
-	// processor will read from. The bucket_reader pushes
-	// messages into this topic.
-	BagProcessorTopic string
+	// PrepareTopic is the name of the NSQ topic apt_prepare
+	// will read from. The bucket_reader pushes messages into
+	// this topic.
+	PrepareTopic string
 
-	// BagProcessorChannel is the name of the NSQ channel the
-	// bag processor will read.
-	BagProcessorChannel string
+	// PrepareChannel is the name of the NSQ channel that
+	// apt_prepare will read.
+	PrepareChannel string
 
-	// Maximum number of times we'll try to process a bag.
-	MaxBagAttempts int
+	// Maximum number of times we'll try to prepare a bag
+	// for storage.
+	MaxPrepareAttempts int
+
+	// StoreTopic is the name of the NSQ topic that apt_store
+	// reads from. apt_prepare pushes items into this topic
+	// once they have been successfully downloaded, unpacked
+	// and validated.
+	StoreTopic string
+
+	// StoreChannel is the name of the NSQ channel that
+	// apt_store will read from.
+	StoreChannel string
+
+	// Maximum number of times we'll try to store a bag's
+	// generic files in the preservation bucket.
+	MaxStoreAttempts int
 
 	// MetaDataTopic is the name of the NSQ topic the bag
 	// processor sends results to. The metadata_processor worker
