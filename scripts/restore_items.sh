@@ -11,26 +11,26 @@ sleep 3
 
 # Wait for this one to finish
 echo "Starting request reader"
-cd ~/go/src/github.com/APTrust/bagman/request_reader
+cd ~/go/src/github.com/APTrust/bagman/apps/request_reader
 go run request_reader.go -config apd4n
 
 echo "Starting bag restorer"
-cd ~/go/src/github.com/APTrust/bagman/bag_restorer
-go run bag_restorer.go -config apd4n &
-RESTORER_PID=$!
+cd ~/go/src/github.com/APTrust/bagman/apps/apt_restore
+go run apt_restore.go -config apd4n &
+RESTORE_PID=$!
 
 echo "Starting generic file deleter"
-cd ~/go/src/github.com/APTrust/bagman/gf_deleter
-go run gf_deleter.go -config apd4n &
-DELETER_PID=$!
+cd ~/go/src/github.com/APTrust/bagman/apps/apt_delete
+go run apt_delete.go -config apd4n &
+DELETE_PID=$!
 
 kill_all()
 {
     echo "Shutting down deleter"
-    kill -s SIGINT $DELETER_PID
+    kill -s SIGINT $DELETE_PID
 
     echo "Shutting down bag restorer"
-    kill -s SIGINT $RESTORER_PID
+    kill -s SIGINT $RESTORE_PID
 
     echo "Shutting down NSQ"
     kill -s SIGINT $NSQ_PID
