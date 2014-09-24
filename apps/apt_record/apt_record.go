@@ -198,6 +198,10 @@ func updateFluctusStatus(result *bagman.ProcessResult, stage bagman.StageType, s
 	ingestStatus := result.IngestStatus()
 	ingestStatus.Stage = stage
 	ingestStatus.Status = status
+	if result.ErrorMessage == "" && stage == bagman.StageRecord && status == bagman.StatusPending {
+		// This bag is done. No need to process it again.
+		ingestStatus.Retry = false
+	}
 	err := procUtil.FluctusClient.SendProcessedItem(ingestStatus)
 	if err != nil {
 		result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
