@@ -40,7 +40,7 @@ TROUBLE_PID=$!
 # Wait for this one to finish
 echo "Starting request reader"
 cd ~/go/src/github.com/APTrust/bagman/apps/request_reader
-go run request_reader.go -config apd4n
+go run request_reader.go -config demo
 
 echo "Starting cleanup processor"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_cleanup
@@ -49,12 +49,12 @@ CLEANUP_PID=$!
 
 echo "Starting bag restorer"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_restore
-go run apt_restore.go -config apd4n &
+go run apt_restore.go -config demo &
 RESTORE_PID=$!
 
 echo "Starting generic file deleter"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_delete
-go run apt_delete.go -config apd4n &
+go run apt_delete.go -config demo &
 DELETE_PID=$!
 
 
