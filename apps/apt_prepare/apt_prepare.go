@@ -144,8 +144,8 @@ func (*APTPrepare) HandleMessage(message *nsq.Message) error {
 	// queue twice. If we get rid of NSQ, we can get rid of this check.
 	if procUtil.Config.SkipAlreadyProcessed == true && ingesthelper.BagNeedsProcessing(&s3File, procUtil) == false {
 		procUtil.MessageLog.Info("Marking %s as complete, without processing because "+
-			"this bag was successfully processed previously and Config.SkipAlreadyProcessed "+
-			"= true", s3File.Key.Key)
+			"Config.SkipAlreadyProcessed = true and this bag was ingested or is currently "+
+			"being processed.", s3File.Key.Key)
 		message.Finish()
 		return nil
 	}
