@@ -135,12 +135,14 @@ func (*APTStore) HandleMessage(message *nsq.Message) error {
 	if procUtil.MessageIdFor(result.S3File.BagName()) != "" {
 		procUtil.MessageLog.Info("Skipping bag %s: already in progress",
 			result.S3File.Key.Key)
+		message.Finish()
 		return nil
 	}
 
 	if allFilesExist(result.TarResult.OutputDir, result.TarResult.GenericFiles) == false {
 		procUtil.MessageLog.Error("Cannot process %s because of missing file(s)",
 			result.S3File.BagName())
+		message.Finish()
 		return fmt.Errorf("At least one data file does not exist")
 	}
 
