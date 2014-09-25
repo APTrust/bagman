@@ -75,7 +75,7 @@ func LoadIntelObjFixture(filename string) (*models.IntellectualObject, error) {
 // Returns true if the file at path exists, false if not.
 func FileExists(path string) bool {
 	_, err := os.Stat(path)
-	if err != nil {
+	if err != nil && os.IsNotExist(err) {
 		return false
 	}
 	return true
