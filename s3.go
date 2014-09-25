@@ -2,6 +2,7 @@ package bagman
 
 import (
 	"crypto/md5"
+	"hash"
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
@@ -117,9 +118,6 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 		return result
 	}
 
-	// Write the contents of the stream into both our md5 hasher
-	// and the file.
-	md5Hash := md5.New()
 	outputFile, err := os.Create(path)
 	if outputFile != nil {
 		defer outputFile.Close()
@@ -129,8 +127,29 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 		return result
 	}
 
-	multiWriter := io.MultiWriter(outputFile, md5Hash)
-	bytesWritten, err := io.Copy(multiWriter, readCloser)
+	// If this is a huge file, the e-tag will include a dash,
+	// indicating it was a multi-part upload, and we can't do
+	// our standard md5 check on it. We don't want to anyway
+	// for files >5GB, since it eats up too much CPU and we're
+	// going to validate the md5 checksums of its individual
+	// generic files later.
+	var md5Hash hash.Hash = nil
+	var multiWriter io.Writer = nil
+	if strings.Contains(result.RemoteMd5, "-") {
+		multiWriter = io.MultiWriter(outputFile)
+	} else {
+		md5Hash = md5.New()
+		multiWriter = io.MultiWriter(outputFile, md5Hash)
+	}
+
+	bytesWritten := int64(0)
+	for attemptNumber := 0; attemptNumber < 5; attemptNumber++ {
+		bytesWritten, err = io.Copy(multiWriter, readCloser)
+		if err == nil {
+			break
+		}
+	}
+
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error copying file from receiving bucket: %v", err)
 		return result
@@ -141,16 +160,15 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 		return result
 	}
 
-	result.LocalMd5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
-
 	// ETag for S3 multi-part upload is not an accurate md5 sum.
 	// If the ETag ends with a dash and some number, it's a
 	// multi-part upload.
-	if strings.Contains(result.RemoteMd5, "-") {
+	if md5Hash == nil {
 		result.Warning = fmt.Sprintf("Skipping md5 check on %s: this was a multi-part upload", key.Key)
 		result.Md5Verified = false
 		result.Md5Verifiable = false
 	} else {
+		result.LocalMd5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
 		result.Md5Verifiable = true
 		result.Md5Verified = true
 		if result.LocalMd5 != result.RemoteMd5 {
