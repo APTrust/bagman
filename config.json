@@ -4,7 +4,7 @@
         "LogDirectory": "/Users/apd4n/tmp",
         "RestoreDirectory": "/Users/apd4n/tmp",
         "LogToStderr": true,
-        "MaxFileSize": 200000,
+        "MaxFileSize": 100000,
         "LogLevel": 4,
         "Fetchers": 4,
         "PrepareWorkers": 4,
