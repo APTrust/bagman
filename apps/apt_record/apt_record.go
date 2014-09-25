@@ -38,7 +38,7 @@ func main() {
 	initGoRoutines()
 
 	nsqConfig := nsq.NewConfig()
-	nsqConfig.Set("max_in_flight", 20)
+	nsqConfig.Set("max_in_flight", procUtil.Config.RecordWorkers * 10)
 	nsqConfig.Set("heartbeat_interval", "10s")
 	nsqConfig.Set("max_attempts", uint16(procUtil.Config.MaxMetadataAttempts))
 	nsqConfig.Set("read_timeout", "60s")
