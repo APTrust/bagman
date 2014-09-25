@@ -84,7 +84,7 @@ func main() {
 // The number of workers should be close to the number of CPU
 // cores.
 func initChannels() {
-	workerBufferSize := procUtil.Config.Workers * 10
+	workerBufferSize := procUtil.Config.StoreWorkers * 10
 
 	channels = &Channels{}
 	channels.StorageChannel = make(chan *ingesthelper.IngestHelper, workerBufferSize)
@@ -97,7 +97,7 @@ func initChannels() {
 // as we'll have tens of thousands of open connections to S3
 // trying to write data into tens of thousands of local files.
 func initGoRoutines() {
-	for i := 0; i < procUtil.Config.Workers; i++ {
+	for i := 0; i < procUtil.Config.StoreWorkers; i++ {
 		go saveToStorage()
 		go logResult()
 		go doCleanUp()

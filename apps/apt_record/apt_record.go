@@ -60,7 +60,7 @@ func main() {
 
 // Set up the channels.
 func initChannels() {
-	workerBufferSize := procUtil.Config.Workers * 10
+	workerBufferSize := procUtil.Config.RecordWorkers * 10
 	channels = &Channels{}
 	channels.FedoraChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	channels.CleanUpChannel = make(chan *bagman.ProcessResult, workerBufferSize)
@@ -72,7 +72,7 @@ func initChannels() {
 // go routines so we do not have 1000+ simultaneous connections
 // to Fluctus. That would just cause Fluctus to crash.
 func initGoRoutines() {
-	for i := 0; i < procUtil.Config.Workers; i++ {
+	for i := 0; i < procUtil.Config.RecordWorkers; i++ {
 		go recordInFedora()
 		go logResult()
 		go doCleanUp()

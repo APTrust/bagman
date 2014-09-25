@@ -54,10 +54,42 @@ type Config struct {
 	// fetching files from the receiving buckets.
 	Fetchers int
 
-	// Workers is the number of goroutines to run for
-	// untarring and processing bags. This should be
-	// set to something close to the number of CPU cores.
-	Workers int
+	// Number of goroutines to run for untarring and validating bags.
+	// The prepare process is quite CPU intensive, because it is
+	// calculating md5 and sha265 checksums on gigabytes or terabytes
+	// of files.
+	PrepareWorkers int
+
+	// Number of goroutines to run for storing generic files
+	// in the S3 preservation bucket. These routines are somewhat
+	// CPU intensive and use a lot of network I/O.
+	StoreWorkers int
+
+	// Number of goroutines to run for recording metadata in
+	// fluctus. Can be higher than the number of CPUs, since
+	// these routines spend most of their time waiting on
+	// network I/O.
+	RecordWorkers int
+
+	// Number of go routines to run for the cleanup process.
+	// This process deletes successfully ingested bags (tar
+	// files) from the partners' intake buckets. Those routines
+	// make delete calls to S3. Neither very CPU nor I/O intensive,
+	// but each worker uses a TCP connection.
+	CleanupWorkers int
+
+	// Number of go routines to run for the restore process,
+	// which pulls a bag out of preservation storage and rebuilds
+	// it. For large bags, this is both CPU and I/O intensive,
+	// since it may be pulling hundreds of gigabytes from S3
+	// and calculating md5 and sha256 checksums on the data.
+	RestoreWorkers int
+
+	// Number of go routines to run for the process that deletes
+	// generic files from the perservation bucket. This is neither
+	// CPU nor I/O intensive, since it's just issuing HTTP delete
+	// requests. It does use one TCP connection per go routine.
+	DeleteWorkers int
 
 	// FluctusURL is the URL of the Fluctus server where
 	// we will be recording results and metadata. This should

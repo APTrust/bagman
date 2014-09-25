@@ -97,7 +97,7 @@ func main() {
 // cores.
 func initChannels() {
 	fetcherBufferSize := procUtil.Config.Fetchers * 4
-	workerBufferSize := procUtil.Config.Workers * 10
+	workerBufferSize := procUtil.Config.PrepareWorkers * 10
 
 	channels = &Channels{}
 	channels.FetchChannel = make(chan *ingesthelper.IngestHelper, fetcherBufferSize)
@@ -115,7 +115,7 @@ func initGoRoutines() {
 		go doFetch()
 	}
 
-	for i := 0; i < procUtil.Config.Workers; i++ {
+	for i := 0; i < procUtil.Config.PrepareWorkers; i++ {
 		go doUnpack()
 		go logResult()
 		go doCleanUp()

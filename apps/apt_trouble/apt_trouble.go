@@ -27,7 +27,7 @@ func main() {
 	nsqConfig.Set("max_attempts", uint16(config.MaxMetadataAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "60m")
+	nsqConfig.Set("msg_timeout", "10m")
 	consumer, err := nsq.NewConsumer(config.TroubleTopic,
 		config.TroubleChannel, nsqConfig)
 	if err != nil {

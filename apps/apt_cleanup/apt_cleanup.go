@@ -46,7 +46,7 @@ func main() {
 	nsqConfig.Set("max_attempts", uint16(procUtil.Config.MaxCleanupAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "60m")
+	nsqConfig.Set("msg_timeout", "30m")
 	consumer, err := nsq.NewConsumer(procUtil.Config.CleanupTopic,
 		procUtil.Config.CleanupChannel, nsqConfig)
 	if err != nil {
@@ -63,7 +63,7 @@ func main() {
 
 // Set up the channels.
 func initChannels() {
-	workerBufferSize := procUtil.Config.Workers * 10
+	workerBufferSize := procUtil.Config.CleanupWorkers * 10
 	channels = &Channels{}
 	channels.CleanupChannel = make(chan *bagman.CleanupResult, workerBufferSize)
 	channels.ResultsChannel = make(chan *bagman.CleanupResult, workerBufferSize)
@@ -73,7 +73,7 @@ func initChannels() {
 // go routines so we do not have 1000+ simultaneous connections
 // to Fluctus. That would just cause Fluctus to crash.
 func initGoRoutines() {
-	for i := 0; i < procUtil.Config.Workers; i++ {
+	for i := 0; i < procUtil.Config.CleanupWorkers; i++ {
 		go logResult()
 		go doCleanUp()
 	}
