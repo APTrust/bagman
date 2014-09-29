@@ -148,9 +148,24 @@ func (obj *IntellectualObject) AccessValid() bool {
 // SerializeForCreate serializes an intellectual object along
 // with all of its generic files and events in a single shot.
 // The output is a byte array of JSON data.
-func (obj *IntellectualObject) SerializeForCreate() ([]byte, error) {
-	genericFileMaps := make([]map[string]interface{}, len(obj.GenericFiles))
-	for i, gf := range obj.GenericFiles {
+//
+// If maxGenericFiles is greater than zero, the JSON data will
+// include only that number of generic files. Otherwise, it will
+// include all of the generic files.
+//
+// Fluctus is somewhat efficient at creating new intellectual
+// objects when all of the files and events are included in the
+// JSON for the initial create request. But some Intellectual Objects
+// contain more than 10,000 files, and if we send all of this data
+// at once to Fluctus, it crashes.
+func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, error) {
+	fileCount := len(obj.GenericFiles)
+	if maxGenericFiles > 0 && maxGenericFiles < fileCount {
+		fileCount = maxGenericFiles
+	}
+	genericFileMaps := make([]map[string]interface{}, fileCount)
+	for i := 0; i < fileCount; i++ {
+		gf := obj.GenericFiles[i]
 		genericFileMaps[i] = map[string]interface{}{
 			"identifier":   gf.Identifier,
 			"file_format":  gf.Format,

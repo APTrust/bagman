@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman"
 	"github.com/APTrust/bagman/processutil"
+	"github.com/APTrust/bagman/fluctus/client"
 	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
@@ -245,37 +246,68 @@ func recordAllFedoraData(result *bagman.ProcessResult) (err error) {
 		return err
 	}
 	if existingObj != nil {
-		result.FedoraResult.IsNewObject = false
-		result.TarResult.MergeExistingFiles(existingObj.GenericFiles)
-		if result.TarResult.AnyFilesNeedSaving() {
-			fedoraUpdateIntellectualObject(result, intellectualObject)
-			for i := range result.TarResult.GenericFiles {
-				genericFile := result.TarResult.GenericFiles[i]
-				// Save generic file data to Fedora only if the file is new or changed.
-				if genericFile.NeedsSave {
-					fedoraRecordGenericFile(result, intellectualObject.Identifier, genericFile)
-				} else {
-					procUtil.MessageLog.Debug("Nothing to do for %s: no change since last ingest",
-						genericFile.Identifier)
-				}
+		procUtil.MessageLog.Debug("Updating object %s", intellectualObject.Identifier)
+		fedoraUpdateObject(result, existingObj, intellectualObject)
+	} else if existingObj == nil && len(intellectualObject.GenericFiles) > client.MAX_FILES_FOR_CREATE {
+		// Create the object with the first 500 files.
+		// Call update for the rest.
+		procUtil.MessageLog.Debug("Creating new object %s with %d files (multi-step)",
+			intellectualObject.Identifier, len(intellectualObject.GenericFiles))
+		newObj, err := fedoraCreateObject(result, intellectualObject, client.MAX_FILES_FOR_CREATE)
+		if err != nil {
+			return err
+		}
+		fedoraUpdateObject(result, newObj, intellectualObject)
+	}else {
+		// New IntellectualObject with < 500 files.
+		// Do one-step create.
+		procUtil.MessageLog.Debug("Creating new object %s with %d files (single-step)",
+			intellectualObject.Identifier, len(intellectualObject.GenericFiles))
+		_, err = fedoraCreateObject(result, intellectualObject, client.MAX_FILES_FOR_CREATE)
+	}
+	return err
+}
+
+// Creates a new IntellectualObject in Fedora with up to
+// maxGenericFiles in a single call.
+func fedoraCreateObject(result *bagman.ProcessResult, intellectualObject *models.IntellectualObject, maxGenericFiles int) (*models.IntellectualObject, error) {
+	result.FedoraResult.IsNewObject = true
+	newObj, err := procUtil.FluctusClient.IntellectualObjectCreate(intellectualObject, maxGenericFiles)
+	if err != nil {
+		result.FedoraResult.ErrorMessage = fmt.Sprintf(
+			"[ERROR] Error creating new IntellectualObject '%s' in Fluctus: %v",
+			intellectualObject.Identifier, err)
+		return nil, err
+	}
+	return newObj, nil
+}
+
+// Update generic files, checksums and events in Fedora for an
+// existing intellectual object. Param existingObject is the
+// record Fluctus already has of this intellectual object.
+// Param objectToSave is the record we want to save. We do some
+// comparison between the two to make sure we don't save files
+// that have not changed, or create new events for files that have
+// not changed.
+func fedoraUpdateObject(result *bagman.ProcessResult, existingObject, objectToSave *models.IntellectualObject) {
+	result.FedoraResult.IsNewObject = false
+	result.TarResult.MergeExistingFiles(existingObject.GenericFiles)
+	if result.TarResult.AnyFilesNeedSaving() {
+		fedoraUpdateIntellectualObject(result, objectToSave)
+		for i := range result.TarResult.GenericFiles {
+			genericFile := result.TarResult.GenericFiles[i]
+			// Save generic file data to Fedora only if the file is new or changed.
+			if genericFile.NeedsSave {
+				fedoraRecordGenericFile(result, objectToSave.Identifier, genericFile)
+			} else {
+				procUtil.MessageLog.Debug("Nothing to do for %s: no change since last ingest",
+					genericFile.Identifier)
 			}
-		} else {
-			procUtil.MessageLog.Debug("Not saving object, files or events for %s: no change since last ingest",
-				existingObj.Identifier)
 		}
 	} else {
-		result.FedoraResult.IsNewObject = true
-		newObj, err := procUtil.FluctusClient.IntellectualObjectCreate(intellectualObject)
-		if err != nil {
-			result.FedoraResult.ErrorMessage = fmt.Sprintf(
-				"[ERROR] Error creating new IntellectualObject '%s' in Fluctus: %v",
-				intellectualObject.Identifier, err)
-			return err
-		} else {
-			intellectualObject.Id = newObj.Id
-		}
+		procUtil.MessageLog.Debug("Not saving object, files or events for %s: no change since last ingest",
+			existingObject.Identifier)
 	}
-	return nil
 }
 
 func fedoraRecordGenericFile(result *bagman.ProcessResult, objId string, gf *bagman.GenericFile) error {

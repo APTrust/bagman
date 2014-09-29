@@ -18,6 +18,11 @@ import (
 	"time"
 )
 
+// Maximum number of generic files we can create in a single
+// call to IntellectualObjectCreate. New objects with more
+// than this number of files need special handling.
+const MAX_FILES_FOR_CREATE = 500
+
 var domainPattern *regexp.Regexp = regexp.MustCompile("\\.edu|org|com$")
 
 type Client struct {
@@ -520,7 +525,7 @@ func (client *Client) IntellectualObjectUpdate(obj *models.IntellectualObject) (
 	}
 }
 
-func (client *Client) IntellectualObjectCreate(obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
+func (client *Client) IntellectualObjectCreate(obj *models.IntellectualObject, maxGenericFiles int) (newObj *models.IntellectualObject, err error) {
 	if obj == nil {
 		return nil, fmt.Errorf("Param obj cannot be nil")
 	}
@@ -540,7 +545,7 @@ func (client *Client) IntellectualObjectCreate(obj *models.IntellectualObject) (
 
 	client.logger.Debug("About to %s IntellectualObject %s to Fluctus", method, obj.Identifier)
 
-	data, err := obj.SerializeForCreate()
+	data, err := obj.SerializeForCreate(maxGenericFiles)
 	request, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, err

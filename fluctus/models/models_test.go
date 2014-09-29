@@ -24,7 +24,7 @@ func TestSerializeForCreate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}
-	jsonBytes, err := obj.SerializeForCreate()
+	jsonBytes, err := obj.SerializeForCreate(-1)
 	if err != nil {
 		t.Error(err)
 		return
@@ -109,6 +109,38 @@ func TestSerializeForCreate(t *testing.T) {
 		t.Errorf("Expected 5 file events but found %d", len(events))
 	}
 
+}
+
+func TestSerializeForCreateWithMaxFiles(t *testing.T) {
+	filepath := filepath.Join("testdata", "result_good.json")
+	result, err := bagman.LoadResult(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	obj, err := result.IntellectualObject()
+	if err != nil {
+		t.Errorf("Error creating intellectual object from result: %v", err)
+	}
+	jsonBytes, err := obj.SerializeForCreate(1)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Translate the JSON back into a go map so we can test it.
+	data := make([]map[string]interface{}, 1)
+	err = json.Unmarshal(jsonBytes, &data)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// There should be only one generic file, since
+	// we passed maxGenericFiles = 1
+	files := data[0]["generic_files"].([]interface{})
+	if len(files) != 1 {
+		t.Error("JSON data from SerializeForCreate() should have had only one Generic File")
+	}
 }
 
 func TestGFBagName(t *testing.T) {

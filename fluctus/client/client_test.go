@@ -41,7 +41,7 @@ func getClient(t *testing.T) *client.Client {
 	// If you want to debug, change ioutil.Discard to os.Stdout
 	// to see log output from the client.
 	logger := bagman.DiscardLogger("client_test")
-	client, err := client.New(
+	fluctusClient, err := client.New(
 		fluctusUrl,
 		fluctusAPIVersion,
 		os.Getenv("FLUCTUS_API_USER"),
@@ -50,14 +50,14 @@ func getClient(t *testing.T) *client.Client {
 	if err != nil {
 		t.Errorf("Error constructing fluctus client: %v", err)
 	}
-	return client
+	return fluctusClient
 }
 
 // Loads an intellectual object with events and generic files
 // from a test fixture into our test Fedora/Fluctus instance.
 func loadTestResult(t *testing.T) error {
 
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	// Load processing result fixture
 	testfile := filepath.Join("testdata", "result_good.json")
@@ -73,7 +73,7 @@ func loadTestResult(t *testing.T) error {
 	}
 
 	// Try to get the object with this identifier from Fluctus
-	fluctusObj, err := client.IntellectualObjectGet(obj.Identifier, false)
+	fluctusObj, err := fluctusClient.IntellectualObjectGet(obj.Identifier, false)
 	if err != nil {
 		t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
 		return err
@@ -81,7 +81,7 @@ func loadTestResult(t *testing.T) error {
 
 	// Add this object to fluctus if it doesn't already exist.
 	if fluctusObj == nil {
-		_, err := client.IntellectualObjectCreate(obj)
+		_, err := fluctusClient.IntellectualObjectCreate(obj, client.MAX_FILES_FOR_CREATE)
 		if err != nil {
 			t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
 			return err
@@ -95,7 +95,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	err := loadTestResult(t)
 	if err != nil {
@@ -103,7 +103,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 	}
 
 	// Get the lightweight version of an existing object
-	obj, err := client.IntellectualObjectGet(objId, false)
+	obj, err := fluctusClient.IntellectualObjectGet(objId, false)
 	if err != nil {
 		t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 
 	// Get the heavyweight version of an existing object,
 	// and make sure the related fields are actually there.
-	obj, err = client.IntellectualObjectGet(objId, true)
+	obj, err = fluctusClient.IntellectualObjectGet(objId, true)
 	if err != nil {
 		t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
 	}
@@ -137,7 +137,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 	}
 
 	// Make sure we don't blow up when fetching an object that does not exist.
-	obj, err = client.IntellectualObjectGet("changeme:99999", false)
+	obj, err = fluctusClient.IntellectualObjectGet("changeme:99999", false)
 	if err != nil {
 		t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
 	}
@@ -163,14 +163,14 @@ func TestIntellectualObjectUpdate(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	err := loadTestResult(t)
 	if err != nil {
 		return
 	}
 
-	obj, err := client.IntellectualObjectGet(objId, false)
+	obj, err := fluctusClient.IntellectualObjectGet(objId, false)
 	if err != nil {
 		t.Errorf("Error asking fluctus for IntellectualObject: %v", err)
 	}
@@ -180,7 +180,7 @@ func TestIntellectualObjectUpdate(t *testing.T) {
 	}
 
 	// Update an existing object
-	newObj, err := client.IntellectualObjectUpdate(obj)
+	newObj, err := fluctusClient.IntellectualObjectUpdate(obj)
 	if err != nil {
 		t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
 	}
@@ -196,7 +196,7 @@ func TestIntellectualObjectCreate(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	// Load processing result fixture
 	testfile := filepath.Join("testdata", "result_good.json")
@@ -222,7 +222,7 @@ func TestIntellectualObjectCreate(t *testing.T) {
 		obj.GenericFiles[i].Identifier = strings.Replace(
 			obj.GenericFiles[i].Identifier, oldIdentifier, obj.Identifier, 1)
 	}
-	newObj, err := client.IntellectualObjectCreate(obj)
+	newObj, err := fluctusClient.IntellectualObjectCreate(obj, client.MAX_FILES_FOR_CREATE)
 	if err != nil {
 		t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
 		return
@@ -238,7 +238,7 @@ func TestGenericFileGet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	err := loadTestResult(t)
 	if err != nil {
@@ -246,7 +246,7 @@ func TestGenericFileGet(t *testing.T) {
 	}
 
 	// Get the lightweight version of an existing object
-	gf, err := client.GenericFileGet(gfId, false)
+	gf, err := fluctusClient.GenericFileGet(gfId, false)
 	if err != nil {
 		t.Errorf("Error asking fluctus for GenericFile: %v", err)
 	}
@@ -262,7 +262,7 @@ func TestGenericFileGet(t *testing.T) {
 
 	// Get the heavyweight version of an existing generic file,
 	// and make sure the related fields are actually there.
-	gf, err = client.GenericFileGet(gfId, true)
+	gf, err = fluctusClient.GenericFileGet(gfId, true)
 	if err != nil {
 		t.Errorf("Error asking fluctus for GenericFile: %v", err)
 	}
@@ -279,7 +279,7 @@ func TestGenericFileGet(t *testing.T) {
 	}
 
 	// Make sure we don't blow up when fetching an object that does not exist.
-	gf, err = client.GenericFileGet("changeme:99999", false)
+	gf, err = fluctusClient.GenericFileGet("changeme:99999", false)
 	if err != nil {
 		t.Errorf("Error asking fluctus for GenericFile: %v", err)
 	}
@@ -293,14 +293,14 @@ func TestGenericFileSave(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	err := loadTestResult(t)
 	if err != nil {
 		return
 	}
 
-	gf, err := client.GenericFileGet(gfId, true)
+	gf, err := fluctusClient.GenericFileGet(gfId, true)
 	if err != nil {
 		t.Errorf("Error asking fluctus for GenericFile: %v", err)
 	}
@@ -315,7 +315,7 @@ func TestGenericFileSave(t *testing.T) {
 	}
 
 	// Update an existing file
-	newGf, err := client.GenericFileSave(objId, gf)
+	newGf, err := fluctusClient.GenericFileSave(objId, gf)
 	if err != nil {
 		t.Errorf("Error updating existing GenericFile in fluctus: %v", err)
 		return // Can't proceed with other tests if this didn't work
@@ -327,7 +327,7 @@ func TestGenericFileSave(t *testing.T) {
 
 	// Save a new file... just change the id, so Fluctus thinks it's new
 	gf.Id = fmt.Sprintf("test:%d", time.Now().Unix())
-	newGf, err = client.GenericFileSave(objId, gf)
+	newGf, err = fluctusClient.GenericFileSave(objId, gf)
 	if err != nil {
 		t.Errorf("Error saving new GenericFile to fluctus: %v", err)
 		return // Can't proceed with next test
@@ -342,7 +342,7 @@ func TestEventSave(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	err := loadTestResult(t)
 	if err != nil {
@@ -366,7 +366,7 @@ func TestEventSave(t *testing.T) {
 	}
 
 	// Make sure we can save an IntellectualObject event
-	obj, err := client.PremisEventSave(objId, "IntellectualObject", ingestEvent)
+	obj, err := fluctusClient.PremisEventSave(objId, "IntellectualObject", ingestEvent)
 	if err != nil {
 		t.Errorf("Error saving IntellectualObject ingest event to Fluctus: %v", err)
 	}
@@ -395,7 +395,7 @@ func TestEventSave(t *testing.T) {
 	}
 
 	// Make sure we can save an IntellectualObject event
-	obj, err = client.PremisEventSave(gfId, "GenericFile", identifierEvent)
+	obj, err = fluctusClient.PremisEventSave(gfId, "GenericFile", identifierEvent)
 	if err != nil {
 		t.Errorf("Error saving GenericFile identifier assignment event to Fluctus: %v", err)
 	}
@@ -412,8 +412,8 @@ func TestCacheInstitutions(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
-	err := client.CacheInstitutions()
+	fluctusClient := getClient(t)
+	err := fluctusClient.CacheInstitutions()
 	if err != nil {
 		t.Errorf("Error caching institutions: %v", err)
 	}
@@ -423,7 +423,7 @@ func TestBulkStatusGet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	err := loadTestResult(t)
 	if err != nil {
@@ -431,7 +431,7 @@ func TestBulkStatusGet(t *testing.T) {
 	}
 
 	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
-	records, err := client.BulkStatusGet(sinceWhen)
+	records, err := fluctusClient.BulkStatusGet(sinceWhen)
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
 	}
@@ -439,7 +439,7 @@ func TestBulkStatusGet(t *testing.T) {
 		t.Error("BulkStatusGet returned no records when it should have returned something.")
 	}
 
-	records, err = client.BulkStatusGet(time.Now())
+	records, err = fluctusClient.BulkStatusGet(time.Now())
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
 	}
@@ -452,7 +452,7 @@ func TestSendProcessedItem(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 	itemName, err := uuid.NewV4()
 	if err != nil {
 		t.Errorf("Error generating UUID: %v", err)
@@ -476,7 +476,7 @@ func TestSendProcessedItem(t *testing.T) {
 	}
 
 	// Create new records
-	err = client.SendProcessedItem(status)
+	err = fluctusClient.SendProcessedItem(status)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
@@ -485,7 +485,7 @@ func TestSendProcessedItem(t *testing.T) {
 	}
 
 	// Update existing record
-	err = client.SendProcessedItem(status)
+	err = fluctusClient.SendProcessedItem(status)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
@@ -498,11 +498,11 @@ func TestGetReviewedItems(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	// Make sure we have a couple of reviewed items...
 	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
-	records, err := client.BulkStatusGet(sinceWhen)
+	records, err := fluctusClient.BulkStatusGet(sinceWhen)
 
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
@@ -513,16 +513,16 @@ func TestGetReviewedItems(t *testing.T) {
 	}
 	records[0].Reviewed = true
 	records[1].Reviewed = true
-	err = client.SendProcessedItem(records[0])
+	err = fluctusClient.SendProcessedItem(records[0])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
-	err = client.SendProcessedItem(records[1])
+	err = fluctusClient.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
 
-	reviewed, err := client.GetReviewedItems()
+	reviewed, err := fluctusClient.GetReviewedItems()
 	if err != nil {
 		t.Errorf("Error getting reviewed items: %v", err)
 	}
@@ -536,11 +536,11 @@ func TestRestorationItemsGet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	// Make sure we have a couple of items to be restored...
 	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
-	records, err := client.BulkStatusGet(sinceWhen)
+	records, err := fluctusClient.BulkStatusGet(sinceWhen)
 
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
@@ -553,7 +553,7 @@ func TestRestorationItemsGet(t *testing.T) {
 	records[0].Stage = bagman.StageRequested
 	records[0].Status = bagman.StatusPending
 	records[0].Retry = true
-	err = client.SendProcessedItem(records[0])
+	err = fluctusClient.SendProcessedItem(records[0])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
@@ -561,14 +561,14 @@ func TestRestorationItemsGet(t *testing.T) {
 	records[1].Stage = bagman.StageRequested
 	records[1].Status = bagman.StatusPending
 	records[1].Retry = true
-	err = client.SendProcessedItem(records[1])
+	err = fluctusClient.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
 
 	// Get items to be restored. There should be at least
 	// the two we just saved.
-	itemsToRestore, err := client.RestorationItemsGet("")
+	itemsToRestore, err := fluctusClient.RestorationItemsGet("")
 	if err != nil {
 		t.Errorf("Error getting restoration items: %v", err)
 	}
@@ -583,12 +583,12 @@ func TestRestorationItemsGet(t *testing.T) {
 	lastRecord.Stage = bagman.StageResolve
 	lastRecord.Status = bagman.StatusFailed
 	lastRecord.Retry = true
-	err = client.SendProcessedItem(records[1])
+	err = fluctusClient.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
 
-	itemsToRestore, err = client.RestorationItemsGet(lastRecord.ObjectIdentifier)
+	itemsToRestore, err = fluctusClient.RestorationItemsGet(lastRecord.ObjectIdentifier)
 	if err != nil {
 		t.Errorf("Error getting restoration items: %v", err)
 	}
@@ -598,12 +598,12 @@ func TestRestorationItemsGet(t *testing.T) {
 
 	// Make sure we get empty list and not error when there are no items
 	lastRecord.Retry = false
-	err = client.SendProcessedItem(records[1])
+	err = fluctusClient.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
 
-	itemsToRestore, err = client.RestorationItemsGet(lastRecord.ObjectIdentifier)
+	itemsToRestore, err = fluctusClient.RestorationItemsGet(lastRecord.ObjectIdentifier)
 	if err != nil {
 		t.Errorf("Error getting restoration items: %v", err)
 	}
@@ -616,11 +616,11 @@ func TestDeletionItemsGet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	// Make sure we have a couple of items to be restored...
 	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
-	records, err := client.BulkStatusGet(sinceWhen)
+	records, err := fluctusClient.BulkStatusGet(sinceWhen)
 
 	if err != nil {
 		t.Errorf("Error getting bulk status: %v", err)
@@ -633,7 +633,7 @@ func TestDeletionItemsGet(t *testing.T) {
 	records[0].Stage = bagman.StageRequested
 	records[0].Status = bagman.StatusPending
 	records[0].Retry = true
-	err = client.SendProcessedItem(records[0])
+	err = fluctusClient.SendProcessedItem(records[0])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
@@ -641,14 +641,14 @@ func TestDeletionItemsGet(t *testing.T) {
 	records[1].Stage = bagman.StageRequested
 	records[1].Status = bagman.StatusPending
 	records[1].Retry = true
-	err = client.SendProcessedItem(records[1])
+	err = fluctusClient.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
 
 	// Get items to be restored. There should be at least
 	// the two we just saved.
-	itemsToRestore, err := client.DeletionItemsGet("")
+	itemsToRestore, err := fluctusClient.DeletionItemsGet("")
 	if err != nil {
 		t.Errorf("Error getting deletion items: %v", err)
 	}
@@ -663,12 +663,12 @@ func TestDeletionItemsGet(t *testing.T) {
 	lastRecord.Stage = bagman.StageResolve
 	lastRecord.Status = bagman.StatusFailed
 	lastRecord.Retry = true
-	err = client.SendProcessedItem(records[1])
+	err = fluctusClient.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
 
-	itemsToRestore, err = client.DeletionItemsGet(lastRecord.GenericFileIdentifier)
+	itemsToRestore, err = fluctusClient.DeletionItemsGet(lastRecord.GenericFileIdentifier)
 	if err != nil {
 		t.Errorf("Error getting deletion items: %v", err)
 	}
@@ -678,12 +678,12 @@ func TestDeletionItemsGet(t *testing.T) {
 
 	// Make sure we get empty list and not error when there are no items
 	lastRecord.Retry = false
-	err = client.SendProcessedItem(records[1])
+	err = fluctusClient.SendProcessedItem(records[1])
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
 
-	itemsToRestore, err = client.DeletionItemsGet(lastRecord.GenericFileIdentifier)
+	itemsToRestore, err = fluctusClient.DeletionItemsGet(lastRecord.GenericFileIdentifier)
 	if err != nil {
 		t.Errorf("Error getting restoration items: %v", err)
 	}
@@ -697,7 +697,7 @@ func TestRestorationStatusSet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
 	}
-	client := getClient(t)
+	fluctusClient := getClient(t)
 
 	// Create a test record
 	itemName, err := uuid.NewV4()
@@ -722,7 +722,7 @@ func TestRestorationStatusSet(t *testing.T) {
 		Reviewed:    false,
 	}
 
-	err = client.SendProcessedItem(record)
+	err = fluctusClient.SendProcessedItem(record)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 		return
@@ -732,14 +732,14 @@ func TestRestorationStatusSet(t *testing.T) {
 	}
 
 	// Now update the status on that record
-	err = client.RestorationStatusSet(record.ObjectIdentifier, bagman.StageFetch,
+	err = fluctusClient.RestorationStatusSet(record.ObjectIdentifier, bagman.StageFetch,
 		bagman.StatusStarted, "Updated note", false)
 	if err != nil {
 		t.Errorf("Error setting restoration status: %v", err)
 		return
 	}
 
-	updatedRecords, err := client.RestorationItemsGet(record.ObjectIdentifier)
+	updatedRecords, err := fluctusClient.RestorationItemsGet(record.ObjectIdentifier)
 	if err != nil {
 		t.Errorf("Error getting restoration items: %v", err)
 	}
