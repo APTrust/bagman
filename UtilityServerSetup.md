@@ -385,12 +385,12 @@ at /etc/logrotate.d/aptrust, and contains the following:
 ```
 #
 # Rotate bag processing logs daily, then copy them to S3.
-# We compress the rotated files     in the copy_log script
+# We compress the rotated files in the copy_log script
 # because logrotate won't do the compression until after
-# the postrotate script   runs.
+# the postrotate script runs.
 #
 /mnt/apt/logs/*.log /mnt/apt/logs/*.json {
-  rotate 10
+  rotate 3
   daily
   nocompress
   dateext
