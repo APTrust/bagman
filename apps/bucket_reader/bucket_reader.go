@@ -154,7 +154,7 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 			messageLog.Error("Cannot get Fluctus bag status for %s. "+
 				"Will re-process bag. Error was %v", s3File.Key.Key, err)
 			filesToProcess = append(filesToProcess, s3File)
-		} else if status == nil || (status.HasBeenStored() == false && status.Retry == true) {
+		} else if status == nil || status.ShouldTryIngest() {
 			reason := "Bag has not yet been successfully processed."
 			if status == nil {
 				err = createFluctusRecord(s3File)

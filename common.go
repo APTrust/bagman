@@ -173,9 +173,15 @@ func (status *ProcessStatus) HasBeenStored() (bool) {
 	}
 }
 
+func (status *ProcessStatus) IsStoring() (bool) {
+	return status.Action == ActionIngest &&
+		status.Stage == StageStore &&
+		status.Status == StatusStarted
+}
+
 // Returns true if we should try to ingest this item.
 func (status *ProcessStatus) ShouldTryIngest() (bool) {
-	return status.HasBeenStored() == false && status.Retry == true
+	return status.HasBeenStored() == false && status.IsStoring() == false && status.Retry == true
 }
 
 /*

@@ -993,14 +993,14 @@ func TestProcessStatusShouldTryIngest(t *testing.T) {
 	// Test Store/Pending and Store/Started
 	ps.Stage = "Store"
 	ps.Status = "Started"
-	if ps.ShouldTryIngest() == false {
-		t.Error("HasBeenStored() should have returned true")
+	if ps.ShouldTryIngest() == true {
+		t.Error("ShouldTryIngest() should have returned false")
 	}
 
 	ps.Stage = "Store"
 	ps.Status = "Pending"
 	if ps.ShouldTryIngest() == true {
-		t.Error("HasBeenStored() should have returned false")
+		t.Error("ShouldTryIngest() should have returned false")
 	}
 
 	// Test Retry = false
