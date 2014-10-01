@@ -228,9 +228,9 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 
 			lcLabel := strings.ToLower(tag.Label)
 			if lcLabel == "access" {
-				accessRights = strings.ToLower(tag.Value)
+				accessRights = strings.TrimSpace(strings.ToLower(tag.Value))
 			} else if accessRights == "" && lcLabel == "rights" {
-				accessRights = strings.ToLower(tag.Value)
+				accessRights = strings.TrimSpace(strings.ToLower(tag.Value))
 			} else if lcLabel == "title" {
 				bagTitle = tag.Value
 			}
