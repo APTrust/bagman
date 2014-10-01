@@ -223,7 +223,7 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 		tagFields := tagFile.Data.Fields()
 
 		for _, tagField := range tagFields {
-			tag := Tag{tagField.Label(), tagField.Value()}
+			tag := Tag{tagField.Label(), strings.TrimSpace(tagField.Value())}
 			bagReadResult.Tags = append(bagReadResult.Tags, tag)
 
 			lcLabel := strings.ToLower(tag.Label)
@@ -232,7 +232,7 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 			} else if accessRights == "" && lcLabel == "rights" {
 				accessRights = strings.TrimSpace(strings.ToLower(tag.Value))
 			} else if lcLabel == "title" {
-				bagTitle = tag.Value
+				bagTitle = strings.TrimSpace(tag.Value)
 			}
 		}
 	}
