@@ -144,11 +144,16 @@ func LoadCustomEnvOrDie(customEnvFile *string, logger *logging.Logger) {
 			fmt.Fprintf(os.Stderr, message)
 			os.Exit(1)
 		} else {
+			message := fmt.Sprintf("Loaded environment vars from '%s'", *customEnvFile)
+			if logger != nil {
+				logger.Info(message)
+			}
+			fmt.Println(message)
 			for key, _ := range vars {
 				if logger != nil {
-					logger.Info("Loaded env var '%s' from %s", key, *customEnvFile)
+					logger.Info("Loaded env var %s", key)
 				}
-				fmt.Printf("Loaded env var '%s' from %s", key, *customEnvFile)
+				fmt.Printf("Loaded env var %s\n", key)
 			}
 		}
 	}
