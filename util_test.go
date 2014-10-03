@@ -125,7 +125,7 @@ func TestLoadEnv(t *testing.T) {
 		t.Error(err)
 	}
 	absPath := filepath.Join(bagmanHome, "testdata", "load_env_test.txt")
-	err = bagman.LoadEnv(absPath)
+	vars, err := bagman.LoadEnv(absPath)
 	if err != nil {
 		t.Error(err)
 	}
@@ -133,9 +133,18 @@ func TestLoadEnv(t *testing.T) {
 		t.Errorf("Env var VAR1: expected 'Some value' but got '%s'", os.Getenv("VAR1"))
 	}
 	if os.Getenv("VAR2") != "533" {
-		t.Errorf("Env var VAR1: expected '533' but got '%s'", os.Getenv("VAR2"))
+		t.Errorf("Env var VAR2: expected '533' but got '%s'", os.Getenv("VAR2"))
 	}
 	if os.Getenv("VAR3") != "Value with trailing space" {
-		t.Errorf("Env var VAR1: expected 'Value with trailing space' but got '%s'", os.Getenv("VAR3"))
+		t.Errorf("Env var VAR3: expected 'Value with trailing space' but got '%s'", os.Getenv("VAR3"))
+	}
+	if vars["VAR1"] != "Some value" {
+		t.Errorf("Map var VAR1: expected 'Some value' but got '%s'", vars["VAR1"])
+	}
+	if vars["VAR2"] != "533" {
+		t.Errorf("Map var VAR2: expected '533' but got '%s'", vars["VAR2"])
+	}
+	if vars["VAR3"] != "Value with trailing space" {
+		t.Errorf("Map var VAR3: expected 'Value with trailing space' but got '%s'", vars["VAR3"])
 	}
 }

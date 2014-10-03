@@ -93,13 +93,20 @@ func FileExists(path string) bool {
 // doesn't provide an easy way of loading environment vars from
 // an external file, and we have some sensitive environment vars
 // that we want to keep in only one file on the system.
-func LoadEnv(path string) (error) {
+//
+// Returns a map of the vars that were loaded from the file,
+// and sets them in the program's environment.
+func LoadEnv(path string) (vars map[string]string, err error) {
+	vars = make(map[string]string)
+	if path == "" {
+		return vars, err
+	}
 	if FileExists(path) == false {
-		return fmt.Errorf("File '%s' does not exist", path)
+		return vars, fmt.Errorf("File '%s' does not exist", path)
 	}
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		return err
+		return vars, err
 	}
 	reExport := regexp.MustCompile(`^export\s+(\w+)\s*=\s*(.*)`)
 	data := string(bytes)
@@ -111,10 +118,13 @@ func LoadEnv(path string) (error) {
 			key := matches[0][1]
 			value := strings.TrimSpace(strings.Trim(matches[0][2], "\" "))
 			os.Setenv(key,value)
+			vars[key] = value
 		}
 	}
-	return nil
+	return vars, err
 }
+
+
 
 type SynchronizedMap struct {
 	data  map[string]string
