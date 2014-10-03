@@ -30,8 +30,8 @@ func main() {
 	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
 	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
 	flag.Parse()
+	bagman.LoadCustomEnvOrDie(customEnvFile, nil)
 	procUtil = processutil.NewProcessUtil(requestedConfig)
-	bagman.LoadCustomEnvOrDie(customEnvFile, procUtil.MessageLog)
 
 	procUtil.MessageLog.Info("Cleanup started")
 	err := procUtil.Config.EnsureFluctusConfig()
