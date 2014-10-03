@@ -49,14 +49,7 @@ func loadConfig() {
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
 	messageLog = bagman.InitLogger(config)
-	if customEnvFile != nil && *customEnvFile != "" {
-		err := bagman.LoadEnv(*customEnvFile)
-		if err != nil {
-			messageLog.Fatalf("Cannot load custom environment file '%s'. " +
-				"Is that an absolute file path? Error: %v",
-				customEnvFile, err)
-		}
-	}
+	bagman.LoadCustomEnvOrDie(customEnvFile, messageLog)
 }
 
 type RecordProcessor struct {

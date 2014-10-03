@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/fluctus/models"
+	"github.com/op/go-logging"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -124,6 +125,34 @@ func LoadEnv(path string) (vars map[string]string, err error) {
 	return vars, err
 }
 
+// Loads enviroment vars from a custom file or dies.
+// If param customEnvFile is nil or points to an empty string,
+// this loads nothing and proceeds without error. If customEnvFile
+// specifies a file that does not exist or cannot be read, this
+// causes the program to exit. Param logger is optional. Pass nil
+// if you don't have a logger.
+func LoadCustomEnvOrDie(customEnvFile *string, logger *logging.Logger) {
+	if customEnvFile != nil && *customEnvFile != "" {
+		vars, err := LoadEnv(*customEnvFile)
+		if err != nil {
+			message := fmt.Sprintf("Cannot load custom environment file '%s'. " +
+				"Is that an absolute file path? Error: %v",
+				*customEnvFile, err)
+			if logger != nil {
+				logger.Fatalf(message)
+			}
+			fmt.Fprintf(os.Stderr, message)
+			os.Exit(1)
+		} else {
+			for key, _ := range vars {
+				if logger != nil {
+					logger.Info("Loaded env var '%s' from %s", key, *customEnvFile)
+				}
+				fmt.Printf("Loaded env var '%s' from %s", key, *customEnvFile)
+			}
+		}
+	}
+}
 
 
 type SynchronizedMap struct {

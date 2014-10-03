@@ -60,24 +60,6 @@ func NewProcessUtil(requestedConfig *string) (procUtil *ProcessUtil) {
 	return procUtil
 }
 
-// Loads environment variables from the specified file,
-// and assumes vars are in the format
-//
-// export VAR=VALUE
-//
-// Values can be quoted. If command-line arg -env names
-// a file that does not exist, this causes a fatal error.
-func (procUtil *ProcessUtil) LoadCustomEnv(customEnvFile *string) {
-	if customEnvFile != nil && *customEnvFile != "" {
-		err := bagman.LoadEnv(*customEnvFile)
-		if err != nil {
-			procUtil.MessageLog.Fatalf("Cannot load custom environment file '%s'. " +
-				"Is that an absolute file path? Error: %v",
-				*customEnvFile, err)
-		}
-	}
-}
-
 // Initializes the loggers.
 func (procUtil *ProcessUtil) initLogging() {
 	procUtil.MessageLog = bagman.InitLogger(procUtil.Config)

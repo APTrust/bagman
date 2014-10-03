@@ -43,7 +43,7 @@ func main() {
 	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
 	flag.Parse()
 	procUtil = processutil.NewProcessUtil(requestedConfig)
-	procUtil.LoadCustomEnv(customEnvFile)
+	bagman.LoadCustomEnvOrDie(customEnvFile, procUtil.MessageLog)
 
 	procUtil.MessageLog.Info("apt_store started")
 	err := procUtil.Config.EnsureFluctusConfig()
