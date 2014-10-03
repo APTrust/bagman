@@ -1,0 +1,12 @@
+# Test file for util.LoadEnv()
+# LoadEnv() should ignore comment lines like this.
+
+func() {
+       LoadEnv() should also ignore functions
+}
+
+# It should read only simple export statements
+
+export VAR1 = "Some value"
+export VAR2=533
+export VAR3 = "Value with trailing space   "

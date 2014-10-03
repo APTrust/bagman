@@ -45,10 +45,19 @@ func main() {
 
 func initialize() (err error) {
 	// Load the config or die.
-	requestedConfig := flag.String("config", "", "configuration to run")
+	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
+	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
 	flag.Parse()
 	config = bagman.LoadRequestedConfig(requestedConfig)
 	messageLog = bagman.InitLogger(config)
+	if customEnvFile != nil && *customEnvFile != "" {
+		err := bagman.LoadEnv(*customEnvFile)
+		if err != nil {
+			messageLog.Fatalf("Cannot load custom environment file '%s'. " +
+				"Is that an absolute file path? Error: %v",
+				customEnvFile, err)
+		}
+	}
 	messageLog.Info("Bucket reader started")
 	fluctusClient, err = client.New(
 		config.FluctusURL,

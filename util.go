@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"sync"
 )
 
@@ -81,6 +83,38 @@ func FileExists(path string) bool {
 	return true
 }
 
+// Loads environment variables from the file at the specified
+// absolute path. The variables are expected to be in the format
+// typically seen in .bashrc and .bash_profile files:
+//
+// export VARNAME=VALUE
+//
+// with optional quotes. This function is here because supervisord
+// doesn't provide an easy way of loading environment vars from
+// an external file, and we have some sensitive environment vars
+// that we want to keep in only one file on the system.
+func LoadEnv(path string) (error) {
+	if FileExists(path) == false {
+		return fmt.Errorf("File '%s' does not exist", path)
+	}
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	reExport := regexp.MustCompile(`^export\s+(\w+)\s*=\s*(.*)`)
+	data := string(bytes)
+	lines := strings.Split(data, "\n")
+	for i := range lines {
+		line := strings.TrimSpace(lines[i])
+		matches := reExport.FindAllStringSubmatch(line, -1)
+		if matches != nil && len(matches) > 0 && len(matches[0]) > 2 {
+			key := matches[0][1]
+			value := strings.TrimSpace(strings.Trim(matches[0][2], "\" "))
+			os.Setenv(key,value)
+		}
+	}
+	return nil
+}
 
 type SynchronizedMap struct {
 	data  map[string]string

@@ -51,9 +51,11 @@ var largeFile2 string = ""
 // As long as the message from nsq contains valid JSON,
 // steps 4 and 5 ALWAYS run.
 func main() {
-	requestedConfig := flag.String("config", "", "configuration to run")
+	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
+	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
 	flag.Parse()
 	procUtil = processutil.NewProcessUtil(requestedConfig)
+	procUtil.LoadCustomEnv(customEnvFile)
 
 	procUtil.MessageLog.Info("apt_prepare started")
 	err := procUtil.Config.EnsureFluctusConfig()

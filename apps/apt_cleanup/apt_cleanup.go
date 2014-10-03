@@ -27,9 +27,11 @@ var channels *Channels
 var procUtil *processutil.ProcessUtil
 
 func main() {
-	requestedConfig := flag.String("config", "", "configuration to run")
+	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
+	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
 	flag.Parse()
 	procUtil = processutil.NewProcessUtil(requestedConfig)
+	procUtil.LoadCustomEnv(customEnvFile)
 
 	procUtil.MessageLog.Info("Cleanup started")
 	err := procUtil.Config.EnsureFluctusConfig()

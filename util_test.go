@@ -118,3 +118,24 @@ func TestFileExists(t *testing.T) {
 		t.Errorf("FileExists returned true for NonExistentFile.xyz")
 	}
 }
+
+func TestLoadEnv(t *testing.T) {
+	bagmanHome, err := bagman.BagmanHome()
+	if err != nil {
+		t.Error(err)
+	}
+	absPath := filepath.Join(bagmanHome, "testdata", "load_env_test.txt")
+	err = bagman.LoadEnv(absPath)
+	if err != nil {
+		t.Error(err)
+	}
+	if os.Getenv("VAR1") != "Some value" {
+		t.Errorf("Env var VAR1: expected 'Some value' but got '%s'", os.Getenv("VAR1"))
+	}
+	if os.Getenv("VAR2") != "533" {
+		t.Errorf("Env var VAR1: expected '533' but got '%s'", os.Getenv("VAR2"))
+	}
+	if os.Getenv("VAR3") != "Value with trailing space" {
+		t.Errorf("Env var VAR1: expected 'Value with trailing space' but got '%s'", os.Getenv("VAR3"))
+	}
+}
