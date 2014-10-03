@@ -36,9 +36,9 @@ echo "building apt_store"
 cd "${BAGMAN_HOME}/apps/apt_store"
 go build -o ${BAGMAN_BIN}/apt_store apt_store.go
 
-echo "building apt_store"
-cd "${BAGMAN_HOME}/apps/apt_store"
-go build -o ${BAGMAN_BIN}/apt_store apt_store.go
+echo "building apt_record"
+cd "${BAGMAN_HOME}/apps/apt_record"
+go build -o ${BAGMAN_BIN}/apt_record apt_record.go
 
 echo "building apt_trouble"
 cd "${BAGMAN_HOME}/apps/apt_trouble"
