@@ -9,5 +9,4 @@ DATE=`date +%Y%m%d`
 FILE=${1}-${DATE}
 gzip $FILE
 COMPRESSED_FILE=${FILE}.gz
-aws s3 cp --region=us-east-1 $COMPRESSED_FILE s3://aptrust.s3.logs/bag_processi\
-ng/
+aws s3 cp --region=us-east-1 $COMPRESSED_FILE s3://aptrust.s3.logs/bag_processing/
