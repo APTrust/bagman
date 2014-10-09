@@ -20,7 +20,7 @@ type S3File struct {
 // in fedora. That's the institution identifier, followed by
 // a slash and the tar file name, minus the .tar extension
 // and the ".bag1of12" multipart extension. So for BucketName
-// "aptrust.receiving.unc.edu" and Key.Key "nc_bag.001.of030.tar",
+// "aptrust.receiving.unc.edu" and Key.Key "nc_bag.b001.of030.tar",
 // this would return "unc.edu/nc_bag"
 func (s3File *S3File) ObjectName() (string, error) {
 	institution := OwnerOf(s3File.BucketName)
