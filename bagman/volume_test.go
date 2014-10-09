@@ -1,7 +1,7 @@
 package bagman_test
 
 import (
-	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/bagman"
 	"runtime"
 	"testing"
 )
