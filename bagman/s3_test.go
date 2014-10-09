@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-var skipMessagePrinted bool = false
+var s3SkipMessagePrinted bool = false
 var testBucket string = "aptrust.test"
 var testPreservationBucket string = "aptrust.test.preservation"
 
@@ -27,11 +27,11 @@ func awsEnvAvailable() (envVarsOk bool) {
 // This prints a message saying S3 integration tests
 // will be skipped.
 func printSkipMessage(testname string) {
-	if !skipMessagePrinted {
+	if !s3SkipMessagePrinted {
 		msg := fmt.Sprintf("Skipping %s because environment variables "+
 			"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not set.", testname)
 		fmt.Fprintln(os.Stderr, msg)
-		skipMessagePrinted = true
+		s3SkipMessagePrinted = true
 	}
 }
 

@@ -1,12 +1,10 @@
 // Integration tests for Fluctus client.
 // Requires a running Fluctus server.
-package client_test
+package bagman_test
 
 import (
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
-	"github.com/APTrust/bagman/fluctus/models"
+	"github.com/APTrust/bagman/bagman"
 	"github.com/nu7hatch/gouuid"
 	"net/http"
 	"os"
@@ -18,7 +16,7 @@ import (
 
 var fluctusUrl string = "http://localhost:3000"
 var fluctusAPIVersion string = "v1"
-var skipMessagePrinted bool = false
+var fluctusSkipMessagePrinted bool = false
 
 // objId and gfId come from our test fixture in testdata/result_good.json
 var objId string = "ncsu.edu/ncsu.1840.16-2928"
@@ -27,8 +25,8 @@ var gfId string = "ncsu.edu/ncsu.1840.16-2928/data/object.properties"
 func runFluctusTests() bool {
 	_, err := http.Get(fluctusUrl)
 	if err != nil {
-		if skipMessagePrinted == false {
-			skipMessagePrinted = true
+		if fluctusSkipMessagePrinted == false {
+			fluctusSkipMessagePrinted = true
 			fmt.Printf("Skipping fluctus integration tests: "+
 				"fluctus server is not running at %s\n", fluctusUrl)
 		}
@@ -37,11 +35,11 @@ func runFluctusTests() bool {
 	return true
 }
 
-func getClient(t *testing.T) *client.Client {
+func getClient(t *testing.T) *bagman.FluctusClient {
 	// If you want to debug, change ioutil.Discard to os.Stdout
 	// to see log output from the client.
 	logger := bagman.DiscardLogger("client_test")
-	fluctusClient, err := client.New(
+	fluctusClient, err := bagman.NewFluctusClient(
 		fluctusUrl,
 		fluctusAPIVersion,
 		os.Getenv("FLUCTUS_API_USER"),
@@ -67,7 +65,7 @@ func loadTestResult(t *testing.T) error {
 		return err
 	}
 	// Get the intellectual object from the processing result
-	obj, err := result.IntellectualObject()
+	obj, err := result.FluctusObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}
@@ -81,7 +79,7 @@ func loadTestResult(t *testing.T) error {
 
 	// Add this object to fluctus if it doesn't already exist.
 	if fluctusObj == nil {
-		_, err := fluctusClient.IntellectualObjectCreate(obj, client.MAX_FILES_FOR_CREATE)
+		_, err := fluctusClient.IntellectualObjectCreate(obj, bagman.MAX_FILES_FOR_CREATE)
 		if err != nil {
 			t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
 			return err
@@ -110,7 +108,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 	if obj == nil {
 		t.Error("IntellectualObjectGet did not return the expected object")
 	}
-	if obj != nil && len(obj.GenericFiles) > 0 {
+	if obj != nil && len(obj.FluctusFiles) > 0 {
 		t.Error("IntellectualObject has GenericFiles. It shouldn't.")
 	}
 
@@ -124,10 +122,10 @@ func TestIntellectualObjectGet(t *testing.T) {
 		t.Error("IntellectualObjectGet did not return the expected object")
 	}
 	if obj != nil {
-		if len(obj.GenericFiles) == 0 {
+		if len(obj.FluctusFiles) == 0 {
 			t.Error("IntellectualObject has no GenericFiles, but it should.")
 		}
-		gf := findFile(obj.GenericFiles, gfId)
+		gf := findFile(obj.FluctusFiles, gfId)
 		if len(gf.Events) == 0 {
 			t.Error("GenericFile from Fluctus is missing events.")
 		}
@@ -150,7 +148,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 // Returns the file with the specified id. We use this in testing
 // because we want to look at a file that we know has both events
 // and checksums.
-func findFile(files []*models.GenericFile, id string) *models.GenericFile {
+func findFile(files []*bagman.FluctusFile, id string) *bagman.FluctusFile {
 	for _, f := range files {
 		if f.Identifier == id || f.Id == id {
 			return f
@@ -206,7 +204,7 @@ func TestIntellectualObjectCreate(t *testing.T) {
 		return
 	}
 	// Get the intellectual object from the processing result
-	obj, err := result.IntellectualObject()
+	obj, err := result.FluctusObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 		return
@@ -218,11 +216,11 @@ func TestIntellectualObjectCreate(t *testing.T) {
 	oldIdentifier := obj.Identifier
 	obj.Identifier = fmt.Sprintf("test.edu/%d", time.Now().Unix())
 	// Update the identifier on all of the generic files...
-	for i := range obj.GenericFiles {
-		obj.GenericFiles[i].Identifier = strings.Replace(
-			obj.GenericFiles[i].Identifier, oldIdentifier, obj.Identifier, 1)
+	for i := range obj.FluctusFiles {
+		obj.FluctusFiles[i].Identifier = strings.Replace(
+			obj.FluctusFiles[i].Identifier, oldIdentifier, obj.Identifier, 1)
 	}
-	newObj, err := fluctusClient.IntellectualObjectCreate(obj, client.MAX_FILES_FOR_CREATE)
+	newObj, err := fluctusClient.IntellectualObjectCreate(obj, bagman.MAX_FILES_FOR_CREATE)
 	if err != nil {
 		t.Errorf("Error saving IntellectualObject to fluctus: %v", err)
 		return
@@ -353,7 +351,7 @@ func TestEventSave(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error generating UUID: %v", err)
 	}
-	ingestEvent := &models.PremisEvent{
+	ingestEvent := &bagman.PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "Ingest",
 		DateTime:           time.Now(),
@@ -382,7 +380,7 @@ func TestEventSave(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error generating UUID: %v", err)
 	}
-	identifierEvent := &models.PremisEvent{
+	identifierEvent := &bagman.PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "identifier_assignment",
 		DateTime:           time.Now(),

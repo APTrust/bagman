@@ -1,12 +1,10 @@
 // Package client provides a client for the fluctus REST API.
-package client
+package bagman
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/op/go-logging"
 	"io"
 	"io/ioutil"
@@ -25,7 +23,7 @@ const MAX_FILES_FOR_CREATE = 500
 
 var domainPattern *regexp.Regexp = regexp.MustCompile("\\.edu|org|com$")
 
-type Client struct {
+type FluctusClient struct {
 	hostUrl      string
 	apiVersion   string
 	apiUser      string
@@ -38,7 +36,7 @@ type Client struct {
 
 // Creates a new fluctus client. Param hostUrl should come from
 // the config.json file.
-func New(hostUrl, apiVersion, apiUser, apiKey string, logger *logging.Logger) (*Client, error) {
+func NewFluctusClient(hostUrl, apiVersion, apiUser, apiKey string, logger *logging.Logger) (*FluctusClient, error) {
 	// see security warning on nil PublicSuffixList here:
 	// http://gotour.golang.org/src/pkg/net/http/cookiejar/jar.go?s=1011:1492#L24
 	cookieJar, err := cookiejar.New(nil)
@@ -50,12 +48,12 @@ func New(hostUrl, apiVersion, apiUser, apiKey string, logger *logging.Logger) (*
 		DisableKeepAlives:   false,
 	}
 	httpClient := &http.Client{Jar: cookieJar, Transport: transport}
-	return &Client{hostUrl, apiVersion, apiUser, apiKey, httpClient, transport, logger, nil}, nil
+	return &FluctusClient{hostUrl, apiVersion, apiUser, apiKey, httpClient, transport, logger, nil}, nil
 }
 
 // Caches a map of institutions in which institution domain name
 // is the key and institution id is the value.
-func (client *Client) CacheInstitutions() error {
+func (client *FluctusClient) CacheInstitutions() error {
 	instUrl := client.BuildUrl("/institutions")
 	client.logger.Debug("Requesting list of institutions from fluctus: %s", instUrl)
 	request, err := client.NewJsonRequest("GET", instUrl, nil)
@@ -82,7 +80,7 @@ func (client *Client) CacheInstitutions() error {
 	}
 
 	// Build and return the data structure
-	institutions := make([]*models.Institution, 1, 100)
+	institutions := make([]*Institution, 1, 100)
 	err = json.Unmarshal(body, &institutions)
 	if err != nil {
 		return err
@@ -100,13 +98,13 @@ func (client *Client) CacheInstitutions() error {
 // relativeUrl to create an absolute URL. For example, if client.hostUrl
 // is "http://localhost:3456", then client.BuildUrl("/path/to/action.json")
 // would return "http://localhost:3456/path/to/action.json".
-func (client *Client) BuildUrl(relativeUrl string) string {
+func (client *FluctusClient) BuildUrl(relativeUrl string) string {
 	return client.hostUrl + relativeUrl
 }
 
 // newJsonGet returns a new request with headers indicating
 // JSON request and response formats.
-func (client *Client) NewJsonRequest(method, targetUrl string, body io.Reader) (*http.Request, error) {
+func (client *FluctusClient) NewJsonRequest(method, targetUrl string, body io.Reader) (*http.Request, error) {
 	req, err := http.NewRequest(method, targetUrl, body)
 	if err != nil {
 		return nil, err
@@ -135,7 +133,7 @@ func (client *Client) NewJsonRequest(method, targetUrl string, body io.Reader) (
 
 // GetBagStatus returns the status of a bag from a prior round of processing.
 // This function will return nil if Fluctus has no record of this bag.
-func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (status *bagman.ProcessStatus, err error) {
+func (client *FluctusClient) GetBagStatus(etag, name string, bag_date time.Time) (status *ProcessStatus, err error) {
 	statusUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/%s/%s/%s",
 		client.apiVersion, etag, name,
 		url.QueryEscape(bag_date.Format(time.RFC3339))))
@@ -151,7 +149,7 @@ func (client *Client) GetBagStatus(etag, name string, bag_date time.Time) (statu
 // from Fluctus' processed items list. It returns a list of CleanupResults.
 // The cleanup task uses this list to figure out what to delete from the
 // receiving buckets.
-func (client *Client) GetReviewedItems() (results []*bagman.CleanupResult, err error) {
+func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err error) {
 	reviewedUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/get_reviewed.json",
 		client.apiVersion))
 	request, err := client.NewJsonRequest("GET", reviewedUrl, nil)
@@ -170,20 +168,20 @@ func (client *Client) GetReviewedItems() (results []*bagman.CleanupResult, err e
 			return nil, err
 		}
 	}
-	items := make([]*bagman.ProcessStatus, 0)
+	items := make([]*ProcessStatus, 0)
 	err = json.Unmarshal(body, &items)
 	if err != nil {
 		return nil, err
 	}
-	results = make([]*bagman.CleanupResult, len(items))
+	results = make([]*CleanupResult, len(items))
 	for i, item := range items {
-		file := &bagman.CleanupFile{
+		file := &CleanupFile{
 			BucketName: item.Bucket,
 			Key:        item.Name,
 		}
-		files := make([]*bagman.CleanupFile, 1)
+		files := make([]*CleanupFile, 1)
 		files[0] = file
-		cleanupResult := &bagman.CleanupResult{
+		cleanupResult := &CleanupResult{
 			BagName:          item.Name,
 			ETag:             item.ETag,
 			BagDate:          item.BagDate,
@@ -198,7 +196,7 @@ func (client *Client) GetReviewedItems() (results []*bagman.CleanupResult, err e
 // UpdateProcessedItem sends a message to Fluctus describing whether bag
 // processing succeeded or failed. If it failed, the ProcessStatus
 // object includes some details of what went wrong.
-func (client *Client) UpdateProcessedItem(status *bagman.ProcessStatus) (err error) {
+func (client *FluctusClient) UpdateProcessedItem(status *ProcessStatus) (err error) {
 	relativeUrl := fmt.Sprintf("/api/%s/itemresults", client.apiVersion)
 	httpMethod := "POST"
 	expectedResponseCode := 201
@@ -225,7 +223,7 @@ func (client *Client) UpdateProcessedItem(status *bagman.ProcessStatus) (err err
 	return err
 }
 
-func (client *Client) doStatusRequest(request *http.Request, expectedStatus int) (status *bagman.ProcessStatus, err error) {
+func (client *FluctusClient) doStatusRequest(request *http.Request, expectedStatus int) (status *ProcessStatus, err error) {
 	response, err := client.httpClient.Do(request)
 	if err != nil {
 		return nil, err
@@ -271,7 +269,7 @@ func (client *Client) doStatusRequest(request *http.Request, expectedStatus int)
 	return status, nil
 }
 
-func (client *Client) BulkStatusGet(since time.Time) (statusRecords []*bagman.ProcessStatus, err error) {
+func (client *FluctusClient) BulkStatusGet(since time.Time) (statusRecords []*ProcessStatus, err error) {
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/ingested_since/%s",
 		client.apiVersion, url.QueryEscape(since.UTC().Format(time.RFC3339))))
 	client.logger.Debug("Requesting bulk bag status from fluctus: %s", objUrl)
@@ -331,7 +329,7 @@ restoration requests in Fluctus' ProcessedItems table.
 2. An objectIdentifier is supplied, and there are no
 ProcessedItem records for that object in stage Restore.
 */
-func (client *Client) RestorationItemsGet(objectIdentifier string) (statusRecords []*bagman.ProcessStatus, err error) {
+func (client *FluctusClient) RestorationItemsGet(objectIdentifier string) (statusRecords []*ProcessStatus, err error) {
 	return client.getStatusItemsForQueue("restore", objectIdentifier)
 }
 
@@ -354,12 +352,12 @@ restoration requests in Fluctus' ProcessedItems table.
 2. A genericFileIdentifier is supplied, and there are no
 ProcessedItem records for that object in stage Restore.
 */
-func (client *Client) DeletionItemsGet(genericFileIdentifier string) (statusRecords []*bagman.ProcessStatus, err error) {
+func (client *FluctusClient) DeletionItemsGet(genericFileIdentifier string) (statusRecords []*ProcessStatus, err error) {
 	return client.getStatusItemsForQueue("delete", genericFileIdentifier)
 }
 
 // Calls one of the ProcessedItem endpoints that returns a list of ProcessedItems.
-func (client *Client) getStatusItemsForQueue(itemType, identifier string) (statusRecords []*bagman.ProcessStatus, err error) {
+func (client *FluctusClient) getStatusItemsForQueue(itemType, identifier string) (statusRecords []*ProcessStatus, err error) {
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/items_for_restore.json", client.apiVersion))
 	paramName := "object_identifier"
 	if itemType == "delete" {
@@ -414,7 +412,7 @@ func (client *Client) getStatusItemsForQueue(itemType, identifier string) (statu
 // the IntellectualObject. If includeRelations is true, this returns
 // the IntellectualObject with all of its GenericFiles and Events.
 // Param identifier must have slashes replaced with %2F or you'll get a 404!
-func (client *Client) IntellectualObjectGet(identifier string, includeRelations bool) (*models.IntellectualObject, error) {
+func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRelations bool) (*FluctusObject, error) {
 	queryString := ""
 	if includeRelations == true {
 		queryString = "include_relations=true"
@@ -447,7 +445,7 @@ func (client *Client) IntellectualObjectGet(identifier string, includeRelations 
 	}
 
 	// Build and return the data structure
-	obj := &models.IntellectualObject{}
+	obj := &FluctusObject{}
 	err = json.Unmarshal(body, obj)
 	if err != nil {
 		return nil, err
@@ -457,7 +455,7 @@ func (client *Client) IntellectualObjectGet(identifier string, includeRelations 
 
 // Updates an existing IntellectualObject in fluctus.
 // Returns the IntellectualObject.
-func (client *Client) IntellectualObjectUpdate(obj *models.IntellectualObject) (newObj *models.IntellectualObject, err error) {
+func (client *FluctusClient) IntellectualObjectUpdate(obj *FluctusObject) (newObj *FluctusObject, err error) {
 	if obj == nil {
 		return nil, fmt.Errorf("Param obj cannot be nil")
 	}
@@ -514,7 +512,7 @@ func (client *Client) IntellectualObjectUpdate(obj *models.IntellectualObject) (
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		newObj = &models.IntellectualObject{}
+		newObj = &FluctusObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
 			return nil, err
@@ -525,7 +523,7 @@ func (client *Client) IntellectualObjectUpdate(obj *models.IntellectualObject) (
 	}
 }
 
-func (client *Client) IntellectualObjectCreate(obj *models.IntellectualObject, maxGenericFiles int) (newObj *models.IntellectualObject, err error) {
+func (client *FluctusClient) IntellectualObjectCreate(obj *FluctusObject, maxGenericFiles int) (newObj *FluctusObject, err error) {
 	if obj == nil {
 		return nil, fmt.Errorf("Param obj cannot be nil")
 	}
@@ -582,7 +580,7 @@ func (client *Client) IntellectualObjectCreate(obj *models.IntellectualObject, m
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		newObj = &models.IntellectualObject{}
+		newObj = &FluctusObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
 			return nil, err
@@ -594,7 +592,7 @@ func (client *Client) IntellectualObjectCreate(obj *models.IntellectualObject, m
 }
 
 // Returns the generic file with the specified identifier.
-func (client *Client) GenericFileGet(genericFileIdentifier string, includeRelations bool) (*models.GenericFile, error) {
+func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includeRelations bool) (*FluctusFile, error) {
 	queryString := ""
 	if includeRelations == true {
 		queryString = "include_relations=true"
@@ -629,7 +627,7 @@ func (client *Client) GenericFileGet(genericFileIdentifier string, includeRelati
 	}
 
 	// Build and return the data structure
-	obj := &models.GenericFile{}
+	obj := &FluctusFile{}
 	err = json.Unmarshal(body, obj)
 	if err != nil {
 		return nil, err
@@ -641,7 +639,7 @@ func (client *Client) GenericFileGet(genericFileIdentifier string, includeRelati
 // figures out whether the save is a create or an update.
 // Param objId is the Id of the IntellectualObject to which
 // the file belongs. This returns the GenericFile.
-func (client *Client) GenericFileSave(objId string, gf *models.GenericFile) (newGf *models.GenericFile, err error) {
+func (client *FluctusClient) GenericFileSave(objId string, gf *FluctusFile) (newGf *FluctusFile, err error) {
 	existingObj, err := client.GenericFileGet(gf.Identifier, false)
 	if err != nil {
 		return nil, err
@@ -695,7 +693,7 @@ func (client *Client) GenericFileSave(objId string, gf *models.GenericFile) (new
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		newGf = &models.GenericFile{}
+		newGf = &FluctusFile{}
 		err = json.Unmarshal(body, newGf)
 		if err != nil {
 			return nil, err
@@ -713,7 +711,7 @@ func (client *Client) GenericFileSave(objId string, gf *models.GenericFile) (new
 // Param event is the event you wish to save. This returns the event that comes
 // back from Fluctus. Note that you can create events, but you cannot update them.
 // All saves will create new events!
-func (client *Client) PremisEventSave(objId, objType string, event *models.PremisEvent) (newEvent *models.PremisEvent, err error) {
+func (client *FluctusClient) PremisEventSave(objId, objType string, event *PremisEvent) (newEvent *PremisEvent, err error) {
 	if objId == "" {
 		return nil, fmt.Errorf("Param objId cannot be empty")
 	}
@@ -770,7 +768,7 @@ func (client *Client) PremisEventSave(objId, objType string, event *models.Premi
 	}
 
 	// Fluctus should always return the newly created event
-	newEvent = &models.PremisEvent{}
+	newEvent = &PremisEvent{}
 	err = json.Unmarshal(body, newEvent)
 	if err != nil {
 		return nil, err
@@ -785,9 +783,9 @@ func escapeSlashes(s string) string {
 
 // SendProcessedItem sends information about the status of
 // processing this item to Fluctus. Param localStatus should come from
-// bagman.ProcessResult.ProcessStatus(), which gives information about
+// ProcessResult.ProcessStatus(), which gives information about
 // the current state of processing.
-func (client *Client) SendProcessedItem(localStatus *bagman.ProcessStatus) (err error) {
+func (client *FluctusClient) SendProcessedItem(localStatus *ProcessStatus) (err error) {
 	// Look up the status record in Fluctus. It should already exist.
 	// We want to get its ID and update the existing record, rather
 	// than creating a new record. Each bag should have no more than
@@ -816,7 +814,7 @@ current object. If an object was uploaded as a series of
 100 bags, this sets the status on the processed item records
 for the latest ingested version of each of those 100 bags.
 */
-func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman.StageType, status bagman.StatusType, note string, retry bool) (error) {
+func (client *FluctusClient) RestorationStatusSet(objectIdentifier string, stage StageType, status StatusType, note string, retry bool) (error) {
 	if objectIdentifier == "" {
 		return fmt.Errorf("Object identifier cannot be empty.")
 	}
@@ -863,7 +861,7 @@ func (client *Client) RestorationStatusSet(objectIdentifier string, stage bagman
 }
 
 // Delete the data we created with our integration tests
-func (client *Client) DeleteFluctusTestData() error {
+func (client *FluctusClient) DeleteFluctusTestData() error {
 	urls := make([]string, 1)
 	urls[0] = client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/delete_test_items.json", client.apiVersion))
 	for _, url := range urls {
