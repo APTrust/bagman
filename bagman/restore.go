@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"fmt"
 	"github.com/APTrust/bagins"
-	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"github.com/op/go-logging"
@@ -35,7 +34,7 @@ const (
 // objects will have to be split into multiple bags
 // during restoration to accomodate the 250GB bag size limit.
 type FileSet struct {
-	Files []*models.GenericFile
+	Files []*FluctusFile
 }
 
 /*
@@ -83,7 +82,7 @@ Here's a fuller example:
 */
 type BagRestorer struct {
 	// The intellectual object we'll be restoring.
-	IntellectualObject  *models.IntellectualObject
+	IntellectualObject  *FluctusObject
 	// s3Client lets us publish restored bags to S3.
 	s3Client            *S3Client
 	// workingDir is the root directory under which
@@ -110,7 +109,7 @@ type BagRestorer struct {
 // Creates a new bag restorer from the intellectual object.
 // Param working dir is the path to the directory into which
 // files should be downloaded and the bag should be built.
-func NewBagRestorer(intelObj *models.IntellectualObject, workingDir string) (*BagRestorer, error) {
+func NewBagRestorer(intelObj *FluctusObject, workingDir string) (*BagRestorer, error) {
 	if intelObj == nil {
 		return nil, fmt.Errorf("IntellectualObject cannot be nil")
 	}
@@ -195,8 +194,9 @@ func (restorer *BagRestorer) buildFileSets() {
 	bytesInSet := int64(0)
 	fileSet := &FileSet{}
 	restorer.debug(fmt.Sprintf("Object %s has %d generic files",
-		restorer.IntellectualObject.Identifier, len(restorer.IntellectualObject.GenericFiles)))
-	for _, gf := range restorer.IntellectualObject.GenericFiles {
+		restorer.IntellectualObject.Identifier,
+		len(restorer.IntellectualObject.FluctusFiles)))
+	for _, gf := range restorer.IntellectualObject.FluctusFiles {
 		if len(fileSet.Files) > 0 && bytesInSet + gf.Size > restorer.GetFileSetSizeLimit() {
 			restorer.fileSets = append(restorer.fileSets, fileSet)
 			fileSet = &FileSet{}
@@ -335,13 +335,13 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 }
 
 // Fetches the requested file from S3 and returns a FetchResult.
-func (restorer *BagRestorer) fetchFile(gf *models.GenericFile, setNumber int) (*FetchResult) {
-	prefix := strings.SplitN(gf.Identifier, "/data/", 2)
-	subdir := strings.Replace(gf.Identifier, prefix[0], restorer.bagName(setNumber), 1)
+func (restorer *BagRestorer) fetchFile(fluctusFile *FluctusFile, setNumber int) (*FetchResult) {
+	prefix := strings.SplitN(fluctusFile.Identifier, "/data/", 2)
+	subdir := strings.Replace(fluctusFile.Identifier, prefix[0], restorer.bagName(setNumber), 1)
 	localPath := filepath.Join(restorer.workingDir, subdir)
-	bucketName, key := bucketNameAndKey(gf.URI)
+	bucketName, key := bucketNameAndKey(fluctusFile.URI)
 	restorer.debug(fmt.Sprintf("Fetching key %s from bucket %s for file %s into %s",
-		key, bucketName, gf.Identifier, localPath))
+		key, bucketName, fluctusFile.Identifier, localPath))
 
 	// Make sure we have a place to put this file, or we'll
 	// have problems with directories nested under data/
@@ -354,7 +354,7 @@ func (restorer *BagRestorer) fetchFile(gf *models.GenericFile, setNumber int) (*
 
 	s3Key, err := restorer.s3Client.GetKey(bucketName, key)
 	if err != nil {
-		errMsg := fmt.Sprintf("Could not get key info for %s: %v", gf.URI, err)
+		errMsg := fmt.Sprintf("Could not get key info for %s: %v", fluctusFile.URI, err)
 		return &FetchResult {
 			ErrorMessage: errMsg,
 		}

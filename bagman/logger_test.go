@@ -2,7 +2,7 @@ package bagman_test
 
 import (
 	"testing"
-	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/bagman"
 	"io/ioutil"
 	"os"
 	"path"

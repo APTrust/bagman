@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"fmt"
-	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/bagman"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"os"

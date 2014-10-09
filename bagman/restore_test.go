@@ -5,7 +5,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/bagman"
 	"github.com/crowdmob/goamz/aws"
 	"io"
 	"io/ioutil"

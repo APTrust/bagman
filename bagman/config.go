@@ -261,7 +261,7 @@ func printConfigHelp(requestedConfig string, configurations map[string]Config) {
 // This function reads the config.json file and returns a list of
 // available configurations.
 func loadConfigFile() (configurations map[string]Config) {
-	file, err := LoadRelativeFile("config.json")
+	file, err := LoadRelativeFile(filepath.Join("config", "config.json"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading config file: %v\n", err)
 		os.Exit(1)
