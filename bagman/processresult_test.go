@@ -118,7 +118,7 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 	}
 }
 
-func TestIntellectualObject(t *testing.T) {
+func TestFluctusObject(t *testing.T) {
 	filepath := filepath.Join("testdata", "result_good.json")
 	result, err := bagman.LoadResult(filepath)
 	if err != nil {
