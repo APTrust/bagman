@@ -2,7 +2,7 @@ package bagman_test
 
 import (
 	"encoding/json"
-	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/bagman"
 	"path/filepath"
 	"testing"
 )
@@ -19,7 +19,7 @@ func TestSerializeForCreate(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	obj, err := result.IntellectualObject()
+	obj, err := result.FluctusObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestSerializeForCreateWithMaxFiles(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	obj, err := result.IntellectualObject()
+	obj, err := result.FluctusObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}
