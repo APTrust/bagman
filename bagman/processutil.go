@@ -1,9 +1,7 @@
-package processutil
+package bagman
 
 import (
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
 	"github.com/bitly/go-nsq"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/op/go-logging"
@@ -21,13 +19,13 @@ etc.). It also encapsulates some functions common to all of
 those services.
 */
 type ProcessUtil struct {
-	Config          bagman.Config
+	Config          Config
 	JsonLog         *log.Logger
 	MessageLog      *logging.Logger
-	Volume          *bagman.Volume
-	S3Client        *bagman.S3Client
-	FluctusClient   *client.Client
-	syncMap         *bagman.SynchronizedMap
+	Volume          *Volume
+	S3Client        *S3Client
+	FluctusClient   *FluctusClient
+	syncMap         *SynchronizedMap
 	succeeded       int64
 	failed          int64
 }
@@ -51,24 +49,24 @@ func NewProcessUtil(requestedConfig *string) (procUtil *ProcessUtil) {
 		succeeded: int64(0),
 		failed: int64(0),
 	}
-	procUtil.Config = bagman.LoadRequestedConfig(requestedConfig)
+	procUtil.Config = LoadRequestedConfig(requestedConfig)
 	procUtil.initLogging()
 	procUtil.initVolume()
 	procUtil.initS3Client()
 	procUtil.initFluctusClient()
-	procUtil.syncMap = bagman.NewSynchronizedMap()
+	procUtil.syncMap = NewSynchronizedMap()
 	return procUtil
 }
 
 // Initializes the loggers.
 func (procUtil *ProcessUtil) initLogging() {
-	procUtil.MessageLog = bagman.InitLogger(procUtil.Config)
-	procUtil.JsonLog = bagman.InitJsonLogger(procUtil.Config)
+	procUtil.MessageLog = InitLogger(procUtil.Config)
+	procUtil.JsonLog = InitJsonLogger(procUtil.Config)
 }
 
 // Sets up a new Volume object to track estimated disk usage.
 func (procUtil *ProcessUtil) initVolume() {
-	volume, err := bagman.NewVolume(procUtil.Config.TarDirectory, procUtil.MessageLog)
+	volume, err := NewVolume(procUtil.Config.TarDirectory, procUtil.MessageLog)
 	if err != nil {
 		message := fmt.Sprintf("Exiting. Cannot init Volume object: %v", err)
 		fmt.Fprintln(os.Stderr, message)
@@ -79,7 +77,7 @@ func (procUtil *ProcessUtil) initVolume() {
 
 // Initializes a reusable S3 client.
 func (procUtil *ProcessUtil) initS3Client() {
-	s3Client, err := bagman.NewS3Client(aws.USEast)
+	s3Client, err := NewS3Client(aws.USEast)
 	if err != nil {
 		message := fmt.Sprintf("Exiting. Cannot init S3 client: %v", err)
 		fmt.Fprintln(os.Stderr, message)
@@ -90,7 +88,7 @@ func (procUtil *ProcessUtil) initS3Client() {
 
 // Initializes a reusable Fluctus client.
 func (procUtil *ProcessUtil) initFluctusClient() {
-	fluctusClient, err := client.New(
+	fluctusClient, err := NewFluctusClient(
 		procUtil.Config.FluctusURL,
 		procUtil.Config.FluctusAPIVersion,
 		os.Getenv("FLUCTUS_API_USER"),
@@ -201,7 +199,7 @@ accept the message and will be processing it twice. This causes
 problems because the first working will be deleting files while the
 second working is trying to run checksums on them.
 */
-func (procUtil *ProcessUtil) BagAlreadyInProgress(s3File *bagman.S3File, currentMessageId string) (bool) {
+func (procUtil *ProcessUtil) BagAlreadyInProgress(s3File *S3File, currentMessageId string) (bool) {
 	// Bag is in process if it's in the registry.
 	messageId := procUtil.MessageIdFor(s3File.BagName())
 	if messageId == currentMessageId {
@@ -214,5 +212,5 @@ func (procUtil *ProcessUtil) BagAlreadyInProgress(s3File *bagman.S3File, current
 	unpackDir := filepath.Join(procUtil.Config.TarDirectory, bagDir)
 
 	// Bag is in process if we have its files on disk.
-	return bagman.FileExists(unpackDir) || bagman.FileExists(tarFilePath)
+	return FileExists(unpackDir) || FileExists(tarFilePath)
 }

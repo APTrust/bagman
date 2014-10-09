@@ -1,14 +1,11 @@
 // Integration tests for the IngestHelper.
 // These tests require access to S3 and Fluctus, but not NSQ.
-package ingesthelper_test
+package bagman_test
 
 import (
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/ingesthelper"
-	"github.com/APTrust/bagman/processutil"
+	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
-	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"io/ioutil"
 	"os"
@@ -18,9 +15,7 @@ import (
 	"testing"
 )
 
-var fluctusUrl string = "http://localhost:3000"
 var skipMessagePrinted bool = false
-var config *bagman.Config = nil
 
 func fluctusAvailable() bool {
 	_, err := http.Get(fluctusUrl)
@@ -28,11 +23,6 @@ func fluctusAvailable() bool {
 		return false
 	}
 	return true
-}
-
-func awsEnvAvailable() (envVarsOk bool) {
-	_, err := aws.EnvAuth()
-	return err == nil
 }
 
 func environmentReady() (bool) {
@@ -70,25 +60,24 @@ func getS3File() (*bagman.S3File) {
 	}
 }
 
-func getProcessUtil() (*processutil.ProcessUtil) {
+func getProcessUtil() (*bagman.ProcessUtil) {
 	makeTestDir()
 	testConfig := "test"
-	return processutil.NewProcessUtil(&testConfig)
+	return bagman.NewProcessUtil(&testConfig)
 }
 
-func getIngestHelper() (*ingesthelper.IngestHelper) {
+func getIngestHelper() (*bagman.IngestHelper) {
 	msgId := nsq.MessageID{'1', '0','1', '0','1', '0','1', '0','1',
 		'0','1', '0','1', '0','1', '0',}
 	body := []byte{'h', 'e', 'l', 'l', 'o'}
 	nsqMessage := nsq.NewMessage(msgId, body)
-	return ingesthelper.NewIngestHelper(getProcessUtil(), nsqMessage, getS3File())
+	return bagman.NewIngestHelper(getProcessUtil(), nsqMessage, getS3File())
 }
 
-func getConfig() (*bagman.Config) {
-	if config == nil {
+func getConfig() (bagman.Config) {
+	if &config == nil {
 		requestedConfig := "test"
-		conf := bagman.LoadRequestedConfig(&requestedConfig)
-		config = &conf
+		config = bagman.LoadRequestedConfig(&requestedConfig)
 	}
 	return config
 }
@@ -128,7 +117,7 @@ func TestBagNeedsProcessing(t *testing.T) {
 	}
 	processUtil := getProcessUtil()
 	s3File := getS3File()
-	if ingesthelper.BagNeedsProcessing(s3File, processUtil) == true {
+	if bagman.BagNeedsProcessing(s3File, processUtil) == true {
 		t.Error("BagNeedsProcessing should have returned false")
 	}
 }
@@ -334,7 +323,7 @@ func verifyFetchResult(t *testing.T, fetchResult *bagman.FetchResult) {
 
 // Do a high-level check. Other unit tests cover the details
 func verifyBagReadResult(t *testing.T, bagReadResult *bagman.BagReadResult) {
-	if !strings.HasSuffix(bagReadResult.Path, "/bagman/ingesthelper/tmp/ncsu.1840.16-2928") {
+	if !strings.HasSuffix(bagReadResult.Path, "/bagman/bagman/tmp/ncsu.1840.16-2928") {
 		t.Errorf("Wrong BagReadResult.Path: '%s'", bagReadResult.Path)
 	}
 	verifyResult(t, "ErrorMessage", "", bagReadResult.ErrorMessage)

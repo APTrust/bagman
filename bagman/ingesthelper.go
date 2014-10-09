@@ -1,12 +1,10 @@
-package ingesthelper
+package bagman
 
 import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/processutil"
 	"github.com/bitly/go-nsq"
 	"github.com/crowdmob/goamz/s3"
 	"os"
@@ -18,14 +16,14 @@ import (
 )
 
 type IngestHelper struct {
-	ProcUtil        *processutil.ProcessUtil
-	Result          *bagman.ProcessResult
+	ProcUtil        *ProcessUtil
+	Result          *ProcessResult
 	bytesInS3       int64
 	bytesProcessed  int64
 }
 
 // Returns a new IngestHelper
-func NewIngestHelper(procUtil *processutil.ProcessUtil, message *nsq.Message, s3File *bagman.S3File) (*IngestHelper){
+func NewIngestHelper(procUtil *ProcessUtil, message *nsq.Message, s3File *S3File) (*IngestHelper){
 	return &IngestHelper{
 		ProcUtil: procUtil,
 		Result: newResult(message, s3File),
@@ -36,8 +34,8 @@ func NewIngestHelper(procUtil *processutil.ProcessUtil, message *nsq.Message, s3
 
 // Returns a new ProcessResult for the specified NSQ message
 // and S3 bag (tar file)
-func newResult(message *nsq.Message, s3File *bagman.S3File) (*bagman.ProcessResult) {
-	return &bagman.ProcessResult{
+func newResult(message *nsq.Message, s3File *S3File) (*ProcessResult) {
+	return &ProcessResult{
 		NsqMessage:    message,
 		S3File:        s3File,
 		ErrorMessage:  "",
@@ -56,8 +54,8 @@ func newResult(message *nsq.Message, s3File *bagman.S3File) (*bagman.ProcessResu
 // queue when the queue is long and the reader refills it hourly.
 // If we get rid of NSQ and read directly from the
 // database, we can get rid of this.
-func BagNeedsProcessing(s3File *bagman.S3File, procUtil *processutil.ProcessUtil) bool {
-	bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
+func BagNeedsProcessing(s3File *S3File, procUtil *ProcessUtil) bool {
+	bagDate, err := time.Parse(S3DateFormat, s3File.Key.LastModified)
 	if err != nil {
 		procUtil.MessageLog.Error("Cannot parse S3File mod date '%s'. "+
 			"File %s will be re-processed.",
@@ -89,7 +87,7 @@ func (helper *IngestHelper) FailedAndNoMoreRetries() (bool) {
 
 // Returns an OPEN reader for the specified GenericFile (reading it from
 // the local disk). Caller is responsible for closing the reader.
-func (helper *IngestHelper) GetFileReader(gf *bagman.GenericFile) (*os.File, string, error) {
+func (helper *IngestHelper) GetFileReader(gf *GenericFile) (*os.File, string, error) {
 	re := regexp.MustCompile("\\.tar$")
 	bagDir := re.ReplaceAllString(helper.Result.S3File.Key.Key, "")
 	file := filepath.Join(helper.ProcUtil.Config.TarDirectory, bagDir, gf.Path)
@@ -113,13 +111,13 @@ func (helper *IngestHelper) GetFileReader(gf *bagman.GenericFile) (*os.File, str
 	return reader, absPath, nil
 }
 
-func (helper *IngestHelper) GetS3Options(gf *bagman.GenericFile) (*s3.Options, error) {
+func (helper *IngestHelper) GetS3Options(gf *GenericFile) (*s3.Options, error) {
 	// Prepare metadata for save to S3
-	bagName, err := bagman.CleanBagName(helper.Result.S3File.Key.Key)
+	bagName, err := CleanBagName(helper.Result.S3File.Key.Key)
 	if err != nil {
 		return nil, err
 	}
-	instDomain := bagman.OwnerOf(helper.Result.S3File.BucketName)
+	instDomain := OwnerOf(helper.Result.S3File.BucketName)
 	s3Metadata := make(map[string][]string)
 	s3Metadata["md5"] = []string{gf.Md5}
 	s3Metadata["institution"] = []string{instDomain}
@@ -146,8 +144,8 @@ func (helper *IngestHelper) GetS3Options(gf *bagman.GenericFile) (*s3.Options, e
 // about whether it was successfully unpacked, valid and complete.
 func (helper *IngestHelper) ProcessBagFile() {
 	helper.Result.Stage = "Unpack"
-	instDomain := bagman.OwnerOf(helper.Result.S3File.BucketName)
-	helper.Result.TarResult = bagman.Untar(helper.Result.FetchResult.LocalTarFile,
+	instDomain := OwnerOf(helper.Result.S3File.BucketName)
+	helper.Result.TarResult = Untar(helper.Result.FetchResult.LocalTarFile,
 		instDomain, helper.Result.S3File.BagName())
 	if helper.Result.TarResult.ErrorMessage != "" {
 		helper.Result.ErrorMessage = helper.Result.TarResult.ErrorMessage
@@ -157,7 +155,7 @@ func (helper *IngestHelper) ProcessBagFile() {
 		helper.Result.Retry = false
 	} else {
 		helper.Result.Stage = "Validate"
-		helper.Result.BagReadResult = bagman.ReadBag(helper.Result.TarResult.OutputDir)
+		helper.Result.BagReadResult = ReadBag(helper.Result.TarResult.OutputDir)
 		if helper.Result.BagReadResult.ErrorMessage != "" {
 			helper.Result.ErrorMessage = helper.Result.BagReadResult.ErrorMessage
 			// Something was wrong with this bag. Bad checksum,
@@ -211,7 +209,7 @@ func (helper *IngestHelper) LogResult() {
 // This function merges data from Fedora into our result, so we can know
 // whether any of the generic files have been updated.
 func (helper *IngestHelper) MergeFedoraRecord() (error) {
-	intelObj, err := helper.Result.IntellectualObject()
+	intelObj, err := helper.Result.FluctusObject()
 	if err != nil {
 		return err
 	}
@@ -223,7 +221,7 @@ func (helper *IngestHelper) MergeFedoraRecord() (error) {
 		return detailedError
 	}
 	if fedoraObj != nil {
-		helper.Result.TarResult.MergeExistingFiles(fedoraObj.GenericFiles)
+		helper.Result.TarResult.MergeExistingFiles(fedoraObj.FluctusFiles)
 	}
 	return nil
 }
@@ -232,7 +230,7 @@ func (helper *IngestHelper) MergeFedoraRecord() (error) {
 // unpacked from it. Param file is the path the tar file.
 func (helper *IngestHelper) DeleteLocalFiles() (errors []error) {
 	errors = make([]error, 0)
-	if bagman.FileExists(helper.Result.FetchResult.LocalTarFile) {
+	if FileExists(helper.Result.FetchResult.LocalTarFile) {
 		err := os.Remove(helper.Result.FetchResult.LocalTarFile)
 		if err != nil {
 			errors = append(errors, err)
@@ -301,7 +299,7 @@ func (helper *IngestHelper) SaveGenericFiles() (error) {
 // Saves a file to the preservation bucket.
 // Returns the url of the file that was saved. Returns an error if there
 // was a problem.
-func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
+func (helper *IngestHelper) SaveFile(gf *GenericFile) (string, error) {
 	// Create the S3 metadata to save with the file
 	options, err := helper.GetS3Options(gf)
 	if err != nil {
@@ -366,8 +364,8 @@ func (helper *IngestHelper) SaveFile(gf *bagman.GenericFile) (string, error) {
 
 // Returns the S# URL of the file that was copied to
 // the preservation bucket, or an error.
-func (helper *IngestHelper) CopyToPreservationBucket(gf *bagman.GenericFile, reader *os.File, options *s3.Options) (string, error) {
-	if gf.Size < bagman.S3_LARGE_FILE {
+func (helper *IngestHelper) CopyToPreservationBucket(gf *GenericFile, reader *os.File, options *s3.Options) (string, error) {
+	if gf.Size < S3_LARGE_FILE {
 		return helper.ProcUtil.S3Client.SaveToS3(
 			helper.ProcUtil.Config.PreservationBucket,
 			gf.Uuid,
@@ -386,11 +384,11 @@ func (helper *IngestHelper) CopyToPreservationBucket(gf *bagman.GenericFile, rea
 			reader,
 			gf.Size,
 			*options,
-			bagman.S3_CHUNK_SIZE)
+			S3_CHUNK_SIZE)
 	}
 }
 
-func (helper *IngestHelper) UpdateFluctusStatus(stage bagman.StageType, status bagman.StatusType) {
+func (helper *IngestHelper) UpdateFluctusStatus(stage StageType, status StatusType) {
 	helper.ProcUtil.MessageLog.Debug("Setting status for %s to %s/%s in Fluctus",
 		helper.Result.S3File.Key.Key, stage, status)
 	ingestStatus := helper.Result.IngestStatus()

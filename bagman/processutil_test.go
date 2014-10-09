@@ -1,9 +1,8 @@
-package processutil_test
+package bagman_test
 
 import (
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/processutil"
+	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"github.com/crowdmob/goamz/s3"
 	"path"
@@ -26,7 +25,7 @@ func deleteTestLogs(config bagman.Config) {
 }
 
 func TestNewProcessUtil(t *testing.T) {
-	procUtil := processutil.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 	if procUtil.Config.ActiveConfig != "test" {
 		t.Errorf("NewProcessUtil did not load the test config")
@@ -55,7 +54,7 @@ func TestNewProcessUtil(t *testing.T) {
 }
 
 func TestIncrementSucceededAndFailed(t *testing.T) {
-	procUtil := processutil.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 	initialValue := procUtil.Succeeded()
 	for i:=0; i < 3; i++ {
@@ -74,7 +73,7 @@ func TestIncrementSucceededAndFailed(t *testing.T) {
 }
 
 func TestMessageIdString(t *testing.T) {
-	procUtil := processutil.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 
 	messageId := nsq.MessageID{'s', 'i', 'x', 't', 'e', 'e', 'n', 's', 'i', 'x', 't', 'e', 'e', 'n', '1', '6'}
@@ -85,7 +84,7 @@ func TestMessageIdString(t *testing.T) {
 }
 
 func TestSyncMapFunctions(t *testing.T) {
-	procUtil := processutil.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 
 	messageId1 := nsq.MessageID{'1', '2', '3', '4', '5', '6', '7', '8', '9', '0', 'a', 's', 'd', 'f', 'g', 'h'}
@@ -133,7 +132,7 @@ func TestSyncMapFunctions(t *testing.T) {
 }
 
 func TestBagAlreadyInProgress(t *testing.T) {
-	procUtil := processutil.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig)
 	defer deleteTestLogs(procUtil.Config)
 
 	s3File := &bagman.S3File {
