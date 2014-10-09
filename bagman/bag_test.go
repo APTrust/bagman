@@ -3,7 +3,7 @@ package bagman_test
 import (
 	"errors"
 	"fmt"
-	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/bagman"
 	"io/ioutil"
 	"os"
 	"path/filepath"

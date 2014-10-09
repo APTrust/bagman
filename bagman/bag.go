@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/APTrust/bagins"
-	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/nu7hatch/gouuid"
 	"github.com/rakyll/magicmime"
 	"io"
@@ -240,7 +239,7 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 	// Make sure access rights are valid, or Fluctus will reject
 	// this data when we try to register it.
 	accessValid := false
-	for _, value := range models.AccessRights {
+	for _, value := range AccessRights {
 		if accessRights == value {
 			accessValid = true
 		}
