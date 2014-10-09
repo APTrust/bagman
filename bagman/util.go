@@ -3,7 +3,6 @@ package bagman
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/APTrust/bagman/fluctus/models"
 	"github.com/op/go-logging"
 	"io/ioutil"
 	"os"
@@ -101,12 +100,12 @@ func LoadResult(filename string) (result *ProcessResult, err error) {
 
 // Loads an IntellectualObject fixture (a JSON file) from
 // the testdata directory for testing.
-func LoadIntelObjFixture(filename string) (*models.IntellectualObject, error) {
+func LoadIntelObjFixture(filename string) (*FluctusObject, error) {
 	data, err := LoadRelativeFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	intelObj := &models.IntellectualObject{}
+	intelObj := &FluctusObject{}
 	err = json.Unmarshal(data, intelObj)
 	if err != nil {
 		return nil, err
