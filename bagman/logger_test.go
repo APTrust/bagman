@@ -10,7 +10,6 @@ import (
 	"strings"
 )
 
-var config bagman.Config
 
 func setupLoggerTest() {
 	requestedConfig := "test"

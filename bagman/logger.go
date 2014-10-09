@@ -19,6 +19,10 @@ func InitLogger(config Config) *logging.Logger {
 	processName := path.Base(os.Args[0])
 	filename := fmt.Sprintf("%s.log", processName)
 	filename = filepath.Join(config.AbsLogDirectory(), filename)
+	if config.LogDirectory != "" {
+		// If this fails, getRotatingFileWriter will panic in just a second
+		_ = os.Mkdir(config.LogDirectory, 0755)
+	}
 	writer := getRotatingFileWriter(filename)
 
 	log := logging.MustGetLogger(processName)

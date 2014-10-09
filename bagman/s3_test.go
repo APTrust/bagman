@@ -16,13 +16,6 @@ var s3SkipMessagePrinted bool = false
 var testBucket string = "aptrust.test"
 var testPreservationBucket string = "aptrust.test.preservation"
 
-// Returns true if the AWS environment variables
-// AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY
-// are set, false if not.
-func awsEnvAvailable() (envVarsOk bool) {
-	_, err := aws.EnvAuth()
-	return err == nil
-}
 
 // This prints a message saying S3 integration tests
 // will be skipped.

@@ -14,7 +14,6 @@ import (
 	"time"
 )
 
-var fluctusUrl string = "http://localhost:3000"
 var fluctusAPIVersion string = "v1"
 var fluctusSkipMessagePrinted bool = false
 
