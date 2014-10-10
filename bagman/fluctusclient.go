@@ -61,21 +61,15 @@ func (client *FluctusClient) CacheInstitutions() error {
 		client.logger.Error("Error building institutions request in Fluctus client:", err.Error())
 		return err
 	}
-	response, err := client.httpClient.Do(request)
+
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		client.logger.Error("Error getting list of institutions from Fluctus", err.Error())
 		return err
 	}
-
 	if response.StatusCode != 200 {
 		return fmt.Errorf("Fluctus replied to request for institutions list with status code %d",
 			response.StatusCode)
-	}
-
-	// Read the json response
-	body, err := readResponse(response.Body)
-	if err != nil {
-		return err
 	}
 
 	// Build and return the data structure
@@ -151,16 +145,12 @@ func (client *FluctusClient) GetBagStatus(etag, name string, bag_date time.Time)
 func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err error) {
 	reviewedUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/get_reviewed.json",
 		client.apiVersion))
+
 	request, err := client.NewJsonRequest("GET", reviewedUrl, nil)
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, _, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -221,12 +211,7 @@ func (client *FluctusClient) UpdateProcessedItem(status *ProcessStatus) (err err
 }
 
 func (client *FluctusClient) doStatusRequest(request *http.Request, expectedStatus int) (status *ProcessStatus, err error) {
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -265,12 +250,7 @@ func (client *FluctusClient) BulkStatusGet(since time.Time) (statusRecords []*Pr
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -355,12 +335,7 @@ func (client *FluctusClient) getStatusItemsForQueue(itemType, identifier string)
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -402,12 +377,7 @@ func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRel
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -452,12 +422,7 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -516,12 +481,7 @@ func (client *FluctusClient) IntellectualObjectCreate(obj *IntellectualObject, m
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -569,12 +529,7 @@ func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includ
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -620,12 +575,7 @@ func (client *FluctusClient) GenericFileSave(objId string, gf *GenericFile) (new
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -690,12 +640,7 @@ func (client *FluctusClient) PremisEventSave(objId, objType string, event *Premi
 	if err != nil {
 		return nil, err
 	}
-	response, err := client.httpClient.Do(request)
-	if err != nil {
-		return nil, err
-	}
-
-	body, err := readResponse(response.Body)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -780,14 +725,9 @@ func (client *FluctusClient) RestorationStatusSet(objectIdentifier string, stage
 	if err != nil {
 		return fmt.Errorf("Could not build POST request for %s: %v", objUrl, err)
 	}
-	response, err := client.httpClient.Do(request)
+	body, response, err := client.doRequest(request)
 	if err != nil {
 		return fmt.Errorf("Error executing POST request for %s: %v", objUrl, err)
-	}
-
-	body, err := readResponse(response.Body)
-	if err != nil {
-		return err
 	}
 
 	// Check for error response
@@ -843,4 +783,16 @@ func readResponse(body io.ReadCloser) (data []byte, err error) {
 		body.Close()
 	}
 	return data, err
+}
+
+func (client *FluctusClient) doRequest(request *http.Request) (data []byte, response *http.Response, err error) {
+	response, err = client.httpClient.Do(request)
+	if err != nil {
+		return nil, nil, err
+	}
+	data, err = readResponse(response.Body)
+	if err != nil {
+		return nil, response, err
+	}
+	return data, response, err
 }

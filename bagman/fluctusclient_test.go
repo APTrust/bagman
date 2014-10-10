@@ -546,6 +546,8 @@ func TestRestorationItemsGet(t *testing.T) {
 		t.Errorf("Not enough records in Fluctus to test RestorationItemsGet")
 		return
 	}
+	// TODO: This causes a problem because it REPLACES the original
+	// ingest record in Fluctus. It should ADD a NEW restore record.
 	records[0].Action = bagman.ActionRestore
 	records[0].Stage = bagman.StageRequested
 	records[0].Status = bagman.StatusPending
@@ -626,6 +628,8 @@ func TestDeletionItemsGet(t *testing.T) {
 		t.Errorf("Not enough records in Fluctus to test DeletionItemsGet")
 		return
 	}
+	// TODO: This causes a problem because it REPLACES the original
+	// ingest record in Fluctus. It should ADD a NEW delete record.
 	records[0].Action = bagman.ActionDelete
 	records[0].Stage = bagman.StageRequested
 	records[0].Status = bagman.StatusPending
