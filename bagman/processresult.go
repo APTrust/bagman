@@ -27,11 +27,11 @@ type ProcessResult struct {
 	Retry         bool
 }
 
-// FluctusObject returns an instance of FluctusObject
+// IntellectualObject returns an instance of IntellectualObject
 // which describes what was unpacked from the bag. The IntellectualObject
 // structure matches Fluctus' IntellectualObject model, and can be sent
 // directly to Fluctus for recording.
-func (result *ProcessResult) FluctusObject() (obj *FluctusObject, err error) {
+func (result *ProcessResult) IntellectualObject() (obj *IntellectualObject, err error) {
 	accessRights := result.BagReadResult.TagValue("Access")
 	if accessRights == "" {
 		accessRights = result.BagReadResult.TagValue("Rights")
@@ -57,7 +57,7 @@ func (result *ProcessResult) FluctusObject() (obj *FluctusObject, err error) {
 	if err != nil {
 		return nil, err
 	}
-	obj = &FluctusObject{
+	obj = &IntellectualObject{
 		InstitutionId: institution.BriefName,
 		Title:         result.BagReadResult.TagValue("Title"),
 		Description:   result.BagReadResult.TagValue("Description"),

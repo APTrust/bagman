@@ -100,12 +100,12 @@ func LoadResult(filename string) (result *ProcessResult, err error) {
 
 // Loads an IntellectualObject fixture (a JSON file) from
 // the testdata directory for testing.
-func LoadIntelObjFixture(filename string) (*FluctusObject, error) {
+func LoadIntelObjFixture(filename string) (*IntellectualObject, error) {
 	data, err := LoadRelativeFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	intelObj := &FluctusObject{}
+	intelObj := &IntellectualObject{}
 	err = json.Unmarshal(data, intelObj)
 	if err != nil {
 		return nil, err

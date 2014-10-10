@@ -12,12 +12,12 @@ func getFedoraResult(t *testing.T) *bagman.FedoraResult {
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	fluctusObject, err := result.FluctusObject()
+	intelObj, err := result.IntellectualObject()
 	if err != nil {
 		t.Error(err)
 	}
 	genericFilePaths := result.TarResult.FilePaths()
-	return bagman.NewFedoraResult(fluctusObject.Identifier, genericFilePaths)
+	return bagman.NewFedoraResult(intelObj.Identifier, genericFilePaths)
 }
 
 func TestFedoraResultAddRecord(t *testing.T) {

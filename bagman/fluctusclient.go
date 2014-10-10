@@ -412,7 +412,7 @@ func (client *FluctusClient) getStatusItemsForQueue(itemType, identifier string)
 // the IntellectualObject. If includeRelations is true, this returns
 // the IntellectualObject with all of its GenericFiles and Events.
 // Param identifier must have slashes replaced with %2F or you'll get a 404!
-func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRelations bool) (*FluctusObject, error) {
+func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRelations bool) (*IntellectualObject, error) {
 	queryString := ""
 	if includeRelations == true {
 		queryString = "include_relations=true"
@@ -445,7 +445,7 @@ func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRel
 	}
 
 	// Build and return the data structure
-	obj := &FluctusObject{}
+	obj := &IntellectualObject{}
 	err = json.Unmarshal(body, obj)
 	if err != nil {
 		return nil, err
@@ -455,7 +455,7 @@ func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRel
 
 // Updates an existing IntellectualObject in fluctus.
 // Returns the IntellectualObject.
-func (client *FluctusClient) IntellectualObjectUpdate(obj *FluctusObject) (newObj *FluctusObject, err error) {
+func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (newObj *IntellectualObject, err error) {
 	if obj == nil {
 		return nil, fmt.Errorf("Param obj cannot be nil")
 	}
@@ -512,7 +512,7 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *FluctusObject) (newOb
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		newObj = &FluctusObject{}
+		newObj = &IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
 			return nil, err
@@ -523,7 +523,7 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *FluctusObject) (newOb
 	}
 }
 
-func (client *FluctusClient) IntellectualObjectCreate(obj *FluctusObject, maxGenericFiles int) (newObj *FluctusObject, err error) {
+func (client *FluctusClient) IntellectualObjectCreate(obj *IntellectualObject, maxGenericFiles int) (newObj *IntellectualObject, err error) {
 	if obj == nil {
 		return nil, fmt.Errorf("Param obj cannot be nil")
 	}
@@ -580,7 +580,7 @@ func (client *FluctusClient) IntellectualObjectCreate(obj *FluctusObject, maxGen
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		newObj = &FluctusObject{}
+		newObj = &IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
 			return nil, err

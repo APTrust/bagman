@@ -118,13 +118,13 @@ func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedSt
 	}
 }
 
-func TestFluctusObject(t *testing.T) {
+func TestIntellectualObject(t *testing.T) {
 	filepath := filepath.Join("testdata", "result_good.json")
 	result, err := bagman.LoadResult(filepath)
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	obj, err := result.FluctusObject()
+	obj, err := result.IntellectualObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}
@@ -151,7 +151,7 @@ func TestFluctusObject(t *testing.T) {
 
 	// Special test for Identifier
 	result.S3File.Key.Key = "ncsu.1840.16-2928-blah.b12.of79.tar"
-	obj, err = result.FluctusObject()
+	obj, err = result.IntellectualObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}

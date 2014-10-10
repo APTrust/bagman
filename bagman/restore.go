@@ -82,7 +82,7 @@ Here's a fuller example:
 */
 type BagRestorer struct {
 	// The intellectual object we'll be restoring.
-	IntellectualObject  *FluctusObject
+	IntellectualObject  *IntellectualObject
 	// s3Client lets us publish restored bags to S3.
 	s3Client            *S3Client
 	// workingDir is the root directory under which
@@ -109,7 +109,7 @@ type BagRestorer struct {
 // Creates a new bag restorer from the intellectual object.
 // Param working dir is the path to the directory into which
 // files should be downloaded and the bag should be built.
-func NewBagRestorer(intelObj *FluctusObject, workingDir string) (*BagRestorer, error) {
+func NewBagRestorer(intelObj *IntellectualObject, workingDir string) (*BagRestorer, error) {
 	if intelObj == nil {
 		return nil, fmt.Errorf("IntellectualObject cannot be nil")
 	}

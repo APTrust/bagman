@@ -9,7 +9,7 @@ import (
 )
 
 /*
-FluctusObject is Fluctus' version of an IntellectualObject.
+IntellectualObject is Fluctus' version of an IntellectualObject.
 It belongs to an Institution and consists of one or more
 FluctusFiles and a number of events.
 
@@ -25,7 +25,7 @@ this id? APTrust or the owner?)
 Access indicate who can access the object. Valid values are
 consortial, institution and restricted.
 */
-type FluctusObject struct {
+type IntellectualObject struct {
 	Id            string         `json:"id"`
 	Identifier    string         `json:"identifier"`
 	InstitutionId string         `json:"institution_id"`
@@ -40,7 +40,7 @@ type FluctusObject struct {
 // files in this object. The object's bag size will be slightly
 // larger than this, because it will include a manifest, tag
 // files and tar header.
-func (obj *FluctusObject) TotalFileSize() (int64) {
+func (obj *IntellectualObject) TotalFileSize() (int64) {
 	total := int64(0)
 	for _, fluctusFile := range obj.FluctusFiles {
 		total += fluctusFile.Size
@@ -50,7 +50,7 @@ func (obj *FluctusObject) TotalFileSize() (int64) {
 
 // AccessValid returns true or false to indicate whether the
 // structure's Access property contains a valid value.
-func (obj *FluctusObject) AccessValid() bool {
+func (obj *IntellectualObject) AccessValid() bool {
 	lcAccess := strings.ToLower(obj.Access)
 	for _, value := range AccessRights {
 		if value == lcAccess {
@@ -73,7 +73,7 @@ func (obj *FluctusObject) AccessValid() bool {
 // JSON for the initial create request. But some Intellectual Objects
 // contain more than 10,000 files, and if we send all of this data
 // at once to Fluctus, it crashes.
-func (obj *FluctusObject) SerializeForCreate(maxGenericFiles int) ([]byte, error) {
+func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, error) {
 	fileCount := len(obj.FluctusFiles)
 	if maxGenericFiles > 0 && maxGenericFiles < fileCount {
 		fileCount = maxGenericFiles
@@ -123,7 +123,7 @@ func (obj *FluctusObject) SerializeForCreate(maxGenericFiles int) ([]byte, error
 	return jsonBytes, nil
 }
 
-func (obj *FluctusObject) CreateIngestEvent() (*PremisEvent, error) {
+func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent, error) {
 	eventId, err := uuid.NewV4()
 	if err != nil {
 		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
@@ -141,7 +141,7 @@ func (obj *FluctusObject) CreateIngestEvent() (*PremisEvent, error) {
 	}, nil
 }
 
-func (obj *FluctusObject) CreateIdEvent() (*PremisEvent, error) {
+func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
 	eventId, err := uuid.NewV4()
 	if err != nil {
 		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
@@ -159,10 +159,10 @@ func (obj *FluctusObject) CreateIdEvent() (*PremisEvent, error) {
 	}, nil
 }
 
-// Serialize the subset of FluctusObject data that fluctus
+// Serialize the subset of IntellectualObject data that fluctus
 // will accept. This is for post/put, where essential info, such
 // as institution id and/or object id will be in the URL.
-func (obj *FluctusObject) SerializeForFluctus() ([]byte, error) {
+func (obj *IntellectualObject) SerializeForFluctus() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"identifier":  obj.Identifier,
 		"title":       obj.Title,

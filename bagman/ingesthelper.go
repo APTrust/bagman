@@ -209,7 +209,7 @@ func (helper *IngestHelper) LogResult() {
 // This function merges data from Fedora into our result, so we can know
 // whether any of the generic files have been updated.
 func (helper *IngestHelper) MergeFedoraRecord() (error) {
-	intelObj, err := helper.Result.FluctusObject()
+	intelObj, err := helper.Result.IntellectualObject()
 	if err != nil {
 		return err
 	}

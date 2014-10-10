@@ -64,7 +64,7 @@ func loadTestResult(t *testing.T) error {
 		return err
 	}
 	// Get the intellectual object from the processing result
-	obj, err := result.FluctusObject()
+	obj, err := result.IntellectualObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestIntellectualObjectCreate(t *testing.T) {
 		return
 	}
 	// Get the intellectual object from the processing result
-	obj, err := result.FluctusObject()
+	obj, err := result.IntellectualObject()
 	if err != nil {
 		t.Errorf("Error creating intellectual object from result: %v", err)
 		return
