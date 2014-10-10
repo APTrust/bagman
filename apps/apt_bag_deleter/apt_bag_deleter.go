@@ -21,8 +21,8 @@ func main() {
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
-	bagCleanup := workers.NewBagCleanup(procUtil)
-	consumer.SetHandler(bagCleanup)
+	bagDeleter := workers.NewBagDeleter(procUtil)
+	consumer.SetHandler(bagDeleter)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
