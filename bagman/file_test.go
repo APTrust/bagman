@@ -8,13 +8,13 @@ import (
 	"time"
 )
 
-func loadGenericFile() (*bagman.GenericFile, error) {
+func loadGenericFile() (*bagman.File, error) {
 	filepath := filepath.Join("testdata", "result_good.json")
 	result, err := bagman.LoadResult(filepath)
 	if err != nil {
 		return nil, fmt.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	return result.TarResult.GenericFiles[0], nil
+	return result.TarResult.Files[0], nil
 }
 
 

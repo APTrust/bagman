@@ -42,7 +42,7 @@
             "manifest-md5.txt",
             "tagmanifest-md5.txt"
         ],
-        "GenericFiles": [
+        "Files": [
             {
                 "Path": "data/metadata.xml",
                 "Size": 5105,

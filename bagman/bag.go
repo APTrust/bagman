@@ -111,12 +111,12 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 		// a warning. The bag library does not deal with items like symlinks.
 		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
 			if strings.Contains(header.Name, "data/") {
-				genericFile := buildGenericFile(tarReader, filepath.Dir(absInputFile), header.Name,
+				genericFile := buildFile(tarReader, filepath.Dir(absInputFile), header.Name,
 					header.Size, header.ModTime)
 				cleanBagName, _ := CleanBagName(bagName)
 				genericFile.Identifier = fmt.Sprintf("%s/%s", cleanBagName, genericFile.Path)
 				genericFile.IdentifierAssigned = time.Now()
-				tarResult.GenericFiles = append(tarResult.GenericFiles, genericFile)
+				tarResult.Files = append(tarResult.Files, genericFile)
 			} else {
 				err = saveFile(outputPath, tarReader)
 				if err != nil {
@@ -271,11 +271,11 @@ func saveFile(destination string, tarReader *tar.Reader) error {
 	return nil
 }
 
-// buildGenericFile saves a data file from the tar archive to disk,
+// buildFile saves a data file from the tar archive to disk,
 // then returns a struct with data we'll need to construct the
 // GenericFile object in Fedora later.
-func buildGenericFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (gf *GenericFile) {
-	gf = NewGenericFile()
+func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (gf *File) {
+	gf = NewFile()
 	gf.Path = fileName[strings.Index(fileName, "/data/")+1 : len(fileName)]
 	absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
 	if err != nil {

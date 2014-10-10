@@ -85,9 +85,9 @@ func (helper *IngestHelper) FailedAndNoMoreRetries() (bool) {
 		helper.Result.NsqMessage.Attempts >= uint16(helper.ProcUtil.Config.MaxStoreAttempts))
 }
 
-// Returns an OPEN reader for the specified GenericFile (reading it from
+// Returns an OPEN reader for the specified File (reading it from
 // the local disk). Caller is responsible for closing the reader.
-func (helper *IngestHelper) GetFileReader(gf *GenericFile) (*os.File, string, error) {
+func (helper *IngestHelper) GetFileReader(gf *File) (*os.File, string, error) {
 	re := regexp.MustCompile("\\.tar$")
 	bagDir := re.ReplaceAllString(helper.Result.S3File.Key.Key, "")
 	file := filepath.Join(helper.ProcUtil.Config.TarDirectory, bagDir, gf.Path)
@@ -111,7 +111,7 @@ func (helper *IngestHelper) GetFileReader(gf *GenericFile) (*os.File, string, er
 	return reader, absPath, nil
 }
 
-func (helper *IngestHelper) GetS3Options(gf *GenericFile) (*s3.Options, error) {
+func (helper *IngestHelper) GetS3Options(gf *File) (*s3.Options, error) {
 	// Prepare metadata for save to S3
 	bagName, err := CleanBagName(helper.Result.S3File.Key.Key)
 	if err != nil {
@@ -162,8 +162,8 @@ func (helper *IngestHelper) ProcessBagFile() {
 			// missing file, etc. Don't reprocess it.
 			helper.Result.Retry = false
 		} else {
-			for i := range helper.Result.TarResult.GenericFiles {
-				gf := helper.Result.TarResult.GenericFiles[i]
+			for i := range helper.Result.TarResult.Files {
+				gf := helper.Result.TarResult.Files[i]
 				gf.Md5Verified = time.Now()
 			}
 		}
@@ -281,8 +281,8 @@ func (helper *IngestHelper) SaveGenericFiles() (error) {
 	helper.ProcUtil.MessageLog.Info("Storing %s", result.S3File.Key.Key)
 
 	// Copy each generic file to S3
-	for i := range result.TarResult.GenericFiles {
-		gf := result.TarResult.GenericFiles[i]
+	for i := range result.TarResult.Files {
+		gf := result.TarResult.Files[i]
 		if gf.NeedsSave == false {
 			helper.ProcUtil.MessageLog.Info("Not saving %s to S3, because it has not " +
 				"changed since it was last saved.", gf.Identifier)
@@ -299,7 +299,7 @@ func (helper *IngestHelper) SaveGenericFiles() (error) {
 // Saves a file to the preservation bucket.
 // Returns the url of the file that was saved. Returns an error if there
 // was a problem.
-func (helper *IngestHelper) SaveFile(gf *GenericFile) (string, error) {
+func (helper *IngestHelper) SaveFile(gf *File) (string, error) {
 	// Create the S3 metadata to save with the file
 	options, err := helper.GetS3Options(gf)
 	if err != nil {
@@ -364,7 +364,7 @@ func (helper *IngestHelper) SaveFile(gf *GenericFile) (string, error) {
 
 // Returns the S# URL of the file that was copied to
 // the preservation bucket, or an error.
-func (helper *IngestHelper) CopyToPreservationBucket(gf *GenericFile, reader *os.File, options *s3.Options) (string, error) {
+func (helper *IngestHelper) CopyToPreservationBucket(gf *File, reader *os.File, options *s3.Options) (string, error) {
 	if gf.Size < S3_LARGE_FILE {
 		return helper.ProcUtil.S3Client.SaveToS3(
 			helper.ProcUtil.Config.PreservationBucket,

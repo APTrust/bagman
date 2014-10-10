@@ -98,7 +98,7 @@ func deleteLocalFiles() {
 }
 
 // Delete the GenericFiles that our tests stored in aptrust.test.preservation.
-func deleteS3Files(genericFiles []*bagman.GenericFile, s3Client *bagman.S3Client) {
+func deleteS3Files(genericFiles []*bagman.File, s3Client *bagman.S3Client) {
 	for _, gf := range genericFiles {
 		parts := strings.Split(gf.StorageURL, "/")
 		bucket := parts[3]
@@ -129,17 +129,17 @@ func TestIncompleteCopyToS3(t *testing.T) {
 	helper := getIngestHelper()
 
 	helper.Result.TarResult = &bagman.TarResult{}
-	helper.Result.TarResult.GenericFiles = make([]*bagman.GenericFile, 2)
-	gf0 := &bagman.GenericFile{
+	helper.Result.TarResult.Files = make([]*bagman.File, 2)
+	gf0 := &bagman.File{
 		StorageURL: "http://blah.blah.blah",
 		NeedsSave: true,
 	}
-	gf1 := &bagman.GenericFile{
+	gf1 := &bagman.File{
 		StorageURL: "",
 		NeedsSave: false,
 	}
-	helper.Result.TarResult.GenericFiles[0] = gf0
-	helper.Result.TarResult.GenericFiles[1] = gf1
+	helper.Result.TarResult.Files[0] = gf0
+	helper.Result.TarResult.Files[1] = gf1
 
 	// Only one file needed saving, and it was saved
 	if helper.IncompleteCopyToS3() == true {
@@ -202,7 +202,7 @@ func TestGetS3Options(t *testing.T) {
 		return
 	}
 	helper := getIngestHelper()
-	gf := &bagman.GenericFile{
+	gf := &bagman.File{
 		Md5: "b4f8f3072f73598fc5b65bf416b6019a",
 		Path: "/data/hansel/und/gretel.pdf",
 	}
@@ -274,7 +274,7 @@ func TestFullProcess(t *testing.T) {
 	if helper.Result.Stage != "Store" {
 		t.Errorf("Stage should be 'Store' but is '%s'", helper.Result.Stage)
 	}
-	for _, gf := range helper.Result.TarResult.GenericFiles {
+	for _, gf := range helper.Result.TarResult.Files {
 		if gf.StorageURL == "" {
 			t.Errorf("File '%s' is missing S3 URL", gf.Path)
 		}
@@ -299,7 +299,7 @@ func TestFullProcess(t *testing.T) {
 	}
 
 	deleteLocalFiles()
-	deleteS3Files(helper.Result.TarResult.GenericFiles, helper.ProcUtil.S3Client)
+	deleteS3Files(helper.Result.TarResult.Files, helper.ProcUtil.S3Client)
 }
 
 func verifyResult(t *testing.T, itemName, expected, actual string) {

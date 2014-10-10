@@ -16,7 +16,7 @@ func getFedoraResult(t *testing.T) *bagman.FedoraResult {
 	if err != nil {
 		t.Error(err)
 	}
-	genericFilePaths := result.TarResult.GenericFilePaths()
+	genericFilePaths := result.TarResult.FilePaths()
 	return bagman.NewFedoraResult(fluctusObject.Identifier, genericFilePaths)
 }
 

@@ -300,15 +300,15 @@ func TestProcessResultPremisEvents(t *testing.T) {
 				file.Events[1].EventType,
 				"ingest")
 		}
-		if file.Events[1].DateTime != result.TarResult.GenericFiles[i].StoredAt {
+		if file.Events[1].DateTime != result.TarResult.Files[i].StoredAt {
 			t.Errorf("DateTime is %v, expected %v",
 				file.Events[1].DateTime,
-				result.TarResult.GenericFiles[i].StoredAt)
+				result.TarResult.Files[i].StoredAt)
 		}
-		if file.Events[1].OutcomeDetail != result.TarResult.GenericFiles[i].StorageMd5 {
+		if file.Events[1].OutcomeDetail != result.TarResult.Files[i].StorageMd5 {
 			t.Errorf("OutcomeDetail is '%s', expected '%s'",
 				file.Events[1].OutcomeDetail,
-				result.TarResult.GenericFiles[i].StorageMd5)
+				result.TarResult.Files[i].StorageMd5)
 		}
 		if file.Events[1].Identifier == "" {
 			t.Errorf("Ingest event identifier is missing")
@@ -319,12 +319,12 @@ func TestProcessResultPremisEvents(t *testing.T) {
 				file.Events[2].EventType,
 				"fixity_generation")
 		}
-		if file.Events[2].DateTime != result.TarResult.GenericFiles[i].Sha256Generated {
+		if file.Events[2].DateTime != result.TarResult.Files[i].Sha256Generated {
 			t.Errorf("DateTime is %v, expected %v",
 				file.Events[2].DateTime,
-				result.TarResult.GenericFiles[i].Sha256Generated)
+				result.TarResult.Files[i].Sha256Generated)
 		}
-		expected256 := fmt.Sprintf("sha256:%s", result.TarResult.GenericFiles[i].Sha256)
+		expected256 := fmt.Sprintf("sha256:%s", result.TarResult.Files[i].Sha256)
 		if file.Events[2].OutcomeDetail != expected256 {
 			t.Errorf("OutcomeDetail is '%s', expected '%s'",
 				file.Events[2].OutcomeDetail,
@@ -339,15 +339,15 @@ func TestProcessResultPremisEvents(t *testing.T) {
 				file.Events[3].EventType,
 				"identifier_assignment")
 		}
-		if file.Events[3].DateTime != result.TarResult.GenericFiles[i].UuidGenerated {
+		if file.Events[3].DateTime != result.TarResult.Files[i].UuidGenerated {
 			t.Errorf("DateTime is %v, expected %v",
 				file.Events[3].DateTime,
-				result.TarResult.GenericFiles[i].UuidGenerated)
+				result.TarResult.Files[i].UuidGenerated)
 		}
-		if file.Events[3].OutcomeDetail != result.TarResult.GenericFiles[i].Identifier {
+		if file.Events[3].OutcomeDetail != result.TarResult.Files[i].Identifier {
 			t.Errorf("OutcomeDetail is '%s', expected '%s'",
 				file.Events[3].OutcomeDetail,
-				result.TarResult.GenericFiles[i].Identifier)
+				result.TarResult.Files[i].Identifier)
 		}
 		if file.Events[3].Identifier == "" {
 			t.Errorf("Identifier assignement event id is missing")
@@ -358,15 +358,15 @@ func TestProcessResultPremisEvents(t *testing.T) {
 				file.Events[4].EventType,
 				"identifier_assignment")
 		}
-		if file.Events[4].DateTime != result.TarResult.GenericFiles[i].UuidGenerated {
+		if file.Events[4].DateTime != result.TarResult.Files[i].UuidGenerated {
 			t.Errorf("DateTime is %v, expected %v",
 				file.Events[4].DateTime,
-				result.TarResult.GenericFiles[i].UuidGenerated)
+				result.TarResult.Files[i].UuidGenerated)
 		}
-		if file.Events[4].OutcomeDetail != result.TarResult.GenericFiles[i].StorageURL {
+		if file.Events[4].OutcomeDetail != result.TarResult.Files[i].StorageURL {
 			t.Errorf("OutcomeDetail is '%s', expected '%s'",
 				file.Events[4].OutcomeDetail,
-				result.TarResult.GenericFiles[i].StorageURL)
+				result.TarResult.Files[i].StorageURL)
 		}
 		if file.Events[4].Identifier == "" {
 			t.Errorf("Identifier assignement event id is missing")

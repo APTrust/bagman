@@ -62,23 +62,23 @@ func TestAnyFilesNeedSaving(t *testing.T) {
 	if result.TarResult.AnyFilesNeedSaving() == false {
 		t.Errorf("AnyFilesNeedSaving should have returned true.")
 	}
-	for i := range result.TarResult.GenericFiles {
-		result.TarResult.GenericFiles[i].NeedsSave = false
+	for i := range result.TarResult.Files {
+		result.TarResult.Files[i].NeedsSave = false
 	}
 	if result.TarResult.AnyFilesNeedSaving() == true {
 		t.Errorf("AnyFilesNeedSaving should have returned false.")
 	}
 }
 
-func TestGenericFilePaths(t *testing.T) {
+func TestFilePaths(t *testing.T) {
 	filepath := filepath.Join("testdata", "result_good.json")
 	result, err := bagman.LoadResult(filepath)
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	filepaths := result.TarResult.GenericFilePaths()
+	filepaths := result.TarResult.FilePaths()
 	if len(filepaths) == 0 {
-		t.Error("TarResult.GenericFilePaths returned no file paths")
+		t.Error("TarResult.FilePaths returned no file paths")
 		return
 	}
 	for i, path := range filepaths {
@@ -116,12 +116,12 @@ func TestAnyFilesCopiedToPreservation(t *testing.T) {
 	if result.TarResult.AnyFilesCopiedToPreservation() == false {
 		t.Error("AnyFilesCopiedToPreservation should have returned true")
 	}
-	result.TarResult.GenericFiles[0].StorageURL = ""
+	result.TarResult.Files[0].StorageURL = ""
 	if result.TarResult.AnyFilesCopiedToPreservation() == false {
 		t.Error("AnyFilesCopiedToPreservation should have returned true")
 	}
-	for i := range result.TarResult.GenericFiles {
-		result.TarResult.GenericFiles[i].StorageURL = ""
+	for i := range result.TarResult.Files {
+		result.TarResult.Files[i].StorageURL = ""
 	}
 	if result.TarResult.AnyFilesCopiedToPreservation() == true {
 		t.Error("AnyFilesCopiedToPreservation should have returned false")
@@ -137,7 +137,7 @@ func TestAllFilesCopiedToPreservation(t *testing.T) {
 	if result.TarResult.AllFilesCopiedToPreservation() == false {
 		t.Error("AllFilesCopiedToPreservation should have returned true")
 	}
-	result.TarResult.GenericFiles[0].StorageURL = ""
+	result.TarResult.Files[0].StorageURL = ""
 	if result.TarResult.AllFilesCopiedToPreservation() == true {
 		t.Error("AllFilesCopiedToPreservation should have returned false")
 	}
@@ -154,40 +154,40 @@ func TestMergeExistingFiles(t *testing.T) {
 
 	// Existing and changed.
 	// File "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml"
-	gf := result.TarResult.GenericFiles[0]
+	gf := result.TarResult.Files[0]
 	if gf.ExistingFile == false {
-		t.Errorf("GenericFile should have been marked as an existing file")
+		t.Errorf("File should have been marked as an existing file")
 	}
 	if gf.NeedsSave == false {
-		t.Errorf("GenericFile should have been marked as needing to be saved")
+		t.Errorf("File should have been marked as needing to be saved")
 	}
 
 	// Existing but unchanged.
 	// File "ncsu.edu/ncsu.1840.16-2928/data/object.properties"
-	gf = result.TarResult.GenericFiles[1]
+	gf = result.TarResult.Files[1]
 	if gf.ExistingFile == false {
-		t.Errorf("GenericFile should have been marked as an existing file")
+		t.Errorf("File should have been marked as an existing file")
 	}
 	if gf.NeedsSave == true {
-		t.Errorf("GenericFile should have been marked as NOT needing to be saved")
+		t.Errorf("File should have been marked as NOT needing to be saved")
 	}
 
 	// New file "data/ORIGINAL/1"
-	gf = result.TarResult.GenericFiles[2]
+	gf = result.TarResult.Files[2]
 	if gf.ExistingFile == true {
-		t.Errorf("GenericFile NOT should have been marked as an existing file")
+		t.Errorf("File NOT should have been marked as an existing file")
 	}
 	if gf.NeedsSave == false {
-		t.Errorf("GenericFile should have been marked as needing to be saved")
+		t.Errorf("File should have been marked as needing to be saved")
 	}
 
 	// New file "data/ORIGINAL/1-metadata.xml"
-	gf = result.TarResult.GenericFiles[3]
+	gf = result.TarResult.Files[3]
 	if gf.ExistingFile == true {
-		t.Errorf("GenericFile NOT should have been marked as an existing file")
+		t.Errorf("File NOT should have been marked as an existing file")
 	}
 	if gf.NeedsSave == false {
-		t.Errorf("GenericFile should have been marked as needing to be saved")
+		t.Errorf("File should have been marked as needing to be saved")
 	}
 
 }

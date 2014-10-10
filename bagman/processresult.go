@@ -14,12 +14,6 @@ set to false if processing failed for some reason that
 will not change: for example, if the file cannot be
 untarred, checksums were bad, or data files were missing.
 If processing succeeded, Retry is irrelevant.
-
-ReingestNoOop tells us if we've hit a special case in which
-an already-ingested bag is reprocessed, but none of the GenericFiles
-have changed. In this case, ingest was a no-op, since no files were
-copied to S3, no metadata should be recorded in Fedora, and no events
-should be generated.
 */
 type ProcessResult struct {
 	NsqMessage    *nsq.Message `json:"-"` // Don't serialize
@@ -77,8 +71,8 @@ func (result *ProcessResult) FluctusObject() (obj *FluctusObject, err error) {
 // GenericFiles returns a list of GenericFile objects that were found
 // in the bag.
 func (result *ProcessResult) GenericFiles() (files []*FluctusFile, err error) {
-	files = make([]*FluctusFile, len(result.TarResult.GenericFiles))
-	for i, file := range result.TarResult.GenericFiles {
+	files = make([]*FluctusFile, len(result.TarResult.Files))
+	for i, file := range result.TarResult.Files {
 		gfModel, err := file.ToFluctusFile()
 		if err != nil {
 			return nil, err

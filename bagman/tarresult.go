@@ -8,12 +8,12 @@ type TarResult struct {
 	ErrorMessage  string
 	Warnings      []string
 	FilesUnpacked []string
-	GenericFiles  []*GenericFile
+	Files  []*File
 }
 
 // Returns true if any of the untarred files are new or updated.
 func (result *TarResult) AnyFilesNeedSaving() (bool) {
-	for _, gf := range result.GenericFiles {
+	for _, gf := range result.Files {
 		if gf.NeedsSave == true {
 			return true
 		}
@@ -21,23 +21,23 @@ func (result *TarResult) AnyFilesNeedSaving() (bool) {
 	return false
 }
 
-// GenericFilePaths returns a list of all the GenericFile paths
+// FilePaths returns a list of all the File paths
 // that were untarred from the bag. The list will look something
 // like "data/file1.gif", "data/file2.pdf", etc.
-func (result *TarResult) GenericFilePaths() []string {
-	paths := make([]string, len(result.GenericFiles))
-	for index, gf := range result.GenericFiles {
+func (result *TarResult) FilePaths() []string {
+	paths := make([]string, len(result.Files))
+	for index, gf := range result.Files {
 		paths[index] = gf.Path
 	}
 	return paths
 }
 
-// Returns the GenericFile with the specified path, if it exists.
-func (result *TarResult) GetFileByPath(filePath string) (*GenericFile) {
-	for index, gf := range result.GenericFiles {
+// Returns the File with the specified path, if it exists.
+func (result *TarResult) GetFileByPath(filePath string) (*File) {
+	for index, gf := range result.Files {
 		if gf.Path == filePath {
 			// Be sure to return to original, and not a copy!
-			return result.GenericFiles[index]
+			return result.Files[index]
 		}
 	}
 	return nil
@@ -67,7 +67,7 @@ func (result *TarResult) MergeExistingFiles(fluctusFiles []*FluctusFile) {
 // Returns true if any generic files were successfully copied
 // to S3 long term storage.
 func (result *TarResult) AnyFilesCopiedToPreservation() bool {
-	for _, gf := range result.GenericFiles {
+	for _, gf := range result.Files {
 		if gf.StorageURL != "" {
 			return true
 		}
@@ -78,7 +78,7 @@ func (result *TarResult) AnyFilesCopiedToPreservation() bool {
 // Returns true if all generic files were successfully copied
 // to S3 long term storage.
 func (result *TarResult) AllFilesCopiedToPreservation() bool {
-	for _, gf := range result.GenericFiles {
+	for _, gf := range result.Files {
 		if gf.NeedsSave && gf.StorageURL == "" {
 			return false
 		}

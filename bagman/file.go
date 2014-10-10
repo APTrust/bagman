@@ -6,9 +6,9 @@ import (
 	"time"
 )
 
-// GenericFile contains information about a generic
+// File contains information about a generic
 // data file within the data directory of bag or tar archive.
-type GenericFile struct {
+type File struct {
 	// Path is the path to the file within the bag. It should
 	// always begin with "data/"
 	Path string
@@ -65,17 +65,17 @@ type GenericFile struct {
 	NeedsSave bool
 }
 
-func NewGenericFile() (*GenericFile) {
-	return &GenericFile{
+func NewFile() (*File) {
+	return &File{
 		ExistingFile: false,
 		NeedsSave: true,
 	}
 }
 
 
-// Converts bagman.GenericFile to FluctusFile, which is what
+// Converts bagman.File to FluctusFile, which is what
 // Fluctus understands.
-func (gf *GenericFile) ToFluctusFile() (*FluctusFile, error) {
+func (gf *File) ToFluctusFile() (*FluctusFile, error) {
 	checksumAttributes := make([]*ChecksumAttribute, 2)
 	checksumAttributes[0] = &ChecksumAttribute{
 		Algorithm: "md5",
@@ -107,7 +107,7 @@ func (gf *GenericFile) ToFluctusFile() (*FluctusFile, error) {
 // PremisEvents returns a list of Premis events generated during bag
 // processing. Ingest, Fixity Generation (sha256), identifier
 // assignment.
-func (gf *GenericFile) PremisEvents() (events []*PremisEvent, err error) {
+func (gf *File) PremisEvents() (events []*PremisEvent, err error) {
 	events = make([]*PremisEvent, 5)
 	// Fixity check
 	fCheckEventUuid, err := uuid.NewV4()

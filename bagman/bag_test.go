@@ -85,7 +85,7 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 	}
 }
 
-func TestUntarCreatesGenericFiles(t *testing.T) {
+func TestUntarCreatesFiles(t *testing.T) {
 	tarResult := bagman.Untar(sampleGood, "ncsu.edu", "ncsu.1840.16-2928.tar")
 
 	// Generic files contains info about files in the /data directory
@@ -126,42 +126,42 @@ func TestUntarCreatesGenericFiles(t *testing.T) {
 	t3, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:26 -0400 EDT")
 	expectedModTime := []time.Time{t0, t1, t2, t3}
 
-	if len(tarResult.GenericFiles) != 4 {
-		t.Errorf("Unpacked %d generic files, expected %d", len(tarResult.GenericFiles), 4)
+	if len(tarResult.Files) != 4 {
+		t.Errorf("Unpacked %d generic files, expected %d", len(tarResult.Files), 4)
 	}
 
 	emptyTime := time.Time{}
-	for index, gf := range tarResult.GenericFiles {
+	for index, gf := range tarResult.Files {
 		if gf.Path != expectedPath[index] {
-			t.Errorf("GenericFile path '%s' is incorrect, expected '%s'", gf.Path, expectedPath[index])
+			t.Errorf("File path '%s' is incorrect, expected '%s'", gf.Path, expectedPath[index])
 		}
 		if gf.Identifier != expectedIdentifier[index] {
-			t.Errorf("GenericFile identifier '%s' is incorrect, expected '%s'",
+			t.Errorf("File identifier '%s' is incorrect, expected '%s'",
 				gf.Identifier, expectedIdentifier[index])
 		}
 		if gf.Md5 != expectedMd5[index] {
-			t.Errorf("GenericFile md5 sum '%s' should be '%s'", gf.Md5, expectedMd5[index])
+			t.Errorf("File md5 sum '%s' should be '%s'", gf.Md5, expectedMd5[index])
 		}
 		if gf.Sha256 != expectedSha256[index] {
-			t.Errorf("GenericFile sha256 sum '%s' should be '%s'", gf.Sha256, expectedSha256[index])
+			t.Errorf("File sha256 sum '%s' should be '%s'", gf.Sha256, expectedSha256[index])
 		}
 		if len(gf.Uuid) != 36 {
-			t.Errorf("GenericFile UUID '%s' should be 36 characters", gf.Uuid)
+			t.Errorf("File UUID '%s' should be 36 characters", gf.Uuid)
 		}
 		if gf.Size != expectedSize[index] {
-			t.Errorf("GenericFile size %d should be %d", gf.Size, expectedSize[index])
+			t.Errorf("File size %d should be %d", gf.Size, expectedSize[index])
 		}
 		if gf.MimeType != expectedType[index] {
-			t.Errorf("GenericFile type '%s' should be '%s'", gf.MimeType, expectedType[index])
+			t.Errorf("File type '%s' should be '%s'", gf.MimeType, expectedType[index])
 		}
 		if gf.Sha256Generated == emptyTime {
-			t.Error("GenericFile.Sha256Generated timestamp is missing")
+			t.Error("File.Sha256Generated timestamp is missing")
 		}
 		if gf.UuidGenerated == emptyTime {
-			t.Error("GenericFile.UuidGenerated timestamp is missing")
+			t.Error("File.UuidGenerated timestamp is missing")
 		}
 		if gf.Modified.UTC() != expectedModTime[index].UTC() {
-			t.Errorf("GenericFile modtime '%v' should be '%v'", gf.Modified.UTC(), expectedModTime[index].UTC())
+			t.Errorf("File modtime '%v' should be '%v'", gf.Modified.UTC(), expectedModTime[index].UTC())
 		}
 	}
 
