@@ -223,14 +223,8 @@ func (client *FluctusClient) doStatusRequest(request *http.Request, expectedStat
 	}
 
 	if response.StatusCode != expectedStatus {
-		if len(body) < 1000 {
-			err = fmt.Errorf("doStatusRequest Expected status code %d but got %d. "+
-				"URL: %s, Response: %s",
-				expectedStatus, response.StatusCode, request.URL, string(body))
-		} else {
-			err = fmt.Errorf("doStatusRequest Expected status code %d but got %d. URL: %s",
-				expectedStatus, response.StatusCode, request.URL)
-		}
+		message := "doStatusRequest Expected status code %d but got %d. URL: %s."
+		err = client.buildError(body, message, expectedStatus, response.StatusCode, request.URL)
 		return nil, err
 	}
 
@@ -257,12 +251,9 @@ func (client *FluctusClient) BulkStatusGet(since time.Time) (statusRecords []*Pr
 
 	// 400 or 500
 	if response.StatusCode != 200 {
-		if len(body) < 1000 {
-			return nil, fmt.Errorf("Request for bulk status returned status code %d. "+
-				"Response body: %s", response.StatusCode, string(body))
-		} else {
-			return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
-		}
+		message := "Request for bulk status returned status code %d."
+		err = client.buildError(body, message, response.StatusCode)
+		return nil, err
 	}
 
 	// Build and return the data structure
@@ -342,12 +333,9 @@ func (client *FluctusClient) getStatusItemsForQueue(itemType, identifier string)
 
 	// Check for error response
 	if response.StatusCode != 200 {
-		if len(body) < 1000 {
-			return nil, fmt.Errorf("Request for %s records returned status code %d. "+
-				"Response body: %s", itemType, response.StatusCode, string(body))
-		} else {
-			return nil, fmt.Errorf("Request returned status code %d", response.StatusCode)
-		}
+		message := "Request for %s records returned status code %d."
+		err = client.buildError(body, message, itemType, response.StatusCode)
+		return nil, err
 	}
 
 	// Build and return the data structure
@@ -429,14 +417,8 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 
 	// Fluctus returns 204 (No content) on update
 	if response.StatusCode != 204 {
-		if len(body) < 1000 {
-			err = fmt.Errorf("IntellectualObjectSave Expected status code 204 but got %d. "+
-				"URL: %s, Response body: %s\n",
-				response.StatusCode, request.URL, string(body))
-		} else {
-			err = fmt.Errorf("IntellectualObjectSave Expected status code 204 but got %d. URL: %s\n",
-				response.StatusCode, request.URL)
-		}
+		message := "IntellectualObjectSave Expected status code 204 but got %d. URL: %s."
+		err = client.buildError(body, message, response.StatusCode, request.URL)
 		client.logger.Error(err.Error())
 		return nil, err
 	} else {
@@ -487,14 +469,8 @@ func (client *FluctusClient) IntellectualObjectCreate(obj *IntellectualObject, m
 	}
 
 	if response.StatusCode != 201 {
-		if len(body) < 1000 {
-			err = fmt.Errorf("IntellectualObjectCreate Expected status code 201 but got %d. "+
-				"URL: %s, Response body: %s\n",
-				response.StatusCode, request.URL, string(body))
-		} else {
-			err = fmt.Errorf("IntellectualObjectCreate Expected status code 201 but got %d. URL: %s\n",
-				response.StatusCode, request.URL)
-		}
+		message := "IntellectualObjectCreate Expected status code 201 but got %d. URL: %s"
+		err = client.buildError(body, message, response.StatusCode, request.URL)
 		client.logger.Error(err.Error())
 		return nil, err
 	} else {
@@ -582,13 +558,9 @@ func (client *FluctusClient) GenericFileSave(objId string, gf *GenericFile) (new
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
 	if response.StatusCode != 201 && response.StatusCode != 204 {
-		err = fmt.Errorf("GenericFileSave Expected status code 201 or 204 but got %d. URL: %s\n",
-			response.StatusCode, request.URL)
-		if len(body) < 1000 {
-			client.logger.Error(err.Error(), string(body))
-		} else {
-			client.logger.Error(err.Error())
-		}
+		message := "GenericFileSave Expected status code 201 or 204 but got %d. URL: %s"
+		err = client.buildError(body, message, response.StatusCode, request.URL)
+		client.logger.Error(err.Error())
 		return nil, err
 	} else {
 		client.logger.Debug("%s GenericFile %s succeeded", method, gf.Identifier)
@@ -646,14 +618,8 @@ func (client *FluctusClient) PremisEventSave(objId, objType string, event *Premi
 	}
 
 	if response.StatusCode != 201 {
-		if len(body) < 1000 {
-			err = fmt.Errorf("PremisEventSave Expected status code 201 but got %d. "+
-				"URL: %s, Response Body: %s\n",
-				response.StatusCode, request.URL, string(body))
-		} else {
-			err = fmt.Errorf("PremisEventSave Expected status code 201 but got %d. URL: %s\n",
-				response.StatusCode, request.URL)
-		}
+		message := "PremisEventSave Expected status code 201 but got %d. URL: %s."
+		err = client.buildError(body, message, response.StatusCode, request.URL)
 		client.logger.Error(err.Error())
 		return nil, err
 	} else {
@@ -732,12 +698,9 @@ func (client *FluctusClient) RestorationStatusSet(objectIdentifier string, stage
 
 	// Check for error response
 	if response.StatusCode != 200 {
-		if len(body) < 1000 {
-			return fmt.Errorf("RestorationStatusSet returned status code %d. "+
-				"Response body: %s", response.StatusCode, string(body))
-		} else {
-			return fmt.Errorf("Request returned status code %d", response.StatusCode)
-		}
+		message := "RestorationStatusSet returned status code %d."
+		err = client.buildError(body, message, response.StatusCode)
+		return err
 	}
 
 	return nil
@@ -795,4 +758,12 @@ func (client *FluctusClient) doRequest(request *http.Request) (data []byte, resp
 		return nil, response, err
 	}
 	return data, response, err
+}
+
+func (client *FluctusClient) buildError(body []byte, formatString string, args ...interface{}) (err error) {
+	if len(body) < 1000 {
+		formatString += " Response body: %s"
+		args = append(args, string(body))
+	}
+	return fmt.Errorf(formatString, args)
 }
