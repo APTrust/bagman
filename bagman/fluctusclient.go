@@ -21,6 +21,12 @@ import (
 // than this number of files need special handling.
 const MAX_FILES_FOR_CREATE = 500
 
+// Log fluctus error responses up to this number of bytes.
+// We DO want to log concise error messages. We DO NOT want
+// to log huge HTML error responses.
+const MAX_FLUCTUS_ERR_MSG_SIZE = 1000
+
+// Regex to match the top-level domain suffixes we expect to see.
 var domainPattern *regexp.Regexp = regexp.MustCompile("\\.edu|org|com$")
 
 type FluctusClient struct {
@@ -757,7 +763,7 @@ func (client *FluctusClient) doRequest(request *http.Request) (data []byte, resp
 }
 
 func (client *FluctusClient) buildAndLogError(body []byte, formatString string, args ...interface{}) (err error) {
-	if len(body) < 1000 {
+	if len(body) < MAX_FLUCTUS_ERR_MSG_SIZE {
 		formatString += " Response body: %s"
 		args = append(args, string(body))
 	}
