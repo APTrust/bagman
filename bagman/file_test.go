@@ -19,12 +19,12 @@ func loadGenericFile() (*bagman.File, error) {
 
 
 func TestToFluctusFile(t *testing.T) {
-	gf, err := loadGenericFile()
+	file, err := loadGenericFile()
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	fluctusFile, err := gf.ToFluctusFile()
+	fluctusFile, err := file.ToFluctusFile()
 	expectedIdentifier := "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml"
 	if fluctusFile.Identifier != expectedIdentifier {
 		t.Errorf("Identifier expected '%s', got '%s'", expectedIdentifier, fluctusFile.Identifier)
@@ -83,12 +83,12 @@ func TestToFluctusFile(t *testing.T) {
 }
 
 func TestPremisEvents(t *testing.T) {
-	gf, err := loadGenericFile()
+	file, err := loadGenericFile()
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	events, err := gf.PremisEvents()
+	events, err := file.PremisEvents()
 	if len(events) != 5 {
 		t.Errorf("PremisEvents() should have returned 5 events")
 		return
@@ -102,8 +102,8 @@ func TestPremisEvents(t *testing.T) {
 	if event.EventType != "fixity_check" {
 		t.Errorf("Event.EventType expected 'fixity_check', got '%s'", event.EventType)
 	}
-	if event.DateTime != gf.Md5Verified {
-		t.Errorf("Event.DateTime expected '%v', got '%v'", gf.Md5Verified, event.DateTime)
+	if event.DateTime != file.Md5Verified {
+		t.Errorf("Event.DateTime expected '%v', got '%v'", file.Md5Verified, event.DateTime)
 	}
 	expectedDetail := "Fixity check against registered hash"
 	if event.Detail != expectedDetail {
@@ -113,7 +113,7 @@ func TestPremisEvents(t *testing.T) {
 	if event.Outcome != expectedOutcome {
 		t.Errorf("Event.Outcome expected '%s', got '%s'", expectedOutcome, event.Outcome)
 	}
-	expectedOutcomeDetail := fmt.Sprintf("md5:%s", gf.Md5)
+	expectedOutcomeDetail := fmt.Sprintf("md5:%s", file.Md5)
 	if event.OutcomeDetail != expectedOutcomeDetail {
 		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", expectedOutcomeDetail, event.OutcomeDetail)
 	}
@@ -133,8 +133,8 @@ func TestPremisEvents(t *testing.T) {
 	if event.EventType != "ingest" {
 		t.Errorf("Event.EventType expected 'ingest', got '%s'", event.EventType)
 	}
-	if event.OutcomeDetail != gf.StorageMd5 {
-		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", gf.StorageMd5, event.OutcomeDetail)
+	if event.OutcomeDetail != file.StorageMd5 {
+		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", file.StorageMd5, event.OutcomeDetail)
 	}
 
 	// Sha256 fixity generation
@@ -142,7 +142,7 @@ func TestPremisEvents(t *testing.T) {
 	if event.EventType != "fixity_generation" {
 		t.Errorf("Event.EventType expected 'fixity_generation', got '%s'", event.EventType)
 	}
-	expectedOutcomeDetail = fmt.Sprintf("sha256:%s", gf.Sha256)
+	expectedOutcomeDetail = fmt.Sprintf("sha256:%s", file.Sha256)
 	if event.OutcomeDetail != expectedOutcomeDetail {
 		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", expectedOutcomeDetail, event.OutcomeDetail)
 	}
@@ -152,8 +152,8 @@ func TestPremisEvents(t *testing.T) {
 	if event.EventType != "identifier_assignment" {
 		t.Errorf("Event.EventType expected 'identifier_assignment', got '%s'", event.EventType)
 	}
-	if event.OutcomeDetail != gf.Identifier {
-		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", gf.Identifier, event.OutcomeDetail)
+	if event.OutcomeDetail != file.Identifier {
+		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", file.Identifier, event.OutcomeDetail)
 	}
 
 	// Identifier assignment (storage URL)
@@ -161,8 +161,8 @@ func TestPremisEvents(t *testing.T) {
 	if event.EventType != "identifier_assignment" {
 		t.Errorf("Event.EventType expected 'identifier_assignment', got '%s'", event.EventType)
 	}
-	if event.OutcomeDetail != gf.StorageURL {
-		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", gf.StorageURL, event.OutcomeDetail)
+	if event.OutcomeDetail != file.StorageURL {
+		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", file.StorageURL, event.OutcomeDetail)
 	}
 
 }

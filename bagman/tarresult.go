@@ -13,8 +13,8 @@ type TarResult struct {
 
 // Returns true if any of the untarred files are new or updated.
 func (result *TarResult) AnyFilesNeedSaving() (bool) {
-	for _, gf := range result.Files {
-		if gf.NeedsSave == true {
+	for _, file := range result.Files {
+		if file.NeedsSave == true {
 			return true
 		}
 	}
@@ -26,16 +26,16 @@ func (result *TarResult) AnyFilesNeedSaving() (bool) {
 // like "data/file1.gif", "data/file2.pdf", etc.
 func (result *TarResult) FilePaths() []string {
 	paths := make([]string, len(result.Files))
-	for index, gf := range result.Files {
-		paths[index] = gf.Path
+	for index, file := range result.Files {
+		paths[index] = file.Path
 	}
 	return paths
 }
 
 // Returns the File with the specified path, if it exists.
 func (result *TarResult) GetFileByPath(filePath string) (*File) {
-	for index, gf := range result.Files {
-		if gf.Path == filePath {
+	for index, file := range result.Files {
+		if file.Path == filePath {
 			// Be sure to return to original, and not a copy!
 			return result.Files[index]
 		}
@@ -49,16 +49,16 @@ func (result *TarResult) GetFileByPath(filePath string) (*File) {
 func (result *TarResult) MergeExistingFiles(fluctusFiles []*FluctusFile) {
 	for _, fluctusFile := range fluctusFiles {
 		origPath, _ := fluctusFile.OriginalPath()
-		gf := result.GetFileByPath(origPath)
-		if gf != nil {
-			gf.ExistingFile = true
+		file := result.GetFileByPath(origPath)
+		if file != nil {
+			file.ExistingFile = true
 			// Files have the same path and name. If the checksum
 			// has not changed, there is no reason to re-upload
 			// this file to the preservation bucket, nor is there
 			// any reason to create new ingest events in Fedora.
 			existingMd5 := fluctusFile.GetChecksum("md5")
-			if gf.Md5 == existingMd5.Digest {
-				gf.NeedsSave = false
+			if file.Md5 == existingMd5.Digest {
+				file.NeedsSave = false
 			}
 		}
 	}
@@ -67,8 +67,8 @@ func (result *TarResult) MergeExistingFiles(fluctusFiles []*FluctusFile) {
 // Returns true if any generic files were successfully copied
 // to S3 long term storage.
 func (result *TarResult) AnyFilesCopiedToPreservation() bool {
-	for _, gf := range result.Files {
-		if gf.StorageURL != "" {
+	for _, file := range result.Files {
+		if file.StorageURL != "" {
 			return true
 		}
 	}
@@ -78,8 +78,8 @@ func (result *TarResult) AnyFilesCopiedToPreservation() bool {
 // Returns true if all generic files were successfully copied
 // to S3 long term storage.
 func (result *TarResult) AllFilesCopiedToPreservation() bool {
-	for _, gf := range result.Files {
-		if gf.NeedsSave && gf.StorageURL == "" {
+	for _, file := range result.Files {
+		if file.NeedsSave && file.StorageURL == "" {
 			return false
 		}
 	}

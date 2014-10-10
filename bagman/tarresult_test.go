@@ -94,15 +94,15 @@ func TestGetFileByPath(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	gf := result.TarResult.GetFileByPath("data/ORIGINAL/1")
-	if gf == nil {
+	file := result.TarResult.GetFileByPath("data/ORIGINAL/1")
+	if file == nil {
 		t.Errorf("GetFileByPath() did not return expected file")
 	}
-	if gf.Path != "data/ORIGINAL/1" {
+	if file.Path != "data/ORIGINAL/1" {
 		t.Errorf("GetFileByPath() returned the wrong file")
 	}
-	gf2 := result.TarResult.GetFileByPath("file/does/not/exist")
-	if gf2 != nil {
+	file2 := result.TarResult.GetFileByPath("file/does/not/exist")
+	if file2 != nil {
 		t.Errorf("GetFileByPath() returned a file when it shouldn't have")
 	}
 }
@@ -154,39 +154,39 @@ func TestMergeExistingFiles(t *testing.T) {
 
 	// Existing and changed.
 	// File "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml"
-	gf := result.TarResult.Files[0]
-	if gf.ExistingFile == false {
+	file := result.TarResult.Files[0]
+	if file.ExistingFile == false {
 		t.Errorf("File should have been marked as an existing file")
 	}
-	if gf.NeedsSave == false {
+	if file.NeedsSave == false {
 		t.Errorf("File should have been marked as needing to be saved")
 	}
 
 	// Existing but unchanged.
 	// File "ncsu.edu/ncsu.1840.16-2928/data/object.properties"
-	gf = result.TarResult.Files[1]
-	if gf.ExistingFile == false {
+	file = result.TarResult.Files[1]
+	if file.ExistingFile == false {
 		t.Errorf("File should have been marked as an existing file")
 	}
-	if gf.NeedsSave == true {
+	if file.NeedsSave == true {
 		t.Errorf("File should have been marked as NOT needing to be saved")
 	}
 
 	// New file "data/ORIGINAL/1"
-	gf = result.TarResult.Files[2]
-	if gf.ExistingFile == true {
+	file = result.TarResult.Files[2]
+	if file.ExistingFile == true {
 		t.Errorf("File NOT should have been marked as an existing file")
 	}
-	if gf.NeedsSave == false {
+	if file.NeedsSave == false {
 		t.Errorf("File should have been marked as needing to be saved")
 	}
 
 	// New file "data/ORIGINAL/1-metadata.xml"
-	gf = result.TarResult.Files[3]
-	if gf.ExistingFile == true {
+	file = result.TarResult.Files[3]
+	if file.ExistingFile == true {
 		t.Errorf("File NOT should have been marked as an existing file")
 	}
-	if gf.NeedsSave == false {
+	if file.NeedsSave == false {
 		t.Errorf("File should have been marked as needing to be saved")
 	}
 

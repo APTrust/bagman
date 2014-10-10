@@ -274,23 +274,23 @@ func saveFile(destination string, tarReader *tar.Reader) error {
 // buildFile saves a data file from the tar archive to disk,
 // then returns a struct with data we'll need to construct the
 // GenericFile object in Fedora later.
-func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (gf *File) {
-	gf = NewFile()
-	gf.Path = fileName[strings.Index(fileName, "/data/")+1 : len(fileName)]
+func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (file *File) {
+	file = NewFile()
+	file.Path = fileName[strings.Index(fileName, "/data/")+1 : len(fileName)]
 	absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
 	if err != nil {
-		gf.ErrorMessage = fmt.Sprintf("Path error: %v", err)
-		return gf
+		file.ErrorMessage = fmt.Sprintf("Path error: %v", err)
+		return file
 	}
 	uuid, err := uuid.NewV4()
 	if err != nil {
-		gf.ErrorMessage = fmt.Sprintf("UUID error: %v", err)
-		return gf
+		file.ErrorMessage = fmt.Sprintf("UUID error: %v", err)
+		return file
 	}
-	gf.Uuid = uuid.String()
-	gf.UuidGenerated = time.Now().UTC()
-	gf.Size = size
-	gf.Modified = modTime
+	file.Uuid = uuid.String()
+	file.UuidGenerated = time.Now().UTC()
+	file.Size = size
+	file.Modified = modTime
 
 	// Set up a MultiWriter to stream data ONCE to file,
 	// md5 and sha256. We don't want to process the stream
@@ -300,32 +300,32 @@ func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size
 		defer outputWriter.Close()
 	}
 	if err != nil {
-		gf.ErrorMessage = fmt.Sprintf("Error opening writing to %s: %v", absPath, err)
-		return gf
+		file.ErrorMessage = fmt.Sprintf("Error opening writing to %s: %v", absPath, err)
+		return file
 	}
 	md5Hash := md5.New()
 	shaHash := sha256.New()
 	multiWriter := io.MultiWriter(md5Hash, shaHash, outputWriter)
 	io.Copy(multiWriter, tarReader)
 
-	gf.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
-	gf.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
-	gf.Sha256Generated = time.Now().UTC()
+	file.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
+	file.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
+	file.Sha256Generated = time.Now().UTC()
 
 	// Open the Mime Magic DB only once.
 	if magicMime == nil {
 		magicMime, err = magicmime.New()
 		if err != nil {
-			gf.ErrorMessage = fmt.Sprintf("Error opening MimeMagic database: %v", err)
-			return gf
+			file.ErrorMessage = fmt.Sprintf("Error opening MimeMagic database: %v", err)
+			return file
 		}
 	}
 
-	gf.MimeType = "application/binary"
+	file.MimeType = "application/binary"
 	mimetype, _ := magicMime.TypeByFile(absPath)
 	if mimetype != "" {
-		gf.MimeType = mimetype
+		file.MimeType = mimetype
 	}
 
-	return gf
+	return file
 }

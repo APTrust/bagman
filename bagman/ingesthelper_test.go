@@ -99,8 +99,8 @@ func deleteLocalFiles() {
 
 // Delete the GenericFiles that our tests stored in aptrust.test.preservation.
 func deleteS3Files(genericFiles []*bagman.File, s3Client *bagman.S3Client) {
-	for _, gf := range genericFiles {
-		parts := strings.Split(gf.StorageURL, "/")
+	for _, file := range genericFiles {
+		parts := strings.Split(file.StorageURL, "/")
 		bucket := parts[3]
 		file := parts[len(parts) - 1]
 		//fmt.Printf("Deleting S3 file %s/%s\n", bucket, file)
@@ -130,16 +130,16 @@ func TestIncompleteCopyToS3(t *testing.T) {
 
 	helper.Result.TarResult = &bagman.TarResult{}
 	helper.Result.TarResult.Files = make([]*bagman.File, 2)
-	gf0 := &bagman.File{
+	file0 := &bagman.File{
 		StorageURL: "http://blah.blah.blah",
 		NeedsSave: true,
 	}
-	gf1 := &bagman.File{
+	file1 := &bagman.File{
 		StorageURL: "",
 		NeedsSave: false,
 	}
-	helper.Result.TarResult.Files[0] = gf0
-	helper.Result.TarResult.Files[1] = gf1
+	helper.Result.TarResult.Files[0] = file0
+	helper.Result.TarResult.Files[1] = file1
 
 	// Only one file needed saving, and it was saved
 	if helper.IncompleteCopyToS3() == true {
@@ -147,14 +147,14 @@ func TestIncompleteCopyToS3(t *testing.T) {
 	}
 
 	// Two files need saving, two were saved
-	gf1.StorageURL = "http://yadda.yadda"
-	gf1.NeedsSave = true
+	file1.StorageURL = "http://yadda.yadda"
+	file1.NeedsSave = true
 	if helper.IncompleteCopyToS3() == true {
 		t.Error("helper.IncompleteCopyToS3() should have returned false")
 	}
 
 	// Two files need saving, one was saved
-	gf1.StorageURL = ""
+	file1.StorageURL = ""
 	if helper.IncompleteCopyToS3() == false {
 		t.Error("helper.IncompleteCopyToS3() should have returned true")
 	}
@@ -202,11 +202,11 @@ func TestGetS3Options(t *testing.T) {
 		return
 	}
 	helper := getIngestHelper()
-	gf := &bagman.File{
+	file := &bagman.File{
 		Md5: "b4f8f3072f73598fc5b65bf416b6019a",
 		Path: "/data/hansel/und/gretel.pdf",
 	}
-	opts, err := helper.GetS3Options(gf)
+	opts, err := helper.GetS3Options(file)
 	if err != nil {
 		t.Error(err)
 	}
@@ -226,9 +226,9 @@ func TestGetS3Options(t *testing.T) {
 		t.Errorf("Expected bag metadata 'ncsu.1840.16-2928', but found '%s'",
 			opts.Meta["bag"][0])
 	}
-	if opts.Meta["bagpath"][0] != gf.Path {
+	if opts.Meta["bagpath"][0] != file.Path {
 		t.Errorf("Expected bag metadata '%s', but found '%s'",
-			gf.Path, opts.Meta["bagpath"][0])
+			file.Path, opts.Meta["bagpath"][0])
 	}
 	deleteLocalFiles()
 }
@@ -274,15 +274,15 @@ func TestFullProcess(t *testing.T) {
 	if helper.Result.Stage != "Store" {
 		t.Errorf("Stage should be 'Store' but is '%s'", helper.Result.Stage)
 	}
-	for _, gf := range helper.Result.TarResult.Files {
-		if gf.StorageURL == "" {
-			t.Errorf("File '%s' is missing S3 URL", gf.Path)
+	for _, file := range helper.Result.TarResult.Files {
+		if file.StorageURL == "" {
+			t.Errorf("File '%s' is missing S3 URL", file.Path)
 		}
-		if gf.StoredAt.IsZero() {
-			t.Errorf("File '%s' is missing StoredAt time", gf.Path)
+		if file.StoredAt.IsZero() {
+			t.Errorf("File '%s' is missing StoredAt time", file.Path)
 		}
-		if gf.StorageMd5 == "" {
-			t.Errorf("File '%s' is missing StorageMd5", gf.Path)
+		if file.StorageMd5 == "" {
+			t.Errorf("File '%s' is missing StorageMd5", file.Path)
 		}
 	}
 

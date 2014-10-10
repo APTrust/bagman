@@ -87,11 +87,11 @@ func (helper *IngestHelper) FailedAndNoMoreRetries() (bool) {
 
 // Returns an OPEN reader for the specified File (reading it from
 // the local disk). Caller is responsible for closing the reader.
-func (helper *IngestHelper) GetFileReader(gf *File) (*os.File, string, error) {
+func (helper *IngestHelper) GetFileReader(file *File) (*os.File, string, error) {
 	re := regexp.MustCompile("\\.tar$")
 	bagDir := re.ReplaceAllString(helper.Result.S3File.Key.Key, "")
-	file := filepath.Join(helper.ProcUtil.Config.TarDirectory, bagDir, gf.Path)
-	absPath, err := filepath.Abs(file)
+	filePath := filepath.Join(helper.ProcUtil.Config.TarDirectory, bagDir, file.Path)
+	absPath, err := filepath.Abs(filePath)
 	if err != nil {
 		// Consider this error transient. Leave retry = true.
 		detailedError := fmt.Errorf("Cannot get absolute "+
@@ -111,7 +111,7 @@ func (helper *IngestHelper) GetFileReader(gf *File) (*os.File, string, error) {
 	return reader, absPath, nil
 }
 
-func (helper *IngestHelper) GetS3Options(gf *File) (*s3.Options, error) {
+func (helper *IngestHelper) GetS3Options(file *File) (*s3.Options, error) {
 	// Prepare metadata for save to S3
 	bagName, err := CleanBagName(helper.Result.S3File.Key.Key)
 	if err != nil {
@@ -119,17 +119,17 @@ func (helper *IngestHelper) GetS3Options(gf *File) (*s3.Options, error) {
 	}
 	instDomain := OwnerOf(helper.Result.S3File.BucketName)
 	s3Metadata := make(map[string][]string)
-	s3Metadata["md5"] = []string{gf.Md5}
+	s3Metadata["md5"] = []string{file.Md5}
 	s3Metadata["institution"] = []string{instDomain}
 	s3Metadata["bag"] = []string{bagName}
-	s3Metadata["bagpath"] = []string{gf.Path}
+	s3Metadata["bagpath"] = []string{file.Path}
 
 	// We'll get error if md5 contains non-hex characters. Catch
 	// that below, when S3 tells us our md5 sum is invalid.
-	md5Bytes, err := hex.DecodeString(gf.Md5)
+	md5Bytes, err := hex.DecodeString(file.Md5)
 	if err != nil {
 		detailedError := fmt.Errorf("Md5 sum '%s' contains invalid characters. "+
-			"S3 will reject this!", gf.Md5)
+			"S3 will reject this!", file.Md5)
 		return nil, detailedError
 	}
 
@@ -163,8 +163,8 @@ func (helper *IngestHelper) ProcessBagFile() {
 			helper.Result.Retry = false
 		} else {
 			for i := range helper.Result.TarResult.Files {
-				gf := helper.Result.TarResult.Files[i]
-				gf.Md5Verified = time.Now()
+				file := helper.Result.TarResult.Files[i]
+				file.Md5Verified = time.Now()
 			}
 		}
 	}
@@ -282,13 +282,13 @@ func (helper *IngestHelper) SaveGenericFiles() (error) {
 
 	// Copy each generic file to S3
 	for i := range result.TarResult.Files {
-		gf := result.TarResult.Files[i]
-		if gf.NeedsSave == false {
+		file := result.TarResult.Files[i]
+		if file.NeedsSave == false {
 			helper.ProcUtil.MessageLog.Info("Not saving %s to S3, because it has not " +
-				"changed since it was last saved.", gf.Identifier)
+				"changed since it was last saved.", file.Identifier)
 			continue
 		}
-		_, err := helper.SaveFile(gf)
+		_, err := helper.SaveFile(file)
 		if err != nil {
 			continue
 		}
@@ -299,27 +299,27 @@ func (helper *IngestHelper) SaveGenericFiles() (error) {
 // Saves a file to the preservation bucket.
 // Returns the url of the file that was saved. Returns an error if there
 // was a problem.
-func (helper *IngestHelper) SaveFile(gf *File) (string, error) {
+func (helper *IngestHelper) SaveFile(file *File) (string, error) {
 	// Create the S3 metadata to save with the file
-	options, err := helper.GetS3Options(gf)
+	options, err := helper.GetS3Options(file)
 	if err != nil {
-		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
+		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", file.Path, err)
 		helper.Result.ErrorMessage += fmt.Sprintf("%v ", err)
 		return "", err
 	}
 
 	// Open the local file for reading
-	reader, absPath, err := helper.GetFileReader(gf)
+	reader, absPath, err := helper.GetFileReader(file)
 	if err != nil {
 		// Consider this error transient. Leave retry = true.
-		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", gf.Path, err)
+		helper.ProcUtil.MessageLog.Error("Cannot send %s to S3: %v", file.Path, err)
 		helper.Result.ErrorMessage += fmt.Sprintf("%v ", err)
 		return "", err
 	}
 
 	// Tweet to all our fans
 	helper.ProcUtil.MessageLog.Debug("Sending %d bytes to S3 for file %s (UUID %s)",
-		gf.Size, gf.Path, gf.Uuid)
+		file.Size, file.Path, file.Uuid)
 
 	// Copy the file to preservation.
 	// This fails often with 'connection reset by peer', so try several times
@@ -332,7 +332,7 @@ func (helper *IngestHelper) SaveFile(gf *File) (string, error) {
 			err = detailedError
 			break
 		}
-		url, err = helper.CopyToPreservationBucket(gf, reader, options)
+		url, err = helper.CopyToPreservationBucket(file, reader, options)
 		if err == nil {
 			break
 		}
@@ -347,16 +347,16 @@ func (helper *IngestHelper) SaveFile(gf *File) (string, error) {
 			err.Error())
 		return "", err
 	} else {
-		gf.StorageURL = url
-		gf.StoredAt = time.Now()
+		file.StorageURL = url
+		file.StoredAt = time.Now()
 		// We send the md5 checksum with the file to S3.
 		// If S3 calculates a different checksum, it returns an error.
 		// Since there was no error, we know S3 calculated the same checksum
 		// that we calculated.
-		gf.StorageMd5 = gf.Md5
+		file.StorageMd5 = file.Md5
 
 		helper.ProcUtil.MessageLog.Debug("Successfully sent %s (UUID %s)"+
-			"to long-term storage bucket.", gf.Path, gf.Uuid)
+			"to long-term storage bucket.", file.Path, file.Uuid)
 	}
 	return url, nil
 }
@@ -364,25 +364,25 @@ func (helper *IngestHelper) SaveFile(gf *File) (string, error) {
 
 // Returns the S# URL of the file that was copied to
 // the preservation bucket, or an error.
-func (helper *IngestHelper) CopyToPreservationBucket(gf *File, reader *os.File, options *s3.Options) (string, error) {
-	if gf.Size < S3_LARGE_FILE {
+func (helper *IngestHelper) CopyToPreservationBucket(file *File, reader *os.File, options *s3.Options) (string, error) {
+	if file.Size < S3_LARGE_FILE {
 		return helper.ProcUtil.S3Client.SaveToS3(
 			helper.ProcUtil.Config.PreservationBucket,
-			gf.Uuid,
-			gf.MimeType,
+			file.Uuid,
+			file.MimeType,
 			reader,
-			gf.Size,
+			file.Size,
 			*options)
 	} else {
 		// Multi-part put for files >= 5GB
 		helper.ProcUtil.MessageLog.Debug("File %s is %d bytes. Using multi-part put.\n",
-			gf.Path, gf.Size)
+			file.Path, file.Size)
 		return helper.ProcUtil.S3Client.SaveLargeFileToS3(
 			helper.ProcUtil.Config.PreservationBucket,
-			gf.Uuid,
-			gf.MimeType,
+			file.Uuid,
+			file.MimeType,
 			reader,
-			gf.Size,
+			file.Size,
 			*options,
 			S3_CHUNK_SIZE)
 	}

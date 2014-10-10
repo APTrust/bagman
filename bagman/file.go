@@ -75,29 +75,29 @@ func NewFile() (*File) {
 
 // Converts bagman.File to FluctusFile, which is what
 // Fluctus understands.
-func (gf *File) ToFluctusFile() (*FluctusFile, error) {
+func (file *File) ToFluctusFile() (*FluctusFile, error) {
 	checksumAttributes := make([]*ChecksumAttribute, 2)
 	checksumAttributes[0] = &ChecksumAttribute{
 		Algorithm: "md5",
-		DateTime:  gf.Modified,
-		Digest:    gf.Md5,
+		DateTime:  file.Modified,
+		Digest:    file.Md5,
 	}
 	checksumAttributes[1] = &ChecksumAttribute{
 		Algorithm: "sha256",
-		DateTime:  gf.Sha256Generated,
-		Digest:    gf.Sha256,
+		DateTime:  file.Sha256Generated,
+		Digest:    file.Sha256,
 	}
-	events, err := gf.PremisEvents()
+	events, err := file.PremisEvents()
 	if err != nil {
 		return nil, err
 	}
 	fluctusFile := &FluctusFile{
-		Identifier:         gf.Identifier,
-		Format:             gf.MimeType,
-		URI:                gf.StorageURL,
-		Size:               gf.Size,
-		Created:            gf.Modified,
-		Modified:           gf.Modified,
+		Identifier:         file.Identifier,
+		Format:             file.MimeType,
+		URI:                file.StorageURL,
+		Size:               file.Size,
+		Created:            file.Modified,
+		Modified:           file.Modified,
 		ChecksumAttributes: checksumAttributes,
 		Events:             events,
 	}
@@ -107,7 +107,7 @@ func (gf *File) ToFluctusFile() (*FluctusFile, error) {
 // PremisEvents returns a list of Premis events generated during bag
 // processing. Ingest, Fixity Generation (sha256), identifier
 // assignment.
-func (gf *File) PremisEvents() (events []*PremisEvent, err error) {
+func (file *File) PremisEvents() (events []*PremisEvent, err error) {
 	events = make([]*PremisEvent, 5)
 	// Fixity check
 	fCheckEventUuid, err := uuid.NewV4()
@@ -119,10 +119,10 @@ func (gf *File) PremisEvents() (events []*PremisEvent, err error) {
 	events[0] = &PremisEvent{
 		Identifier:         fCheckEventUuid.String(),
 		EventType:          "fixity_check",
-		DateTime:           gf.Md5Verified,
+		DateTime:           file.Md5Verified,
 		Detail:             "Fixity check against registered hash",
 		Outcome:            string(StatusSuccess),
-		OutcomeDetail:      fmt.Sprintf("md5:%s", gf.Md5),
+		OutcomeDetail:      fmt.Sprintf("md5:%s", file.Md5),
 		Object:             "Go crypto/md5",
 		Agent:              "http://golang.org/pkg/crypto/md5/",
 		OutcomeInformation: "Fixity matches",
@@ -138,10 +138,10 @@ func (gf *File) PremisEvents() (events []*PremisEvent, err error) {
 	events[1] = &PremisEvent{
 		Identifier:         ingestEventUuid.String(),
 		EventType:          "ingest",
-		DateTime:           gf.StoredAt,
+		DateTime:           file.StoredAt,
 		Detail:             "Completed copy to S3",
 		Outcome:            string(StatusSuccess),
-		OutcomeDetail:      gf.StorageMd5,
+		OutcomeDetail:      file.StorageMd5,
 		Object:             "bagman + goamz s3 client",
 		Agent:              "https://github.com/APTrust/bagman",
 		OutcomeInformation: "Put using md5 checksum",
@@ -155,10 +155,10 @@ func (gf *File) PremisEvents() (events []*PremisEvent, err error) {
 	events[2] = &PremisEvent{
 		Identifier:         fixityGenUuid.String(),
 		EventType:          "fixity_generation",
-		DateTime:           gf.Sha256Generated,
+		DateTime:           file.Sha256Generated,
 		Detail:             "Calculated new fixity value",
 		Outcome:            string(StatusSuccess),
-		OutcomeDetail:      fmt.Sprintf("sha256:%s", gf.Sha256),
+		OutcomeDetail:      fmt.Sprintf("sha256:%s", file.Sha256),
 		Object:             "Go language crypto/sha256",
 		Agent:              "http://golang.org/pkg/crypto/sha256/",
 		OutcomeInformation: "",
@@ -172,10 +172,10 @@ func (gf *File) PremisEvents() (events []*PremisEvent, err error) {
 	events[3] = &PremisEvent{
 		Identifier:         idAssignmentUuid.String(),
 		EventType:          "identifier_assignment",
-		DateTime:           gf.UuidGenerated,
+		DateTime:           file.UuidGenerated,
 		Detail:             "Assigned new institution.bag/path identifier",
 		Outcome:            string(StatusSuccess),
-		OutcomeDetail:      gf.Identifier,
+		OutcomeDetail:      file.Identifier,
 		Object:             "APTrust bag processor",
 		Agent:              "https://github.com/APTrust/bagman",
 		OutcomeInformation: "",
@@ -189,10 +189,10 @@ func (gf *File) PremisEvents() (events []*PremisEvent, err error) {
 	events[4] = &PremisEvent{
 		Identifier:         urlAssignmentUuid.String(),
 		EventType:          "identifier_assignment",
-		DateTime:           gf.UuidGenerated,
+		DateTime:           file.UuidGenerated,
 		Detail:             "Assigned new storage URL identifier",
 		Outcome:            string(StatusSuccess),
-		OutcomeDetail:      gf.StorageURL,
+		OutcomeDetail:      file.StorageURL,
 		Object:             "Go uuid library + goamz S3 library",
 		Agent:              "http://github.com/nu7hatch/gouuid",
 		OutcomeInformation: "",

@@ -131,37 +131,37 @@ func TestUntarCreatesFiles(t *testing.T) {
 	}
 
 	emptyTime := time.Time{}
-	for index, gf := range tarResult.Files {
-		if gf.Path != expectedPath[index] {
-			t.Errorf("File path '%s' is incorrect, expected '%s'", gf.Path, expectedPath[index])
+	for index, file := range tarResult.Files {
+		if file.Path != expectedPath[index] {
+			t.Errorf("File path '%s' is incorrect, expected '%s'", file.Path, expectedPath[index])
 		}
-		if gf.Identifier != expectedIdentifier[index] {
+		if file.Identifier != expectedIdentifier[index] {
 			t.Errorf("File identifier '%s' is incorrect, expected '%s'",
-				gf.Identifier, expectedIdentifier[index])
+				file.Identifier, expectedIdentifier[index])
 		}
-		if gf.Md5 != expectedMd5[index] {
-			t.Errorf("File md5 sum '%s' should be '%s'", gf.Md5, expectedMd5[index])
+		if file.Md5 != expectedMd5[index] {
+			t.Errorf("File md5 sum '%s' should be '%s'", file.Md5, expectedMd5[index])
 		}
-		if gf.Sha256 != expectedSha256[index] {
-			t.Errorf("File sha256 sum '%s' should be '%s'", gf.Sha256, expectedSha256[index])
+		if file.Sha256 != expectedSha256[index] {
+			t.Errorf("File sha256 sum '%s' should be '%s'", file.Sha256, expectedSha256[index])
 		}
-		if len(gf.Uuid) != 36 {
-			t.Errorf("File UUID '%s' should be 36 characters", gf.Uuid)
+		if len(file.Uuid) != 36 {
+			t.Errorf("File UUID '%s' should be 36 characters", file.Uuid)
 		}
-		if gf.Size != expectedSize[index] {
-			t.Errorf("File size %d should be %d", gf.Size, expectedSize[index])
+		if file.Size != expectedSize[index] {
+			t.Errorf("File size %d should be %d", file.Size, expectedSize[index])
 		}
-		if gf.MimeType != expectedType[index] {
-			t.Errorf("File type '%s' should be '%s'", gf.MimeType, expectedType[index])
+		if file.MimeType != expectedType[index] {
+			t.Errorf("File type '%s' should be '%s'", file.MimeType, expectedType[index])
 		}
-		if gf.Sha256Generated == emptyTime {
+		if file.Sha256Generated == emptyTime {
 			t.Error("File.Sha256Generated timestamp is missing")
 		}
-		if gf.UuidGenerated == emptyTime {
+		if file.UuidGenerated == emptyTime {
 			t.Error("File.UuidGenerated timestamp is missing")
 		}
-		if gf.Modified.UTC() != expectedModTime[index].UTC() {
-			t.Errorf("File modtime '%v' should be '%v'", gf.Modified.UTC(), expectedModTime[index].UTC())
+		if file.Modified.UTC() != expectedModTime[index].UTC() {
+			t.Errorf("File modtime '%v' should be '%v'", file.Modified.UTC(), expectedModTime[index].UTC())
 		}
 	}
 
