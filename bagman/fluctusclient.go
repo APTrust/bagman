@@ -73,8 +73,7 @@ func (client *FluctusClient) CacheInstitutions() error {
 	}
 
 	// Read the json response
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
+	body, err := readResponse(response.Body)
 	if err != nil {
 		return err
 	}
@@ -160,14 +159,12 @@ func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err e
 	if err != nil {
 		return nil, err
 	}
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
+
 	items := make([]*ProcessStatus, 0)
 	err = json.Unmarshal(body, &items)
 	if err != nil {
@@ -229,18 +226,9 @@ func (client *FluctusClient) doStatusRequest(request *http.Request, expectedStat
 		return nil, err
 	}
 
-	// We have to read the response body, whether we're interested in
-	// its contents or not. If we don't read to the end of it, we'll
-	// end up with thousands of TCP connections in CLOSED_WAIT state,
-	// and the system will run out of file handles. See this post:
-	// http://stackoverflow.com/questions/17948827/reusing-http-connections-in-golang
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	// OK to return 404 on a status check. It just means the bag has not
@@ -282,14 +270,9 @@ func (client *FluctusClient) BulkStatusGet(since time.Time) (statusRecords []*Pr
 		return nil, err
 	}
 
-	// Must read body. See comment above.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	// 400 or 500
@@ -377,14 +360,9 @@ func (client *FluctusClient) getStatusItemsForQueue(itemType, identifier string)
 		return nil, err
 	}
 
-	// Read & close body to avoid hanging TCP connections.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	// Check for error response
@@ -429,14 +407,9 @@ func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRel
 		return nil, err
 	}
 
-	// Must read body. See comment above.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	// 404 for object not found
@@ -484,14 +457,9 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 		return nil, err
 	}
 
-	// Must read body. See comment above.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	// Fluctus returns 204 (No content) on update
@@ -553,14 +521,9 @@ func (client *FluctusClient) IntellectualObjectCreate(obj *IntellectualObject, m
 		return nil, err
 	}
 
-	// Must read body. See comment above.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	if response.StatusCode != 201 {
@@ -611,14 +574,9 @@ func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includ
 		return nil, err
 	}
 
-	// Must read body. See comment above.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	// 404 for object not found
@@ -667,14 +625,9 @@ func (client *FluctusClient) GenericFileSave(objId string, gf *GenericFile) (new
 		return nil, err
 	}
 
-	// Must read body. See comment above.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
@@ -742,14 +695,9 @@ func (client *FluctusClient) PremisEventSave(objId, objType string, event *Premi
 		return nil, err
 	}
 
-	// Must read body. See comment above.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return nil, err
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return nil, err
 	}
 
 	if response.StatusCode != 201 {
@@ -837,14 +785,9 @@ func (client *FluctusClient) RestorationStatusSet(objectIdentifier string, stage
 		return fmt.Errorf("Error executing POST request for %s: %v", objUrl, err)
 	}
 
-	// Read & close body to avoid hanging TCP connections.
-	var body []byte
-	if response.Body != nil {
-		body, err = ioutil.ReadAll(response.Body)
-		response.Body.Close()
-		if err != nil {
-			return fmt.Errorf("Error reading response body from %s: %v", objUrl, err)
-		}
+	body, err := readResponse(response.Body)
+	if err != nil {
+		return err
 	}
 
 	// Check for error response
@@ -881,12 +824,23 @@ func (client *FluctusClient) DeleteFluctusTestData() error {
 				url, response.StatusCode)
 		}
 
-		// Read the json response
-		defer response.Body.Close()
-		_, err = ioutil.ReadAll(response.Body)
+		_, err = readResponse(response.Body)
 		if err != nil {
 			return err
 		}
+
 	}
 	return nil
+}
+
+// Reads the response body and returns a byte slice.
+// You must read and close the response body, or the
+// TCP connection will remain open for as long as
+// our application runs.
+func readResponse(body io.ReadCloser) (data []byte, err error) {
+	if body != nil {
+		data, err = ioutil.ReadAll(body)
+		body.Close()
+	}
+	return data, err
 }
