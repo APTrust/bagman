@@ -18,41 +18,41 @@ func loadGenericFile() (*bagman.File, error) {
 }
 
 
-func TestToFluctusFile(t *testing.T) {
+func TestToGenericFile(t *testing.T) {
 	file, err := loadGenericFile()
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	fluctusFile, err := file.ToFluctusFile()
+	genericFile, err := file.ToGenericFile()
 	expectedIdentifier := "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml"
-	if fluctusFile.Identifier != expectedIdentifier {
-		t.Errorf("Identifier expected '%s', got '%s'", expectedIdentifier, fluctusFile.Identifier)
+	if genericFile.Identifier != expectedIdentifier {
+		t.Errorf("Identifier expected '%s', got '%s'", expectedIdentifier, genericFile.Identifier)
 	}
 	expectedFormat := "application/xml"
-	if fluctusFile.Format != expectedFormat {
-		t.Errorf("Format expected '%s', got '%s'", expectedFormat, fluctusFile.Format)
+	if genericFile.Format != expectedFormat {
+		t.Errorf("Format expected '%s', got '%s'", expectedFormat, genericFile.Format)
 	}
 	expectedURI := "https://s3.amazonaws.com/aptrust.test.fixtures/ncsu_files/data/metadata.xml"
-	if fluctusFile.URI != expectedURI {
-		t.Errorf("URI expected '%s', got '%s'", expectedURI, fluctusFile.URI)
+	if genericFile.URI != expectedURI {
+		t.Errorf("URI expected '%s', got '%s'", expectedURI, genericFile.URI)
 	}
 	expectedSize := int64(5105)
-	if fluctusFile.Size != expectedSize {
-		t.Errorf("Size expected %d, got %d", expectedSize, fluctusFile.Size)
+	if genericFile.Size != expectedSize {
+		t.Errorf("Size expected %d, got %d", expectedSize, genericFile.Size)
 	}
 	expectedTime := time.Date(2014, 4, 25, 18, 05, 51, 0, time.UTC)
-	if fluctusFile.Created != expectedTime {
-		t.Errorf("Created expected '%v', got '%v'", expectedTime, fluctusFile.Created)
+	if genericFile.Created != expectedTime {
+		t.Errorf("Created expected '%v', got '%v'", expectedTime, genericFile.Created)
 	}
-	if fluctusFile.Modified != expectedTime {
-		t.Errorf("Modified expected '%v', got '%v'", expectedTime, fluctusFile.Modified)
+	if genericFile.Modified != expectedTime {
+		t.Errorf("Modified expected '%v', got '%v'", expectedTime, genericFile.Modified)
 	}
-	if len(fluctusFile.ChecksumAttributes) != 2 {
-		t.Errorf("FluctusFile should have 2 checksum attributes")
+	if len(genericFile.ChecksumAttributes) != 2 {
+		t.Errorf("GenericFile should have 2 checksum attributes")
 	}
-	for i := range fluctusFile.ChecksumAttributes {
-		cs := fluctusFile.ChecksumAttributes[i]
+	for i := range genericFile.ChecksumAttributes {
+		cs := genericFile.ChecksumAttributes[i]
 		if i == 0 {
 			if cs.Algorithm != "md5" {
 				t.Errorf("First algorithm should be md5")
@@ -77,7 +77,7 @@ func TestToFluctusFile(t *testing.T) {
 		}
 	}
 	// We'll test individual events below
-	if len(fluctusFile.Events) != 5 {
+	if len(genericFile.Events) != 5 {
 		t.Errorf("PremisEvents should contain 5 events")
 	}
 }

@@ -34,7 +34,7 @@ const (
 // objects will have to be split into multiple bags
 // during restoration to accomodate the 250GB bag size limit.
 type FileSet struct {
-	Files []*FluctusFile
+	Files []*GenericFile
 }
 
 /*
@@ -195,8 +195,8 @@ func (restorer *BagRestorer) buildFileSets() {
 	fileSet := &FileSet{}
 	restorer.debug(fmt.Sprintf("Object %s has %d generic files",
 		restorer.IntellectualObject.Identifier,
-		len(restorer.IntellectualObject.FluctusFiles)))
-	for _, gf := range restorer.IntellectualObject.FluctusFiles {
+		len(restorer.IntellectualObject.GenericFiles)))
+	for _, gf := range restorer.IntellectualObject.GenericFiles {
 		if len(fileSet.Files) > 0 && bytesInSet + gf.Size > restorer.GetFileSetSizeLimit() {
 			restorer.fileSets = append(restorer.fileSets, fileSet)
 			fileSet = &FileSet{}
@@ -335,13 +335,13 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 }
 
 // Fetches the requested file from S3 and returns a FetchResult.
-func (restorer *BagRestorer) fetchFile(fluctusFile *FluctusFile, setNumber int) (*FetchResult) {
-	prefix := strings.SplitN(fluctusFile.Identifier, "/data/", 2)
-	subdir := strings.Replace(fluctusFile.Identifier, prefix[0], restorer.bagName(setNumber), 1)
+func (restorer *BagRestorer) fetchFile(genericFile *GenericFile, setNumber int) (*FetchResult) {
+	prefix := strings.SplitN(genericFile.Identifier, "/data/", 2)
+	subdir := strings.Replace(genericFile.Identifier, prefix[0], restorer.bagName(setNumber), 1)
 	localPath := filepath.Join(restorer.workingDir, subdir)
-	bucketName, key := bucketNameAndKey(fluctusFile.URI)
+	bucketName, key := bucketNameAndKey(genericFile.URI)
 	restorer.debug(fmt.Sprintf("Fetching key %s from bucket %s for file %s into %s",
-		key, bucketName, fluctusFile.Identifier, localPath))
+		key, bucketName, genericFile.Identifier, localPath))
 
 	// Make sure we have a place to put this file, or we'll
 	// have problems with directories nested under data/
@@ -354,7 +354,7 @@ func (restorer *BagRestorer) fetchFile(fluctusFile *FluctusFile, setNumber int) 
 
 	s3Key, err := restorer.s3Client.GetKey(bucketName, key)
 	if err != nil {
-		errMsg := fmt.Sprintf("Could not get key info for %s: %v", fluctusFile.URI, err)
+		errMsg := fmt.Sprintf("Could not get key info for %s: %v", genericFile.URI, err)
 		return &FetchResult {
 			ErrorMessage: errMsg,
 		}

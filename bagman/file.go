@@ -73,9 +73,9 @@ func NewFile() (*File) {
 }
 
 
-// Converts bagman.File to FluctusFile, which is what
+// Converts bagman.File to GenericFile, which is what
 // Fluctus understands.
-func (file *File) ToFluctusFile() (*FluctusFile, error) {
+func (file *File) ToGenericFile() (*GenericFile, error) {
 	checksumAttributes := make([]*ChecksumAttribute, 2)
 	checksumAttributes[0] = &ChecksumAttribute{
 		Algorithm: "md5",
@@ -91,7 +91,7 @@ func (file *File) ToFluctusFile() (*FluctusFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	fluctusFile := &FluctusFile{
+	genericFile := &GenericFile{
 		Identifier:         file.Identifier,
 		Format:             file.MimeType,
 		URI:                file.StorageURL,
@@ -101,7 +101,7 @@ func (file *File) ToFluctusFile() (*FluctusFile, error) {
 		ChecksumAttributes: checksumAttributes,
 		Events:             events,
 	}
-	return fluctusFile, nil
+	return genericFile, nil
 }
 
 // PremisEvents returns a list of Premis events generated during bag

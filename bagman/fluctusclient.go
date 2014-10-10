@@ -592,7 +592,7 @@ func (client *FluctusClient) IntellectualObjectCreate(obj *IntellectualObject, m
 }
 
 // Returns the generic file with the specified identifier.
-func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includeRelations bool) (*FluctusFile, error) {
+func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includeRelations bool) (*GenericFile, error) {
 	queryString := ""
 	if includeRelations == true {
 		queryString = "include_relations=true"
@@ -627,7 +627,7 @@ func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includ
 	}
 
 	// Build and return the data structure
-	obj := &FluctusFile{}
+	obj := &GenericFile{}
 	err = json.Unmarshal(body, obj)
 	if err != nil {
 		return nil, err
@@ -639,7 +639,7 @@ func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includ
 // figures out whether the save is a create or an update.
 // Param objId is the Id of the IntellectualObject to which
 // the file belongs. This returns the GenericFile.
-func (client *FluctusClient) GenericFileSave(objId string, gf *FluctusFile) (newGf *FluctusFile, err error) {
+func (client *FluctusClient) GenericFileSave(objId string, gf *GenericFile) (newGf *GenericFile, err error) {
 	existingObj, err := client.GenericFileGet(gf.Identifier, false)
 	if err != nil {
 		return nil, err
@@ -693,7 +693,7 @@ func (client *FluctusClient) GenericFileSave(objId string, gf *FluctusFile) (new
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
-		newGf = &FluctusFile{}
+		newGf = &GenericFile{}
 		err = json.Unmarshal(body, newGf)
 		if err != nil {
 			return nil, err

@@ -63,17 +63,17 @@ func (result *ProcessResult) IntellectualObject() (obj *IntellectualObject, err 
 		Description:   result.BagReadResult.TagValue("Description"),
 		Identifier:    identifier,
 		Access:        accessRights,
-		FluctusFiles:  files,
+		GenericFiles:  files,
 	}
 	return obj, nil
 }
 
 // GenericFiles returns a list of GenericFile objects that were found
 // in the bag.
-func (result *ProcessResult) GenericFiles() (files []*FluctusFile, err error) {
-	files = make([]*FluctusFile, len(result.TarResult.Files))
+func (result *ProcessResult) GenericFiles() (files []*GenericFile, err error) {
+	files = make([]*GenericFile, len(result.TarResult.Files))
 	for i, file := range result.TarResult.Files {
-		gfModel, err := file.ToFluctusFile()
+		gfModel, err := file.ToGenericFile()
 		if err != nil {
 			return nil, err
 		}

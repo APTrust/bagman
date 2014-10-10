@@ -11,7 +11,7 @@ import (
 /*
 IntellectualObject is Fluctus' version of an IntellectualObject.
 It belongs to an Institution and consists of one or more
-FluctusFiles and a number of events.
+GenericFiles and a number of events.
 
 Institution is the owner of the intellectual object.
 
@@ -32,7 +32,7 @@ type IntellectualObject struct {
 	Title         string         `json:"title"`
 	Description   string         `json:"description"`
 	Access        string         `json:"access"`
-	FluctusFiles  []*FluctusFile `json:"generic_files"`
+	GenericFiles  []*GenericFile `json:"generic_files"`
 	Events        []*PremisEvent `json:"events"`
 }
 
@@ -42,8 +42,8 @@ type IntellectualObject struct {
 // files and tar header.
 func (obj *IntellectualObject) TotalFileSize() (int64) {
 	total := int64(0)
-	for _, fluctusFile := range obj.FluctusFiles {
-		total += fluctusFile.Size
+	for _, genericFile := range obj.GenericFiles {
+		total += genericFile.Size
 	}
 	return total
 }
@@ -74,22 +74,22 @@ func (obj *IntellectualObject) AccessValid() bool {
 // contain more than 10,000 files, and if we send all of this data
 // at once to Fluctus, it crashes.
 func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, error) {
-	fileCount := len(obj.FluctusFiles)
+	fileCount := len(obj.GenericFiles)
 	if maxGenericFiles > 0 && maxGenericFiles < fileCount {
 		fileCount = maxGenericFiles
 	}
 	genericFileMaps := make([]map[string]interface{}, fileCount)
 	for i := 0; i < fileCount; i++ {
-		fluctusFile := obj.FluctusFiles[i]
+		genericFile := obj.GenericFiles[i]
 		genericFileMaps[i] = map[string]interface{}{
-			"identifier":   fluctusFile.Identifier,
-			"file_format":  fluctusFile.Format,
-			"uri":          fluctusFile.URI,
-			"size":         fluctusFile.Size,
-			"created":      fluctusFile.Created,
-			"modified":     fluctusFile.Modified,
-			"checksum":     fluctusFile.ChecksumAttributes,
-			"premisEvents": fluctusFile.Events,
+			"identifier":   genericFile.Identifier,
+			"file_format":  genericFile.Format,
+			"uri":          genericFile.URI,
+			"size":         genericFile.Size,
+			"created":      genericFile.Created,
+			"modified":     genericFile.Modified,
+			"checksum":     genericFile.ChecksumAttributes,
+			"premisEvents": genericFile.Events,
 		}
 	}
 	events := make([]*PremisEvent, 2)
@@ -134,7 +134,7 @@ func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent, error) {
 		DateTime:           time.Now(),
 		Detail:             "Copied all files to perservation bucket",
 		Outcome:            "Success",
-		OutcomeDetail:      fmt.Sprintf("%d files copied", len(obj.FluctusFiles)),
+		OutcomeDetail:      fmt.Sprintf("%d files copied", len(obj.GenericFiles)),
 		Object:             "goamz S3 client",
 		Agent:              "https://launchpad.net/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",

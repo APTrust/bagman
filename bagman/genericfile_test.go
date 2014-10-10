@@ -7,9 +7,9 @@ import (
 )
 
 func TestBagName(t *testing.T) {
-	fluctusFile := bagman.FluctusFile{}
-	fluctusFile.Identifier = "uc.edu/cin.675812/data/object.properties"
-	bagname, err := fluctusFile.BagName()
+	genericFile := bagman.GenericFile{}
+	genericFile.Identifier = "uc.edu/cin.675812/data/object.properties"
+	bagname, err := genericFile.BagName()
 	if err != nil {
 		t.Error(err)
 	}
@@ -19,9 +19,9 @@ func TestBagName(t *testing.T) {
 }
 
 func TestInstitutionId(t *testing.T) {
-	fluctusFile := bagman.FluctusFile{}
-	fluctusFile.Identifier = "uc.edu/cin.675812/data/object.properties"
-	instId, err := fluctusFile.InstitutionId()
+	genericFile := bagman.GenericFile{}
+	genericFile.Identifier = "uc.edu/cin.675812/data/object.properties"
+	instId, err := genericFile.InstitutionId()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -31,9 +31,9 @@ func TestInstitutionId(t *testing.T) {
 }
 
 func TestOriginalPath(t *testing.T) {
-	fluctusFile := bagman.FluctusFile{}
-	fluctusFile.Identifier = "uc.edu/cin.675812/data/object.properties"
-	origPath, err := fluctusFile.OriginalPath()
+	genericFile := bagman.GenericFile{}
+	genericFile.Identifier = "uc.edu/cin.675812/data/object.properties"
+	origPath, err := genericFile.OriginalPath()
 	if err != nil {
 		t.Errorf(err.Error())
 	}
@@ -53,10 +53,10 @@ func TestGetChecksum(t *testing.T) {
 	if intelObj == nil {
 		return
 	}
-	fluctusFile := intelObj.FluctusFiles[1]
+	genericFile := intelObj.GenericFiles[1]
 
 	// MD5
-	md5Checksum := fluctusFile.GetChecksum("md5")
+	md5Checksum := genericFile.GetChecksum("md5")
 	if md5Checksum == nil {
 		t.Errorf("GetChecksum did not return md5 sum")
 	}
@@ -65,7 +65,7 @@ func TestGetChecksum(t *testing.T) {
 	}
 
 	// SHA256
-	sha256Checksum := fluctusFile.GetChecksum("sha256")
+	sha256Checksum := genericFile.GetChecksum("sha256")
 	if sha256Checksum == nil {
 		t.Errorf("GetChecksum did not return sha256 sum")
 	}
@@ -74,21 +74,21 @@ func TestGetChecksum(t *testing.T) {
 	}
 
 	// bogus checksum
-	bogusChecksum := fluctusFile.GetChecksum("bogus")
+	bogusChecksum := genericFile.GetChecksum("bogus")
 	if bogusChecksum != nil {
 		t.Errorf("GetChecksum returned something it shouldn't have")
 	}
 }
 
 func TestPreservationStorageFileName(t *testing.T) {
-	fluctusFile := bagman.FluctusFile{}
-	fluctusFile.URI = ""
-	fileName, err := fluctusFile.PreservationStorageFileName()
+	genericFile := bagman.GenericFile{}
+	genericFile.URI = ""
+	fileName, err := genericFile.PreservationStorageFileName()
 	if err == nil {
 		t.Errorf("PreservationStorageFileName() should have returned an error")
 	}
-	fluctusFile.URI = "https://s3.amazonaws.com/aptrust.test.preservation/a58a7c00-392f-11e4-916c-0800200c9a66"
-	fileName, err = fluctusFile.PreservationStorageFileName()
+	genericFile.URI = "https://s3.amazonaws.com/aptrust.test.preservation/a58a7c00-392f-11e4-916c-0800200c9a66"
+	fileName, err = genericFile.PreservationStorageFileName()
 	if err != nil {
 		t.Errorf("PreservationStorageFileName() returned an error: %v", err)
 	}

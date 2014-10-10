@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func buildFluctusFiles() ([]*bagman.FluctusFile) {
+func buildGenericFiles() ([]*bagman.GenericFile) {
 	// Changed file
 	md5_1 := &bagman.ChecksumAttribute{
 		Algorithm: "md5",
@@ -22,7 +22,7 @@ func buildFluctusFiles() ([]*bagman.FluctusFile) {
 	checksums1 := make([]*bagman.ChecksumAttribute, 2)
 	checksums1[0] = md5_1
 	checksums1[1] = sha256_1
-	fluctusFile1 := &bagman.FluctusFile{
+	genericFile1 := &bagman.GenericFile{
 		Identifier: "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml",
 		ChecksumAttributes: checksums1,
 	}
@@ -41,15 +41,15 @@ func buildFluctusFiles() ([]*bagman.FluctusFile) {
 	checksums2 := make([]*bagman.ChecksumAttribute, 2)
 	checksums2[0] = md5_2
 	checksums2[1] = sha256_2
-	fluctusFile2 := &bagman.FluctusFile{
+	genericFile2 := &bagman.GenericFile{
 		Identifier: "ncsu.edu/ncsu.1840.16-2928/data/object.properties",
 		ChecksumAttributes: checksums2,
 	}
 
-	fluctusFiles := make([]*bagman.FluctusFile, 2)
-	fluctusFiles[0] = fluctusFile1
-	fluctusFiles[1] = fluctusFile2
-	return fluctusFiles
+	genericFiles := make([]*bagman.GenericFile, 2)
+	genericFiles[0] = genericFile1
+	genericFiles[1] = genericFile2
+	return genericFiles
 }
 
 
@@ -149,8 +149,8 @@ func TestMergeExistingFiles(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	fluctusFiles := buildFluctusFiles()
-	result.TarResult.MergeExistingFiles(fluctusFiles)
+	genericFiles := buildGenericFiles()
+	result.TarResult.MergeExistingFiles(genericFiles)
 
 	// Existing and changed.
 	// File "ncsu.edu/ncsu.1840.16-2928/data/metadata.xml"

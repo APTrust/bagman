@@ -107,7 +107,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 	if obj == nil {
 		t.Error("IntellectualObjectGet did not return the expected object")
 	}
-	if obj != nil && len(obj.FluctusFiles) > 0 {
+	if obj != nil && len(obj.GenericFiles) > 0 {
 		t.Error("IntellectualObject has GenericFiles. It shouldn't.")
 	}
 
@@ -121,10 +121,10 @@ func TestIntellectualObjectGet(t *testing.T) {
 		t.Error("IntellectualObjectGet did not return the expected object")
 	}
 	if obj != nil {
-		if len(obj.FluctusFiles) == 0 {
+		if len(obj.GenericFiles) == 0 {
 			t.Error("IntellectualObject has no GenericFiles, but it should.")
 		}
-		gf := findFile(obj.FluctusFiles, gfId)
+		gf := findFile(obj.GenericFiles, gfId)
 		if len(gf.Events) == 0 {
 			t.Error("GenericFile from Fluctus is missing events.")
 		}
@@ -147,7 +147,7 @@ func TestIntellectualObjectGet(t *testing.T) {
 // Returns the file with the specified id. We use this in testing
 // because we want to look at a file that we know has both events
 // and checksums.
-func findFile(files []*bagman.FluctusFile, id string) *bagman.FluctusFile {
+func findFile(files []*bagman.GenericFile, id string) *bagman.GenericFile {
 	for _, f := range files {
 		if f.Identifier == id || f.Id == id {
 			return f
@@ -215,9 +215,9 @@ func TestIntellectualObjectCreate(t *testing.T) {
 	oldIdentifier := obj.Identifier
 	obj.Identifier = fmt.Sprintf("test.edu/%d", time.Now().Unix())
 	// Update the identifier on all of the generic files...
-	for i := range obj.FluctusFiles {
-		obj.FluctusFiles[i].Identifier = strings.Replace(
-			obj.FluctusFiles[i].Identifier, oldIdentifier, obj.Identifier, 1)
+	for i := range obj.GenericFiles {
+		obj.GenericFiles[i].Identifier = strings.Replace(
+			obj.GenericFiles[i].Identifier, oldIdentifier, obj.Identifier, 1)
 	}
 	newObj, err := fluctusClient.IntellectualObjectCreate(obj, bagman.MAX_FILES_FOR_CREATE)
 	if err != nil {

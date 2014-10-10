@@ -46,9 +46,9 @@ func (result *TarResult) GetFileByPath(filePath string) (*File) {
 // MergeExistingFiles merges data from generic files that
 // already exist in Fedora. This is necessary when an existing
 // bag is reprocessed or re-uploaded.
-func (result *TarResult) MergeExistingFiles(fluctusFiles []*FluctusFile) {
-	for _, fluctusFile := range fluctusFiles {
-		origPath, _ := fluctusFile.OriginalPath()
+func (result *TarResult) MergeExistingFiles(genericFiles []*GenericFile) {
+	for _, genericFile := range genericFiles {
+		origPath, _ := genericFile.OriginalPath()
 		file := result.GetFileByPath(origPath)
 		if file != nil {
 			file.ExistingFile = true
@@ -56,7 +56,7 @@ func (result *TarResult) MergeExistingFiles(fluctusFiles []*FluctusFile) {
 			// has not changed, there is no reason to re-upload
 			// this file to the preservation bucket, nor is there
 			// any reason to create new ingest events in Fedora.
-			existingMd5 := fluctusFile.GetChecksum("md5")
+			existingMd5 := genericFile.GetChecksum("md5")
 			if file.Md5 == existingMd5.Digest {
 				file.NeedsSave = false
 			}

@@ -221,7 +221,7 @@ func (helper *IngestHelper) MergeFedoraRecord() (error) {
 		return detailedError
 	}
 	if fedoraObj != nil {
-		helper.Result.TarResult.MergeExistingFiles(fedoraObj.FluctusFiles)
+		helper.Result.TarResult.MergeExistingFiles(fedoraObj.GenericFiles)
 	}
 	return nil
 }

@@ -9,7 +9,7 @@ import (
 
 
 /*
-FluctusFile contains information about a file that makes up
+GenericFile contains information about a file that makes up
 part (or all) of an IntellectualObject.
 
 IntellectualObject is the object to which the file belongs.
@@ -33,7 +33,7 @@ such as:
 1994-11-05T08:15:30-05:00     (Local Time)
 1994-11-05T08:15:30Z          (UTC)
 */
-type FluctusFile struct {
+type GenericFile struct {
 	Id                 string               `json:"id"`
 	Identifier         string               `json:"identifier"`
 	Format             string               `json:"file_format"`
@@ -45,8 +45,8 @@ type FluctusFile struct {
 	Events             []*PremisEvent       `json:"premisEvents"`
 }
 
-// Serializes a version of FluctusFile that Fluctus will accept as post/put input.
-func (gf *FluctusFile) SerializeForFluctus() ([]byte, error) {
+// Serializes a version of GenericFile that Fluctus will accept as post/put input.
+func (gf *GenericFile) SerializeForFluctus() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
 		"identifier":          gf.Identifier,
 		"file_format":         gf.Format,
@@ -62,34 +62,34 @@ func (gf *FluctusFile) SerializeForFluctus() ([]byte, error) {
 // This is just the identifier minus the institution id and bag name.
 // For example, if the identifier is "uc.edu/cin.675812/data/object.properties",
 // this returns "data/object.properties"
-func (gf *FluctusFile) OriginalPath() (string, error) {
+func (gf *GenericFile) OriginalPath() (string, error) {
 	parts := strings.SplitN(gf.Identifier, "/data/", 2)
 	if len(parts) < 2 {
-		return "", fmt.Errorf("FluctusFile identifier '%s' is not valid", gf.Identifier)
+		return "", fmt.Errorf("GenericFile identifier '%s' is not valid", gf.Identifier)
 	}
 	return fmt.Sprintf("data/%s", parts[1]), nil
 }
 
 // Returns the name of the original bag.
-func (gf *FluctusFile) BagName() (string, error) {
+func (gf *GenericFile) BagName() (string, error) {
 	parts := strings.Split(gf.Identifier, "/")
 	if len(parts) < 2 {
-		return "", fmt.Errorf("FluctusFile identifier '%s' is not valid", gf.Identifier)
+		return "", fmt.Errorf("GenericFile identifier '%s' is not valid", gf.Identifier)
 	}
 	return parts[1], nil
 }
 
 // Returns the name of the institution that owns this file.
-func (gf *FluctusFile) InstitutionId() (string, error) {
+func (gf *GenericFile) InstitutionId() (string, error) {
 	parts := strings.Split(gf.Identifier, "/")
 	if len(parts) < 2 {
-		return "", fmt.Errorf("FluctusFile identifier '%s' is not valid", gf.Identifier)
+		return "", fmt.Errorf("GenericFile identifier '%s' is not valid", gf.Identifier)
 	}
 	return parts[0], nil
 }
 
 // Returns the checksum digest for the given algorithm for this file.
-func (gf *FluctusFile) GetChecksum(algorithm string) (*ChecksumAttribute) {
+func (gf *GenericFile) GetChecksum(algorithm string) (*ChecksumAttribute) {
 	for _, cs := range gf.ChecksumAttributes {
 		if cs.Algorithm == algorithm {
 			return cs
@@ -99,11 +99,11 @@ func (gf *FluctusFile) GetChecksum(algorithm string) (*ChecksumAttribute) {
 }
 
 // Returns the name of this file in the preservation storage bucket
-// (that should be a UUID), or an error if the FluctusFile does not
+// (that should be a UUID), or an error if the GenericFile does not
 // have a valid preservation storage URL.
-func (gf *FluctusFile) PreservationStorageFileName() (string, error) {
+func (gf *GenericFile) PreservationStorageFileName() (string, error) {
 	if strings.Index(gf.URI, "/") < 0 {
-		return "", fmt.Errorf("Cannot get preservation storage file name because FluctusFile has an invalid URI")
+		return "", fmt.Errorf("Cannot get preservation storage file name because GenericFile has an invalid URI")
 	}
 	parts := strings.Split(gf.URI, "/")
 	return parts[len(parts) - 1], nil
