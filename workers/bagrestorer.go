@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+// TODO: Change bagman.BagRestorer to RestoreHelper.
+// It's confusing to have two classes with the same name.
+// TODO: Merge RestoreObject struct below with bagman.RestoreHelper.
+
 type BagRestorer struct {
 	RestoreChannel chan *RestoreObject
 	ResultsChannel chan *RestoreObject
