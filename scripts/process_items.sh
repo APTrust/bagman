@@ -46,8 +46,8 @@ cd ~/go/src/github.com/APTrust/bagman/apps/cleanup_reader
 go run cleanup_reader.go -config apd4n
 
 echo "Starting cleanup processor"
-cd ~/go/src/github.com/APTrust/bagman/apps/apt_cleanup
-go run apt_cleanup.go -config apd4n &
+cd ~/go/src/github.com/APTrust/bagman/apps/apt_bag_delete
+go run apt_bag_delete.go -config apd4n &
 CLEANUP_PID=$!
 
 kill_all()

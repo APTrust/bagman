@@ -20,8 +20,8 @@ go run apt_restore.go -config apd4n &
 RESTORE_PID=$!
 
 echo "Starting generic file deleter"
-cd ~/go/src/github.com/APTrust/bagman/apps/apt_delete
-go run apt_delete.go -config apd4n &
+cd ~/go/src/github.com/APTrust/bagman/apps/apt_file_delete
+go run apt_file_delete.go -config apd4n &
 DELETE_PID=$!
 
 kill_all()
