@@ -1,5 +1,4 @@
 package main
-
 import (
 	"flag"
 	"github.com/APTrust/bagman/bagman"
@@ -7,18 +6,21 @@ import (
 	"github.com/bitly/go-nsq"
 )
 
+// apt_restore restores bags from preservation storage into an
+// institution's restore bucket.
 func main() {
 	procUtil := createProcUtil()
 	consumer, err := createNsqConsumer(&procUtil.Config)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
-	troubleProcessor := workers.NewTroubleProcessor(procUtil)
-	consumer.SetHandler(troubleProcessor)
+	bagRestorer := workers.NewBagRestorer(procUtil)
+	consumer.SetHandler(bagRestorer)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan
+
 }
 
 func createProcUtil() (procUtil *bagman.ProcessUtil) {
@@ -31,7 +33,7 @@ func createProcUtil() (procUtil *bagman.ProcessUtil) {
 	if err != nil {
 		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
 	}
-	procUtil.MessageLog.Info("Trouble Processor started")
+	procUtil.MessageLog.Info("Bag Deleter started")
 	return procUtil
 }
 
@@ -39,9 +41,9 @@ func createNsqConsumer(config *bagman.Config) (*nsq.Consumer, error) {
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(config.MaxMetadataAttempts))
+	nsqConfig.Set("max_attempts", uint16(config.MaxRestoreAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "10m")
-	return nsq.NewConsumer(config.TroubleTopic, config.TroubleChannel, nsqConfig)
+	nsqConfig.Set("msg_timeout", "180m")
+	return nsq.NewConsumer(config.RestoreTopic, config.RestoreChannel, nsqConfig)
 }

@@ -7,21 +7,20 @@ import (
 	"github.com/bitly/go-nsq"
 )
 
-// bag_storer stores bags that have been unpacked and validated
-// by apt_prepare.
+// apt_file_delete - Deletes individual Generic Files from preservation
+// storage at the request of users/admins.
 func main() {
 	procUtil := createProcUtil()
 	consumer, err := createNsqConsumer(&procUtil.Config)
 	if err != nil {
-		procUtil.MessageLog.Fatal(err.Error())
+		procUtil.MessageLog.Fatalf(err.Error())
 	}
-	bagStorer := workers.NewBagStorer(procUtil)
-	consumer.SetHandler(bagStorer)
+	fileDeleter := workers.NewFileDeleter(procUtil)
+	consumer.SetHandler(fileDeleter)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan
-
 }
 
 func createProcUtil() (procUtil *bagman.ProcessUtil) {
@@ -34,7 +33,7 @@ func createProcUtil() (procUtil *bagman.ProcessUtil) {
 	if err != nil {
 		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
 	}
-	procUtil.MessageLog.Info("Bag Storer started")
+	procUtil.MessageLog.Info("File Deleter started")
 	return procUtil
 }
 
@@ -42,9 +41,9 @@ func createNsqConsumer(config *bagman.Config) (*nsq.Consumer, error) {
 	nsqConfig := nsq.NewConfig()
 	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(config.MaxStoreAttempts))
+	nsqConfig.Set("max_attempts", uint16(config.MaxDeleteAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "180m")
-	return nsq.NewConsumer(config.StoreTopic, config.StoreChannel, nsqConfig)
+	nsqConfig.Set("msg_timeout", "30m")
+	return nsq.NewConsumer(config.DeleteTopic, config.DeleteChannel, nsqConfig)
 }

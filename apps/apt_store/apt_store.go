@@ -1,7 +1,3 @@
-/*
-bag_recorder.go records bag metadata in Fluctus, including
-info about Intellectual Objects, Generic Files and Premis Events.
-*/
 package main
 
 import (
@@ -11,18 +7,21 @@ import (
 	"github.com/bitly/go-nsq"
 )
 
+// apt_store stores bags that have been unpacked and validated
+// by apt_prepare.
 func main() {
 	procUtil := createProcUtil()
 	consumer, err := createNsqConsumer(&procUtil.Config)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
-	bagRecorder := workers.NewBagRecorder(procUtil)
-	consumer.SetHandler(bagRecorder)
+	bagStorer := workers.NewBagStorer(procUtil)
+	consumer.SetHandler(bagStorer)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan
+
 }
 
 func createProcUtil() (procUtil *bagman.ProcessUtil) {
@@ -35,17 +34,17 @@ func createProcUtil() (procUtil *bagman.ProcessUtil) {
 	if err != nil {
 		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
 	}
-	procUtil.MessageLog.Info("Bag Recorder started")
+	procUtil.MessageLog.Info("Bag Storer started")
 	return procUtil
 }
 
 func createNsqConsumer(config *bagman.Config) (*nsq.Consumer, error) {
 	nsqConfig := nsq.NewConfig()
-	nsqConfig.Set("max_in_flight", config.RecordWorkers * 10)
+	nsqConfig.Set("max_in_flight", 20)
 	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(config.MaxMetadataAttempts))
+	nsqConfig.Set("max_attempts", uint16(config.MaxStoreAttempts))
 	nsqConfig.Set("read_timeout", "60s")
 	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "60m")
-	return nsq.NewConsumer(config.MetadataTopic, config.MetadataChannel, nsqConfig)
+	nsqConfig.Set("msg_timeout", "180m")
+	return nsq.NewConsumer(config.StoreTopic, config.StoreChannel, nsqConfig)
 }
