@@ -7,8 +7,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/fluctus/client"
+	"github.com/APTrust/bagman/bagman"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/op/go-logging"
 	"net/http"
@@ -30,7 +29,7 @@ const (
 var (
 	config        bagman.Config
 	messageLog    *logging.Logger
-	fluctusClient *client.Client
+	fluctusClient *bagman.FluctusClient
 	statusCache   map[string]*bagman.ProcessStatus
 )
 
@@ -52,7 +51,7 @@ func initialize() (err error) {
 	messageLog = bagman.InitLogger(config)
 	bagman.LoadCustomEnvOrDie(customEnvFile, messageLog)
 	messageLog.Info("Bucket reader started")
-	fluctusClient, err = client.New(
+	fluctusClient, err = bagman.NewFluctusClient(
 		config.FluctusURL,
 		config.FluctusAPIVersion,
 		os.Getenv("FLUCTUS_API_USER"),
