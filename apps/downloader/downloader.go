@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/APTrust/bagman"
+	"github.com/APTrust/bagman/bagman"
 	"github.com/crowdmob/goamz/aws"
 	"io"
 	"os"
