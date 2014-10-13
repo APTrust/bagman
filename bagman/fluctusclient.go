@@ -562,8 +562,13 @@ func (client *FluctusClient) GenericFileSave(objId string, gf *GenericFile) (new
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
 	if response.StatusCode != 201 && response.StatusCode != 204 {
-		message := "GenericFileSave Expected status code 201 or 204 but got %d. URL: %s"
-		err = client.buildAndLogError(body, message, response.StatusCode, request.URL)
+		err = fmt.Errorf("GenericFileSave Expected status code 201 or 204 but got %d. URL: %s\n",
+			response.StatusCode, request.URL)
+		//if len(body) < 1000 {
+		client.logger.Error(err.Error(), strings.Replace(string(body), "\n", " ", -1))
+		//} else {
+		//	client.logger.Error(err.Error())
+		//}
 		return nil, err
 	} else {
 		client.logger.Debug("%s GenericFile %s succeeded", method, gf.Identifier)
