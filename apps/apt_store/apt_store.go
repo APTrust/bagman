@@ -145,7 +145,7 @@ func (*APTStore) HandleMessage(message *nsq.Message) error {
 	// It eats resources when bags are large (10,000+ files), and the validate
 	// step in apt_prepare should ensure that all files are present.
 	//
-	// if allFilesExist(result.TarResult.OutputDir, result.TarResult.GenericFiles) == false {
+	// if allFilesExist(result.TarResult.OutputDir, result.TarResult.Files) == false {
 	// 	procUtil.MessageLog.Error("Cannot process %s because of missing file(s)",
 	// 		result.S3File.BagName())
 	// 	message.Finish()

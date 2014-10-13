@@ -8,7 +8,7 @@ type TarResult struct {
 	ErrorMessage  string
 	Warnings      []string
 	FilesUnpacked []string
-	Files  []*File
+	Files         []*File
 }
 
 // Returns true if any of the untarred files are new or updated.
