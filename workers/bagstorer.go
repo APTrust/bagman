@@ -1,28 +1,4 @@
-package main
-
-import (
-	"encoding/json"
-	"flag"
-	"fmt"
-	"github.com/APTrust/bagman"
-	"github.com/APTrust/bagman/processutil"
-	"github.com/APTrust/bagman/ingesthelper"
-	"github.com/bitly/go-nsq"
-	"path/filepath"
-	"time"
-)
-
-type Channels struct {
-	StorageChannel chan *ingesthelper.IngestHelper
-	CleanUpChannel chan *ingesthelper.IngestHelper
-	ResultsChannel chan *ingesthelper.IngestHelper
-}
-
-// Global vars.
-var procUtil *processutil.ProcessUtil
-var channels *Channels
-
-// apt_store stores bags that have been unpacked and validated
+// bagstorer stores bags that have been unpacked and validated
 // by apt_prepare. Each item/message follows this flow:
 //
 // 1. Storage channel: copies files to S3 permanent storage.
@@ -38,92 +14,55 @@ var channels *Channels
 //
 // As long as the message from nsq contains valid JSON,
 // steps 2 and 3 ALWAYS run.
-func main() {
-	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
-	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
-	flag.Parse()
-	bagman.LoadCustomEnvOrDie(customEnvFile, nil)
-	procUtil = processutil.NewProcessUtil(requestedConfig)
+package workers
 
-	procUtil.MessageLog.Info("apt_store started")
-	err := procUtil.Config.EnsureFluctusConfig()
-	if err != nil {
-		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
-	}
+import (
+	"encoding/json"
+	"fmt"
+	"github.com/APTrust/bagman/bagman"
+	"github.com/bitly/go-nsq"
+	"path/filepath"
+	"time"
+)
 
-	initChannels()
-	initGoRoutines()
-
-	nsqConfig := nsq.NewConfig()
-	nsqConfig.Set("max_in_flight", 20)
-	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(procUtil.Config.MaxStoreAttempts))
-	nsqConfig.Set("read_timeout", "60s")
-	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "180m")
-	consumer, err := nsq.NewConsumer(procUtil.Config.StoreTopic,
-		procUtil.Config.StoreChannel, nsqConfig)
-	if err != nil {
-		procUtil.MessageLog.Fatalf(err.Error())
-	}
-
-	handler := &APTStore{}
-	consumer.SetHandler(handler)
-	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
-
-	// This reader blocks until we get an interrupt, so our program does not exit.
-	<-consumer.StopChan
+type BagStorer struct {
+	StorageChannel chan *bagman.IngestHelper
+	CleanUpChannel chan *bagman.IngestHelper
+	ResultsChannel chan *bagman.IngestHelper
+	ProcUtil            *bagman.ProcessUtil
 }
 
-// Set up the channels. It's essential that that the fetchChannel
-// be limited to a relatively low number. If we are downloading
-// 1GB tar files, we need space to store the tar file AND the
-// untarred version. That's about 2 x 1GB. We do not want to pull
-// down 1000 files at once, or we'll run out of disk space!
-// If config sets fetchers to 10, we can pull down 10 files at a
-// time. The fetch queue could hold 10 * 4 = 40 items, so we'd
-// have max 40 tar files + untarred directories on disk at once.
-// The number of workers should be close to the number of CPU
-// cores.
-func initChannels() {
+func NewBagStorer(procUtil *bagman.ProcessUtil) (*BagStorer) {
+	bagStorer := &BagStorer{
+		ProcUtil: procUtil,
+	}
 	workerBufferSize := procUtil.Config.StoreWorkers * 10
-
-	channels = &Channels{}
-	channels.StorageChannel = make(chan *ingesthelper.IngestHelper, workerBufferSize)
-	channels.CleanUpChannel = make(chan *ingesthelper.IngestHelper, workerBufferSize)
-	channels.ResultsChannel = make(chan *ingesthelper.IngestHelper, workerBufferSize)
-}
-
-// Set up our go routines. We do NOT want one go routine per
-// S3 file. If we do that, the system will run out of file handles,
-// as we'll have tens of thousands of open connections to S3
-// trying to write data into tens of thousands of local files.
-func initGoRoutines() {
+	bagStorer.StorageChannel = make(chan *bagman.IngestHelper, workerBufferSize)
+	bagStorer.CleanUpChannel = make(chan *bagman.IngestHelper, workerBufferSize)
+	bagStorer.ResultsChannel = make(chan *bagman.IngestHelper, workerBufferSize)
 	for i := 0; i < procUtil.Config.StoreWorkers; i++ {
-		go saveToStorage()
-		go logResult()
-		go doCleanUp()
+		go bagStorer.saveToStorage()
+		go bagStorer.logResult()
+		go bagStorer.doCleanUp()
 	}
-}
-
-type APTStore struct {
+	return bagStorer
 }
 
 // MessageHandler handles messages from the queue, putting each
 // item into the pipleline.
-func (*APTStore) HandleMessage(message *nsq.Message) error {
+func (bagStorer *BagStorer) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
 	var result bagman.ProcessResult
 	err := json.Unmarshal(message.Body, &result)
 	if err != nil {
-		procUtil.MessageLog.Error("Could not unmarshal JSON data from nsq:",
+		bagStorer.ProcUtil.MessageLog.Error("Could not unmarshal JSON data from nsq:",
 			string(message.Body))
 		message.Finish()
 		return fmt.Errorf("Could not unmarshal JSON data from nsq")
 	}
 
 	if result.BagReadResult == nil {
-		procUtil.MessageLog.Error("Result.BagReadResult is nil")
+		bagStorer.ProcUtil.MessageLog.Error("Result.BagReadResult is nil")
 		message.Finish()
 		return fmt.Errorf("Result.BagReadResult is nil")
 	}
@@ -134,8 +73,8 @@ func (*APTStore) HandleMessage(message *nsq.Message) error {
 	// The original process will call Finish() on the message when it's
 	// done. If we call Finish() here, NSQ will throw a "not-in-flight"
 	// error when the processor calls Finish() on the original message later.
-	if procUtil.MessageIdFor(result.S3File.BagName()) != "" {
-		procUtil.MessageLog.Info("Skipping bag %s: already in progress",
+	if bagStorer.ProcUtil.MessageIdFor(result.S3File.BagName()) != "" {
+		bagStorer.ProcUtil.MessageLog.Info("Skipping bag %s: already in progress",
 			result.S3File.Key.Key)
 		message.Finish()
 		return nil
@@ -145,8 +84,8 @@ func (*APTStore) HandleMessage(message *nsq.Message) error {
 	// It eats resources when bags are large (10,000+ files), and the validate
 	// step in apt_prepare should ensure that all files are present.
 	//
-	// if allFilesExist(result.TarResult.OutputDir, result.TarResult.Files) == false {
-	// 	procUtil.MessageLog.Error("Cannot process %s because of missing file(s)",
+	// if bagStorer.allFilesExist(result.TarResult.OutputDir, result.TarResult.Files) == false {
+	// 	bagStorer.ProcUtil.MessageLog.Error("Cannot process %s because of missing file(s)",
 	// 		result.S3File.BagName())
 	// 	message.Finish()
 	// 	return fmt.Errorf("At least one data file does not exist")
@@ -156,20 +95,20 @@ func (*APTStore) HandleMessage(message *nsq.Message) error {
 	// Note that the key we include in the syncMap includes multipart
 	// bag endings, so we can be working on ncsu.edu/obj.b1of2.tar and
 	// ncsu.edu/obj.b2of2.tar at the same time. This is what we want.
-	mapErr := procUtil.RegisterItem(result.S3File.BagName(), message.ID)
+	mapErr := bagStorer.ProcUtil.RegisterItem(result.S3File.BagName(), message.ID)
 	if mapErr != nil {
-		procUtil.MessageLog.Info("Marking %s as complete because the file is already "+
+		bagStorer.ProcUtil.MessageLog.Info("Marking %s as complete because the file is already "+
 			"being processed under another message id.\n", result.S3File.Key.Key)
 		message.Finish()
 		return nil
 	}
 
 	// Create the result struct and pass it down the pipeline
-	helper := ingesthelper.NewIngestHelper(procUtil, message, result.S3File)
+	helper := bagman.NewIngestHelper(bagStorer.ProcUtil, message, result.S3File)
 	helper.Result = &result
 	helper.Result.NsqMessage = message
-	channels.StorageChannel <- helper
-	procUtil.MessageLog.Debug("Put %s into storage queue", result.S3File.Key.Key)
+	bagStorer.StorageChannel <- helper
+	bagStorer.ProcUtil.MessageLog.Debug("Put %s into storage queue", result.S3File.Key.Key)
 	return nil
 }
 
@@ -187,8 +126,8 @@ func (*APTStore) HandleMessage(message *nsq.Message) error {
 // generic files were overwritten, even though some were. We should alert
 // an admin in these cases. The JSON log will have full information about
 // the state of all of the files.
-func saveToStorage() {
-	for helper := range channels.StorageChannel {
+func (bagStorer *BagStorer) saveToStorage() {
+	for helper := range bagStorer.StorageChannel {
 		// Touch before and after sending generic files,
 		// since that process can take a long time for large bags.
 		helper.Result.NsqMessage.Touch()
@@ -196,23 +135,23 @@ func saveToStorage() {
 		err := helper.SaveGenericFiles()
 		helper.Result.NsqMessage.Touch()
 		if err != nil {
-			channels.ResultsChannel <- helper
+			bagStorer.ResultsChannel <- helper
 			continue
 		}
 		// If there were no errors, put this into the metadata
 		// queue, so we can record the events in Fluctus.
 		if helper.Result.ErrorMessage == "" {
 			helper.UpdateFluctusStatus(bagman.StageStore, bagman.StatusPending)
-			SendToMetadataQueue(helper)
+			bagStorer.SendToMetadataQueue(helper)
 		}
 
 		// Pass problem cases off to the trouble queue
 		if helper.IncompleteCopyToS3() || helper.FailedAndNoMoreRetries() {
-			SendToTroubleQueue(helper)
+			bagStorer.SendToTroubleQueue(helper)
 		}
 
 		// Record the results.
-		channels.ResultsChannel <- helper
+		bagStorer.ResultsChannel <- helper
 	}
 }
 
@@ -224,10 +163,10 @@ func saveToStorage() {
 // a text message to the local bag_processor.log file and sends info
 // to Fluctus saying whether the bag succeeded or failed.
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
-func logResult() {
-	for helper := range channels.ResultsChannel {
+func (bagStorer *BagStorer) logResult() {
+	for helper := range bagStorer.ResultsChannel {
 		helper.LogResult()
-		channels.CleanUpChannel <- helper
+		bagStorer.CleanUpChannel <- helper
 	}
 }
 
@@ -235,20 +174,20 @@ func logResult() {
 // This runs as a go routine to remove the files we downloaded
 // and untarred.
 // THIS STEP ALWAYS RUNS, EVEN IF PRIOR STEPS FAILED.
-func doCleanUp() {
-	for helper := range channels.CleanUpChannel {
+func (bagStorer *BagStorer) doCleanUp() {
+	for helper := range bagStorer.CleanUpChannel {
 		result := helper.Result
 		result.NsqMessage.Touch()
-		procUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
+		bagStorer.ProcUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if (result.S3File.Key.Key != "" && result.FetchResult != nil &&
 			result.FetchResult.LocalTarFile != "") {
 			// Clean up any files we downloaded and unpacked
 			errors := helper.DeleteLocalFiles()
 			if errors != nil && len(errors) > 0 {
-				procUtil.MessageLog.Warning("Errors cleaning up %s",
+				bagStorer.ProcUtil.MessageLog.Warning("Errors cleaning up %s",
 					result.FetchResult.LocalTarFile)
 				for _, e := range errors {
-					procUtil.MessageLog.Error(e.Error())
+					bagStorer.ProcUtil.MessageLog.Error(e.Error())
 				}
 			}
 		}
@@ -256,7 +195,7 @@ func doCleanUp() {
 		// Build and send message back to NSQ, indicating whether
 		// processing succeeded.
 		if result.ErrorMessage != "" && result.Retry == true {
-			procUtil.MessageLog.Info("Requeueing %s", result.S3File.Key.Key)
+			bagStorer.ProcUtil.MessageLog.Info("Requeueing %s", result.S3File.Key.Key)
 			result.NsqMessage.Requeue(5 * time.Minute)
 		} else {
 			result.NsqMessage.Finish()
@@ -264,13 +203,13 @@ func doCleanUp() {
 
 		// We're done processing this, so remove it from the map.
 		// If it comes in again, we'll reprocess it again.
-		procUtil.UnregisterItem(result.S3File.BagName())
+		bagStorer.ProcUtil.UnregisterItem(result.S3File.BagName())
 	}
 }
 
 
 // Puts an item into the queue for Fluctus/Fedora metadata processing.
-func SendToMetadataQueue(helper *ingesthelper.IngestHelper) {
+func (bagStorer *BagStorer) SendToMetadataQueue(helper *bagman.IngestHelper) {
 	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
 		helper.ProcUtil.Config.MetadataTopic, helper.Result)
 	if err != nil {
@@ -285,7 +224,7 @@ func SendToMetadataQueue(helper *ingesthelper.IngestHelper) {
 }
 
 // Puts an item into the trouble queue.
-func SendToTroubleQueue(helper *ingesthelper.IngestHelper) {
+func (bagStorer *BagStorer) SendToTroubleQueue(helper *bagman.IngestHelper) {
 	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
 		helper.ProcUtil.Config.TroubleTopic, helper.Result)
 	if err != nil {
@@ -303,11 +242,11 @@ func SendToTroubleQueue(helper *ingesthelper.IngestHelper) {
 	}
 }
 
-func allFilesExist(rootDir string, genericFiles []*bagman.GenericFile) (bool) {
-	for _, gf := range genericFiles {
-		absPath := filepath.Join(rootDir, gf.Path)
+func (bagStorer *BagStorer) allFilesExist(rootDir string, files []*bagman.File) (bool) {
+	for _, file := range files {
+		absPath := filepath.Join(rootDir, file.Path)
 		if bagman.FileExists(absPath) == false {
-			procUtil.MessageLog.Error("File %s does not exist", absPath)
+			bagStorer.ProcUtil.MessageLog.Error("File %s does not exist", absPath)
 			return false
 		}
 	}
