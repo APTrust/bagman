@@ -25,7 +25,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/APTrust/bagman/processutil"
+	"github.com/APTrust/bagman/bagman"
 	"os"
 )
 
@@ -33,7 +33,7 @@ func main() {
 	requestedConfig := flag.String("config", "", "configuration to run")
 	deleteParts := flag.Bool("delete", false, "delete stray parts of multipart uploads")
 	flag.Parse()
-	procUtil := processutil.NewProcessUtil(requestedConfig)
+	procUtil := bagman.NewProcessUtil(requestedConfig)
 
 	s3Client := procUtil.S3Client.S3
 	bucket := s3Client.Bucket(procUtil.Config.PreservationBucket)
