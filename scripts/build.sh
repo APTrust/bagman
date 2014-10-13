@@ -28,7 +28,7 @@ echo "building apt_nsq_service"
 cd "${BAGMAN_HOME}/nsq"
 go build -o ${BAGMAN_BIN}/apt_nsq_service service.go
 
-echo "building apt_prepare"
+echo "building bag_preparer"
 cd "${BAGMAN_HOME}/apps/apt_prepare"
 go build -o ${BAGMAN_BIN}/apt_prepare apt_prepare.go
 
@@ -63,6 +63,10 @@ go build -o ${BAGMAN_BIN}/bucket_reader bucket_reader.go
 echo "building request_reader"
 cd "${BAGMAN_HOME}/apps/request_reader"
 go build -o ${BAGMAN_BIN}/request_reader request_reader.go
+
+echo "building cleanup_reader"
+cd "${BAGMAN_HOME}/apps/cleanup_reader"
+go build -o ${BAGMAN_BIN}/cleanup_reader cleanup_reader.go
 
 echo "copying config files into bin directory"
 cp ${BAGMAN_HOME}/config.json ${BAGMAN_BIN}/
