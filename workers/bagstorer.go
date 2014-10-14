@@ -36,11 +36,11 @@ func NewBagStorer(procUtil *bagman.ProcessUtil) (*BagStorer) {
 	bagStorer := &BagStorer{
 		ProcUtil: procUtil,
 	}
-	workerBufferSize := procUtil.Config.StoreWorkers * 10
+	workerBufferSize := procUtil.Config.StoreWorker.Workers * 10
 	bagStorer.StorageChannel = make(chan *bagman.IngestHelper, workerBufferSize)
 	bagStorer.CleanUpChannel = make(chan *bagman.IngestHelper, workerBufferSize)
 	bagStorer.ResultsChannel = make(chan *bagman.IngestHelper, workerBufferSize)
-	for i := 0; i < procUtil.Config.StoreWorkers; i++ {
+	for i := 0; i < procUtil.Config.StoreWorker.Workers; i++ {
 		go bagStorer.saveToStorage()
 		go bagStorer.logResult()
 		go bagStorer.doCleanUp()
@@ -211,7 +211,7 @@ func (bagStorer *BagStorer) doCleanUp() {
 // Puts an item into the queue for Fluctus/Fedora metadata processing.
 func (bagStorer *BagStorer) SendToMetadataQueue(helper *bagman.IngestHelper) {
 	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
-		helper.ProcUtil.Config.MetadataTopic, helper.Result)
+		helper.ProcUtil.Config.RecordWorker.NsqTopic, helper.Result)
 	if err != nil {
 		errMsg := fmt.Sprintf("Error adding '%s' to metadata queue: %v ",
 			helper.Result.S3File.Key.Key, err)
@@ -226,7 +226,7 @@ func (bagStorer *BagStorer) SendToMetadataQueue(helper *bagman.IngestHelper) {
 // Puts an item into the trouble queue.
 func (bagStorer *BagStorer) SendToTroubleQueue(helper *bagman.IngestHelper) {
 	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
-		helper.ProcUtil.Config.TroubleTopic, helper.Result)
+		helper.ProcUtil.Config.TroubleWorker.NsqTopic, helper.Result)
 	if err != nil {
 		helper.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v\n",
 			helper.Result.S3File.Key.Key, err)

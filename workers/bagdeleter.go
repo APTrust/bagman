@@ -25,10 +25,10 @@ func NewBagDeleter(procUtil *bagman.ProcessUtil) (*BagDeleter) {
 	bagDeleter := &BagDeleter{
 		ProcUtil: procUtil,
 	}
-	workerBufferSize := procUtil.Config.CleanupWorkers * 10
+	workerBufferSize := procUtil.Config.BagDeleteWorker.Workers * 10
 	bagDeleter.CleanupChannel = make(chan *bagman.CleanupResult, workerBufferSize)
 	bagDeleter.ResultsChannel = make(chan *bagman.CleanupResult, workerBufferSize)
-	for i := 0; i < procUtil.Config.CleanupWorkers; i++ {
+	for i := 0; i < procUtil.Config.BagDeleteWorker.Workers; i++ {
 		go bagDeleter.logResult()
 		go bagDeleter.doCleanUp()
 	}

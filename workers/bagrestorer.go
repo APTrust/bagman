@@ -24,10 +24,10 @@ func NewBagRestorer(procUtil *bagman.ProcessUtil) (*BagRestorer) {
 	bagRestorer := &BagRestorer {
 		ProcUtil: procUtil,
 	}
-	workerBufferSize := procUtil.Config.RestoreWorkers * 10
+	workerBufferSize := procUtil.Config.RestoreWorker.Workers * 10
 	bagRestorer.RestoreChannel = make(chan *RestoreObject, workerBufferSize)
 	bagRestorer.ResultsChannel = make(chan *RestoreObject, workerBufferSize)
-	for i := 0; i < procUtil.Config.RestoreWorkers; i++ {
+	for i := 0; i < procUtil.Config.RestoreWorker.Workers; i++ {
 		go bagRestorer.logResult()
 		go bagRestorer.doRestore()
 	}

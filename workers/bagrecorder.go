@@ -24,12 +24,12 @@ func NewBagRecorder(procUtil *bagman.ProcessUtil) (*BagRecorder) {
 	bagRecorder := &BagRecorder {
 		ProcUtil: procUtil,
 	}
-	workerBufferSize := procUtil.Config.RecordWorkers * 10
+	workerBufferSize := procUtil.Config.RecordWorker.Workers * 10
 	bagRecorder.FedoraChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	bagRecorder.CleanUpChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	bagRecorder.ResultsChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	bagRecorder.StatusChannel = make(chan *bagman.ProcessResult, workerBufferSize)
-	for i := 0; i < procUtil.Config.RecordWorkers; i++ {
+	for i := 0; i < procUtil.Config.RecordWorker.Workers; i++ {
 		go bagRecorder.recordInFedora()
 		go bagRecorder.logResult()
 		go bagRecorder.doCleanUp()
@@ -120,7 +120,7 @@ func (bagRecorder *BagRecorder) logResult() {
 		bagRecorder.ProcUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d",
 			bagRecorder.ProcUtil.Succeeded(), bagRecorder.ProcUtil.Failed())
 
-		if result.NsqMessage.Attempts >= uint16(bagRecorder.ProcUtil.Config.MaxMetadataAttempts) &&
+		if result.NsqMessage.Attempts >= uint16(bagRecorder.ProcUtil.Config.RecordWorker.MaxAttempts) &&
 			result.ErrorMessage != "" {
 			result.Retry = false
 			result.ErrorMessage += fmt.Sprintf("Failure is due to a technical error "+
@@ -128,7 +128,7 @@ func (bagRecorder *BagRecorder) logResult() {
 				"queued for administrative review. ",
 				result.NsqMessage.Attempts)
 			err = bagman.Enqueue(bagRecorder.ProcUtil.Config.NsqdHttpAddress,
-				bagRecorder.ProcUtil.Config.TroubleTopic, result)
+				bagRecorder.ProcUtil.Config.TroubleWorker.NsqTopic, result)
 			if err != nil {
 				bagRecorder.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
 					result.S3File.Key.Key, err)

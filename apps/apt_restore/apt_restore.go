@@ -1,19 +1,17 @@
 package main
 import (
-	"flag"
-	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/workers"
-	"github.com/bitly/go-nsq"
 )
 
 // apt_restore restores bags from preservation storage into an
 // institution's restore bucket.
 func main() {
-	procUtil := createProcUtil()
-	consumer, err := createNsqConsumer(&procUtil.Config)
+	procUtil := workers.CreateProcUtil()
+	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.RestoreWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
+	procUtil.MessageLog.Info("apt_restore started")
 	bagRestorer := workers.NewBagRestorer(procUtil)
 	consumer.SetHandler(bagRestorer)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
@@ -21,29 +19,4 @@ func main() {
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan
 
-}
-
-func createProcUtil() (procUtil *bagman.ProcessUtil) {
-	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
-	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
-	flag.Parse()
-	bagman.LoadCustomEnvOrDie(customEnvFile, nil)
-	procUtil = bagman.NewProcessUtil(requestedConfig)
-	err := procUtil.Config.EnsureFluctusConfig()
-	if err != nil {
-		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
-	}
-	procUtil.MessageLog.Info("Bag Deleter started")
-	return procUtil
-}
-
-func createNsqConsumer(config *bagman.Config) (*nsq.Consumer, error) {
-	nsqConfig := nsq.NewConfig()
-	nsqConfig.Set("max_in_flight", 20)
-	nsqConfig.Set("heartbeat_interval", "10s")
-	nsqConfig.Set("max_attempts", uint16(config.MaxRestoreAttempts))
-	nsqConfig.Set("read_timeout", "60s")
-	nsqConfig.Set("write_timeout", "10s")
-	nsqConfig.Set("msg_timeout", "180m")
-	return nsq.NewConsumer(config.RestoreTopic, config.RestoreChannel, nsqConfig)
 }

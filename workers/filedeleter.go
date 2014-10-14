@@ -32,10 +32,10 @@ func NewFileDeleter(procUtil *bagman.ProcessUtil) (*FileDeleter) {
 	fileDeleter := &FileDeleter{
 		ProcUtil: procUtil,
 	}
-	workerBufferSize := procUtil.Config.DeleteWorkers * 10
+	workerBufferSize := procUtil.Config.FileDeleteWorker.Workers * 10
 	fileDeleter.DeleteChannel = make(chan *DeleteObject, workerBufferSize)
 	fileDeleter.ResultsChannel = make(chan *DeleteObject, workerBufferSize)
-	for i := 0; i < procUtil.Config.DeleteWorkers; i++ {
+	for i := 0; i < procUtil.Config.FileDeleteWorker.Workers; i++ {
 		go fileDeleter.logResult()
 		go fileDeleter.doDelete()
 	}

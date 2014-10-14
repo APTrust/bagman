@@ -44,17 +44,17 @@ echo "building apt_trouble"
 cd "${BAGMAN_HOME}/apps/apt_trouble"
 go build -o ${BAGMAN_BIN}/apt_trouble apt_trouble.go
 
-echo "building apt_cleanup"
-cd "${BAGMAN_HOME}/apps/apt_cleanup"
-go build -o ${BAGMAN_BIN}/apt_cleanup apt_cleanup.go
+echo "building apt_bag_delete"
+cd "${BAGMAN_HOME}/apps/apt_bag_delete"
+go build -o ${BAGMAN_BIN}/apt_bag_delete apt_bag_delete.go
 
 echo "building apt_restore"
 cd "${BAGMAN_HOME}/apps/apt_restore"
 go build -o ${BAGMAN_BIN}/apt_restore apt_restore.go
 
-echo "building apt_delete"
-cd "${BAGMAN_HOME}/apps/apt_delete"
-go build -o ${BAGMAN_BIN}/apt_delete apt_delete.go
+echo "building apt_file_delete"
+cd "${BAGMAN_HOME}/apps/apt_file_delete"
+go build -o ${BAGMAN_BIN}/apt_file_delete apt_file_delete.go
 
 echo "building bucket_reader"
 cd "${BAGMAN_HOME}/apps/bucket_reader"
@@ -69,5 +69,5 @@ cd "${BAGMAN_HOME}/apps/cleanup_reader"
 go build -o ${BAGMAN_BIN}/cleanup_reader cleanup_reader.go
 
 echo "copying config files into bin directory"
-cp ${BAGMAN_HOME}/config.json ${BAGMAN_BIN}/
+cp ${BAGMAN_HOME}/config/config.json ${BAGMAN_BIN}/
 cp ${BAGMAN_HOME}/nsq/*.config ${BAGMAN_BIN}/

@@ -18,21 +18,6 @@ type WorkerConfig struct {
 	// "1m" for one minute
 	HeartbeatInterval  string
 
-	// LogLevel is defined in github.com/op/go-logging
-	// and should be one of the following:
-	// 1 - CRITICAL
-	// 2 - ERROR
-	// 3 - WARNING
-	// 4 - NOTICE
-	// 5 - INFO
-	// 6 - DEBUG
-	LogLevel logging.Level
-
-	// If true, processes will log to STDERR in addition
-	// to their standard log files. You really only want
-	// to do this in development.
-	LogToStderr bool
-
 	// The maximum number of times the worker should try to
 	// process a job. If non-fatal errors cause a job to
 	// fail, it will be requeued this number of times.
@@ -123,6 +108,21 @@ type Config struct {
 
 	// LogDirectory is where we'll write our log files.
 	LogDirectory            string
+
+	// LogLevel is defined in github.com/op/go-logging
+	// and should be one of the following:
+	// 1 - CRITICAL
+	// 2 - ERROR
+	// 3 - WARNING
+	// 4 - NOTICE
+	// 5 - INFO
+	// 6 - DEBUG
+	LogLevel logging.Level
+
+	// If true, processes will log to STDERR in addition
+	// to their standard log files. You really only want
+	// to do this in development.
+	LogToStderr bool
 
 	// MaxFileSize is the size in bytes of the largest
 	// tar file we're willing to process. Set to zero

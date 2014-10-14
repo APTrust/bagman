@@ -66,17 +66,17 @@ func NewBagPreparer(procUtil *bagman.ProcessUtil) (*BagPreparer) {
 		ProcUtil: procUtil,
 	}
 	// Set up buffered channels
-	fetcherBufferSize := procUtil.Config.Fetchers * 4
-	workerBufferSize := procUtil.Config.PrepareWorkers * 10
+	fetcherBufferSize := procUtil.Config.PrepareWorker.NetworkConnections * 4
+	workerBufferSize := procUtil.Config.PrepareWorker.Workers * 10
 	bagPreparer.FetchChannel = make(chan *bagman.IngestHelper, fetcherBufferSize)
 	bagPreparer.UnpackChannel = make(chan *bagman.IngestHelper, workerBufferSize)
 	bagPreparer.CleanUpChannel = make(chan *bagman.IngestHelper, workerBufferSize)
 	bagPreparer.ResultsChannel = make(chan *bagman.IngestHelper, workerBufferSize)
 	// Set up a limited number of go routines
-	for i := 0; i < procUtil.Config.Fetchers; i++ {
+	for i := 0; i < procUtil.Config.PrepareWorker.NetworkConnections; i++ {
 		go bagPreparer.doFetch()
 	}
-	for i := 0; i < procUtil.Config.PrepareWorkers; i++ {
+	for i := 0; i < procUtil.Config.PrepareWorker.Workers; i++ {
 		go bagPreparer.doUnpack()
 		go bagPreparer.logResult()
 		go bagPreparer.doCleanUp()
@@ -310,7 +310,7 @@ func (bagPreparer *BagPreparer) cleanupBag(helper *bagman.IngestHelper) {
 // Puts an item into the queue for Fluctus/Fedora metadata processing.
 func (bagPreparer *BagPreparer) SendToStorageQueue(helper *bagman.IngestHelper) {
 	err := bagman.Enqueue(helper.ProcUtil.Config.NsqdHttpAddress,
-		helper.ProcUtil.Config.StoreTopic, helper.Result)
+		helper.ProcUtil.Config.StoreWorker.NsqTopic, helper.Result)
 	if err != nil {
 		errMsg := fmt.Sprintf("Error adding '%s' to storage queue: %v ",
 			helper.Result.S3File.Key.Key, err)

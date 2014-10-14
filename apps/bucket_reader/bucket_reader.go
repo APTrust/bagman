@@ -5,9 +5,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"github.com/APTrust/bagman/workers"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/op/go-logging"
 	"net/http"
@@ -34,30 +34,13 @@ var (
 )
 
 func main() {
-	err := initialize()
+	var err error = nil
+	messageLog, fluctusClient, err = workers.InitializeReader()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Initialization failed for bucket_reader: %v", err)
 		os.Exit(1)
 	}
 	run()
-}
-
-func initialize() (err error) {
-	// Load the config or die.
-	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
-	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
-	flag.Parse()
-	config = bagman.LoadRequestedConfig(requestedConfig)
-	messageLog = bagman.InitLogger(config)
-	bagman.LoadCustomEnvOrDie(customEnvFile, messageLog)
-	messageLog.Info("Bucket reader started")
-	fluctusClient, err = bagman.NewFluctusClient(
-		config.FluctusURL,
-		config.FluctusAPIVersion,
-		os.Getenv("FLUCTUS_API_USER"),
-		os.Getenv("FLUCTUS_API_KEY"),
-		messageLog)
-	return err
 }
 
 func run() {
@@ -66,13 +49,13 @@ func run() {
 		messageLog.Error(err.Error())
 		return
 	}
-	bucketSummaries, err := s3Client.CheckAllBuckets(config.Buckets)
+	bucketSummaries, err := s3Client.CheckAllBuckets(config.ReceivingBuckets)
 	if err != nil {
 		messageLog.Error(err.Error())
 		return
 	}
 	loadStatusCache()
-	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress, config.PrepareTopic)
+	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress, config.PrepareWorker.NsqTopic)
 	messageLog.Debug("Sending S3 file info to %s", url)
 	s3Files := filterLargeFiles(bucketSummaries)
 	messageLog.Debug("%d S3 Files are within our size limit",

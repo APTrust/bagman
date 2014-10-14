@@ -10,9 +10,9 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"flag"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"github.com/APTrust/bagman/workers"
 	"github.com/op/go-logging"
 	"net/http"
 	"os"
@@ -35,31 +35,14 @@ var (
 )
 
 func main() {
-	err := initialize()
+	var err error
+	messageLog, fluctusClient, err = workers.InitializeReader()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Initialization failed for request_reader: %v", err)
 		os.Exit(1)
 	}
 	queueAllRestorationItems()
 	queueAllDeletionItems()
-}
-
-func initialize() (err error) {
-	// Load the config or die.
-	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
-	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
-	flag.Parse()
-	config = bagman.LoadRequestedConfig(requestedConfig)
-	messageLog = bagman.InitLogger(config)
-	bagman.LoadCustomEnvOrDie(customEnvFile, messageLog)
-	messageLog.Info("Request reader started")
-	fluctusClient, err = bagman.NewFluctusClient(
-		config.FluctusURL,
-		config.FluctusAPIVersion,
-		os.Getenv("FLUCTUS_API_USER"),
-		os.Getenv("FLUCTUS_API_KEY"),
-		messageLog)
-	return err
 }
 
 // Find all the Intellectual Objects that need to be restored & add them to
@@ -117,10 +100,10 @@ func min(x, y int) int {
 // enqueue adds a batch of items to the nsqd work queue
 func enqueue(statusList []*bagman.ProcessStatus, queueName string) {
 	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
-		config.RestoreTopic)
+		config.RestoreWorker.NsqTopic)
 	if queueName == "delete" {
 		url = fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress,
-			config.DeleteTopic)
+			config.FileDeleteWorker.NsqTopic)
 	}
 
 	jsonData := make([]string, len(statusList))

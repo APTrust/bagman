@@ -82,7 +82,7 @@ func (helper *IngestHelper) IncompleteCopyToS3() (bool) {
 
 func (helper *IngestHelper) FailedAndNoMoreRetries() (bool) {
 	return (helper.Result.ErrorMessage != "" &&
-		helper.Result.NsqMessage.Attempts >= uint16(helper.ProcUtil.Config.MaxStoreAttempts))
+		helper.Result.NsqMessage.Attempts >= uint16(helper.ProcUtil.Config.StoreWorker.MaxAttempts))
 }
 
 // Returns an OPEN reader for the specified File (reading it from
