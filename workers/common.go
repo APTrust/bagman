@@ -4,11 +4,10 @@ import (
 	"flag"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
-	"github.com/op/go-logging"
 	"os"
 )
 
-// TODO: Write tests for these two.
+// TODO: Write tests for these.
 
 // Creates and returns a ProcessUtil object for a worker process.
 func CreateProcUtil() (procUtil *bagman.ProcessUtil) {
@@ -48,19 +47,26 @@ func CreateNsqConsumer(config *bagman.Config, workerConfig *bagman.WorkerConfig)
 // Will die if it cannot find the requested config file, or
 // if essential config options (such as where to find Fluctus)
 // are missing.
-func InitializeReader() (*logging.Logger, *bagman.FluctusClient, error) {
+func InitializeReader() (*bagman.WorkReader, error) {
 	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
 	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
 	flag.Parse()
 	config := bagman.LoadRequestedConfig(requestedConfig)
 	messageLog := bagman.InitLogger(config)
 	bagman.LoadCustomEnvOrDie(customEnvFile, messageLog)
-	messageLog.Info("Request reader started")
 	fluctusClient, err := bagman.NewFluctusClient(
 		config.FluctusURL,
 		config.FluctusAPIVersion,
 		os.Getenv("FLUCTUS_API_USER"),
 		os.Getenv("FLUCTUS_API_KEY"),
 		messageLog)
-	return messageLog, fluctusClient, err
+	if err != nil {
+		return nil, err
+	}
+	workReader := &bagman.WorkReader{
+		Config: config,
+		MessageLog: messageLog,
+		FluctusClient: fluctusClient,
+	}
+	return workReader, nil
 }

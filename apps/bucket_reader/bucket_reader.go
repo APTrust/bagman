@@ -9,7 +9,6 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/workers"
 	"github.com/crowdmob/goamz/aws"
-	"github.com/op/go-logging"
 	"net/http"
 	"os"
 	"strings"
@@ -26,16 +25,13 @@ const (
 	waitMilliseconds = 5000
 )
 
-var (
-	config        bagman.Config
-	messageLog    *logging.Logger
-	fluctusClient *bagman.FluctusClient
-	statusCache   map[string]*bagman.ProcessStatus
-)
+var workReader *bagman.WorkReader
+var statusCache map[string]*bagman.ProcessStatus
 
 func main() {
 	var err error = nil
-	messageLog, fluctusClient, err = workers.InitializeReader()
+	workReader, err = workers.InitializeReader()
+	workReader.MessageLog.Info("bucket_reader started")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Initialization failed for bucket_reader: %v", err)
 		os.Exit(1)
@@ -46,35 +42,35 @@ func main() {
 func run() {
 	s3Client, err := bagman.NewS3Client(aws.USEast)
 	if err != nil {
-		messageLog.Error(err.Error())
+		workReader.MessageLog.Error(err.Error())
 		return
 	}
-	bucketSummaries, err := s3Client.CheckAllBuckets(config.ReceivingBuckets)
+	bucketSummaries, err := s3Client.CheckAllBuckets(workReader.Config.ReceivingBuckets)
 	if err != nil {
-		messageLog.Error(err.Error())
+		workReader.MessageLog.Error(err.Error())
 		return
 	}
 	loadStatusCache()
-	url := fmt.Sprintf("%s/mput?topic=%s", config.NsqdHttpAddress, config.PrepareWorker.NsqTopic)
-	messageLog.Debug("Sending S3 file info to %s", url)
+	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress, workReader.Config.PrepareWorker.NsqTopic)
+	workReader.MessageLog.Debug("Sending S3 file info to %s", url)
 	s3Files := filterLargeFiles(bucketSummaries)
-	messageLog.Debug("%d S3 Files are within our size limit",
+	workReader.MessageLog.Debug("%d S3 Files are within our size limit",
 		len(s3Files))
 	filesToProcess := s3Files
 	// SkipAlreadyProcessed will almost always be true.
 	// The exception is when we want to reprocess items to test new code.
-	if config.SkipAlreadyProcessed == true {
-		messageLog.Info("Skipping already processed files, because config says so")
+	if workReader.Config.SkipAlreadyProcessed == true {
+		workReader.MessageLog.Info("Skipping already processed files, because config says so")
 		filesToProcess = filterProcessedFiles(s3Files)
 	} else {
-		messageLog.Info("Reprocessing already processed files, because config says so")
+		workReader.MessageLog.Info("Reprocessing already processed files, because config says so")
 	}
 	start := 0
 	end := min(len(filesToProcess), batchSize)
-	messageLog.Info("%d Unprocessed files", len(filesToProcess))
+	workReader.MessageLog.Info("%d Unprocessed files", len(filesToProcess))
 	for start <= end {
 		batch := filesToProcess[start:end]
-		messageLog.Info("Queuing batch of %d items", len(batch))
+		workReader.MessageLog.Info("Queuing batch of %d items", len(batch))
 		enqueue(url, batch)
 		start = end + 1
 		if start < len(filesToProcess) {
@@ -107,7 +103,7 @@ func min(x, y int) int {
 func filterLargeFiles(bucketSummaries []*bagman.BucketSummary) (s3Files []*bagman.S3File) {
 	for _, bucketSummary := range bucketSummaries {
 		for _, key := range bucketSummary.Keys {
-			if config.MaxFileSize == 0 || key.Size < config.MaxFileSize {
+			if workReader.Config.MaxFileSize == 0 || key.Size < workReader.Config.MaxFileSize {
 				s3Files = append(s3Files, &bagman.S3File{
 					BucketName: bucketSummary.BucketName,
 					Key: key})
@@ -123,7 +119,7 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 	for _, s3File := range s3Files {
 		bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
 		if err != nil {
-			messageLog.Error("Cannot parse S3File mod date '%s'. "+
+			workReader.MessageLog.Error("Cannot parse S3File mod date '%s'. "+
 				"File %s will be re-processed.",
 				s3File.Key.LastModified, s3File.Key.Key)
 			filesToProcess = append(filesToProcess, s3File)
@@ -132,10 +128,10 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 		etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
 		status := findInStatusCache(etag, s3File.Key.Key, bagDate)
 		if status == nil {
-			status, err = fluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+			status, err = workReader.FluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
 		}
 		if err != nil {
-			messageLog.Error("Cannot get Fluctus bag status for %s. "+
+			workReader.MessageLog.Error("Cannot get Fluctus bag status for %s. "+
 				"Will re-process bag. Error was %v", s3File.Key.Key, err)
 			filesToProcess = append(filesToProcess, s3File)
 		} else if status == nil || status.ShouldTryIngest() {
@@ -144,16 +140,16 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 				err = createFluctusRecord(s3File)
 				if err != nil {
 					// TODO: Notify someone?
-					messageLog.Error("Could not create Fluctus ProcessedItem "+
+					workReader.MessageLog.Error("Could not create Fluctus ProcessedItem "+
 						"for %s: %v", s3File.Key.Key, err)
 				}
 			}
-			messageLog.Info("Will process bag %s: %s", s3File.Key.Key, reason)
+			workReader.MessageLog.Info("Will process bag %s: %s", s3File.Key.Key, reason)
 			filesToProcess = append(filesToProcess, s3File)
-		} else if status.Status != "Failed" && config.SkipAlreadyProcessed == true {
-			messageLog.Debug("Skipping %s: already processed successfully.", s3File.Key.Key)
+		} else if status.Status != "Failed" && workReader.Config.SkipAlreadyProcessed == true {
+			workReader.MessageLog.Debug("Skipping %s: already processed successfully.", s3File.Key.Key)
 		} else if status.Retry == false {
-			messageLog.Debug("Skipping %s: retry flag is set to false.", s3File.Key.Key)
+			workReader.MessageLog.Debug("Skipping %s: retry flag is set to false.", s3File.Key.Key)
 		}
 	}
 	return filesToProcess
@@ -163,11 +159,11 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 // in a single call.
 func loadStatusCache() {
 	twoHoursAgo := time.Now().Add(time.Hour * -2)
-	statusRecords, err := fluctusClient.BulkStatusGet(twoHoursAgo)
+	statusRecords, err := workReader.FluctusClient.BulkStatusGet(twoHoursAgo)
 	if err != nil {
-		messageLog.Warning("Could not get bulk status records")
+		workReader.MessageLog.Warning("Could not get bulk status records")
 	} else {
-		messageLog.Info("Got %d status records from the fluctopus\n", len(statusRecords))
+		workReader.MessageLog.Info("Got %d status records from the fluctopus\n", len(statusRecords))
 		statusCache = make(map[string]*bagman.ProcessStatus, len(statusRecords))
 		for i := range statusRecords {
 			record := statusRecords[i]
@@ -184,10 +180,10 @@ func findInStatusCache(etag, name string, bagDate time.Time) *bagman.ProcessStat
 	key := fmt.Sprintf("%s%s%s", etag, name, bagDate)
 	item, exists := statusCache[key]
 	if exists {
-		//messageLog.Debug("Found item in cache: %s\n", name)
+		//workReader.MessageLog.Debug("Found item in cache: %s\n", name)
 		return item
 	}
-	//messageLog.Debug("Item not in cache. Will have to ask the fluctopus for %s\n", name)
+	//workReader.MessageLog.Debug("Item not in cache. Will have to ask the fluctopus for %s\n", name)
 	return nil
 }
 
@@ -212,11 +208,11 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	// is something wrong with the bag.
 	status.Retry = true
 
-	err = fluctusClient.UpdateProcessedItem(status)
+	err = workReader.FluctusClient.UpdateProcessedItem(status)
 	if err != nil {
 		return err
 	}
-	messageLog.Info("Created Fluctus ProcessedItem for %s\n",
+	workReader.MessageLog.Info("Created Fluctus ProcessedItem for %s\n",
 		s3File.Key.Key)
 	return nil
 }
@@ -227,23 +223,23 @@ func enqueue(url string, s3Files []*bagman.S3File) {
 	for i, s3File := range s3Files {
 		json, err := json.Marshal(s3File)
 		if err != nil {
-			messageLog.Error("Error marshalling s3 file to JSON: %v", err)
+			workReader.MessageLog.Error("Error marshalling s3 file to JSON: %v", err)
 		} else {
 			jsonData[i] = string(json)
-			messageLog.Info("Put %s into fetch queue", s3File.Key.Key)
+			workReader.MessageLog.Info("Put %s into fetch queue", s3File.Key.Key)
 		}
 	}
 	batch := strings.Join(jsonData, "\n")
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
 	if err != nil {
-		messageLog.Error("nsqd returned an error: %v", err)
+		workReader.MessageLog.Error("nsqd returned an error: %v", err)
 	}
 	if resp == nil {
 		msg := "No response from nsqd. Is it running? bucket_reader is quitting."
-		messageLog.Error(msg)
+		workReader.MessageLog.Error(msg)
 		fmt.Println(msg)
 		os.Exit(1)
 	} else if resp.StatusCode != 200 {
-		messageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
+		workReader.MessageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
 	}
 }
