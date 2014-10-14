@@ -182,7 +182,7 @@ func TestFailedAndNoMoreRetries(t *testing.T) {
 	}
 
 	// We're above the retry threshold, but no error, so we should be OK.
-	helper.Result.NsqMessage.Attempts = uint16(helper.ProcUtil.Config.MaxStoreAttempts) * 2
+	helper.Result.NsqMessage.Attempts = helper.ProcUtil.Config.StoreWorker.MaxAttempts * 2
 	helper.Result.ErrorMessage = ""
 	if helper.FailedAndNoMoreRetries() == true {
 		t.Error("helper.FailedAndNoMoreRetries() should have returned false")
