@@ -94,7 +94,7 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "30m"
-        }
+        },
 
         "TroubleWorker": {
             "NetworkConnections": 1,
@@ -107,7 +107,7 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "10m"
-        }
+        },
 
         "ReceivingBuckets": [
             "aptrust.receiving.columbia.edu",
@@ -137,7 +137,7 @@
         "MaxFileSize": 0,
         "SkipAlreadyProcessed": true,
         "DeleteOnSuccess": false,
-        "LogToStderr": true,
+        "LogToStderr": false,
         "LogLevel": 4,
 
         "FluctusURL": "http://localhost:3000",
@@ -225,7 +225,7 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "30m"
-        }
+        },
 
         "TroubleWorker": {
             "NetworkConnections": 1,
@@ -238,7 +238,7 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "10m"
-        }
+        },
 
         "ReceivingBuckets": [
             "aptrust.receiving.columbia.edu",
@@ -357,7 +357,7 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "30m"
-        }
+        },
 
         "TroubleWorker": {
             "NetworkConnections": 1,
@@ -370,7 +370,7 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "10m"
-        }
+        },
 
         "ReceivingBuckets": [
             "aptrust.receiving.columbia.edu",
