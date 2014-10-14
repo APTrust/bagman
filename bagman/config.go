@@ -8,28 +8,15 @@ import (
 	"path/filepath"
 )
 
-type Config struct {
-	// ActiveConfig is the configuration currently
-	// in use.
-	ActiveConfig string
-
-	// TarDirectory is the directory in which we will
-	// untar files from S3. This should be on a volume
-	// with lots of free disk space.
-	TarDirectory string
-
-	// RestoreDirectory is the directory in which we will
-	// rebuild IntellectualObject before sending them
-	// off to the S3 restoration bucket.
-	RestoreDirectory string
-
-	// LogDirectory is where we'll write our log files.
-	LogDirectory string
-
-	// If true, processes will log to STDERR in addition
-	// to their standard log files. You really only want
-	// to do this in development.
-	LogToStderr bool
+type WorkerConfig struct {
+	// This describes how often the NSQ client should ping
+	// the NSQ server to let it know it's still there. The
+	// setting must be formatted like so:
+	//
+	// "800ms" for 800 milliseconds
+	// "10s" for ten seconds
+	// "1m" for one minute
+	HeartbeatInterval  string
 
 	// LogLevel is defined in github.com/op/go-logging
 	// and should be one of the following:
@@ -41,6 +28,102 @@ type Config struct {
 	// 6 - DEBUG
 	LogLevel logging.Level
 
+	// If true, processes will log to STDERR in addition
+	// to their standard log files. You really only want
+	// to do this in development.
+	LogToStderr bool
+
+	// The maximum number of times the worker should try to
+	// process a job. If non-fatal errors cause a job to
+	// fail, it will be requeued this number of times.
+	// Fatal errors, such as invalid bags or attempts to
+	// restore or delete non-existent files, will not be
+	// retried.
+	MaxAttempts        uint16
+
+	// Maximum number of jobs a worker will accept from the
+	// queue at one time. Workers that may have to process
+	// very long-running tasks, such as apt_prepare,
+	// apt_store and apt_restore, should set this number
+	// fairly low (20 or so) to prevent messages from
+	// timing out.
+	MaxInFlight        int
+
+	// If the NSQ server does not hear from a client that a
+	// job is complete in this amount of time, the server
+	// considers the job to have timed out and re-queues it.
+	// Long-running jobs such as apt_prepare, apt_store,
+	// apt_record and apt_restore will "touch" the NSQ message
+	// as it moves through each channel in the processing pipeline.
+	// The touch message tells NSQ that it's still working on
+	// the job, and effectively resets NSQ's timer on that
+	// message to zero. Still, very large bags in any of the
+	// long-running processes will need a timeout of "180m" or
+	// so to ensure completion.
+	MessageTimeout     string
+
+	// Number of go routines used to perform network I/O,
+	// such as fetching files from S3, storing files to S3,
+	// and fetching/storing Fluctus data. If a worker does
+	// no network I/O (such as the TroubleWorker), this
+	// setting is ignored.
+	NetworkConnections int
+
+	// The name of the NSQ Channel the worker should read from.
+	NsqChannel         string
+
+	// The name of the NSQ Topic the worker should listen to.
+	NsqTopic           string
+
+	// This describes how long the NSQ client will wait for
+	// a read from the NSQ server before timing out. The format
+	// is the same as for HeartbeatInterval.
+	ReadTimeout        string
+
+	// Number of go routines to start in the worker to
+	// handle all work other than network I/O. Typically,
+	// this should be close to the number of CPUs.
+	Workers            int
+
+	// This describes how long the NSQ client will wait for
+	// a write to the NSQ server to complete before timing out.
+	// The format is the same as for HeartbeatInterval.
+	WriteTimeout       string
+}
+
+type Config struct {
+	// ActiveConfig is the configuration currently
+	// in use.
+	ActiveConfig            string
+
+	// Configuration options for apt_bag_delete
+	BagDeleteWorker         WorkerConfig
+
+	// Set this in non-production environments to restore
+	// intellectual objects to a custom bucket. If this is set,
+	// all intellectual objects from all institutions will be
+	// restored to this bucket.
+	CustomRestoreBucket     string
+
+	// Should we delete the uploaded tar file from the receiving
+	// bucket after successfully processing this bag?
+	DeleteOnSuccess         bool
+
+	// Configuration options for apt_file_delete
+	FileDeleteWorker        WorkerConfig
+
+	// The version of the Fluctus API we're using. This should
+	// start with a v, like v1, v2.2, etc.
+	FluctusAPIVersion       string
+
+	// FluctusURL is the URL of the Fluctus server where
+	// we will be recording results and metadata. This should
+	// start with http:// or https://
+	FluctusURL              string
+
+	// LogDirectory is where we'll write our log files.
+	LogDirectory            string
+
 	// MaxFileSize is the size in bytes of the largest
 	// tar file we're willing to process. Set to zero
 	// to process all files, regardless of size.
@@ -48,177 +131,59 @@ type Config struct {
 	// when you're running locally, or else you'll wind
 	// up pulling down a huge amount of data from the
 	// receiving buckets.
-	MaxFileSize int64
-
-	// Fetchers is the number of goroutines to use when
-	// fetching files from the receiving buckets.
-	Fetchers int
-
-	// Number of goroutines to run for untarring and validating bags.
-	// The prepare process is quite CPU intensive, because it is
-	// calculating md5 and sha265 checksums on gigabytes or terabytes
-	// of files.
-	PrepareWorkers int
-
-	// Number of goroutines to run for storing generic files
-	// in the S3 preservation bucket. These routines are somewhat
-	// CPU intensive and use a lot of network I/O.
-	StoreWorkers int
-
-	// Number of goroutines to run for recording metadata in
-	// fluctus. Can be higher than the number of CPUs, since
-	// these routines spend most of their time waiting on
-	// network I/O.
-	RecordWorkers int
-
-	// Number of go routines to run for the cleanup process.
-	// This process deletes successfully ingested bags (tar
-	// files) from the partners' intake buckets. Those routines
-	// make delete calls to S3. Neither very CPU nor I/O intensive,
-	// but each worker uses a TCP connection.
-	CleanupWorkers int
-
-	// Number of go routines to run for the restore process,
-	// which pulls a bag out of preservation storage and rebuilds
-	// it. For large bags, this is both CPU and I/O intensive,
-	// since it may be pulling hundreds of gigabytes from S3
-	// and calculating md5 and sha256 checksums on the data.
-	RestoreWorkers int
-
-	// Number of go routines to run for the process that deletes
-	// generic files from the perservation bucket. This is neither
-	// CPU nor I/O intensive, since it's just issuing HTTP delete
-	// requests. It does use one TCP connection per go routine.
-	DeleteWorkers int
-
-	// FluctusURL is the URL of the Fluctus server where
-	// we will be recording results and metadata. This should
-	// start with http:// or https://
-	FluctusURL string
-
-	// The version of the Fluctus API we're using. This should
-	// start with a v, like v1, v2.2, etc.
-	FluctusAPIVersion string
-
-	// Buckets is a list of S3 receiving buckets to check
-	// for incoming tar files.
-	Buckets []string
+	MaxFileSize             int64
 
 	// NsqdHttpAddress is the address of the NSQ server.
 	// We can put items into queues by issuing PUT requests
 	// to this URL. This should start with http:// or https://
-	NsqdHttpAddress string
+	NsqdHttpAddress         string
 
 	// NsqLookupd is the hostname and port number of the NSQ
 	// lookup deamon. It should not include a protocol.
 	// E.g. localhost:4161. Queue consumers use this to
 	// discover available queues.
-	NsqLookupd string
+	NsqLookupd              string
 
-	// PrepareTopic is the name of the NSQ topic apt_prepare
-	// will read from. The bucket_reader pushes messages into
-	// this topic.
-	PrepareTopic string
+	// Configuration options for apt_prepare
+	PrepareWorker           WorkerConfig
 
-	// PrepareChannel is the name of the NSQ channel that
-	// apt_prepare will read.
-	PrepareChannel string
+	// The name of the preservation bucket to which we should
+	// copy files for long-term storage.
+	PreservationBucket      string
 
-	// Maximum number of times we'll try to prepare a bag
-	// for storage.
-	MaxPrepareAttempts int
+	// ReceivingBuckets is a list of S3 receiving buckets to check
+	// for incoming tar files.
+	ReceivingBuckets        []string
 
-	// StoreTopic is the name of the NSQ topic that apt_store
-	// reads from. apt_prepare pushes items into this topic
-	// once they have been successfully downloaded, unpacked
-	// and validated.
-	StoreTopic string
+	// Configuration options for apt_record
+	RecordWorker            WorkerConfig
 
-	// StoreChannel is the name of the NSQ channel that
-	// apt_store will read from.
-	StoreChannel string
+	// RestoreDirectory is the directory in which we will
+	// rebuild IntellectualObject before sending them
+	// off to the S3 restoration bucket.
+	RestoreDirectory        string
 
-	// Maximum number of times we'll try to store a bag's
-	// generic files in the preservation bucket.
-	MaxStoreAttempts int
-
-	// MetaDataTopic is the name of the NSQ topic the bag
-	// processor sends results to. The metadata_processor worker
-	// will read from this topic. (Not yet implemented)
-	MetadataTopic string
-
-	// MetaDataChannel is the name of the NSQ channel from which
-	// the metadata_processor reads. (Not yet implemented)
-	MetadataChannel string
-
-	// Maximum number of times we'll try to send metadata to Fluctus.
-	MaxMetadataAttempts int
-
-	// CleanupTopic contains messages about files that need to
-	// be deleted from S3.
-	CleanupTopic string
-
-	// CleanupChannel is what cleanup.go listens to to find out
-	// which files it should delete from S3.
-	CleanupChannel string
-
-	// Maximum number of times we'll try to clean up files in S3.
-	MaxCleanupAttempts int
-
-	// TroubleTopic is the name of the NSQ topic to
-	// which the bag_processor and metarecord processes send
-	// info about items that were partially processed and
-	// then left in an inconsistent state.
-	TroubleTopic string
-
-	// TroubleChannel is the name of the NSQ channel that
-	// holds information about the state of partially-processed
-	// bags that need attention from an administrator.
-	TroubleChannel string
-
-	// Maximum number of times we'll try to process a trouble item.
-	MaxTroubleAttempts int
-
-	// NSQ topic for IntellectualObject restoration
-	RestoreTopic string
-
-	// NSQ channel for IntellectualObject restoration
-	RestoreChannel string
-
-	// How many times should our NSQ worker try to restore
-	// an IntellectualObject
-	MaxRestoreAttempts int
-
-	// NSQ topic for deleting generic files
-	DeleteTopic string
-
-	// NSQ channel for deleting generic files
-    DeleteChannel string
-
-	// Max number of times to try to delete a generic file
-	// from the preservation bucket.
-    MaxDeleteAttempts int
+	// Configuration options for apt_restore
+	RestoreWorker           WorkerConfig
 
 	// SkipAlreadyProcessed indicates whether or not the
 	// bucket_reader should  put successfully-processed items into
 	// NSQ for re-processing. This is amost always set to false.
 	// The exception is when we deliberately want to reprocess
 	// items to test code changes.
-	SkipAlreadyProcessed bool
+	SkipAlreadyProcessed    bool
 
-	// The name of the preservation bucket to which we should
-	// copy files for long-term storage.
-	PreservationBucket string
+	// Configuration options for apt_store
+	StoreWorker             WorkerConfig
 
-	// Set this in non-production environments to restore
-	// intellectual objects to a custom bucket. If this is set,
-	// all intellectual objects from all institutions will be
-	// restored to this bucket.
-	CustomRestoreBucket string
+	// TarDirectory is the directory in which we will
+	// untar files from S3. This should be on a volume
+	// with lots of free disk space.
+	TarDirectory            string
 
-	// Should we delete the uploaded tar file from the receiving
-	// bucket after successfully processing this bag?
-	DeleteOnSuccess bool
+	// Configuration options for apt_trouble
+	TroubleWorker           WorkerConfig
+
 }
 
 func (config *Config) AbsLogDirectory() string {
