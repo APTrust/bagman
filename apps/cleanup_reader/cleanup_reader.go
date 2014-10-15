@@ -38,20 +38,20 @@ func main() {
 func run() {
 	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
 		workReader.Config.BagDeleteWorker.NsqTopic)
-	WorkReader.MessageLog.Info("Sending files to clean up to %s", url)
+	workReader.MessageLog.Info("Sending files to clean up to %s", url)
 
 	results, err := workReader.FluctusClient.GetReviewedItems()
 	if err != nil {
-		WorkReader.MessageLog.Fatalf("Error getting reviewed items: %v", err)
+		workReader.MessageLog.Fatalf("Error getting reviewed items: %v", err)
 	}
 
-	WorkReader.MessageLog.Info("Found %d items to clean up", len(results))
+	workReader.MessageLog.Info("Found %d items to clean up", len(results))
 
 	start := 0
 	end := min(len(results), batchSize)
 	for start <= end {
 		batch := results[start:end]
-		WorkReader.MessageLog.Info("Queuing batch of %d items", len(batch))
+		workReader.MessageLog.Info("Queuing batch of %d items", len(batch))
 		enqueue(url, batch)
 		start = end + 1
 		if start < len(results) {
@@ -77,23 +77,23 @@ func enqueue(url string, results []*bagman.CleanupResult) {
 	for i, result := range results {
 		json, err := json.Marshal(result)
 		if err != nil {
-			WorkReader.MessageLog.Error("Error marshalling cleanup result to JSON: %s", err.Error())
+			workReader.MessageLog.Error("Error marshalling cleanup result to JSON: %s", err.Error())
 		} else {
 			jsonData[i] = string(json)
-			WorkReader.MessageLog.Info("Put %s into cleanup queue", result.BagName)
+			workReader.MessageLog.Info("Put %s into cleanup queue", result.BagName)
 		}
 	}
 	batch := strings.Join(jsonData, "\n")
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
 	if err != nil {
-		WorkReader.MessageLog.Error("nsqd returned an error: %s", err.Error())
+		workReader.MessageLog.Error("nsqd returned an error: %s", err.Error())
 	}
 	if resp == nil {
 		msg := "No response from nsqd. Is it running? cleanup_reader is quitting."
-		WorkReader.MessageLog.Error(msg)
+		workReader.MessageLog.Error(msg)
 		fmt.Println(msg)
 		os.Exit(1)
 	} else if resp.StatusCode != 200 {
-		WorkReader.MessageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
+		workReader.MessageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
 	}
 }
