@@ -115,12 +115,19 @@ func (client *FluctusClient) NewJsonRequest(method, targetUrl string, body io.Re
 	req.Header.Add("Connection", "Keep-Alive")
 
 	// Unfix the URL that golang net/url "fixes" for us.
+	// URLs that contain %2F (encoded slashes) MUST preserve
+	// the %2F. The Go URL library silently converts those
+	// to slashes, and we DON'T want that!
 	// See http://stackoverflow.com/questions/20847357/golang-http-client-always-escaped-the-url/
-	incorrectUrl, err := url.Parse(targetUrl)
-	if err != nil {
-		return nil, err
-	}
-	opaqueUrl := strings.Replace(targetUrl, client.hostUrl, "", 1)
+    incorrectUrl, err := url.Parse(targetUrl)
+    if err != nil {
+        return nil, err
+    }
+    opaqueUrl := strings.Replace(targetUrl, client.hostUrl, "", 1)
+
+    // This fixes an issue with GenericFile names that include spaces.
+    opaqueUrl = strings.Replace(opaqueUrl, " ", "%20", -1)
+
 	correctUrl := &url.URL{
 		Scheme: incorrectUrl.Scheme,
 		Host:   incorrectUrl.Host,

@@ -762,3 +762,23 @@ func TestRestorationStatusSet(t *testing.T) {
 		t.Errorf("Note should be 'Updated note', but is '%s'", updatedRecords[0].Note)
 	}
 }
+
+func TestNewJsonRequest(t *testing.T) {
+	fluctusClient := getClient(t)
+	request, err := fluctusClient.NewJsonRequest("GET",
+		"http://localhost/miami.edu%2Fmiami.asm_0530%2Fdata%2FMichael Carlbach Numbers(xlsx).mtf",
+		nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	// We're testing for two things here:
+	// 1. That %2F remains %2F instead of being converted to slashes.
+	// 2. That spaces are converted to %20
+	// These are both necessary for the proper functioning of the
+	// generic_files endpoint in Fluctus.
+	expected := "http://localhost/miami.edu%2Fmiami.asm_0530%2Fdata%2FMichael%20Carlbach%20Numbers(xlsx).mtf"
+	if request.URL.RequestURI() != expected {
+		t.Errorf("Request URL expected '%s' but got '%s'", expected, request.URL)
+	}
+}
