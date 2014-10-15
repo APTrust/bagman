@@ -9,6 +9,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
+	"sync"
 	"time"
 )
 
@@ -18,11 +19,14 @@ type BagRecorder struct {
 	ResultsChannel chan *bagman.ProcessResult
 	StatusChannel  chan *bagman.ProcessResult
 	ProcUtil       *bagman.ProcessUtil
+	UsingNsq       bool
+	WaitGroup      sync.WaitGroup
 }
 
 func NewBagRecorder(procUtil *bagman.ProcessUtil) (*BagRecorder) {
 	bagRecorder := &BagRecorder {
 		ProcUtil: procUtil,
+		UsingNsq: true,
 	}
 	workerBufferSize := procUtil.Config.RecordWorker.Workers * 10
 	bagRecorder.FedoraChannel = make(chan *bagman.ProcessResult, workerBufferSize)
@@ -36,6 +40,14 @@ func NewBagRecorder(procUtil *bagman.ProcessUtil) (*BagRecorder) {
 		go bagRecorder.recordStatus()
 	}
 	return bagRecorder
+}
+
+func (bagRecorder *BagRecorder) RunWithoutNsq(result *bagman.ProcessResult) {
+	bagRecorder.UsingNsq = false
+	bagRecorder.WaitGroup.Add(1) // Marked as done in doCleanup() below
+	bagRecorder.FedoraChannel <- result
+	bagRecorder.ProcUtil.MessageLog.Debug("Put %s into Fluctus channel", result.S3File.Key.Key)
+	bagRecorder.WaitGroup.Wait()
 }
 
 // MessageHandler handles messages from the queue, putting each
@@ -62,7 +74,11 @@ func (bagRecorder *BagRecorder) recordInFedora() {
 	for result := range bagRecorder.FedoraChannel {
 		bagRecorder.ProcUtil.MessageLog.Info("Recording Fedora metadata for %s",
 			result.S3File.Key.Key)
-		result.NsqMessage.Touch()
+		// result.NsqMessage will be nil when the process that uses
+		// this library does not deal with NSQ. E.g. apps/apt_retry
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
+		}
 		result.Stage = "Record"
 		bagRecorder.updateFluctusStatus(result, bagman.StageRecord, bagman.StatusStarted)
 		// Save to Fedora only if there are new or updated items in this bag.
@@ -120,7 +136,8 @@ func (bagRecorder *BagRecorder) logResult() {
 		bagRecorder.ProcUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d",
 			bagRecorder.ProcUtil.Succeeded(), bagRecorder.ProcUtil.Failed())
 
-		if result.NsqMessage.Attempts >= uint16(bagRecorder.ProcUtil.Config.RecordWorker.MaxAttempts) &&
+		if result.NsqMessage != nil &&
+			result.NsqMessage.Attempts >= uint16(bagRecorder.ProcUtil.Config.RecordWorker.MaxAttempts) &&
 			result.ErrorMessage != "" {
 			result.Retry = false
 			result.ErrorMessage += fmt.Sprintf("Failure is due to a technical error "+
@@ -176,11 +193,16 @@ func (bagRecorder *BagRecorder) doCleanUp() {
 		bagRecorder.ProcUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		// Build and send message back to NSQ, indicating whether
 		// processing succeeded.
-		if result.ErrorMessage != "" && result.Retry == true {
-			bagRecorder.ProcUtil.MessageLog.Info("Requeueing %s", result.S3File.Key.Key)
-			result.NsqMessage.Requeue(1 * time.Minute)
-		} else {
-			result.NsqMessage.Finish()
+		if result.NsqMessage != nil {
+			if result.ErrorMessage != "" && result.Retry == true {
+				bagRecorder.ProcUtil.MessageLog.Info("Requeueing %s", result.S3File.Key.Key)
+				result.NsqMessage.Requeue(1 * time.Minute)
+			} else {
+				result.NsqMessage.Finish()
+			}
+		}
+		if bagRecorder.UsingNsq == false {
+			bagRecorder.WaitGroup.Done()
 		}
 	}
 }
