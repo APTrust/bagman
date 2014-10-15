@@ -28,6 +28,7 @@ func main() {
 	}
 	fmt.Println(*jsonFile)
 	result := loadJsonFile(*jsonFile)
+	result.ErrorMessage = ""
 	bagRecorder.RunWithoutNsq(result)
 }
 
