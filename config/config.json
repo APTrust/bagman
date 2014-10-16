@@ -86,8 +86,8 @@
         "FileDeleteWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
-            "NsqTopic": "delete_topic",
-            "NsqChannel": "delete_channel",
+            "NsqTopic": "file_delete_topic",
+            "NsqChannel": "file_delete_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -98,9 +98,9 @@
 
         "TroubleWorker": {
             "NetworkConnections": 1,
-            "TroubleWorkers": 1,
-            "TroubleTopic": "trouble_topic",
-            "TroubleChannel": "trouble_channel",
+            "Workers": 1,
+            "NsqTopic": "trouble_topic",
+            "NsqChannel": "trouble_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -217,8 +217,8 @@
         "FileDeleteWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
-            "NsqTopic": "delete_topic",
-            "NsqChannel": "delete_channel",
+            "NsqTopic": "file_delete_topic",
+            "NsqChannel": "file_delete_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -229,9 +229,9 @@
 
         "TroubleWorker": {
             "NetworkConnections": 1,
-            "TroubleWorkers": 1,
-            "TroubleTopic": "trouble_topic",
-            "TroubleChannel": "trouble_channel",
+            "Workers": 1,
+            "NsqTopic": "trouble_topic",
+            "NsqChannel": "trouble_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -349,8 +349,8 @@
         "FileDeleteWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
-            "NsqTopic": "delete_topic",
-            "NsqChannel": "delete_channel",
+            "NsqTopic": "file_delete_topic",
+            "NsqChannel": "file_delete_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -361,9 +361,9 @@
 
         "TroubleWorker": {
             "NetworkConnections": 1,
-            "TroubleWorkers": 1,
-            "TroubleTopic": "trouble_topic",
-            "TroubleChannel": "trouble_channel",
+            "Workers": 1,
+            "NsqTopic": "trouble_topic",
+            "NsqChannel": "trouble_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
