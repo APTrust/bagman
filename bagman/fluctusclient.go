@@ -82,7 +82,7 @@ func (client *FluctusClient) CacheInstitutions() error {
 	institutions := make([]*Institution, 1, 100)
 	err = json.Unmarshal(body, &institutions)
 	if err != nil {
-		return err
+		return client.formatJsonError("CacheInstitutions", body, err)
 	}
 
 	client.institutions = make(map[string]string, len(institutions))
@@ -171,7 +171,7 @@ func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err e
 	items := make([]*ProcessStatus, 0)
 	err = json.Unmarshal(body, &items)
 	if err != nil {
-		return nil, err
+		return nil, client.formatJsonError("GetReviewedItems", body, err)
 	}
 	results = make([]*CleanupResult, len(items))
 	for i, item := range items {
@@ -244,7 +244,7 @@ func (client *FluctusClient) doStatusRequest(request *http.Request, expectedStat
 	// Build and return the data structure
 	err = json.Unmarshal(body, &status)
 	if err != nil {
-		return nil, err
+		return nil, client.formatJsonError(request.URL.RequestURI(), body, err)
 	}
 	return status, nil
 }
@@ -272,7 +272,7 @@ func (client *FluctusClient) BulkStatusGet(since time.Time) (statusRecords []*Pr
 	// Build and return the data structure
 	err = json.Unmarshal(body, &statusRecords)
 	if err != nil {
-		return nil, err
+		return nil, client.formatJsonError(objUrl, body, err)
 	}
 	return statusRecords, nil
 }
@@ -354,7 +354,7 @@ func (client *FluctusClient) getStatusItemsForQueue(itemType, identifier string)
 	// Build and return the data structure
 	err = json.Unmarshal(body, &statusRecords)
 	if err != nil {
-		return nil, err
+		return nil, client.formatJsonError(objUrl, body, err)
 	}
 	return statusRecords, nil
 }
@@ -392,7 +392,7 @@ func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRel
 	obj := &IntellectualObject{}
 	err = json.Unmarshal(body, obj)
 	if err != nil {
-		return nil, err
+		return nil, client.formatJsonError(objUrl, body, err)
 	}
 	return obj, nil
 }
@@ -442,7 +442,7 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 		newObj = &IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
-			return nil, err
+			return nil, client.formatJsonError(objUrl, body, err)
 		}
 		return newObj, nil
 	} else {
@@ -493,7 +493,7 @@ func (client *FluctusClient) IntellectualObjectCreate(obj *IntellectualObject, m
 		newObj = &IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
-			return nil, err
+			return nil, client.formatJsonError(objUrl, body, err)
 		}
 		return newObj, nil
 	} else {
@@ -530,7 +530,7 @@ func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includ
 	obj := &GenericFile{}
 	err = json.Unmarshal(body, obj)
 	if err != nil {
-		return nil, err
+		return nil, client.formatJsonError(fileUrl, body, err)
 	}
 	return obj, nil
 }
@@ -586,7 +586,7 @@ func (client *FluctusClient) GenericFileSave(objId string, gf *GenericFile) (new
 		newGf = &GenericFile{}
 		err = json.Unmarshal(body, newGf)
 		if err != nil {
-			return nil, err
+			return nil, client.formatJsonError(request.URL.RequestURI(), body, err)
 		}
 		return newGf, nil
 	} else {
@@ -644,7 +644,7 @@ func (client *FluctusClient) PremisEventSave(objId, objType string, event *Premi
 	newEvent = &PremisEvent{}
 	err = json.Unmarshal(body, newEvent)
 	if err != nil {
-		return nil, err
+		return nil, client.formatJsonError(request.URL.RequestURI(), body, err)
 	}
 	return newEvent, nil
 }
@@ -782,4 +782,9 @@ func (client *FluctusClient) buildAndLogError(body []byte, formatString string, 
 	err = fmt.Errorf(formatString, args)
 	client.logger.Error(err.Error())
 	return err
+}
+
+func (client *FluctusClient) formatJsonError(callerName string, body []byte, err error) (error) {
+	json := strings.Replace(string(body), "\n", " ", -1)
+	return fmt.Errorf("%s: Error parsing JSON response: %v -- JSON response: %s", err, json)
 }
