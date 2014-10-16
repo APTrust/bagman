@@ -196,3 +196,13 @@ func LoadCustomEnvOrDie(customEnvFile *string, logger *logging.Logger) {
 		}
 	}
 }
+
+// Min returns the minimum of x or y. The Math package has this function
+// but you have to cast to floats.
+func Min(x, y int) int {
+	if x < y {
+		return x
+	} else {
+		return y
+	}
+}

@@ -69,26 +69,16 @@ func queueAllDeletionItems() {
 // depending on the url param.
 func queueBatch(results []*bagman.ProcessStatus, queueName string) {
 	start := 0
-	end := min(len(results), batchSize)
+	end := bagman.Min(len(results), batchSize)
 	for start <= end {
 		batch := results[start:end]
 		workReader.MessageLog.Info("Queuing batch of %d items", len(batch))
 	enqueue(batch, queueName)
 		start = end + 1
 		if start < len(results) {
-			end = min(len(results), start+batchSize)
+			end = bagman.Min(len(results), start+batchSize)
 		}
 		time.Sleep(time.Millisecond * waitMilliseconds)
-	}
-}
-
-// min returns the minimum of x or y. The Math package has this function
-// but you have to cast to floats.
-func min(x, y int) int {
-	if x < y {
-		return x
-	} else {
-		return y
 	}
 }
 

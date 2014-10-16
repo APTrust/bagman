@@ -130,3 +130,9 @@ func TestCleanBagName(t *testing.T) {
 			expected, actual)
 	}
 }
+
+func TestMin(t *testing.T) {
+	if bagman.Min(10, 12) != 10 {
+		t.Error("Min() thinks 12 is less than 10")
+	}
+}

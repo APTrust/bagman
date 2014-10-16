@@ -66,7 +66,7 @@ func run() {
 		workReader.MessageLog.Info("Reprocessing already processed files, because config says so")
 	}
 	start := 0
-	end := min(len(filesToProcess), batchSize)
+	end := bagman.Min(len(filesToProcess), batchSize)
 	workReader.MessageLog.Info("%d Unprocessed files", len(filesToProcess))
 	for start <= end {
 		batch := filesToProcess[start:end]
@@ -74,22 +74,12 @@ func run() {
 		enqueue(url, batch)
 		start = end + 1
 		if start < len(filesToProcess) {
-			end = min(len(filesToProcess), start+batchSize)
+			end = bagman.Min(len(filesToProcess), start+batchSize)
 		}
 		// Sleep so we don't max out connections on EC2 small.
 		// The utility server is running a lot of other network I/O
 		// in addition to our queue.
 		time.Sleep(time.Millisecond * waitMilliseconds)
-	}
-}
-
-// min returns the minimum of x or y. The Math package has this function
-// but you have to cast to floats.
-func min(x, y int) int {
-	if x < y {
-		return x
-	} else {
-		return y
 	}
 }
 
