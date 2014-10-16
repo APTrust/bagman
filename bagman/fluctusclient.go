@@ -511,11 +511,11 @@ func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includ
 		client.apiVersion,
 		escapeSlashes(genericFileIdentifier),
 		queryString))
-	client.logger.Debug("Requesting IntellectualObject from fluctus: %s", fileUrl)
 	request, err := client.NewJsonRequest("GET", fileUrl, nil)
 	if err != nil {
 		return nil, err
 	}
+	client.logger.Debug("Requesting GenericFile from fluctus: %s", request.URL.RequestURI())
 	body, response, err := client.doRequest(request)
 	if err != nil {
 		return nil, err
