@@ -2,7 +2,6 @@ package bagman
 
 import (
 	"fmt"
-	"github.com/mipearson/rfw"
 	"github.com/op/go-logging"
 	"io/ioutil"
 	stdlog "log"
@@ -23,7 +22,11 @@ func InitLogger(config Config) *logging.Logger {
 		// If this fails, getRotatingFileWriter will panic in just a second
 		_ = os.Mkdir(config.LogDirectory, 0755)
 	}
-	writer := getRotatingFileWriter(filename)
+	writer, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644);
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Cannot open log file '%s': %v\n", filename, err)
+		os.Exit(1)
+	}
 
 	log := logging.MustGetLogger(processName)
 	format := logging.MustStringFormatter("%{time} [%{level}] %{message}")
@@ -54,23 +57,12 @@ func InitJsonLogger(config Config) *stdlog.Logger {
 	processName := path.Base(os.Args[0])
 	filename := fmt.Sprintf("%s.json", processName)
 	filename = filepath.Join(config.AbsLogDirectory(), filename)
-	writer := getRotatingFileWriter(filename)
-	return stdlog.New(writer, "", 0)
-}
-
-/*
-getRotatingFileWriter returns a Writer suitable for writing to files
-that may be deleted or renamed by outside processes, such as logrotate.
-If the underlying file disappears, the rotating file writer will
-recreate it and resume logging.
-*/
-func getRotatingFileWriter(filename string) *rfw.Writer {
-	writer, err := rfw.Open(filename, 0644)
+	writer, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644);
 	if err != nil {
-		msg := fmt.Sprintf("Cannot open log file at %s: %v\n", filename, err)
-		panic(msg)
+		fmt.Fprintf(os.Stderr, "Cannot open log file '%s': %v", filename, err)
+		os.Exit(1)
 	}
-	return writer
+	return stdlog.New(writer, "", 0)
 }
 
 /*

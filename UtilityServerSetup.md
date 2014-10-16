@@ -95,7 +95,6 @@ Install the go packages we'll need:
     go get github.com/APTrust/bagins
     go get github.com/APTrust/bagman
     go get github.com/op/go-logging
-    go get github.com/mipearson/rfw
 ```
 
 You can also copy a version of bagman from your local machine, like
@@ -392,6 +391,7 @@ at /etc/logrotate.d/aptrust, and contains the following:
 /mnt/apt/logs/*.log /mnt/apt/logs/*.json {
   rotate 3
   daily
+  copytruncate
   nocompress
   dateext
   missingok
@@ -418,9 +418,3 @@ logrotate --debug --force /etc/logrotate.d/aptrust
 ```
 
 Omit the debug flag if you don't like chatty output.
-
-### TODO
-
-* For log rotation, use logrotate's "copytrucate" instead of the Go
-  package github.com/mipearson/rfw, which calls stat every time it
-  writes.
