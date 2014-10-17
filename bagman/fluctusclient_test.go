@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -460,9 +461,9 @@ func TestSendProcessedItem(t *testing.T) {
 		ObjectIdentifier:  fmt.Sprintf("test.edu/%s", itemName.String()),
 		Bucket:      "aptrust.receiving.test.edu",
 		ETag:        "0000000000",
-		BagDate:     time.Now(),
+		BagDate:     time.Now().UTC(),
 		Institution: "test.edu",
-		Date:        time.Now(),
+		Date:        time.Now().UTC(),
 		Note:        "Test item",
 		Action:      "Ingest",
 		Stage:       "Receive",
@@ -781,4 +782,33 @@ func TestNewJsonRequest(t *testing.T) {
 	if request.URL.RequestURI() != expected {
 		t.Errorf("Request URL expected '%s' but got '%s'", expected, request.URL)
 	}
+}
+
+func TestProcessStatusSearch(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	fluctusClient := getClient(t)
+	results, err := fluctusClient.ProcessStatusSearch("", "", "", "", "", "", time.Time{})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(results) == 0 {
+		t.Error("ProcessStatusSearch returned no results (without filters)")
+		return
+	}
+	r := results[0]
+	results, err = fluctusClient.ProcessStatusSearch(r.ETag, r.Name, string(r.Stage),
+		string(r.Status), strconv.FormatBool(r.Retry),
+		strconv.FormatBool(r.Reviewed), r.BagDate)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(results) == 0 {
+		t.Error("ProcessStatusSearch returned no results (filtering on known item)")
+		return
+	}
+
 }

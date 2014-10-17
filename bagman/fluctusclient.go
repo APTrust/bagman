@@ -151,6 +151,50 @@ func (client *FluctusClient) GetBagStatus(etag, name string, bag_date time.Time)
 	return status, err
 }
 
+// ProcessStatusSearch returns any ProcessedItem/ProcessStatus
+// records from fluctus matching the specified criteria.
+// Params retry and reviewed are really booleans, but there
+// is no empty value for booleans in Go, so use strings
+// "true", "false" or "" for no filter.
+func (client *FluctusClient) ProcessStatusSearch(etag, name, stage, status, retry, reviewed string, bagDate time.Time) (statusRecords []*ProcessStatus, err error) {
+	queryString := ""
+	if etag != "" { queryString += fmt.Sprintf("etag=%s&", etag) }
+	if name != "" { queryString += fmt.Sprintf("name=%s&", name) }
+	if stage != "" { queryString += fmt.Sprintf("stage=%s&", stage) }
+	if status != "" { queryString += fmt.Sprintf("status=%s&", status) }
+	if retry != "" { queryString += fmt.Sprintf("retry=%s&", retry) }
+	if reviewed != "" { queryString += fmt.Sprintf("reviewed=%s&", reviewed) }
+	if bagDate.IsZero() == false {
+		queryString += fmt.Sprintf("bag_date=%s&",
+			url.QueryEscape(bagDate.Format(time.RFC3339)))
+	}
+	statusUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/search?%s",
+		client.apiVersion, queryString))
+	request, err := client.NewJsonRequest("GET", statusUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// 400 or 500
+	if response.StatusCode != 200 {
+		message := "ProcessStatusSearch: Fluctus returned status code %d."
+		err = client.buildAndLogError(body, message, response.StatusCode)
+		return nil, err
+	}
+
+	// Build and return the data structure
+	err = json.Unmarshal(body, &statusRecords)
+	if err != nil {
+		return nil, client.formatJsonError(statusUrl, body, err)
+	}
+	return statusRecords, nil
+}
+
+
 // GetReviewedItems returns a list of items from Fluctus's reviewed items
 // from Fluctus' processed items list. It returns a list of CleanupResults.
 // The cleanup task uses this list to figure out what to delete from the
