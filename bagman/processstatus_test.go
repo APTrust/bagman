@@ -166,3 +166,68 @@ func TestProcessStatusShouldTryIngest(t *testing.T) {
 		t.Error("HasBeenStored() should have returned false")
 	}
 }
+
+func getSomeStatus(action bagman.ActionType) ([]*bagman.ProcessStatus) {
+	statusRecords := make([]*bagman.ProcessStatus, 3)
+	statusRecords[0] = &bagman.ProcessStatus{
+		Action: action,
+		Stage: "Resolve",
+		Status: bagman.StatusSuccess,
+	}
+	statusRecords[1] = &bagman.ProcessStatus{
+		Action: action,
+		Stage: "Resolve",
+		Status: bagman.StatusFailed,
+	}
+	statusRecords[2] = &bagman.ProcessStatus{
+		Action: action,
+		Stage: "Requested",
+		Status: bagman.StatusPending,
+	}
+	return statusRecords
+}
+
+func TestHasPendingDeleteRequest(t *testing.T) {
+	statusRecords := getSomeStatus(bagman.ActionDelete)
+	if bagman.HasPendingDeleteRequest(statusRecords) == false {
+		t.Error("HasPendingDeleteRequest() should have returned true")
+	}
+	statusRecords[2].Status = bagman.StatusStarted
+	if bagman.HasPendingDeleteRequest(statusRecords) == false {
+		t.Error("HasPendingDeleteRequest() should have returned true")
+	}
+	statusRecords[2].Status = bagman.StatusCancelled
+	if bagman.HasPendingDeleteRequest(statusRecords) == true {
+		t.Error("HasPendingDeleteRequest() should have returned false")
+	}
+}
+
+func TestHasPendingRestoreRequest(t *testing.T) {
+	statusRecords := getSomeStatus(bagman.ActionRestore)
+	if bagman.HasPendingRestoreRequest(statusRecords) == false {
+		t.Error("HasPendingRestoreRequest() should have returned true")
+	}
+	statusRecords[2].Status = bagman.StatusStarted
+	if bagman.HasPendingRestoreRequest(statusRecords) == false {
+		t.Error("HasPendingRestoreRequest() should have returned true")
+	}
+	statusRecords[2].Status = bagman.StatusCancelled
+	if bagman.HasPendingRestoreRequest(statusRecords) == true {
+		t.Error("HasPendingRestoreRequest() should have returned false")
+	}
+}
+
+func TestHasPendingIngestRequest(t *testing.T) {
+	statusRecords := getSomeStatus(bagman.ActionIngest)
+	if bagman.HasPendingIngestRequest(statusRecords) == false {
+		t.Error("HasPendingIngestRequest() should have returned true")
+	}
+	statusRecords[2].Status = bagman.StatusStarted
+	if bagman.HasPendingIngestRequest(statusRecords) == false {
+		t.Error("HasPendingIngestRequest() should have returned true")
+	}
+	statusRecords[2].Status = bagman.StatusCancelled
+	if bagman.HasPendingIngestRequest(statusRecords) == true {
+		t.Error("HasPendingIngestRequest() should have returned false")
+	}
+}

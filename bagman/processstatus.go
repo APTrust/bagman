@@ -90,3 +90,39 @@ func (status *ProcessStatus) IsStoring() (bool) {
 func (status *ProcessStatus) ShouldTryIngest() (bool) {
 	return status.HasBeenStored() == false && status.IsStoring() == false && status.Retry == true
 }
+
+// Returns true if the ProcessStatus records include a delete
+// request that has not been completed.
+func HasPendingDeleteRequest(statusRecords []*ProcessStatus) (bool) {
+	for _, record := range statusRecords {
+		if record.Action == ActionDelete &&
+			(record.Status == StatusStarted || record.Status == StatusPending) {
+			return true
+		}
+	}
+	return false
+}
+
+// Returns true if the ProcessStatus records include a restore
+// request that has not been completed.
+func HasPendingRestoreRequest(statusRecords []*ProcessStatus) (bool) {
+	for _, record := range statusRecords {
+		if record.Action == ActionRestore &&
+			(record.Status == StatusStarted || record.Status == StatusPending) {
+			return true
+		}
+	}
+	return false
+}
+
+// Returns true if the ProcessStatus records include an ingest
+// request that has not been completed.
+func HasPendingIngestRequest(statusRecords []*ProcessStatus) (bool) {
+	for _, record := range statusRecords {
+		if record.Action == ActionIngest &&
+			(record.Status == StatusStarted || record.Status == StatusPending) {
+			return true
+		}
+	}
+	return false
+}
