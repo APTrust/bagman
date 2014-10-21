@@ -6,6 +6,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -103,11 +104,44 @@ func (bagPreparer *BagPreparer) HandleMessage(message *nsq.Message) error {
 	// been successfully processed, skip it. There are certain timing
 	// conditions that can cause the bucket reader to add items to the
 	// queue twice. If we get rid of NSQ, we can get rid of this check.
-	if bagPreparer.ProcUtil.Config.SkipAlreadyProcessed == true && bagman.BagNeedsProcessing(&s3File, bagPreparer.ProcUtil) == false {
+	if bagPreparer.ProcUtil.Config.SkipAlreadyProcessed == true &&
+		bagman.BagNeedsProcessing(&s3File, bagPreparer.ProcUtil) == false {
 		bagPreparer.ProcUtil.MessageLog.Info("Marking %s as complete, without processing because "+
 			"Config.SkipAlreadyProcessed = true and this bag was ingested or is currently "+
 			"being processed.", s3File.Key.Key)
 		message.Finish()
+		return nil
+	}
+
+	// Don't start ingest if there's a pending delete or restore request.
+	// Ingest would just overwrite the files and metadata that delete/restore
+	// would be operating on. If there is a pending delete/restore request,
+	// send this back into the queue with an hour or so backoff time.
+	//
+	// If we can't parse the bag date, it's OK to send an empty date into
+	// the search. We may pull back a few extra records and get a false positive
+	// on the pending delete/restore. A false positive will delay ingest, but a
+	// false negative could cause some cascading errors.
+	bagDate, _ := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
+	statusRecords, err := bagPreparer.ProcUtil.FluctusClient.ProcessStatusSearch(
+		strings.Replace(s3File.Key.ETag, "\"", "", -1), // etag
+		s3File.Key.Key,  // name
+		"",              // stage
+		"",              // status
+		"true",          // retry
+		"",              // reviewed
+		bagDate)         // bagDate
+	if err != nil {
+		bagPreparer.ProcUtil.MessageLog.Error("Error fetching status info on bag %s " +
+			"from Fluctus. Will retry in 5 minutes. Error: %v", s3File.Key.Key, err)
+		message.Requeue(5 * time.Minute)
+		return nil
+	}
+	if bagman.HasPendingDeleteRequest(statusRecords) ||
+		bagman.HasPendingRestoreRequest(statusRecords) {
+		bagPreparer.ProcUtil.MessageLog.Info("Requeuing %s due to pending delete or " +
+			"restore request. Will retry in at least 60 minutes.", s3File.Key.Key)
+		message.Requeue(60 * time.Minute)
 		return nil
 	}
 
