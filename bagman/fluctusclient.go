@@ -579,7 +579,7 @@ func (client *FluctusClient) GenericFileGet(genericFileIdentifier string, includ
 	return obj, nil
 }
 
-// Saves an GenericFile to fluctus. This function
+// Saves a GenericFile to fluctus. This function
 // figures out whether the save is a create or an update.
 // Param objId is the Id of the IntellectualObject to which
 // the file belongs. This returns the GenericFile.
@@ -637,6 +637,56 @@ func (client *FluctusClient) GenericFileSave(objId string, gf *GenericFile) (new
 		return gf, nil
 	}
 }
+
+// Saves a batch of GenericFiles to fluctus. This is
+// for create only.
+func (client *FluctusClient) GenericFileSaveBatch(objId string, files []*GenericFile) (err error) {
+	// URL & method for create
+	fileUrl := client.BuildUrl(fmt.Sprintf("/api/%s/objects/%s/files/save_batch",
+		client.apiVersion, escapeSlashes(objId)))
+	method := "POST"
+
+	client.logger.Debug("About to POST %d GenericFiles to Fluctus for object %s",
+		len(files), objId)
+
+	// HACK! WTF??
+	// Why does Fluctus sometimes want 'checksums'
+	// and sometimes 'checksum_attributes'????
+	postData := make(map[string][]map[string]interface{})
+	postData["generic_files"] = GenericFilesToMaps(files)
+	for i := range postData["generic_files"] {
+		gf := postData["generic_files"][i]
+		gf["checksum_attributes"] = gf["checksum"]
+		delete(gf, "checksum")
+	}
+
+	data, err := json.Marshal(postData)
+	if err != nil {
+		return fmt.Errorf("GenericFileSaveBatch() cannot convert files to json: %v", err)
+	}
+
+	request, err := client.NewJsonRequest(method, fileUrl, bytes.NewBuffer(data))
+	if err != nil {
+		return err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return err
+	}
+
+	// Fluctus returns 201 (Created) on create, 204 (No content) on update
+	if response.StatusCode != 201 {
+		fmt.Println(string(body))
+		err = fmt.Errorf("GenericFileSaveBatch Expected status code 201 but got %d. URL: %s\n",
+			response.StatusCode, request.URL)
+		client.logger.Error(err.Error(), strings.Replace(string(body), "\n", " ", -1))
+		return err
+	} else {
+		client.logger.Debug("Post GenericFileBatch succeeded for %d files", len(files))
+	}
+	return nil
+}
+
 
 // Saves a PremisEvent to Fedora. Param objId should be the IntellectualObject id
 // if you're recording an object-related event, such as ingest; or a GenericFile id

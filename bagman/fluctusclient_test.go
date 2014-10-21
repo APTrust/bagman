@@ -810,5 +810,63 @@ func TestProcessStatusSearch(t *testing.T) {
 		t.Error("ProcessStatusSearch returned no results (filtering on known item)")
 		return
 	}
+}
 
+func TestGenericFileSaveBatch(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+
+	// Make sure our test object is in Fluctus
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
+
+	// Load processing result fixture
+	testfile := filepath.Join("testdata", "result_good.json")
+	result, err := bagman.LoadResult(testfile)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", testfile, err)
+		return
+	}
+	// Get the intellectual object from the processing result
+	obj, err := result.IntellectualObject()
+	if err != nil {
+		t.Errorf("Error creating intellectual object from result: %v", err)
+	}
+
+    fluctusClient := getClient(t)
+
+	// Add some new GenericFiles
+	timestamp := fmt.Sprintf("%d",time.Now().Unix())
+	genericFiles := make([]*bagman.GenericFile, 2)
+	genericFiles[0] = &bagman.GenericFile{
+		Identifier: obj.GenericFiles[0].Identifier + timestamp,
+		Format: obj.GenericFiles[0].Format,
+		URI: obj.GenericFiles[0].URI + timestamp,
+		Size: int64(1000),
+		Created: time.Now(),
+		Modified: time.Now(),
+		ChecksumAttributes: obj.GenericFiles[0].ChecksumAttributes,
+		Events: obj.GenericFiles[0].Events,
+	}
+	genericFiles[1] = &bagman.GenericFile{
+		Identifier: obj.GenericFiles[1].Identifier + timestamp,
+		Format: obj.GenericFiles[1].Format,
+		URI: obj.GenericFiles[1].URI + timestamp,
+		Size: int64(1000),
+		Created: time.Now(),
+		Modified: time.Now(),
+		ChecksumAttributes: obj.GenericFiles[1].ChecksumAttributes,
+		Events: obj.GenericFiles[1].Events,
+	}
+
+    // And throw in the old ones, so we're doing some creates
+    // and some updates.
+    genericFiles = append(genericFiles, obj.GenericFiles[0], obj.GenericFiles[1])
+	err = fluctusClient.GenericFileSaveBatch(objId, genericFiles)
+	if err != nil {
+		t.Error(err)
+	}
 }
