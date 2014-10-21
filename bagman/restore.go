@@ -7,7 +7,7 @@ import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"github.com/op/go-logging"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -475,16 +475,29 @@ func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (er
 		header.Gid = int(systat.Gid)
 	}
 
+	// Write the header entry
 	if err := tarWriter.WriteHeader(header); err != nil {
 		return err
 	}
-	data, err := ioutil.ReadFile(filePath)
+
+	// Open the file whose data we're going to add.
+	file, err := os.Open(filePath)
+	defer file.Close()
 	if err != nil {
 		return err
 	}
-	if _, err := tarWriter.Write(data); err != nil {
-		return err
+
+	// Copy the contents of the file into the tarWriter.
+	bytesWritten, err := io.Copy(tarWriter, file)
+	if bytesWritten != header.Size {
+		return fmt.Errorf("addToArchive() copied only %d of %d bytes for file %s",
+			bytesWritten, header.Size, filePath)
 	}
+	if err != nil {
+		return fmt.Errorf("Error copying %s into tar archive: %v",
+			filePath, err)
+	}
+
 	return nil
 }
 
