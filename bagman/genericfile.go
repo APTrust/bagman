@@ -108,3 +108,22 @@ func (gf *GenericFile) PreservationStorageFileName() (string, error) {
 	parts := strings.Split(gf.URI, "/")
 	return parts[len(parts) - 1], nil
 }
+
+// Converts generic files to maps, so we can serialize to JSON.
+func GenericFilesToMaps(files []*GenericFile) ([]map[string]interface{}) {
+	genericFileMaps := make([]map[string]interface{}, len(files))
+	for i := 0; i < len(files); i++ {
+		genericFile := files[i]
+		genericFileMaps[i] = map[string]interface{}{
+			"identifier":   genericFile.Identifier,
+			"file_format":  genericFile.Format,
+			"uri":          genericFile.URI,
+			"size":         genericFile.Size,
+			"created":      genericFile.Created,
+			"modified":     genericFile.Modified,
+			"checksum":     genericFile.ChecksumAttributes,
+			"premisEvents": genericFile.Events,
+		}
+	}
+	return genericFileMaps
+}

@@ -109,3 +109,25 @@ func TestTotalFileSize(t *testing.T) {
 		t.Errorf("TotalFileSize() returned '%d', expected 686", obj.TotalFileSize())
 	}
 }
+
+func TestGenericFilesToMaps(t *testing.T) {
+	filepath := filepath.Join("testdata", "intel_obj.json")
+	obj, err := bagman.LoadIntelObjFixture(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	gfMaps := bagman.GenericFilesToMaps(obj.GenericFiles)
+	if len(gfMaps) != 2 {
+		t.Errorf("Error converting generic files to maps: %v", err)
+	}
+	for _, gfMap := range gfMaps {
+		if len(gfMap["checksum"].([]*bagman.ChecksumAttribute)) != 2 {
+			t.Errorf("GenericFile should have 2 checksum attributes, found %d",
+				len(gfMap["checksum"].([]*bagman.ChecksumAttribute)))
+		}
+		if len(gfMap["premisEvents"].([]*bagman.PremisEvent)) != 10 {
+			t.Errorf("GenericFile should have 10 premis events, found %d",
+				len(gfMap["premisEvents"].([]*bagman.PremisEvent)))
+		}
+	}
+}

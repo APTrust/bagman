@@ -74,24 +74,14 @@ func (obj *IntellectualObject) AccessValid() bool {
 // contain more than 10,000 files, and if we send all of this data
 // at once to Fluctus, it crashes.
 func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, error) {
-	fileCount := len(obj.GenericFiles)
-	if maxGenericFiles > 0 && maxGenericFiles < fileCount {
-		fileCount = maxGenericFiles
+	lastIndex := len(obj.GenericFiles)
+	if maxGenericFiles > 0 {
+		lastIndex = Min(maxGenericFiles, len(obj.GenericFiles))
 	}
-	genericFileMaps := make([]map[string]interface{}, fileCount)
-	for i := 0; i < fileCount; i++ {
-		genericFile := obj.GenericFiles[i]
-		genericFileMaps[i] = map[string]interface{}{
-			"identifier":   genericFile.Identifier,
-			"file_format":  genericFile.Format,
-			"uri":          genericFile.URI,
-			"size":         genericFile.Size,
-			"created":      genericFile.Created,
-			"modified":     genericFile.Modified,
-			"checksum":     genericFile.ChecksumAttributes,
-			"premisEvents": genericFile.Events,
-		}
-	}
+	genericFiles := obj.GenericFiles[0:lastIndex]
+
+	genericFileMaps := GenericFilesToMaps(genericFiles)
+
 	events := make([]*PremisEvent, 2)
 	ingestEvent, err := obj.CreateIngestEvent()
 	if err != nil {
