@@ -1,8 +1,10 @@
 package bagman
 
 import (
-	"fmt"
+	"errors"
 )
+
+var ErrStopIteration = errors.New("iteration completed")
 
 // FileBatchIterator returns batches of files whose metadata
 // needs to be saved in Fluctus.
@@ -29,12 +31,17 @@ func NewFileBatchIterator (files []*File, batchSize int) (*FileBatchIterator) {
 // the batchSize that was passed into NewFileBatchIterator. This may
 // return fewer than batchSize files if only a few need saving.
 // When no remaining files need to be saved, this returns an error.
-func (iter *FileBatchIterator) NextBatch() ([]*File, error) {
-	matches := make([]*File, 0)
+func (iter *FileBatchIterator) NextBatch() ([]*GenericFile, error) {
+	matches := make([]*GenericFile, 0)
 	for i := iter.currentIndex; i < iter.fileCount; i++ {
 		file := iter.files[i]
 		if file.NeedsSave == true {
-			matches = append(matches, file)
+			// Error here, failure to generate UUID, should be extremely rare.
+			genericFile, err := file.ToGenericFile()
+			if err != nil {
+				return nil, err
+			}
+			matches = append(matches, genericFile)
 		}
 		iter.currentIndex++
 		if len(matches) == iter.batchSize {
@@ -42,7 +49,7 @@ func (iter *FileBatchIterator) NextBatch() ([]*File, error) {
 		}
 	}
 	if len(matches) == 0 {
-		return nil, fmt.Errorf("Iterator reached end of files")
+		return nil, ErrStopIteration
 	}
 	return matches, nil
 }
