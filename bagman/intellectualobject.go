@@ -80,7 +80,7 @@ func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, 
 	}
 	genericFiles := obj.GenericFiles[0:lastIndex]
 
-	genericFileMaps := GenericFilesToMaps(genericFiles)
+	genericFileMaps := GenericFilesToBulkSaveMaps(genericFiles)
 
 	events := make([]*PremisEvent, 2)
 	ingestEvent, err := obj.CreateIngestEvent()

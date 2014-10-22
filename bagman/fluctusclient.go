@@ -651,7 +651,7 @@ func (client *FluctusClient) GenericFileSaveBatch(objId string, files []*Generic
 
 	// Format the generic file data so the API will accept it.
 	postData := make(map[string][]map[string]interface{})
-	postData["generic_files"] = GenericFilesToMaps(files)
+	postData["generic_files"] = GenericFilesToBulkSaveMaps(files)
 
 	data, err := json.Marshal(postData)
 	if err != nil {

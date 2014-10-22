@@ -109,21 +109,31 @@ func (gf *GenericFile) PreservationStorageFileName() (string, error) {
 	return parts[len(parts) - 1], nil
 }
 
+// Converts a generic file to a map structure which can then be
+// serialized to JSON. The resulting structure includes both checksums
+// and premis events, and is intended for the save_batch action of
+// Fluctus' generic_files controller.
+func (gf *GenericFile) ToMapForBulkSave() (map[string]interface{}) {
+	return map[string]interface{}{
+		"identifier":   gf.Identifier,
+		"file_format":  gf.Format,
+		"uri":          gf.URI,
+		"size":         gf.Size,
+		"created":      gf.Created,
+		"modified":     gf.Modified,
+		"checksum":     gf.ChecksumAttributes,
+		"premisEvents": gf.Events,
+	}
+}
+
 // Converts generic files to maps, so we can serialize to JSON.
-func GenericFilesToMaps(files []*GenericFile) ([]map[string]interface{}) {
+// These map structures work with the save_batch endpoint of the
+// generic_files controller, which takes in a list of generic files
+// along with all of their related checksums and premis events.
+func GenericFilesToBulkSaveMaps(files []*GenericFile) ([]map[string]interface{}) {
 	genericFileMaps := make([]map[string]interface{}, len(files))
-	for i := 0; i < len(files); i++ {
-		genericFile := files[i]
-		genericFileMaps[i] = map[string]interface{}{
-			"identifier":   genericFile.Identifier,
-			"file_format":  genericFile.Format,
-			"uri":          genericFile.URI,
-			"size":         genericFile.Size,
-			"created":      genericFile.Created,
-			"modified":     genericFile.Modified,
-			"checksum":     genericFile.ChecksumAttributes,
-			"premisEvents": genericFile.Events,
-		}
+	for i := range files {
+		genericFileMaps[i] = files[i].ToMapForBulkSave()
 	}
 	return genericFileMaps
 }

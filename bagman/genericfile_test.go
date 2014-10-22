@@ -110,13 +110,21 @@ func TestTotalFileSize(t *testing.T) {
 	}
 }
 
+// func TestGenericFilesToFluctusMap(t *testing.T) {
+// 	filepath := filepath.Join("testdata", "intel_obj.json")
+// 	obj, err := bagman.LoadIntelObjFixture(filepath)
+// 	if err != nil {
+// 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+// 	}
+// }
+
 func TestGenericFilesToMaps(t *testing.T) {
 	filepath := filepath.Join("testdata", "intel_obj.json")
 	obj, err := bagman.LoadIntelObjFixture(filepath)
 	if err != nil {
 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
 	}
-	gfMaps := bagman.GenericFilesToMaps(obj.GenericFiles)
+	gfMaps := bagman.GenericFilesToBulkSaveMaps(obj.GenericFiles)
 	if len(gfMaps) != 2 {
 		t.Errorf("Error converting generic files to maps: %v", err)
 	}
