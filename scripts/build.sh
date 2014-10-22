@@ -28,7 +28,7 @@ echo "building apt_nsq_service"
 cd "${BAGMAN_HOME}/nsq"
 go build -o ${BAGMAN_BIN}/apt_nsq_service service.go
 
-echo "building bag_preparer"
+echo "building apt_prepare"
 cd "${BAGMAN_HOME}/apps/apt_prepare"
 go build -o ${BAGMAN_BIN}/apt_prepare apt_prepare.go
 
