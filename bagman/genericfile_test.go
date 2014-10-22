@@ -4,6 +4,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestBagName(t *testing.T) {
@@ -110,13 +111,43 @@ func TestTotalFileSize(t *testing.T) {
 	}
 }
 
-// func TestGenericFilesToFluctusMap(t *testing.T) {
-// 	filepath := filepath.Join("testdata", "intel_obj.json")
-// 	obj, err := bagman.LoadIntelObjFixture(filepath)
-// 	if err != nil {
-// 		t.Errorf("Error loading test data file '%s': %v", filepath, err)
-// 	}
-// }
+func TestGenericFilesToFluctusMap(t *testing.T) {
+	filepath := filepath.Join("testdata", "intel_obj.json")
+	obj, err := bagman.LoadIntelObjFixture(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	gfMap := obj.GenericFiles[0].ToMapForBulkSave()
+	if gfMap["identifier"] != "uc.edu/cin.675812/data/object.properties" {
+		t.Errorf("identifier expected %s, got %s", "uc.edu/cin.675812/data/object.properties", gfMap["identifier"])
+	}
+	if gfMap["file_format"] != "text/plain" {
+		t.Errorf("file_format expected %s, got %s", "text/plain", gfMap["file_format"])
+	}
+	if gfMap["uri"] != "https://s3.amazonaws.com/aptrust.test.fixtures/restore_test/data/object.properties" {
+		t.Errorf("uri expected %s, got %s", "https://s3.amazonaws.com/aptrust.test.fixtures/restore_test/data/object.properties", gfMap["uri"])
+	}
+	if gfMap["size"] != int64(80) {
+		t.Errorf("size expected %d, got %d", 80, gfMap["size"])
+	}
+
+	expectedTime := "1980-01-01T00:00:00-05:00"
+	created := gfMap["created"].(time.Time).Format(time.RFC3339)
+	if created != expectedTime {
+		t.Errorf("created expected %v, got %v", expectedTime, created)
+	}
+	modified := gfMap["modified"].(time.Time).Format(time.RFC3339)
+	if modified != expectedTime {
+		t.Errorf("modified expected %v, got %v", expectedTime, modified)
+	}
+
+	if len(gfMap["checksum"].([]*bagman.ChecksumAttribute)) != 2 {
+		t.Errorf("expected 2 checksums, found only %d", len(gfMap["checksum"].([]*bagman.ChecksumAttribute)))
+	}
+	if len(gfMap["premisEvents"].([]*bagman.PremisEvent)) != 10 {
+		t.Errorf("expected 10 premis events, found only %d", len(gfMap["premisEvents"].([]*bagman.PremisEvent)))
+	}
+}
 
 func TestGenericFilesToMaps(t *testing.T) {
 	filepath := filepath.Join("testdata", "intel_obj.json")
