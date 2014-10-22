@@ -275,17 +275,49 @@ func (bagRecorder *BagRecorder) fedoraUpdateObject(result *bagman.ProcessResult,
 	result.TarResult.MergeExistingFiles(existingObject.GenericFiles)
 	if result.TarResult.AnyFilesNeedSaving() {
 		bagRecorder.fedoraUpdateIntellectualObject(result, objectToSave)
-		for i := range result.TarResult.Files {
-			genericFile := result.TarResult.Files[i]
-			// Save generic file data to Fedora only if the file is new or changed.
-			if genericFile.NeedsSave {
-				bagRecorder.fedoraRecordGenericFile(result, objectToSave.Identifier, genericFile)
+		// -------------------------------------------------------------
+		// Old save method - one at a time
+		// -------------------------------------------------------------
+		// for i := range result.TarResult.Files {
+		// 	genericFile := result.TarResult.Files[i]
+		// 	// Save generic file data to Fedora only if the file is new or changed.
+		// 	if genericFile.NeedsSave {
+		// 		bagRecorder.fedoraRecordGenericFile(result, objectToSave.Identifier, genericFile)
+		// 	} else {
+		// 		bagRecorder.ProcUtil.MessageLog.Debug(
+		// 			"Nothing to do for %s: no change since last ingest",
+		// 			genericFile.Identifier)
+		// 	}
+		// }
+
+		// -------------------------------------------------------------
+		// New save method - up to 200 at a time
+		// -------------------------------------------------------------
+		file_iterator := bagman.NewFileBatchIterator(result.TarResult.Files, 200)
+		totalSaved := 0
+		for {
+			batch, err := file_iterator.NextBatch()
+			if err == bagman.ErrStopIteration {
+				bagRecorder.ProcUtil.MessageLog.Info("Finished sending generic files " +
+					"from bag %s to Fluctus. %d of %d files needed saving.",
+					result.S3File.Key.Key, totalSaved, len(result.TarResult.Files))
+				break
+			} else if err != nil {
+				bagRecorder.ProcUtil.MessageLog.Error("While saving files from bag %s " +
+					"to Fluctus, error getting batch: %v", result.S3File.Key.Key, err)
+			}
+			bagRecorder.ProcUtil.MessageLog.Info("Sending batch of %d generic files " +
+				"from bag %s to Fluctus", len(batch), result.S3File.Key.Key)
+			err = bagRecorder.ProcUtil.FluctusClient.GenericFileSaveBatch(objectToSave.Identifier, batch)
+			if err != nil {
+				bagRecorder.handleFedoraError(result, "Error saving generic file batch to Fedora", err)
 			} else {
-				bagRecorder.ProcUtil.MessageLog.Debug(
-					"Nothing to do for %s: no change since last ingest",
-					genericFile.Identifier)
+				totalSaved += len(batch)
 			}
 		}
+		// -------------------------------------------------------------
+		// End of new save
+		// -------------------------------------------------------------
 	} else {
 		bagRecorder.ProcUtil.MessageLog.Debug(
 			"Not saving object, files or events for %s: no change since last ingest",
