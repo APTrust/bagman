@@ -649,16 +649,9 @@ func (client *FluctusClient) GenericFileSaveBatch(objId string, files []*Generic
 	client.logger.Debug("About to POST %d GenericFiles to Fluctus for object %s",
 		len(files), objId)
 
-	// HACK! WTF??
-	// Why does Fluctus sometimes want 'checksums'
-	// and sometimes 'checksum_attributes'????
+	// Format the generic file data so the API will accept it.
 	postData := make(map[string][]map[string]interface{})
 	postData["generic_files"] = GenericFilesToMaps(files)
-	for i := range postData["generic_files"] {
-		gf := postData["generic_files"][i]
-		gf["checksum_attributes"] = gf["checksum"]
-		delete(gf, "checksum")
-	}
 
 	data, err := json.Marshal(postData)
 	if err != nil {
