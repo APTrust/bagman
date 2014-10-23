@@ -19,7 +19,7 @@ import (
 // Maximum number of generic files we can create in a single
 // call to IntellectualObjectCreate. New objects with more
 // than this number of files need special handling.
-const MAX_FILES_FOR_CREATE = 500
+const MAX_FILES_FOR_CREATE = 200
 
 // Log fluctus error responses up to this number of bytes.
 // We DO want to log concise error messages. We DO NOT want
@@ -866,7 +866,7 @@ func (client *FluctusClient) buildAndLogError(body []byte, formatString string, 
 		formatString += " Response body: %s"
 		args = append(args, string(body))
 	}
-	err = fmt.Errorf(formatString, args)
+	err = fmt.Errorf(formatString, args...)
 	client.logger.Error(err.Error())
 	return err
 }
