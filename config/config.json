@@ -282,7 +282,7 @@
         "CustomRestoreBucket": "",
 
         "PrepareWorker": {
-            "NetworkConnections": 4,
+            "NetworkConnections": 8,
             "Workers": 4,
             "NsqTopic": "prepare_topic",
             "NsqChannel": "prepare_channel",
@@ -295,7 +295,7 @@
         },
 
         "StoreWorker": {
-            "NetworkConnections": 4,
+            "NetworkConnections": 16,
             "Workers": 8,
             "NsqTopic": "store_topic",
             "NsqChannel": "store_channel",
@@ -308,7 +308,7 @@
         },
 
         "RecordWorker": {
-            "NetworkConnections": 4,
+            "NetworkConnections": 8,
             "Workers": 4,
             "NsqTopic": "record_topic",
             "NsqChannel": "record_channel",
@@ -321,7 +321,7 @@
         },
 
         "BagDeleteWorker": {
-            "NetworkConnections": 4,
+            "NetworkConnections": 8,
             "Workers": 4,
             "NsqTopic": "bag_delete_topic",
             "NsqChannel": "bag_delete_channel",
@@ -334,8 +334,8 @@
         },
 
         "RestoreWorker": {
-            "NetworkConnections": 4,
-            "Workers": 8,
+            "NetworkConnections": 8,
+            "Workers": 4,
             "NsqTopic": "restore_topic",
             "NsqChannel": "restore_channel",
             "MaxAttempts": 3,
@@ -347,7 +347,7 @@
         },
 
         "FileDeleteWorker": {
-            "NetworkConnections": 4,
+            "NetworkConnections": 12,
             "Workers": 4,
             "NsqTopic": "file_delete_topic",
             "NsqChannel": "file_delete_channel",
