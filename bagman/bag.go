@@ -321,9 +321,15 @@ func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size
 		}
 	}
 
+	// Get the mime type of the file. In some cases, MagicMime
+	// returns an empty string, and in rare cases (about 1 in 10000),
+	// it returns unprintable characters. These are not valid mime
+	// types and cause ingest to fail. So we default to the safe
+	// application/binary and then set the MimeType only if
+	// MagicMime returned something that looks legit.
 	file.MimeType = "application/binary"
 	mimetype, _ := magicMime.TypeByFile(absPath)
-	if mimetype != "" {
+	if mimetype != "" && strings.Index(mimetype, "/") > 0 {
 		file.MimeType = mimetype
 	}
 
