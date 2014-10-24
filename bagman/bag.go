@@ -12,10 +12,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
 )
+
+var validMimeType = regexp.MustCompile(`^\w+/\w+$`)
 
 // magicMime is the MimeMagic database. We want
 // just one copy of this open at a time.
@@ -329,7 +332,7 @@ func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size
 	// MagicMime returned something that looks legit.
 	file.MimeType = "application/binary"
 	mimetype, _ := magicMime.TypeByFile(absPath)
-	if mimetype != "" && strings.Index(mimetype, "/") > 0 {
+	if mimetype != "" && validMimeType.MatchString(mimetype) {
 		file.MimeType = mimetype
 	}
 
