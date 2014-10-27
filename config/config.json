@@ -392,5 +392,135 @@
             "aptrust.receiving.test.vt.edu"
         ]
 
+    },
+    "production": {
+        "TarDirectory": "/mnt/apt/data",
+        "RestoreDirectory": "/mnt/apt/restore",
+        "LogDirectory": "/mnt/apt/logs",
+        "MaxFileSize": 0,
+        "SkipAlreadyProcessed": true,
+        "DeleteOnSuccess": true,
+        "LogToStderr": false,
+        "LogLevel": 4,
+
+        "FluctusURL": "https://repository.aptrust.org",
+        "FluctusAPIVersion": "v1",
+
+        "NsqdHttpAddress": "http://localhost:4151",
+        "NsqLookupd": "localhost:4161",
+
+        "PreservationBucket": "aptrust.preservation.storage",
+        "CustomRestoreBucket": "",
+
+        "PrepareWorker": {
+            "NetworkConnections": 8,
+            "Workers": 4,
+            "NsqTopic": "prepare_topic",
+            "NsqChannel": "prepare_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "StoreWorker": {
+            "NetworkConnections": 16,
+            "Workers": 8,
+            "NsqTopic": "store_topic",
+            "NsqChannel": "store_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "RecordWorker": {
+            "NetworkConnections": 8,
+            "Workers": 4,
+            "NsqTopic": "record_topic",
+            "NsqChannel": "record_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "BagDeleteWorker": {
+            "NetworkConnections": 8,
+            "Workers": 4,
+            "NsqTopic": "bag_delete_topic",
+            "NsqChannel": "bag_delete_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "30m"
+        },
+
+        "RestoreWorker": {
+            "NetworkConnections": 8,
+            "Workers": 4,
+            "NsqTopic": "restore_topic",
+            "NsqChannel": "restore_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "FileDeleteWorker": {
+            "NetworkConnections": 12,
+            "Workers": 4,
+            "NsqTopic": "file_delete_topic",
+            "NsqChannel": "file_delete_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "30m"
+        },
+
+        "TroubleWorker": {
+            "NetworkConnections": 1,
+            "Workers": 1,
+            "NsqTopic": "trouble_topic",
+            "NsqChannel": "trouble_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "10m"
+        },
+
+        "ReceivingBuckets": [
+            "aptrust.receiving.columbia.edu",
+            "aptrust.receiving.iub.edu",
+            "aptrust.receiving.jhu.edu",
+            "aptrust.receiving.miami.edu",
+            "aptrust.receiving.ncsu.edu",
+            "aptrust.receiving.psu.edu",
+            "aptrust.receiving.syr.edu",
+            "aptrust.receiving.uchicago.edu",
+            "aptrust.receiving.uc.edu",
+            "aptrust.receiving.uchicago.edu",
+            "aptrust.receiving.uconn.edu",
+            "aptrust.receiving.umd.edu",
+            "aptrust.receiving.umich.edu",
+            "aptrust.receiving.unc.edu",
+            "aptrust.receiving.und.edu",
+            "aptrust.receiving.virginia.edu",
+            "aptrust.receiving.vt.edu"
+        ]
     }
 }
