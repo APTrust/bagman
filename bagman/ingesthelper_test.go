@@ -49,7 +49,7 @@ func environmentReady() (bool) {
 
 func getS3File() (*bagman.S3File) {
 	return &bagman.S3File {
-        BucketName: "aptrust.receiving.test.edu",
+        BucketName: "aptrust.receiving.test.test.edu",
         Key: s3.Key{
             Key: "ncsu.1840.16-2928.tar",
             LastModified: "2014-04-25T19:01:20.000Z",
@@ -97,7 +97,7 @@ func deleteLocalFiles() {
 	}
 }
 
-// Delete the GenericFiles that our tests stored in aptrust.test.preservation.
+// Delete the GenericFiles that our tests stored in aptrust.test.test.preservation.
 func deleteS3Files(genericFiles []*bagman.File, s3Client *bagman.S3Client) {
 	for _, file := range genericFiles {
 		parts := strings.Split(file.StorageURL, "/")
@@ -309,7 +309,7 @@ func verifyResult(t *testing.T, itemName, expected, actual string) {
 }
 
 func verifyFetchResult(t *testing.T, fetchResult *bagman.FetchResult) {
-	verifyResult(t, "BucketName", "aptrust.receiving.test.edu", fetchResult.BucketName)
+	verifyResult(t, "BucketName", "aptrust.receiving.test.test.edu", fetchResult.BucketName)
 	verifyResult(t, "Key", "ncsu.1840.16-2928.tar", fetchResult.Key)
 	verifyResult(t, "LocalTarFile", "tmp/ncsu.1840.16-2928.tar", fetchResult.LocalTarFile)
 	verifyResult(t, "RemoteMd5", "b4f8f3072f73598fc5b65bf416b6019a", fetchResult.RemoteMd5)

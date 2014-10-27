@@ -15,18 +15,14 @@ import (
 // For example, if bucketName is 'aptrust.receiving.unc.edu' the return value
 // will be 'unc.edu'.
 func OwnerOf(bucketName string) (institution string) {
-	if strings.HasPrefix(bucketName, ReceiveBucketPrefix) {
+	if strings.HasPrefix(bucketName, ReceiveTestBucketPrefix) {
+		institution = strings.Replace(bucketName, ReceiveTestBucketPrefix, "", 1)
+	} else if strings.HasPrefix(bucketName, ReceiveBucketPrefix) {
 		institution = strings.Replace(bucketName, ReceiveBucketPrefix, "", 1)
 	} else if strings.HasPrefix(bucketName, RestoreBucketPrefix) {
 		institution = strings.Replace(bucketName, RestoreBucketPrefix, "", 1)
 	}
 	return institution
-}
-
-// Returns the name of the specified institution's receiving bucket.
-// E.g. institution 'unc.edu' returns bucketName 'aptrust.receiving.unc.edu'
-func ReceivingBucketFor(institution string) (bucketName string) {
-	return ReceiveBucketPrefix + institution
 }
 
 // Returns the name of the specified institution's restoration bucket.

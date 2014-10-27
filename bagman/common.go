@@ -12,10 +12,11 @@ import (
 var MultipartSuffix = regexp.MustCompile("\\.b\\d+\\.of\\d+$")
 
 const (
-	APTrustNamespace    = "urn:mace:aptrust.org"
-	ReceiveBucketPrefix = "aptrust.receiving."
-	RestoreBucketPrefix = "aptrust.restore."
-	S3DateFormat        = "2006-01-02T15:04:05.000Z"
+	APTrustNamespace        = "urn:mace:aptrust.org"
+	ReceiveBucketPrefix     = "aptrust.receiving."
+	ReceiveTestBucketPrefix = "aptrust.receiving.test."
+	RestoreBucketPrefix     = "aptrust.restore."
+	S3DateFormat            = "2006-01-02T15:04:05.000Z"
 )
 
 

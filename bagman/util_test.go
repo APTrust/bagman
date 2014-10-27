@@ -100,14 +100,11 @@ func TestOwnerOf(t *testing.T) {
 	if bagman.OwnerOf("aptrust.receiving.unc.edu") != "unc.edu" {
 		t.Error("OwnerOf misidentified receiving bucket owner")
 	}
+	if bagman.OwnerOf("aptrust.receiving.test.unc.edu") != "unc.edu" {
+		t.Error("OwnerOf misidentified receiving bucket owner")
+	}
 	if bagman.OwnerOf("aptrust.restore.unc.edu") != "unc.edu" {
 		t.Error("OwnerOf misidentified restoration bucket owner")
-	}
-}
-
-func TestReceivingBucketFor(t *testing.T) {
-	if bagman.ReceivingBucketFor("unc.edu") != "aptrust.receiving.unc.edu" {
-		t.Error("ReceivingBucketFor returned incorrect receiving bucket name")
 	}
 }
 
