@@ -193,7 +193,7 @@ func (client *S3Client) CheckAllBuckets(buckets []string) (bucketSummaries []*Bu
 	for _, bucketName := range buckets {
 		bucketSummary, err := client.CheckBucket(bucketName)
 		if err != nil {
-			return bucketSummaries, err
+			return bucketSummaries, fmt.Errorf("%s: %v", bucketName, err)
 		}
 		bucketSummaries = append(bucketSummaries, bucketSummary)
 	}
