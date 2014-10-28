@@ -142,7 +142,6 @@ func (bagDeleter *BagDeleter) MarkItemResolved(result *bagman.CleanupResult) err
 		return err
 	}
 	if remoteStatus != nil {
-		remoteStatus.Reviewed = false
 		remoteStatus.Stage = bagman.StageCleanup
 		remoteStatus.Status = bagman.StatusSuccess
 	}
