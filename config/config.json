@@ -117,7 +117,7 @@
             "aptrust.receiving.ncsu.edu",
             "aptrust.receiving.psu.edu",
             "aptrust.receiving.syr.edu",
-            "aptrust.receiving.test.edu",
+            "aptrust.receiving.test.test.edu",
             "aptrust.receiving.uchicago.edu",
             "aptrust.receiving.uc.edu",
             "aptrust.receiving.uchicago.edu",
@@ -268,7 +268,7 @@
         "LogDirectory": "/mnt/apt/logs",
         "MaxFileSize": 0,
         "SkipAlreadyProcessed": true,
-        "DeleteOnSuccess": false,
+        "DeleteOnSuccess": true,
         "LogToStderr": false,
         "LogLevel": 4,
 
