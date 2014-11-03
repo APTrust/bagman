@@ -91,7 +91,7 @@ func (gf *GenericFile) InstitutionId() (string, error) {
 // Returns the checksum digest for the given algorithm for this file.
 func (gf *GenericFile) GetChecksum(algorithm string) (*ChecksumAttribute) {
 	for _, cs := range gf.ChecksumAttributes {
-		if cs.Algorithm == algorithm {
+		if cs != nil && cs.Algorithm == algorithm {
 			return cs
 		}
 	}

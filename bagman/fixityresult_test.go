@@ -3,6 +3,7 @@ package bagman_test
 import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"strings"
 	"testing"
 	"time"
 )
@@ -29,7 +30,30 @@ func getGenericFile() (*bagman.GenericFile) {
 }
 
 func TestBucketAndKey(t *testing.T) {
-	//result := bagman.NewFixityResult(getGenericFile())
+	result := bagman.NewFixityResult(getGenericFile())
+	bucket, key, err := result.BucketAndKey()
+	if err != nil {
+		t.Errorf("BucketAndKey() returned error: %v", err)
+	}
+	if bucket != "aptrust.preservation.storage" {
+		t.Errorf("BucketAndKey() returned bucket name '%s', expected 'aptrust.preservation.storage'", bucket)
+	}
+	if key != "52a928da-89ef-48c6-4627-826d1858349b" {
+		t.Errorf("BucketAndKey() returned key '%s', expected '52a928da-89ef-48c6-4627-826d1858349b'", key)
+	}
+}
+
+func TestBucketAndKeyWithBadUri(t *testing.T) {
+	result := bagman.NewFixityResult(getGenericFile())
+	result.GenericFile.URI = "http://example.com"
+	_, _, err := result.BucketAndKey()
+	if err == nil {
+		t.Errorf("BucketAndKey() should have returned an error for invalid URI")
+		return
+	}
+	if result.ErrorMessage != "GenericFile URI 'http://example.com' is invalid" {
+		t.Errorf("BucketAndKey() did not set descriptive error message for bad URI")
+	}
 }
 
 func TestMd5Matches(t *testing.T) {
@@ -70,6 +94,44 @@ func TestSha256Matches(t *testing.T) {
 	}
 }
 
+// We have to know WHY things failed!
 func TestMissingChecksums(t *testing.T) {
-	//result := bagman.NewFixityResult(getGenericFile())
+	result := bagman.NewFixityResult(getGenericFile())
+	if result.Sha256Matches() == true {
+		t.Errorf("Sha256Matches should have returned false")
+	}
+	if strings.Index(result.ErrorMessage, "FixityResult object is missing") < 0 {
+		t.Errorf("Descriptive error message is missing or incorrect")
+	}
+
+	result.ErrorMessage = ""
+	if result.Md5Matches() == true {
+		t.Errorf("Md5Matches should have returned false")
+	}
+	if strings.Index(result.ErrorMessage, "FixityResult object is missing") < 0 {
+		t.Errorf("Descriptive error message is missing or incorrect")
+	}
+
+	// Make sure we get specific message when the GenericFile
+	// object does not include the expected checksums.
+	result.Md5 = md5sum
+	result.Sha256 = sha256sum
+	result.GenericFile.ChecksumAttributes = make([]*bagman.ChecksumAttribute, 2)
+	result.ErrorMessage = ""
+	expectedError := "GenericFile record from Fedora is missing sha256 digest!"
+	if result.Sha256Matches() == true {
+		t.Errorf("Sha256Matches should have returned false")
+	}
+	if result.ErrorMessage != expectedError {
+		t.Errorf("Expected error message '%s' but got '%s'", expectedError, result.ErrorMessage)
+	}
+
+	result.ErrorMessage = ""
+	expectedError = "GenericFile record from Fedora is missing md5 digest!"
+	if result.Md5Matches() == true {
+		t.Errorf("Md5Matches should have returned false")
+	}
+	if result.ErrorMessage != expectedError {
+		t.Errorf("Expected error message '%s' but got '%s'", expectedError, result.ErrorMessage)
+	}
 }
