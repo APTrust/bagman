@@ -56,24 +56,6 @@ func TestBucketAndKeyWithBadUri(t *testing.T) {
 	}
 }
 
-func TestMd5Matches(t *testing.T) {
-	result := bagman.NewFixityResult(getGenericFile())
-	result.Md5 = md5sum
-	if result.Md5Matches() == false {
-		t.Errorf("Md5Matches should have returned true")
-	}
-	result.Md5 = "some random string"
-	if result.Md5Matches() == true {
-		t.Errorf("Md5Matches should have returned false")
-	}
-	expectedMessage := fmt.Sprintf(
-		"Current md5 digest 'some random string' does not match Fedora digest '%s'",
-		md5sum)
-	if result.ErrorMessage != expectedMessage {
-		t.Errorf("Expected ErrorMessage '%s' but got '%s' instead",
-			expectedMessage, result.ErrorMessage)
-	}
-}
 
 func TestSha256Matches(t *testing.T) {
 	result := bagman.NewFixityResult(getGenericFile())
@@ -104,17 +86,8 @@ func TestMissingChecksums(t *testing.T) {
 		t.Errorf("Descriptive error message is missing or incorrect")
 	}
 
-	result.ErrorMessage = ""
-	if result.Md5Matches() == true {
-		t.Errorf("Md5Matches should have returned false")
-	}
-	if strings.Index(result.ErrorMessage, "FixityResult object is missing") < 0 {
-		t.Errorf("Descriptive error message is missing or incorrect")
-	}
-
 	// Make sure we get specific message when the GenericFile
 	// object does not include the expected checksums.
-	result.Md5 = md5sum
 	result.Sha256 = sha256sum
 	result.GenericFile.ChecksumAttributes = make([]*bagman.ChecksumAttribute, 2)
 	result.ErrorMessage = ""
@@ -125,20 +98,10 @@ func TestMissingChecksums(t *testing.T) {
 	if result.ErrorMessage != expectedError {
 		t.Errorf("Expected error message '%s' but got '%s'", expectedError, result.ErrorMessage)
 	}
-
-	result.ErrorMessage = ""
-	expectedError = "GenericFile record from Fedora is missing md5 digest!"
-	if result.Md5Matches() == true {
-		t.Errorf("Md5Matches should have returned false")
-	}
-	if result.ErrorMessage != expectedError {
-		t.Errorf("Expected error message '%s' but got '%s'", expectedError, result.ErrorMessage)
-	}
 }
 
 func TestBuildPremisEvent_Success(t *testing.T) {
 	result := bagman.NewFixityResult(getGenericFile())
-	result.Md5 = md5sum
 	result.Sha256 = sha256sum
 	premisEvent, err := result.BuildPremisEvent()
 	if err != nil {
@@ -179,7 +142,6 @@ func TestBuildPremisEvent_Success(t *testing.T) {
 
 func TestBuildPremisEvent_Failure(t *testing.T) {
 	result := bagman.NewFixityResult(getGenericFile())
-	result.Md5 = md5sum
 	result.Sha256 = "xxx-xxx-xxx"
 	premisEvent, err := result.BuildPremisEvent()
 	if err != nil {

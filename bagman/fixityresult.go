@@ -9,7 +9,7 @@ import (
 
 
 // FixityResult descibes the results of fetching a file from S3
-// and verification of the file's md5 and sha256 checksums.
+// and verification of the file's sha256 checksum.
 type FixityResult struct {
 
 	// The generic file we're going to look at.
@@ -18,10 +18,6 @@ type FixityResult struct {
 
 	// Does the file exist in S3?
 	S3FileExists  bool
-
-	// The md5 sum we calculated after downloading
-	// the file.
-	Md5           string
 
 	// The sha256 sum we calculated after downloading
 	// the file.
@@ -65,37 +61,23 @@ func (result *FixityResult) BucketAndKey() (string, string, error) {
 	return bucket, key, nil
 }
 
-// Returns true if the md5 sum we calculated for this file
-// matches the md5 sum recorded in Fedora.
-func (result *FixityResult) Md5Matches() (bool) {
-	return result.checksumMatches("md5")
-}
 
 // Returns true if the sha256 sum we calculated for this file
 // matches the sha256 sum recorded in Fedora.
 func (result *FixityResult) Sha256Matches() (bool) {
-	return result.checksumMatches("sha256")
-}
-
-func (result *FixityResult) checksumMatches(algorithm string) (bool) {
-	currentDigest := result.Md5
-	fedoraChecksum := result.GenericFile.GetChecksum("md5")
-	if algorithm == "sha256" {
-		currentDigest = result.Sha256
-		fedoraChecksum = result.GenericFile.GetChecksum("sha256")
-	}
-	if currentDigest == "" {
-		result.ErrorMessage = fmt.Sprintf("FixityResult object is missing %s digest!", algorithm)
+	if result.Sha256 == "" {
+		result.ErrorMessage = fmt.Sprintf("FixityResult object is missing sha256 digest!")
 		return false
 	}
+	fedoraChecksum := result.GenericFile.GetChecksum("sha256")
 	if fedoraChecksum == nil {
-		result.ErrorMessage = fmt.Sprintf("GenericFile record from Fedora is missing %s digest!", algorithm)
+		result.ErrorMessage = fmt.Sprintf("GenericFile record from Fedora is missing sha256 digest!")
 		return false
 	}
-	if fedoraChecksum.Digest != currentDigest {
+	if fedoraChecksum.Digest != result.Sha256 {
 		result.ErrorMessage = fmt.Sprintf(
-			"Current %s digest '%s' does not match Fedora digest '%s'",
-			algorithm, currentDigest, fedoraChecksum.Digest)
+			"Current sha256 digest '%s' does not match Fedora digest '%s'",
+			result.Sha256, fedoraChecksum.Digest)
 		return false
 	}
 	return true
