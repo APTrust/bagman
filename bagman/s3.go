@@ -2,6 +2,7 @@ package bagman
 
 import (
 	"crypto/md5"
+	"crypto/sha256"
 	"hash"
 	"fmt"
 	"github.com/crowdmob/goamz/aws"
@@ -78,11 +79,65 @@ func (client *S3Client) ListBucket(bucketName string, limit int) (keys []s3.Key,
 	return contents, nil
 }
 
+// This fetches the file from S3, but does **not** save it.
+// It simply calculates the sha256 digest of the stream that
+// S3 returns.  Keep in mind that the remote file may be up
+// to 250GB, so this call can run for several hours and use
+// a lot of CPU.
+//
+// Returns a FixityResult object that includes not only the
+// checksum, but also some information about what went wrong
+// and whether the operation should be retried.
+func (client *S3Client) FetchAndCalculateSha256(gf *GenericFile) (fixityResult *FixityResult) {
+	fixityResult = NewFixityResult(gf)
+	bucketName, key, err := fixityResult.BucketAndKey()
+	if err != nil {
+		// GenericFile URI is invalid. FixityResult sets its
+		// own error message in this case.
+		return fixityResult
+	}
+	bucket := client.S3.Bucket(bucketName)
+
+	// Get a read for this here file. We occasionally get
+	// "connection reset by peer" on some larger files, so
+	// we build in a few retries. This is the source of a
+	// lot of headaches, since network errors often occur
+	// 249GB into the download. That sets us back a few hours.
+	var readCloser io.ReadCloser = nil
+	for attemptNumber := 0; attemptNumber < 5; attemptNumber++ {
+		readCloser, err = bucket.GetReader(key)
+		if err == nil {
+			break
+		}
+	}
+	if readCloser != nil {
+		defer readCloser.Close()
+	}
+	// Oh no! Can't fetch the file!
+	if err != nil {
+		fixityResult.ErrorMessage = fmt.Sprintf("Error retrieving file from receiving bucket: %v", err)
+		if strings.Contains(err.Error(), "key does not exist") {
+			fixityResult.Retry = false
+		}
+		return fixityResult
+	}
+	shaHash := sha256.New()
+	multiWriter := io.MultiWriter(shaHash)
+	io.Copy(multiWriter, readCloser)
+	fixityResult.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
+
+	return fixityResult
+}
+
 // Fetches key from bucket and saves it to path.
 // This validates the md5 sum of the byte stream before
 // saving to disk. If the md5 sum of the downloaded bytes
 // does not match the md5 sum in the key, this will not
 // save the file. It will just return an error.
+//
+// This method is primarily intended for fetching tar
+// files from the receiving buckets. It calculates the
+// file's Md5 checksum as it writes it to disk.
 func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) (fetchResult *FetchResult) {
 	bucket := client.S3.Bucket(bucketName)
 	result := new(FetchResult)

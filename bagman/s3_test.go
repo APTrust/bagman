@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 var s3SkipMessagePrinted bool = false
@@ -343,5 +344,49 @@ func TestSaveLargeFileToS3(t *testing.T) {
 		bucketName, localFile)
 	if url != expectedUrl {
 		t.Errorf("Expected url '%s' but got '%s'", expectedUrl, url)
+	}
+}
+
+func TestFetchAndCalculateSha256(t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("s3_test.go")
+		return
+	}
+
+	// Get an S3Client
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Errorf("Cannot create S3 client: %v\n", err)
+	}
+
+	// Create a GenericFile object that points to some of
+	// our S3 fixture data.
+	checksums := make([]*bagman.ChecksumAttribute, 2)
+	checksums[0] = &bagman.ChecksumAttribute {
+		Algorithm: "md5",
+		DateTime: time.Date(2014,11,11,12,0,0,0,time.UTC),
+		Digest: "some bogus value",
+	}
+	// This is the actual sha256 checksum for the file we'll fetch...
+	sha256sum := "fffcc1e5ca88b288fd4143ecf5ac2f184de1fe8a151d65eead4510748e57ecfa"
+	checksums[1] = &bagman.ChecksumAttribute {
+		Algorithm: "sha256",
+		DateTime: time.Date(2014,11,11,12,0,0,0,time.UTC),
+		Digest: sha256sum,
+	}
+	genericFile := &bagman.GenericFile {
+		URI: "https://s3.amazonaws.com/aptrust.test.fixtures/sample_good.tar",
+		ChecksumAttributes: checksums,
+	}
+
+	// Check the SHA256 checksum on that file
+	fixityResult := s3Client.FetchAndCalculateSha256(genericFile)
+
+	if fixityResult.ErrorMessage != "" {
+		t.Errorf("FetchAndCalculateSha256() resulted in an error: %s",
+			fixityResult.ErrorMessage)
+	}
+	if fixityResult.Sha256 != sha256sum {
+		t.Errorf("Expected sha256 '%s' but got '%s'", sha256sum, fixityResult.Sha256)
 	}
 }
