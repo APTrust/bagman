@@ -2,6 +2,7 @@ package bagman
 
 import (
 	"fmt"
+	"github.com/nu7hatch/gouuid"
 	"time"
 	"strings"
 )
@@ -56,7 +57,7 @@ func (result *FixityResult) BucketAndKey() (string, string, error) {
 	parts := strings.Split(result.GenericFile.URI, "/")
 	length := len(parts)
 	if length < 4 {
-		result.ErrorMessage += fmt.Sprintf("GenericFile URI '%s' is invalid", result.GenericFile.URI)
+		result.ErrorMessage = fmt.Sprintf("GenericFile URI '%s' is invalid", result.GenericFile.URI)
 		return "","", fmt.Errorf(result.ErrorMessage)
 	}
 	bucket := parts[length - 2]
@@ -84,18 +85,51 @@ func (result *FixityResult) checksumMatches(algorithm string) (bool) {
 		fedoraChecksum = result.GenericFile.GetChecksum("sha256")
 	}
 	if currentDigest == "" {
-		result.ErrorMessage += fmt.Sprintf("FixityResult object is missing %s digest!", algorithm)
+		result.ErrorMessage = fmt.Sprintf("FixityResult object is missing %s digest!", algorithm)
 		return false
 	}
 	if fedoraChecksum == nil {
-		result.ErrorMessage += fmt.Sprintf("GenericFile record from Fedora is missing %s digest!", algorithm)
+		result.ErrorMessage = fmt.Sprintf("GenericFile record from Fedora is missing %s digest!", algorithm)
 		return false
 	}
 	if fedoraChecksum.Digest != currentDigest {
-		result.ErrorMessage += fmt.Sprintf(
+		result.ErrorMessage = fmt.Sprintf(
 			"Current %s digest '%s' does not match Fedora digest '%s'",
 			algorithm, currentDigest, fedoraChecksum.Digest)
 		return false
 	}
 	return true
+}
+
+// Returns a PremisEvent describing the result of this fixity check.
+func (result *FixityResult) BuildPremisEvent() (*PremisEvent, error) {
+	detail := "Fixity check against registered hash"
+	outcome := "success"
+	outcomeInformation := "Fixity matches"
+	ok := result.Sha256Matches()
+	if ok == false {
+		detail = "Fixity does not match expected value"
+		outcome = "failure"
+		outcomeInformation = result.ErrorMessage
+	}
+
+	youyoueyedee, err := uuid.NewV4()
+	if err != nil {
+		detailedErr := fmt.Errorf("Error generating UUID for fixity check event: %v", err)
+		return nil, detailedErr
+	}
+
+	premisEvent := &PremisEvent {
+		Identifier: youyoueyedee.String(),
+		EventType: "fixity_check",
+		DateTime: time.Now().UTC(),
+		Detail: detail,
+		Outcome: outcome,
+		OutcomeDetail: result.Sha256,
+		Object: "Go language cryptohash",
+		Agent: "http://golang.org/pkg/crypto/sha256/",
+		OutcomeInformation: outcomeInformation,
+	}
+
+	return premisEvent, nil
 }
