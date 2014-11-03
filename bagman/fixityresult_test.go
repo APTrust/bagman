@@ -54,6 +54,9 @@ func TestBucketAndKeyWithBadUri(t *testing.T) {
 	if result.ErrorMessage != "GenericFile URI 'http://example.com' is invalid" {
 		t.Errorf("BucketAndKey() did not set descriptive error message for bad URI")
 	}
+	if result.Retry == true {
+		t.Errorf("Retry should have been set to false after fatal error.")
+	}
 }
 
 

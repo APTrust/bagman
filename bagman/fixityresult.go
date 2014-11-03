@@ -53,7 +53,9 @@ func (result *FixityResult) BucketAndKey() (string, string, error) {
 	parts := strings.Split(result.GenericFile.URI, "/")
 	length := len(parts)
 	if length < 4 {
+		// This error is fatal, so don't retry.
 		result.ErrorMessage = fmt.Sprintf("GenericFile URI '%s' is invalid", result.GenericFile.URI)
+		result.Retry = false
 		return "","", fmt.Errorf(result.ErrorMessage)
 	}
 	bucket := parts[length - 2]
