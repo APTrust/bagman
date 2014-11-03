@@ -135,3 +135,85 @@ func TestMissingChecksums(t *testing.T) {
 		t.Errorf("Expected error message '%s' but got '%s'", expectedError, result.ErrorMessage)
 	}
 }
+
+func TestBuildPremisEvent_Success(t *testing.T) {
+	result := bagman.NewFixityResult(getGenericFile())
+	result.Md5 = md5sum
+	result.Sha256 = sha256sum
+	premisEvent, err := result.BuildPremisEvent()
+	if err != nil {
+		t.Errorf("BuildPremisEvent() returned an error: %v", err)
+	}
+	if len(premisEvent.Identifier) != 36 {
+		t.Errorf("PremisEvent.Identifier '%s' is not a valid UUID", premisEvent.Identifier)
+	}
+	if premisEvent.EventType != "fixity_check" {
+		t.Errorf("PremisEvent.EventType '%s' should be 'fixity_check'", premisEvent.EventType)
+	}
+	if time.Now().Unix() - premisEvent.DateTime.Unix() > 5 {
+		t.Errorf("PremisEvent.DateTime should be close to current time, but it's not.")
+	}
+	if premisEvent.Detail != "Fixity check against registered hash" {
+		t.Errorf("Unexpected PremisEvent.Detail '%s'", premisEvent.Detail)
+	}
+	if premisEvent.Outcome != "success" {
+		t.Errorf("PremisEvent.Outcome expected 'success' but got '%s'", premisEvent.Outcome)
+	}
+	if premisEvent.OutcomeDetail != sha256sum {
+		t.Errorf("PremisEvent.OutcomeDetail expected '%s' but got '%s'",
+			sha256sum, premisEvent.OutcomeDetail)
+	}
+	if premisEvent.Object != "Go language cryptohash" {
+		t.Errorf("PremisEvent.Outcome expected 'Go language cryptohash' but got '%s'",
+			premisEvent.Object)
+	}
+	if premisEvent.Agent != "http://golang.org/pkg/crypto/sha256/" {
+		t.Errorf("PremisEvent.Outcome expected 'http://golang.org/pkg/crypto/sha256/' but got '%s'",
+			premisEvent.Agent)
+	}
+	if premisEvent.OutcomeInformation != "Fixity matches" {
+		t.Errorf("PremisEvent.OutcomeInformation expected 'Fixity matches' but got '%s'",
+			premisEvent.OutcomeInformation)
+	}
+}
+
+func TestBuildPremisEvent_Failure(t *testing.T) {
+	result := bagman.NewFixityResult(getGenericFile())
+	result.Md5 = md5sum
+	result.Sha256 = "xxx-xxx-xxx"
+	premisEvent, err := result.BuildPremisEvent()
+	if err != nil {
+		t.Errorf("BuildPremisEvent() returned an error: %v", err)
+	}
+	if len(premisEvent.Identifier) != 36 {
+		t.Errorf("PremisEvent.Identifier '%s' is not a valid UUID", premisEvent.Identifier)
+	}
+	if premisEvent.EventType != "fixity_check" {
+		t.Errorf("PremisEvent.EventType '%s' should be 'fixity_check'", premisEvent.EventType)
+	}
+	if time.Now().Unix() - premisEvent.DateTime.Unix() > 5 {
+		t.Errorf("PremisEvent.DateTime should be close to current time, but it's not.")
+	}
+	if premisEvent.Detail != "Fixity does not match expected value" {
+		t.Errorf("Unexpected PremisEvent.Detail '%s'", premisEvent.Detail)
+	}
+	if premisEvent.Outcome != "failure" {
+		t.Errorf("PremisEvent.Outcome expected 'failure' but got '%s'", premisEvent.Outcome)
+	}
+	if premisEvent.OutcomeDetail != result.Sha256 {
+		t.Errorf("PremisEvent.OutcomeDetail expected '%s' but got '%s'",
+			sha256sum, premisEvent.OutcomeDetail)
+	}
+	if premisEvent.Object != "Go language cryptohash" {
+		t.Errorf("PremisEvent.Outcome expected 'Go language cryptohash' but got '%s'",
+			premisEvent.Object)
+	}
+	if premisEvent.Agent != "http://golang.org/pkg/crypto/sha256/" {
+		t.Errorf("PremisEvent.Outcome expected 'http://golang.org/pkg/crypto/sha256/' but got '%s'",
+			premisEvent.Agent)
+	}
+	if premisEvent.OutcomeInformation != result.ErrorMessage {
+		t.Errorf("PremisEvent.OutcomeInformation expected '%s' but got '%s'",
+			result.ErrorMessage, premisEvent.OutcomeInformation)
+	}
+}
