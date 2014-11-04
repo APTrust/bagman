@@ -870,3 +870,22 @@ func TestGenericFileSaveBatch(t *testing.T) {
 		t.Error(err)
 	}
 }
+
+func TestGetFilesNotCheckedSince(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	fluctusClient := getClient(t)
+	sinceWhen := time.Date(2000,1,1,12,0,0,0,time.UTC)
+	files, err := fluctusClient.GetFilesNotCheckedSince(sinceWhen)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(files) < 1 {
+		t.Errorf("GetFilesNotCheckedSince should have returned at least one file")
+		return
+	}
+	if files[0].ChecksumAttributes == nil || len(files[0].ChecksumAttributes) < 2 {
+		t.Errorf("GenericFile records are missing checksums")
+	}
+}

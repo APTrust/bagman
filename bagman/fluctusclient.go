@@ -237,6 +237,32 @@ func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err e
 	return results, nil
 }
 
+// Returns a list of GenericFiles that have not had a fixity
+// check since the specified datetime.
+func (client *FluctusClient) GetFilesNotCheckedSince(daysAgo time.Time) (files []*GenericFile, err error) {
+	fixityCheckUrl := client.BuildUrl(
+		fmt.Sprintf("/api/%s/files/not_checked_since.json?since=%s",
+		client.apiVersion, url.QueryEscape(daysAgo.UTC().Format(time.RFC3339))))
+
+	request, err := client.NewJsonRequest("GET", fixityCheckUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, _, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	files = make([]*GenericFile, 0)
+	err = json.Unmarshal(body, &files)
+	if err != nil {
+		return nil, client.formatJsonError("GetFilesNotCheckedSince", body, err)
+	}
+
+	return files, nil
+}
+
+
 // UpdateProcessedItem sends a message to Fluctus describing whether bag
 // processing succeeded or failed. If it failed, the ProcessStatus
 // object includes some details of what went wrong.
