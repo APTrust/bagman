@@ -97,6 +97,10 @@ type Config struct {
 	// Configuration options for apt_file_delete
 	FileDeleteWorker        WorkerConfig
 
+	// Configuration options for apt_fixity, which
+	// handles ongoing fixity checks.
+	FixityWorker           WorkerConfig
+
 	// The version of the Fluctus API we're using. This should
 	// start with a v, like v1, v2.2, etc.
 	FluctusAPIVersion       string
@@ -123,6 +127,14 @@ type Config struct {
 	// to their standard log files. You really only want
 	// to do this in development.
 	LogToStderr bool
+
+	// Maximum number of days allowed between scheduled
+	// fixity checks. The fixity_reader periodically
+	// queries Fluctus for GenericFiles whose last
+	// fixity check was greater than or equal to this
+	// number of days ago. Those items are put into the
+	// fixity_check queue.
+	MaxDaysSinceFixityCheck int
 
 	// MaxFileSize is the size in bytes of the largest
 	// tar file we're willing to process. Set to zero

@@ -3,7 +3,7 @@
         "TarDirectory": "/Users/apd4n/tmp",
         "LogDirectory": "/Users/apd4n/tmp",
         "RestoreDirectory": "/Users/apd4n/tmp",
-        "MaxFileSize": 100000,
+        "MaxFileSize": 1000000,
         "SkipAlreadyProcessed": false,
         "DeleteOnSuccess": false,
         "LogToStderr": true,
@@ -17,6 +17,7 @@
 
         "PreservationBucket": "aptrust.test.preservation",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
             "NetworkConnections": 4,
@@ -109,25 +110,21 @@
             "MessageTimeout": "10m"
         },
 
+        "FixityWorker": {
+            "NetworkConnections": 4,
+            "Workers": 4,
+            "NsqTopic": "prepare_topic",
+            "NsqChannel": "prepare_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
         "ReceivingBuckets": [
-            "aptrust.receiving.columbia.edu",
-            "aptrust.receiving.iub.edu",
-            "aptrust.receiving.jhu.edu",
-            "aptrust.receiving.miami.edu",
-            "aptrust.receiving.ncsu.edu",
-            "aptrust.receiving.psu.edu",
-            "aptrust.receiving.syr.edu",
-            "aptrust.receiving.test.test.edu",
-            "aptrust.receiving.uchicago.edu",
-            "aptrust.receiving.uc.edu",
-            "aptrust.receiving.uchicago.edu",
-            "aptrust.receiving.uconn.edu",
-            "aptrust.receiving.umd.edu",
-            "aptrust.receiving.umich.edu",
-            "aptrust.receiving.unc.edu",
-            "aptrust.receiving.und.edu",
-            "aptrust.receiving.virginia.edu",
-            "aptrust.receiving.vt.edu"
+            "aptrust.receiving.test.test.edu"
         ]
     },
     "test": {
@@ -148,6 +145,7 @@
 
         "PreservationBucket": "aptrust.test.preservation",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
             "NetworkConnections": 4,
@@ -238,6 +236,19 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "10m"
+        },
+
+        "FixityWorker": {
+            "NetworkConnections": 4,
+            "Workers": 4,
+            "NsqTopic": "prepare_topic",
+            "NsqChannel": "prepare_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
         },
 
         "ReceivingBuckets": [
@@ -280,6 +291,7 @@
 
         "PreservationBucket": "aptrust.test.preservation",
         "CustomRestoreBucket": "",
+        "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
             "NetworkConnections": 8,
@@ -370,6 +382,19 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "10m"
+        },
+
+        "FixityWorker": {
+            "NetworkConnections": 4,
+            "Workers": 4,
+            "NsqTopic": "prepare_topic",
+            "NsqChannel": "prepare_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
         },
 
         "ReceivingBuckets": [
@@ -411,6 +436,7 @@
 
         "PreservationBucket": "aptrust.preservation.storage",
         "CustomRestoreBucket": "",
+        "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
             "NetworkConnections": 8,
@@ -501,6 +527,19 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "10m"
+        },
+
+        "FixityWorker": {
+            "NetworkConnections": 4,
+            "Workers": 4,
+            "NsqTopic": "prepare_topic",
+            "NsqChannel": "prepare_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
         },
 
         "ReceivingBuckets": [
