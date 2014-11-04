@@ -59,6 +59,9 @@ func (result *TarResult) MergeExistingFiles(genericFiles []*GenericFile) {
 			existingMd5 := genericFile.GetChecksum("md5")
 			if file.Md5 == existingMd5.Digest {
 				file.NeedsSave = false
+				file.StorageURL = genericFile.URI
+				//file.StoredAt = ""  // Need to get this from premis event data...
+				file.StorageMd5 = existingMd5.Digest
 			}
 		}
 	}
