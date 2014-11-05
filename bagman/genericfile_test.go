@@ -170,3 +170,28 @@ func TestGenericFilesToMaps(t *testing.T) {
 		}
 	}
 }
+
+func TestFindEventsByType(t *testing.T) {
+	filename := filepath.Join("testdata", "intel_obj.json")
+	intelObj, err := bagman.LoadIntelObjFixture(filename)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filename, err)
+	}
+	if intelObj == nil {
+		return
+	}
+
+	genericFile := intelObj.GenericFiles[1]
+
+	// Typical generic file will have one ingest event,
+	// but our fixture data shows multiple ingests.
+	if len(genericFile.FindEventsByType("ingest")) != 2 {
+		t.Errorf("Should have found 1 ingest event")
+	}
+	// Typical generic file will have two identifier assignments,
+	// but our fixture data shows multiple ingests.
+	if len(genericFile.FindEventsByType("identifier_assignment")) != 4 {
+		t.Errorf("Should have found 2 identifier assignment events")
+	}
+
+}

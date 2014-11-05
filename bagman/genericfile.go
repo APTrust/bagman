@@ -98,6 +98,17 @@ func (gf *GenericFile) GetChecksum(algorithm string) (*ChecksumAttribute) {
 	return nil
 }
 
+// Returns events of the specified type
+func (gf *GenericFile) FindEventsByType(eventType string) ([]PremisEvent) {
+	events := make([]PremisEvent, 0)
+	for _, event := range gf.Events {
+		if event != nil && event.EventType == eventType {
+			events = append(events, *event)
+		}
+	}
+	return events
+}
+
 // Returns the name of this file in the preservation storage bucket
 // (that should be a UUID), or an error if the GenericFile does not
 // have a valid preservation storage URL.

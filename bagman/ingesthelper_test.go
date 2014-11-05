@@ -52,7 +52,7 @@ func getS3File() (*bagman.S3File) {
         BucketName: "aptrust.receiving.test.test.edu",
         Key: s3.Key{
             Key: "ncsu.1840.16-2928.tar",
-            LastModified: "2014-04-25T19:01:20.000Z",
+            LastModified: "2014-11-04T19:57:28.000Z",
             Size: 696320,
             ETag: "\"b4f8f3072f73598fc5b65bf416b6019a\"",
             StorageClass: "STANDARD",
@@ -256,6 +256,7 @@ func TestFullProcess(t *testing.T) {
 	if helper.Result.Stage != "Fetch" {
 		t.Errorf("Stage should be 'Fetch' but is '%s'", helper.Result.Stage)
 	}
+
 	verifyFetchResult(t, helper.Result.FetchResult)
 
 	helper.ProcessBagFile()
@@ -276,13 +277,13 @@ func TestFullProcess(t *testing.T) {
 	}
 	for _, file := range helper.Result.TarResult.Files {
 		if file.StorageURL == "" {
-			t.Errorf("File '%s' is missing S3 URL", file.Path)
+			t.Errorf("File '%s' from bag '%s' is missing S3 URL", file.Path, helper.Result.S3File.Key.Key)
 		}
 		if file.StoredAt.IsZero() {
-			t.Errorf("File '%s' is missing StoredAt time", file.Path)
+			t.Errorf("File '%s' from bag '%s' is missing StoredAt time", file.Path, helper.Result.S3File.Key.Key)
 		}
 		if file.StorageMd5 == "" {
-			t.Errorf("File '%s' is missing StorageMd5", file.Path)
+			t.Errorf("File '%s' from bag '%s' is missing StorageMd5", file.Path, helper.Result.S3File.Key.Key)
 		}
 	}
 

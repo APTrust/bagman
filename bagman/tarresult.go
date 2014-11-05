@@ -60,8 +60,12 @@ func (result *TarResult) MergeExistingFiles(genericFiles []*GenericFile) {
 			if file.Md5 == existingMd5.Digest {
 				file.NeedsSave = false
 				file.StorageURL = genericFile.URI
-				//file.StoredAt = ""  // Need to get this from premis event data...
 				file.StorageMd5 = existingMd5.Digest
+				ingestEvents := genericFile.FindEventsByType("ingest")
+				if len(ingestEvents) > 0 {
+					lastIngest := ingestEvents[len(ingestEvents) - 1]
+					file.StoredAt = lastIngest.DateTime
+				}
 			}
 		}
 	}
