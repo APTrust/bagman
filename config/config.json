@@ -113,8 +113,8 @@
         "FixityWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
-            "NsqTopic": "prepare_topic",
-            "NsqChannel": "prepare_channel",
+            "NsqTopic": "fixity_topic",
+            "NsqChannel": "fixity_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -241,8 +241,8 @@
         "FixityWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
-            "NsqTopic": "prepare_topic",
-            "NsqChannel": "prepare_channel",
+            "NsqTopic": "fixity_topic",
+            "NsqChannel": "fixity_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -387,8 +387,8 @@
         "FixityWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
-            "NsqTopic": "prepare_topic",
-            "NsqChannel": "prepare_channel",
+            "NsqTopic": "fixity_topic",
+            "NsqChannel": "fixity_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -532,8 +532,8 @@
         "FixityWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
-            "NsqTopic": "prepare_topic",
-            "NsqChannel": "prepare_channel",
+            "NsqTopic": "fixity_topic",
+            "NsqChannel": "fixity_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
