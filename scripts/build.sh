@@ -72,6 +72,10 @@ echo "building apt_retry"
 cd "${BAGMAN_HOME}/apps/apt_retry"
 go build -o ${BAGMAN_BIN}/apt_retry apt_retry.go
 
+echo "building apt_fixity"
+cd "${BAGMAN_HOME}/apps/apt_fixity"
+go build -o ${BAGMAN_BIN}/apt_fixity apt_fixity.go
+
 echo "copying config files into bin directory"
 cp ${BAGMAN_HOME}/config/config.json ${BAGMAN_BIN}/
 cp ${BAGMAN_HOME}/nsq/*.config ${BAGMAN_BIN}/
