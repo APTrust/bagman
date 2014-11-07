@@ -2,6 +2,7 @@ package bagman
 
 import (
 	"fmt"
+	"github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
 	"time"
 	"strings"
@@ -12,9 +13,17 @@ import (
 // and verification of the file's sha256 checksum.
 type FixityResult struct {
 
+	// When working with NSQ, this holds the NSQ Message
+	// currently being worked on.
+	NsqMessage    *nsq.Message `json:"-"` // Don't serialize
+
 	// The generic file we're going to look at.
 	// This file is sitting somewhere on S3.
 	GenericFile   *GenericFile
+
+	// The process status (Flucutus ProcessedItem) record for
+	// this fixity check.
+	ProcessStatus *ProcessStatus
 
 	// Does the file exist in S3?
 	S3FileExists  bool
@@ -63,6 +72,15 @@ func (result *FixityResult) BucketAndKey() (string, string, error) {
 	return bucket, key, nil
 }
 
+// Returns true if result.Sha256 was set.
+func (result *FixityResult) GotDigestFromPreservationFile() (bool) {
+	return result.Sha256 != ""
+}
+
+// Returns true if the underlying GenericFile includes a SHA256 checksum.
+func (result *FixityResult) GenericFileHasDigest() (bool) {
+	return result.GenericFile.GetChecksum("sha256") != nil
+}
 
 // Returns true if the sha256 sum we calculated for this file
 // matches the sha256 sum recorded in Fedora.
