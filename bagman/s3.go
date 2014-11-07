@@ -88,14 +88,19 @@ func (client *S3Client) ListBucket(bucketName string, limit int) (keys []s3.Key,
 // Returns a FixityResult object that includes not only the
 // checksum, but also some information about what went wrong
 // and whether the operation should be retried.
-func (client *S3Client) FetchAndCalculateSha256(gf *GenericFile) (fixityResult *FixityResult) {
-	fixityResult = NewFixityResult(gf)
+func (client *S3Client) FetchAndCalculateSha256(fixityResult *FixityResult) (error) {
+	if fixityResult == nil {
+		return fmt.Errorf("Param fixityResult cannot be nil")
+	}
+	if fixityResult.GenericFile == nil {
+		return fmt.Errorf("FixityResult.GenericFile cannot be nil")
+	}
 	bucketName, key, err := fixityResult.BucketAndKey()
 	if err != nil {
 		// GenericFile URI is invalid. FixityResult sets its
 		// own error message in this case.
 		fixityResult.Retry = false
-		return fixityResult
+		return fmt.Errorf(fixityResult.ErrorMessage)
 	}
 	bucket := client.S3.Bucket(bucketName)
 
@@ -118,10 +123,13 @@ func (client *S3Client) FetchAndCalculateSha256(gf *GenericFile) (fixityResult *
 	if err != nil {
 		fixityResult.ErrorMessage = fmt.Sprintf("Error retrieving file from receiving bucket: %v", err)
 		if strings.Contains(err.Error(), "key does not exist") {
+			fixityResult.S3FileExists = false
 			fixityResult.Retry = false
 		}
-		return fixityResult
+		return fmt.Errorf(fixityResult.ErrorMessage)
 	}
+
+	fixityResult.S3FileExists = true
 	shaHash := sha256.New()
 	multiWriter := io.MultiWriter(shaHash)
 	_, err = io.Copy(multiWriter, readCloser)
@@ -130,10 +138,10 @@ func (client *S3Client) FetchAndCalculateSha256(gf *GenericFile) (fixityResult *
 			"Error calculating SHA256 checksum from S3 data stream: %v", err)
 		// Probably a network error, so retry later.
 		fixityResult.Retry = true
-		return fixityResult
+		return fmt.Errorf(fixityResult.ErrorMessage)
 	}
 	fixityResult.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
-	return fixityResult
+	return nil
 }
 
 // Fetches key from bucket and saves it to path.
