@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -789,8 +788,8 @@ func TestProcessStatusSearch(t *testing.T) {
 		return
 	}
 	fluctusClient := getClient(t)
-	psEmpty := &ProcessStatus {}
-	results, err := fluctusClient.ProcessStatusSearch(ps.Empty, false, false)
+	psEmpty := &bagman.ProcessStatus {}
+	results, err := fluctusClient.ProcessStatusSearch(psEmpty, false, false)
 	if err != nil {
 		t.Error(err)
 		return
