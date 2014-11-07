@@ -252,10 +252,14 @@ func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err e
 
 // Returns a list of GenericFiles that have not had a fixity
 // check since the specified datetime.
-func (client *FluctusClient) GetFilesNotCheckedSince(daysAgo time.Time) (files []*GenericFile, err error) {
+func (client *FluctusClient) GetFilesNotCheckedSince(daysAgo time.Time, offset, limit int) (files []*GenericFile, err error) {
 	fixityCheckUrl := client.BuildUrl(
-		fmt.Sprintf("/api/%s/files/not_checked_since.json?since=%s",
-		client.apiVersion, url.QueryEscape(daysAgo.UTC().Format(time.RFC3339))))
+		fmt.Sprintf(
+			"/api/%s/files/not_checked_since.json?since=%s&offset=%d&limit=%d",
+			client.apiVersion,
+			url.QueryEscape(daysAgo.UTC().Format(time.RFC3339)),
+			offset,
+			limit))
 
 	request, err := client.NewJsonRequest("GET", fixityCheckUrl, nil)
 	if err != nil {
