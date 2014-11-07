@@ -380,7 +380,8 @@ func TestFetchAndCalculateSha256(t *testing.T) {
 	}
 
 	// Check the SHA256 checksum on that file
-	fixityResult := s3Client.FetchAndCalculateSha256(genericFile)
+	fixityResult := bagman.NewFixityResult(genericFile)
+	err = s3Client.FetchAndCalculateSha256(fixityResult)
 
 	if fixityResult.ErrorMessage != "" {
 		t.Errorf("FetchAndCalculateSha256() resulted in an error: %s",

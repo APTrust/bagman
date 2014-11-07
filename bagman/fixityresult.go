@@ -13,17 +13,14 @@ import (
 // and verification of the file's sha256 checksum.
 type FixityResult struct {
 
-	// When working with NSQ, this holds the NSQ Message
-	// currently being worked on.
-	NsqMessage    *nsq.Message `json:"-"` // Don't serialize
-
 	// The generic file we're going to look at.
 	// This file is sitting somewhere on S3.
 	GenericFile   *GenericFile
 
-	// The process status (Flucutus ProcessedItem) record for
-	// this fixity check.
-	ProcessStatus *ProcessStatus
+	// The NSQ message being worked on. This is only relevant
+	// if we using this struct in the context of an NSQ worker.
+	// The struct is still valid if this member is nil.
+	NsqMessage    *nsq.Message `json:"-"` // Don't serialize
 
 	// Does the file exist in S3?
 	S3FileExists  bool
@@ -79,28 +76,31 @@ func (result *FixityResult) GotDigestFromPreservationFile() (bool) {
 
 // Returns true if the underlying GenericFile includes a SHA256 checksum.
 func (result *FixityResult) GenericFileHasDigest() (bool) {
-	return result.GenericFile.GetChecksum("sha256") != nil
+	return result.FedoraSha256() != ""
+}
+
+// Returns the SHA256 checksum that Fedora has on record.
+func (result *FixityResult) FedoraSha256() (string) {
+	checksum := result.GenericFile.GetChecksum("sha256")
+	if checksum == nil {
+		return ""
+	}
+	return checksum.Digest
+}
+
+// Returns true if we have all the data we need to compare the
+// existing checksum with the checksum of the S3 file.
+func (result *FixityResult) FixityCheckPossible() (bool) {
+	return result.GotDigestFromPreservationFile() && result.GenericFileHasDigest()
 }
 
 // Returns true if the sha256 sum we calculated for this file
 // matches the sha256 sum recorded in Fedora.
-func (result *FixityResult) Sha256Matches() (bool) {
-	if result.Sha256 == "" {
-		result.ErrorMessage = fmt.Sprintf("FixityResult object is missing sha256 digest!")
-		return false
+func (result *FixityResult) Sha256Matches() (bool, error) {
+	if result.FixityCheckPossible() == false {
+		return false, fmt.Errorf("Fixity check is not possible because one or more checksums are not available.")
 	}
-	fedoraChecksum := result.GenericFile.GetChecksum("sha256")
-	if fedoraChecksum == nil {
-		result.ErrorMessage = fmt.Sprintf("GenericFile record from Fedora is missing sha256 digest!")
-		return false
-	}
-	if fedoraChecksum.Digest != result.Sha256 {
-		result.ErrorMessage = fmt.Sprintf(
-			"Current sha256 digest '%s' does not match Fedora digest '%s'",
-			result.Sha256, fedoraChecksum.Digest)
-		return false
-	}
-	return true
+	return result.FedoraSha256() == result.Sha256, nil
 }
 
 // Returns a PremisEvent describing the result of this fixity check.
@@ -108,11 +108,15 @@ func (result *FixityResult) BuildPremisEvent() (*PremisEvent, error) {
 	detail := "Fixity check against registered hash"
 	outcome := "success"
 	outcomeInformation := "Fixity matches"
-	ok := result.Sha256Matches()
+	ok, err := result.Sha256Matches()
+	if err != nil {
+		return nil, err
+	}
 	if ok == false {
 		detail = "Fixity does not match expected value"
 		outcome = "failure"
-		outcomeInformation = result.ErrorMessage
+		outcomeInformation = fmt.Sprintf("Expected digest '%s', got '%s'",
+			result.FedoraSha256(), result.Sha256)
 	}
 
 	youyoueyedee, err := uuid.NewV4()

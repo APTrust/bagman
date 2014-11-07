@@ -1,9 +1,7 @@
 package bagman_test
 
 import (
-	"fmt"
 	"github.com/APTrust/bagman/bagman"
-	"strings"
 	"testing"
 	"time"
 )
@@ -63,43 +61,38 @@ func TestBucketAndKeyWithBadUri(t *testing.T) {
 func TestSha256Matches(t *testing.T) {
 	result := bagman.NewFixityResult(getGenericFile())
 	result.Sha256 = sha256sum
-	if result.Sha256Matches() == false {
+	matches, err := result.Sha256Matches()
+	if err != nil {
+		t.Error(err)
+	}
+	if matches == false {
 		t.Errorf("Sha256Matches should have returned true")
 	}
+
+
 	result.Sha256 = "some random string"
-	if result.Sha256Matches() == true {
-		t.Errorf("Sha256Matches should have returned false")
+	matches, err = result.Sha256Matches()
+	if err != nil {
+		t.Error(err)
 	}
-	expectedMessage := fmt.Sprintf(
-		"Current sha256 digest 'some random string' does not match Fedora digest '%s'",
-		sha256sum)
-	if result.ErrorMessage != expectedMessage {
-		t.Errorf("Expected ErrorMessage '%s' but got '%s' instead",
-			expectedMessage, result.ErrorMessage)
+	if matches == true {
+		t.Errorf("Sha256Matches should have returned false")
 	}
 }
 
 // We have to know WHY things failed!
 func TestMissingChecksums(t *testing.T) {
 	result := bagman.NewFixityResult(getGenericFile())
-	if result.Sha256Matches() == true {
-		t.Errorf("Sha256Matches should have returned false")
-	}
-	if strings.Index(result.ErrorMessage, "FixityResult object is missing") < 0 {
-		t.Errorf("Descriptive error message is missing or incorrect")
+	_, err := result.Sha256Matches()
+	if err == nil {
+		t.Errorf("Sha256Matches should have returned a usage error")
 	}
 
-	// Make sure we get specific message when the GenericFile
-	// object does not include the expected checksums.
 	result.Sha256 = sha256sum
 	result.GenericFile.ChecksumAttributes = make([]*bagman.ChecksumAttribute, 2)
-	result.ErrorMessage = ""
-	expectedError := "GenericFile record from Fedora is missing sha256 digest!"
-	if result.Sha256Matches() == true {
-		t.Errorf("Sha256Matches should have returned false")
-	}
-	if result.ErrorMessage != expectedError {
-		t.Errorf("Expected error message '%s' but got '%s'", expectedError, result.ErrorMessage)
+	_, err = result.Sha256Matches()
+	if err == nil {
+		t.Errorf("Sha256Matches should have returned a usage error")
 	}
 }
 
@@ -177,7 +170,7 @@ func TestBuildPremisEvent_Failure(t *testing.T) {
 		t.Errorf("PremisEvent.Outcome expected 'http://golang.org/pkg/crypto/sha256/' but got '%s'",
 			premisEvent.Agent)
 	}
-	if premisEvent.OutcomeInformation != result.ErrorMessage {
+	if premisEvent.OutcomeInformation != "Expected digest 'fedcba9876543210', got 'xxx-xxx-xxx'" {
 		t.Errorf("PremisEvent.OutcomeInformation expected '%s' but got '%s'",
 			result.ErrorMessage, premisEvent.OutcomeInformation)
 	}
