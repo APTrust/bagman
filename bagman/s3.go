@@ -94,6 +94,7 @@ func (client *S3Client) FetchAndCalculateSha256(gf *GenericFile) (fixityResult *
 	if err != nil {
 		// GenericFile URI is invalid. FixityResult sets its
 		// own error message in this case.
+		fixityResult.Retry = false
 		return fixityResult
 	}
 	bucket := client.S3.Bucket(bucketName)
@@ -107,7 +108,7 @@ func (client *S3Client) FetchAndCalculateSha256(gf *GenericFile) (fixityResult *
 	for attemptNumber := 0; attemptNumber < 5; attemptNumber++ {
 		readCloser, err = bucket.GetReader(key)
 		if err == nil {
-			break
+			break  // we got a reader, so move on
 		}
 	}
 	if readCloser != nil {
@@ -123,9 +124,15 @@ func (client *S3Client) FetchAndCalculateSha256(gf *GenericFile) (fixityResult *
 	}
 	shaHash := sha256.New()
 	multiWriter := io.MultiWriter(shaHash)
-	io.Copy(multiWriter, readCloser)
+	_, err = io.Copy(multiWriter, readCloser)
+	if err != nil {
+		fixityResult.ErrorMessage = fmt.Sprintf(
+			"Error calculating SHA256 checksum from S3 data stream: %v", err)
+		// Probably a network error, so retry later.
+		fixityResult.Retry = true
+		return fixityResult
+	}
 	fixityResult.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
-
 	return fixityResult
 }
 
