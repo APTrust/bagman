@@ -80,7 +80,6 @@ func TestSha256Matches(t *testing.T) {
 	}
 }
 
-// We have to know WHY things failed!
 func TestMissingChecksums(t *testing.T) {
 	result := bagman.NewFixityResult(getGenericFile())
 	_, err := result.Sha256Matches()
@@ -95,6 +94,59 @@ func TestMissingChecksums(t *testing.T) {
 		t.Errorf("Sha256Matches should have returned a usage error")
 	}
 }
+
+func TestGotDigestFromPreservationFile(t *testing.T) {
+	result := bagman.NewFixityResult(getGenericFile())
+	if result.GotDigestFromPreservationFile() == true {
+		t.Errorf("GotDigestFromPreservationFile() should have returned false")
+	}
+	result.Sha256 = sha256sum
+	if result.GotDigestFromPreservationFile() == false {
+		t.Errorf("GotDigestFromPreservationFile() should have returned true")
+	}
+}
+
+func TestGenericFileHasDigest(t *testing.T) {
+	result := bagman.NewFixityResult(getGenericFile())
+	if result.GenericFileHasDigest() == false {
+		t.Errorf("GenericFileHasDigest() should have returned true")
+	}
+	// Make the SHA256 checksum disappear
+	for i := range result.GenericFile.ChecksumAttributes {
+		result.GenericFile.ChecksumAttributes[i].Algorithm = "Md five and a half"
+	}
+	if result.GenericFileHasDigest() == true {
+		t.Errorf("GenericFileHasDigest() should have returned false")
+	}
+}
+
+func TestFedoraSha256(t *testing.T) {
+	result := bagman.NewFixityResult(getGenericFile())
+	if result.FedoraSha256() != sha256sum {
+		t.Errorf("FedoraSha256() should have returned", sha256sum)
+	}
+}
+
+func TestFixityCheckPossible(t *testing.T) {
+	result := bagman.NewFixityResult(getGenericFile())
+	result.Sha256 = sha256sum
+	if result.FixityCheckPossible() == false {
+		t.Errorf("FixityCheckPossible() should have returned true")
+	}
+	result.Sha256 = ""
+	if result.FixityCheckPossible() == true {
+		t.Errorf("FixityCheckPossible() should have returned false")
+	}
+	result.Sha256 = sha256sum
+	// Make the SHA256 checksum disappear
+	for i := range result.GenericFile.ChecksumAttributes {
+		result.GenericFile.ChecksumAttributes[i].Algorithm = "Md five and a half"
+	}
+	if result.FixityCheckPossible() == true {
+		t.Errorf("FixityCheckPossible() should have returned false")
+	}
+}
+
 
 func TestBuildPremisEvent_Success(t *testing.T) {
 	result := bagman.NewFixityResult(getGenericFile())
