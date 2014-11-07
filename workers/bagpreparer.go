@@ -123,14 +123,12 @@ func (bagPreparer *BagPreparer) HandleMessage(message *nsq.Message) error {
 	// on the pending delete/restore. A false positive will delay ingest, but a
 	// false negative could cause some cascading errors.
 	bagDate, _ := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
-	statusRecords, err := bagPreparer.ProcUtil.FluctusClient.ProcessStatusSearch(
-		strings.Replace(s3File.Key.ETag, "\"", "", -1), // etag
-		s3File.Key.Key,  // name
-		"",              // stage
-		"",              // status
-		"true",          // retry
-		"",              // reviewed
-		bagDate)         // bagDate
+	processStatus := &bagman.ProcessStatus {
+		ETag: strings.Replace(s3File.Key.ETag, "\"", "", -1),
+		Name: s3File.Key.Key,
+		BagDate: bagDate,
+	}
+	statusRecords, err := bagPreparer.ProcUtil.FluctusClient.ProcessStatusSearch(processStatus, true, true)
 	if err != nil {
 		bagPreparer.ProcUtil.MessageLog.Error("Error fetching status info on bag %s " +
 			"from Fluctus. Will retry in 5 minutes. Error: %v", s3File.Key.Key, err)

@@ -789,7 +789,8 @@ func TestProcessStatusSearch(t *testing.T) {
 		return
 	}
 	fluctusClient := getClient(t)
-	results, err := fluctusClient.ProcessStatusSearch("", "", "", "", "", "", time.Time{})
+	psEmpty := &ProcessStatus {}
+	results, err := fluctusClient.ProcessStatusSearch(ps.Empty, false, false)
 	if err != nil {
 		t.Error(err)
 		return
@@ -798,10 +799,8 @@ func TestProcessStatusSearch(t *testing.T) {
 		t.Error("ProcessStatusSearch returned no results (without filters)")
 		return
 	}
-	r := results[0]
-	results, err = fluctusClient.ProcessStatusSearch(r.ETag, r.Name, string(r.Stage),
-		string(r.Status), strconv.FormatBool(r.Retry),
-		strconv.FormatBool(r.Reviewed), r.BagDate)
+	processStatus := results[0]
+	results, err = fluctusClient.ProcessStatusSearch(processStatus, true, true)
 	if err != nil {
 		t.Error(err)
 		return

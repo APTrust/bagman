@@ -153,20 +153,33 @@ func (client *FluctusClient) GetBagStatus(etag, name string, bag_date time.Time)
 
 // ProcessStatusSearch returns any ProcessedItem/ProcessStatus
 // records from fluctus matching the specified criteria.
-// Params retry and reviewed are really booleans, but there
-// is no empty value for booleans in Go, so use strings
-// "true", "false" or "" for no filter.
-func (client *FluctusClient) ProcessStatusSearch(etag, name, stage, status, retry, reviewed string, bagDate time.Time) (statusRecords []*ProcessStatus, err error) {
+// Fill a ProcessStatus with as many attributes as you like
+// and pass it in. This will return all ProcessStatus records
+// from Fluctus whose attributes match the attributes of the object
+// you passed in.
+//
+// Because booleans in Go default to false, the params
+// retrySpecified and reviewSpecified indicate whether you want
+// ps.Retry and ps.Reviewed to be added in to the search criteria.
+func (client *FluctusClient) ProcessStatusSearch(ps *ProcessStatus, retrySpecified, reviewedSpecified bool) (statusRecords []*ProcessStatus, err error) {
 	queryString := ""
-	if etag != "" { queryString += fmt.Sprintf("etag=%s&", etag) }
-	if name != "" { queryString += fmt.Sprintf("name=%s&", name) }
-	if stage != "" { queryString += fmt.Sprintf("stage=%s&", stage) }
-	if status != "" { queryString += fmt.Sprintf("status=%s&", status) }
-	if retry != "" { queryString += fmt.Sprintf("retry=%s&", retry) }
-	if reviewed != "" { queryString += fmt.Sprintf("reviewed=%s&", reviewed) }
-	if bagDate.IsZero() == false {
+	if ps.ETag != "" { queryString += fmt.Sprintf("etag=%s&", ps.ETag) }
+	if ps.Name != "" { queryString += fmt.Sprintf("name=%s&", ps.Name) }
+	if ps.Action != "" { queryString += fmt.Sprintf("action=%s&", ps.Action) }
+	if ps.Stage != "" { queryString += fmt.Sprintf("stage=%s&", ps.Stage) }
+	if ps.Status != "" { queryString += fmt.Sprintf("status=%s&", ps.Status) }
+	if retrySpecified { queryString += fmt.Sprintf("retry=%t&", ps.Retry) }
+	if reviewedSpecified { queryString += fmt.Sprintf("reviewed=%t&", ps.Reviewed) }
+	if ps.Institution != "" { queryString += fmt.Sprintf("institution=%s&", ps.Institution) }
+	if ps.ObjectIdentifier != "" {
+		queryString += fmt.Sprintf("object_identifier=%s&", ps.ObjectIdentifier)
+	}
+	if ps.GenericFileIdentifier != "" {
+		queryString += fmt.Sprintf("generic_file_identifier=%s&", ps.GenericFileIdentifier)
+	}
+	if ps.BagDate.IsZero() == false {
 		queryString += fmt.Sprintf("bag_date=%s&",
-			url.QueryEscape(bagDate.Format(time.RFC3339)))
+			url.QueryEscape(ps.BagDate.Format(time.RFC3339)))
 	}
 	statusUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/search?%s",
 		client.apiVersion, queryString))
