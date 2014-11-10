@@ -123,6 +123,19 @@
             "MessageTimeout": "180m"
         },
 
+        "FailedFixityWorker": {
+            "NetworkConnections": 1,
+            "Workers": 1,
+            "NsqTopic": "failed_fixity_topic",
+            "NsqChannel": "failed_fixity_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "3m"
+        },
+
         "ReceivingBuckets": [
             "aptrust.receiving.test.test.edu"
         ]
@@ -249,6 +262,19 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "180m"
+        },
+
+        "FailedFixityWorker": {
+            "NetworkConnections": 1,
+            "Workers": 1,
+            "NsqTopic": "failed_fixity_topic",
+            "NsqChannel": "failed_fixity_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "3m"
         },
 
         "ReceivingBuckets": [
@@ -397,6 +423,19 @@
             "MessageTimeout": "180m"
         },
 
+        "FailedFixityWorker": {
+            "NetworkConnections": 1,
+            "Workers": 1,
+            "NsqTopic": "failed_fixity_topic",
+            "NsqChannel": "failed_fixity_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "3m"
+        },
+
         "ReceivingBuckets": [
             "aptrust.receiving.test.columbia.edu",
             "aptrust.receiving.test.iub.edu",
@@ -540,6 +579,19 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "180m"
+        },
+
+        "FailedFixityWorker": {
+            "NetworkConnections": 1,
+            "Workers": 1,
+            "NsqTopic": "failed_fixity_topic",
+            "NsqChannel": "failed_fixity_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "3m"
         },
 
         "ReceivingBuckets": [

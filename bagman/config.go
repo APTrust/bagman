@@ -94,6 +94,10 @@ type Config struct {
 	// bucket after successfully processing this bag?
 	DeleteOnSuccess         bool
 
+	// FailedFixityWorker records details about fixity checks
+	// that could not be completed.
+	FailedFixityWorker      WorkerConfig
+
 	// Configuration options for apt_file_delete
 	FileDeleteWorker        WorkerConfig
 
