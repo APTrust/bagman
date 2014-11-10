@@ -87,12 +87,16 @@ func (fixityChecker *FixityChecker) logResult() {
 						"This item will not be requeued.",
 					result.GenericFile.Identifier,
 					result.GenericFile.URI)
+				// Too many failures. Send to trouble queue.
+				err := bagman.Enqueue(fixityChecker.ProcUtil.Config.NsqdHttpAddress,
+					fixityChecker.ProcUtil.Config.FailedFixityWorker.NsqTopic, result)
+				if err != nil {
+					fixityChecker.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
+						result.GenericFile.Identifier, err)
+				}
 				result.NsqMessage.Finish()
 				fixityChecker.ProcUtil.IncrementFailed()
 				fixityChecker.logStats()
-				// -----------------------------------------
-				// TODO: SEND TO TROUBLE QUEUE!
-				// -----------------------------------------
 			} else {
 				fixityChecker.ProcUtil.MessageLog.Error(
 					"Requeueing %s because fetch from S3 failed, or read from S3 " +
