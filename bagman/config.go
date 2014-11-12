@@ -174,6 +174,16 @@ type Config struct {
 	// Configuration options for apt_record
 	RecordWorker            WorkerConfig
 
+	// The bucket that stores a second copy of our perservation
+	// files. This should be in a different region than the
+	// preseration bucket. As of November 2014, the preservation
+	// bucket is in Virginia, and the replication bucket is in
+	// Oregon.
+	ReplicationBucket       string
+
+	// Configuration options for apt_replicate
+	ReplicationWorker       WorkerConfig
+
 	// RestoreDirectory is the directory in which we will
 	// rebuild IntellectualObject before sending them
 	// off to the S3 restoration bucket.

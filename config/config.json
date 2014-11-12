@@ -16,6 +16,7 @@
         "NsqLookupd": "localhost:4161",
 
         "PreservationBucket": "aptrust.test.preservation",
+        "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
         "MaxDaysSinceFixityCheck": 60,
 
@@ -50,6 +51,19 @@
             "Workers": 4,
             "NsqTopic": "record_topic",
             "NsqChannel": "record_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "ReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 8,
+            "NsqTopic": "replication_topic",
+            "NsqChannel": "replication_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -157,6 +171,7 @@
         "NsqLookupd": "localhost:4161",
 
         "PreservationBucket": "aptrust.test.preservation",
+        "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
         "MaxDaysSinceFixityCheck": 60,
 
@@ -191,6 +206,19 @@
             "Workers": 4,
             "NsqTopic": "record_topic",
             "NsqChannel": "record_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "ReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 8,
+            "NsqTopic": "replication_topic",
+            "NsqChannel": "replication_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -316,6 +344,7 @@
         "NsqLookupd": "localhost:4161",
 
         "PreservationBucket": "aptrust.test.preservation",
+        "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "",
         "MaxDaysSinceFixityCheck": 60,
 
@@ -350,6 +379,19 @@
             "Workers": 4,
             "NsqTopic": "record_topic",
             "NsqChannel": "record_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "ReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 8,
+            "NsqTopic": "replication_topic",
+            "NsqChannel": "replication_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
@@ -474,6 +516,7 @@
         "NsqLookupd": "localhost:4161",
 
         "PreservationBucket": "aptrust.preservation.storage",
+        "ReplicationBucket": "aptrust.preservation.oregon",
         "CustomRestoreBucket": "",
         "MaxDaysSinceFixityCheck": 60,
 
@@ -508,6 +551,19 @@
             "Workers": 4,
             "NsqTopic": "record_topic",
             "NsqChannel": "record_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "180m"
+        },
+
+        "ReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 8,
+            "NsqTopic": "replication_topic",
+            "NsqChannel": "replication_channel",
             "MaxAttempts": 3,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
