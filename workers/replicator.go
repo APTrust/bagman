@@ -104,13 +104,19 @@ func (replicator *Replicator) replicate() {
 				replicationObject.File.StorageURL,
 				err)
 			replicationObject.NsqMessage.Requeue(5 * time.Minute)
+			replicator.ProcUtil.IncrementFailed()
 		} else {
 			replicator.ProcUtil.MessageLog.Info("Finished %s. Replication " +
 				"copy is at %s.",
 				replicationObject.File.Identifier,
 				url)
 			replicationObject.NsqMessage.Finish()
+			replicator.ProcUtil.IncrementSucceeded()
 		}
+		replicator.ProcUtil.MessageLog.Info(
+			"**STATS** Succeeded: %d, Failed: %d",
+			replicator.ProcUtil.Succeeded(),
+			replicator.ProcUtil.Failed())
 	}
 }
 
