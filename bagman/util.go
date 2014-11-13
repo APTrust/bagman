@@ -1,6 +1,8 @@
 package bagman
 
 import (
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/op/go-logging"
@@ -201,4 +203,19 @@ func Min(x, y int) int {
 	} else {
 		return y
 	}
+}
+
+// TODO: Test this
+func Base64EncodeMd5(md5Digest string) (string, error) {
+	// We'll get error if md5 contains non-hex characters. Catch
+	// that below, when S3 tells us our md5 sum is invalid.
+	md5Bytes, err := hex.DecodeString(md5Digest)
+	if err != nil {
+		detailedError := fmt.Errorf("Md5 sum '%s' contains invalid characters.",
+			md5Digest)
+		return "", detailedError
+	}
+	// Base64-encoded md5 sum suitable for sending to S3
+	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
+	return base64md5, nil
 }

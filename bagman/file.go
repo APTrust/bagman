@@ -50,7 +50,7 @@ type File struct {
 	StoredAt   time.Time
 	StorageMd5 string
 	// The unique id of this GenericFile. Institution domain name +
-	// "." + bag name.
+	// "/" + bag name.
 	Identifier         string
 	IdentifierAssigned time.Time
 

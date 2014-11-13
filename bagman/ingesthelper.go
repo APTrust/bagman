@@ -1,8 +1,6 @@
 package bagman
 
 import (
-	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/bitly/go-nsq"
@@ -124,17 +122,11 @@ func (helper *IngestHelper) GetS3Options(file *File) (*s3.Options, error) {
 	s3Metadata["bag"] = []string{bagName}
 	s3Metadata["bagpath"] = []string{file.Path}
 
-	// We'll get error if md5 contains non-hex characters. Catch
-	// that below, when S3 tells us our md5 sum is invalid.
-	md5Bytes, err := hex.DecodeString(file.Md5)
-	if err != nil {
-		detailedError := fmt.Errorf("Md5 sum '%s' contains invalid characters. "+
-			"S3 will reject this!", file.Md5)
-		return nil, detailedError
-	}
-
 	// Save to S3 with the base64-encoded md5 sum
-	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
+	base64md5, err := Base64EncodeMd5(file.Md5)
+	if err != nil {
+		return nil, err
+	}
 
 	options := helper.ProcUtil.S3Client.MakeOptions(base64md5, s3Metadata)
 	return &options, nil

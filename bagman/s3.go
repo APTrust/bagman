@@ -8,6 +8,7 @@ import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"io"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -256,6 +257,46 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 	return result
 }
 
+// Fetches file key from bucketName and saves it to localPath.
+// The file will be at localPath when this is done, unless it
+// returns an error. This is a simple fetch method that does
+// none of the accounting required for ingest.
+func (client *S3Client) FetchToFileWithoutChecksum(bucketName, key, localPath string) (error) {
+	// Get a reader for the S3 file
+	bucket := client.S3.Bucket(bucketName)
+	var readCloser io.ReadCloser = nil
+	var err error = nil
+	for attemptNumber := 0; attemptNumber < 5; attemptNumber++ {
+		readCloser, err = bucket.GetReader(key)
+		if err == nil {
+			break
+		}
+	}
+	if readCloser != nil {
+		defer readCloser.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("Error retrieving file from receiving bucket: %v", err)
+	}
+
+	// Open the local file for writing
+	outputFile, err := os.Create(localPath)
+	if outputFile != nil {
+		defer outputFile.Close()
+	}
+	if err != nil {
+		return fmt.Errorf("Could not create local file %s: %v", localPath, err)
+	}
+
+	// Copy the data
+	_, err = io.Copy(outputFile, readCloser)
+	if err != nil {
+		return fmt.Errorf("Error while copying %s from S3 to %s: %v", key, localPath, err)
+	}
+
+	return nil
+}
+
 // Collects info about all of the buckets listed in buckets.
 // TODO: Write unit test
 func (client *S3Client) CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
@@ -414,6 +455,24 @@ func (client *S3Client) SaveLargeFileToS3(bucketName, fileName, contentType stri
 
 	url = fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, fileName)
 	return url, nil
+}
+
+// Returns true/false indicating whether a bucket exists.
+func (client *S3Client) Exists(bucketName, key string) (bool, error) {
+	bucket := client.S3.Bucket(bucketName)
+	return bucket.Exists(key)
+}
+
+// Returns a reader that lets you read data from bucket/key.
+func (client *S3Client) GetReader(bucketName, key string) (io.ReadCloser, error) {
+	bucket := client.S3.Bucket(bucketName)
+	return bucket.GetReader(key)
+}
+
+// Performs a HEAD request on an S3 object and returns the response.
+func (client *S3Client) Head(bucketName, key string) (*http.Response, error) {
+	bucket := client.S3.Bucket(bucketName)
+	return bucket.Head(key, nil)
 }
 
 func metadataMatches(metadata map[string][]string, key string, s3headers map[string][]string, headerName string) bool {
