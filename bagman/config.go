@@ -181,6 +181,11 @@ type Config struct {
 	// Oregon.
 	ReplicationBucket       string
 
+	// The path to the local directory that will temporarily
+	// hold files being copied from the preservartion bucket
+	// in US East to the replication bucket in USWest2.
+	ReplicationDirectory    string
+
 	// Configuration options for apt_replicate
 	ReplicationWorker       WorkerConfig
 
