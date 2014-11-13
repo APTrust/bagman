@@ -50,8 +50,20 @@ cd ~/go/src/github.com/APTrust/bagman/apps/apt_bag_delete
 go run apt_bag_delete.go -config apd4n &
 CLEANUP_PID=$!
 
+echo "Waiting 20 seconds to start apt_replicate"
+sleep 20
+
+echo "Starting apt_replicate"
+cd ~/go/src/github.com/APTrust/bagman/apps/apt_replicate
+go run apt_replicate.go -config apd4n &
+REPLICATION_PID=$!
+
+
 kill_all()
 {
+    echo "Shutting down replication worker"
+    kill -s SIGINT $REPLICATION_PID
+
     echo "Shutting down cleanup worker"
     kill -s SIGINT $CLEANUP_PID
 
