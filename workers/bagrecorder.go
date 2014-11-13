@@ -120,6 +120,12 @@ func (bagRecorder *BagRecorder) logResult() {
 		}
 		bagRecorder.ProcUtil.JsonLog.Println(string(json))
 
+		// If record worked, queue individual files for
+		// replication to Oregon.
+		if result.ErrorMessage == "" {
+			bagRecorder.QueueItemsForReplication(result)
+		}
+
 		// Add a message to the message log
 		if result.ErrorMessage != "" {
 			bagRecorder.ProcUtil.IncrementFailed()
@@ -157,6 +163,36 @@ func (bagRecorder *BagRecorder) logResult() {
 
 		// Tell the fluctopus what happened
 		bagRecorder.StatusChannel <- result
+	}
+}
+
+func (bagRecorder *BagRecorder) QueueItemsForReplication(result *bagman.ProcessResult) {
+	bagRecorder.ProcUtil.MessageLog.Info("Queueing %d files for replication",
+		len(result.TarResult.Files))
+	itemsQueued := 0
+	for _, file := range result.TarResult.Files {
+		err := bagman.Enqueue(
+			bagRecorder.ProcUtil.Config.NsqdHttpAddress,
+			bagRecorder.ProcUtil.Config.ReplicationWorker.NsqTopic,
+			file)
+		if err != nil {
+			bagRecorder.ProcUtil.MessageLog.Error(
+				"Error queueing %s for replication: %v",
+				file.Identifier,
+				err)
+			result.ErrorMessage += fmt.Sprintf("%s | ", err.Error())
+		} else {
+			itemsQueued++
+		}
+	}
+	message := fmt.Sprintf(
+		"Queued %d of %d files for replication",
+		itemsQueued,
+		len(result.TarResult.Files))
+	if itemsQueued < len(result.TarResult.Files) {
+		bagRecorder.ProcUtil.MessageLog.Warning(message)
+	} else {
+		bagRecorder.ProcUtil.MessageLog.Info(message)
 	}
 }
 
