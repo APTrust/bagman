@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
+	"github.com/crowdmob/goamz/aws"
 	"time"
 )
 
@@ -22,15 +23,20 @@ type DeleteObject struct {
 }
 
 type FileDeleter struct {
-	DeleteChannel  chan *DeleteObject
-	ResultsChannel chan *DeleteObject
-	ProcUtil       *bagman.ProcessUtil
+	DeleteChannel        chan *DeleteObject
+	ResultsChannel       chan *DeleteObject
+	ProcUtil            *bagman.ProcessUtil
+	// Replication client connects to the
+	// replication bucket in Oregon.
+	S3ReplicationClient *bagman.S3Client
 }
 
 
 func NewFileDeleter(procUtil *bagman.ProcessUtil) (*FileDeleter) {
+	replicationClient, _ := bagman.NewS3Client(aws.USWest2)
 	fileDeleter := &FileDeleter{
 		ProcUtil: procUtil,
+		S3ReplicationClient: replicationClient,
 	}
 	workerBufferSize := procUtil.Config.FileDeleteWorker.Workers * 10
 	fileDeleter.DeleteChannel = make(chan *DeleteObject, workerBufferSize)
@@ -150,18 +156,18 @@ func (fileDeleter *FileDeleter) HandleMessage(message *nsq.Message) error {
 func (fileDeleter *FileDeleter) logResult() {
 	for deleteObject := range fileDeleter.ResultsChannel {
 		// Mark item as resolved in Fluctus & tell the queue what happened.
-		var status bagman.StatusType = bagman.StatusSuccess
-		var stage bagman.StageType = bagman.StageResolve
 		if deleteObject.ErrorMessage != "" {
-			status = bagman.StatusFailed
-			stage = bagman.StageRequested
+			deleteObject.ProcessStatus.Status = bagman.StatusFailed
+			deleteObject.ProcessStatus.Stage = bagman.StageRequested
+			deleteObject.ProcessStatus.Note = deleteObject.ErrorMessage
+		} else {
+			deleteObject.ProcessStatus.Status = bagman.StatusSuccess
+			deleteObject.ProcessStatus.Stage = bagman.StageResolve
+			deleteObject.ProcessStatus.Note = fmt.Sprintf("Deleted generic file '%s' " +
+				"from '%s' at %s at the request of %s",
+				deleteObject.GenericFile.Identifier, deleteObject.GenericFile.URI,
+				time.Now().Format(time.RFC3339), deleteObject.ProcessStatus.User)
 		}
-		deleteObject.ProcessStatus.Status = status
-		deleteObject.ProcessStatus.Stage = stage
-		deleteObject.ProcessStatus.Note = fmt.Sprintf("Deleted generic file '%s' " +
-			"from '%s' at %s at the request of %s",
-			deleteObject.GenericFile.Identifier, deleteObject.GenericFile.URI,
-			time.Now().Format(time.RFC3339), deleteObject.ProcessStatus.User)
 		err := fileDeleter.ProcUtil.FluctusClient.UpdateProcessedItem(deleteObject.ProcessStatus)
 		if err != nil {
 			fileDeleter.ProcUtil.MessageLog.Error(
@@ -198,14 +204,29 @@ func (fileDeleter *FileDeleter) doDelete() {
 			continue
 		}
 		// Delete it
-		fileDeleter.ProcUtil.MessageLog.Info("Deleting %s from %s/%s",
+		fileDeleter.ProcUtil.MessageLog.Debug("Deleting %s from %s/%s",
 			deleteObject.ProcessStatus.GenericFileIdentifier,
 			fileDeleter.ProcUtil.Config.PreservationBucket,
 			fileName)
+		// Delete from US Standard (Virginia)
 		err = fileDeleter.ProcUtil.S3Client.Delete(fileDeleter.ProcUtil.Config.PreservationBucket, fileName)
 		if err != nil {
 			deleteObject.ErrorMessage = fmt.Sprintf(
-				"An error occurred during the deletion process: %v", err)
+				"Error deleting from US Standard region (Virginia): %v", err)
+		} else {
+			fileDeleter.ProcUtil.MessageLog.Info(
+				"Deleted %s (%s) from Virginia bucket",
+				deleteObject.GenericFile.Identifier, fileName)
+		}
+		// Delete from US West-2 (Oregon)
+		err = fileDeleter.S3ReplicationClient.Delete(fileDeleter.ProcUtil.Config.ReplicationBucket, fileName)
+		if err != nil {
+			deleteObject.ErrorMessage += fmt.Sprintf(
+				"Error deleting from US West-2 region (Oregon): %v", err)
+		} else {
+			fileDeleter.ProcUtil.MessageLog.Info(
+				"Deleted %s (%s) from Oregon bucket",
+				deleteObject.GenericFile.Identifier, fileName)
 		}
 		fileDeleter.ResultsChannel <- deleteObject
 	}
