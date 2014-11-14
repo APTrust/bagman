@@ -96,7 +96,7 @@ func (replicator *Replicator) replicate() {
 	for replicationObject := range replicator.ReplicationChannel {
 		replicator.ProcUtil.MessageLog.Info("Starting %s",
 			replicationObject.File.Identifier)
-		url, err := replicator.CopyFile(replicationObject)
+		url, err := replicator.CopyAndSaveEvent(replicationObject)
 		if err != nil {
 			replicator.ProcUtil.MessageLog.Error(
 				"Requeuing %s (%s) because copy failed. Error: %v",
@@ -118,6 +118,26 @@ func (replicator *Replicator) replicate() {
 			replicator.ProcUtil.Succeeded(),
 			replicator.ProcUtil.Failed())
 	}
+}
+
+// Copy the file to S3 in Oregon and save the replication
+// PremisEvent to Fluctus. Returns the S3 URL of the newly-saved file
+// or an error.
+func (replicator *Replicator) CopyAndSaveEvent(replicationObject *ReplicationObject) (string, error) {
+	url, err := replicator.CopyFile(replicationObject)
+	if err != nil {
+		return "", err
+	}
+	event, err := replicator.SaveReplicationEvent(replicationObject.File, url)
+	if err != nil {
+		return "", err
+	}
+	replicator.ProcUtil.MessageLog.Info(
+		"Saved replication PremisEvent for %s (%s) with event identifier %s",
+		replicationObject.File.Identifier,
+		replicationObject.File.Uuid,
+		event.Identifier)
+	return url, nil
 }
 
 // Copies a file from one bucket to another, across regions,
@@ -274,4 +294,22 @@ func (replicator *Replicator) DownloadFromPreservation(file *bagman.File) (strin
 
 	replicator.ProcUtil.MessageLog.Info("Downloaded %s", localPath)
 	return localPath, nil
+}
+
+// Saves the replication PremisEvent to Fluctus.
+// Param url is the S3 URL we just saved that file to.
+// That should be in Oregon.
+func (replicator *Replicator) SaveReplicationEvent(file *bagman.File, url string) (*bagman.PremisEvent, error) {
+	replicationEvent, err := file.ReplicationEvent(url)
+	if err != nil {
+		return nil, err
+	}
+	replicator.ProcUtil.MessageLog.Info("Saving replication PremisEvent for %s (%s)",
+		file.Identifier, file.Uuid)
+	savedEvent, err := replicator.ProcUtil.FluctusClient.PremisEventSave(
+		file.Identifier, "GenericFile", replicationEvent)
+	if err != nil {
+		return nil, err
+	}
+	return savedEvent, nil
 }
