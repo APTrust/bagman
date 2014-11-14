@@ -164,5 +164,37 @@ func TestPremisEvents(t *testing.T) {
 	if event.OutcomeDetail != file.StorageURL {
 		t.Errorf("Event.OutcomeDetail expected '%s', got '%s'", file.StorageURL, event.OutcomeDetail)
 	}
+}
 
+func TestReplicationEvent(t *testing.T) {
+	file, err := loadGenericFile()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	url := "https://s3-us-west-2.amazonaws.com/aptrust.test.preservation.oregon/207f95bd-f636-4532-4160-6519292f1bc2"
+	event, err := file.ReplicationEvent(url)
+	if err != nil {
+		t.Error(err)
+	}
+	if event.OutcomeDetail != url {
+		t.Errorf("OutcomeDetail was '%s', but should have been '%s'",
+			event.OutcomeDetail, url)
+	}
+	if event.Outcome != string(bagman.StatusSuccess) {
+		t.Errorf("Outcome should have been Success, but was %s", event.Outcome)
+	}
+	if len(event.Identifier) != 36 {
+		t.Errorf("Expected UUID for event identifier. Got %s", event.Identifier)
+	}
+	if event.DateTime.IsZero() {
+		t.Errorf("Event DateTime is missing.")
+	}
+
+	badUrl := "i am not a url"
+	event, err = file.ReplicationEvent(badUrl)
+	if err == nil {
+		t.Error("File.ReplicationEvent accepted an invalid URL")
+	}
 }

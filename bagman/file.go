@@ -199,3 +199,30 @@ func (file *File) PremisEvents() (events []*PremisEvent, err error) {
 	}
 	return events, nil
 }
+
+// Returns a replication event, saying the file was saved to
+// the S3 replication bucket in Oregon. Param replicationUrl
+// is the URL of the file in the replication bucket.
+func (file *File) ReplicationEvent(replicationUrl string) (*PremisEvent, error) {
+	if LooksLikeURL(replicationUrl) == false {
+		return nil, fmt.Errorf("Param replicationUrl must be a valid URL. '%s' won't cut it!",
+			replicationUrl)
+	}
+	eventId, err := uuid.NewV4()
+	if err != nil {
+		detailedErr := fmt.Errorf("Error generating event UUID for S3 replication URL: %v", err)
+		return nil, detailedErr
+	}
+	event := &PremisEvent{
+		Identifier:         eventId.String(),
+		EventType:          "identifier_assignment",
+		DateTime:           time.Now().UTC(),
+		Detail:             "Assigned new storage URL identifier for replication copy",
+		Outcome:            string(StatusSuccess),
+		OutcomeDetail:      replicationUrl,
+		Object:             "Go uuid library + goamz S3 library",
+		Agent:              "http://github.com/nu7hatch/gouuid",
+		OutcomeInformation: "",
+	}
+	return event, nil
+}

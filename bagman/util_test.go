@@ -146,3 +146,18 @@ func TestBase64EncodeMd5(t *testing.T) {
 			encodedDigest, expectedResult)
 	}
 }
+
+func TestLooksLikeURL(t *testing.T) {
+	if bagman.LooksLikeURL("http://s3.amazonaws.com/bucket/key") == false {
+		t.Error("That was a valid URL!")
+	}
+	if bagman.LooksLikeURL("https://s3.amazonaws.com/bucket/key") == false {
+		t.Error("That was a valid URL!")
+	}
+	if bagman.LooksLikeURL("tpph\\backslash\\slackbash\\iaintnourl!") == true {
+		t.Error("That was not a valid URL!")
+	}
+	if bagman.LooksLikeURL("") == true {
+		t.Error("That was not a valid URL! That was an empty string!")
+	}
+}

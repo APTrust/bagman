@@ -219,3 +219,9 @@ func Base64EncodeMd5(md5Digest string) (string, error) {
 	base64md5 := base64.StdEncoding.EncodeToString(md5Bytes)
 	return base64md5, nil
 }
+
+// Returns true if url looks like a URL.
+func LooksLikeURL(url string) (bool) {
+	reUrl := regexp.MustCompile(`^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$`)
+	return reUrl.Match([]byte(url))
+}
