@@ -218,6 +218,16 @@ func (replicator *Replicator) GetCopyOptions(file *bagman.File) (s3.Options, err
 			err)
 		return s3.Options{}, detailedErr
 	}
+	if resp.StatusCode != 200 {
+		detailedErr := fmt.Errorf(
+			"Can't get S3 metadata for file %s. " +
+			"Head request for %s/%s returned HTTP Status Code %d",
+			file.Identifier,
+			replicator.ProcUtil.Config.PreservationBucket,
+			file.Uuid,
+			resp.StatusCode)
+		return s3.Options{}, detailedErr
+	}
 
 	s3Metadata := make(map[string][]string)
 	s3Metadata["md5"]         = []string{ file.Md5 }
