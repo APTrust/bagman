@@ -40,6 +40,10 @@ echo "building apt_record"
 cd "${BAGMAN_HOME}/apps/apt_record"
 go build -o ${BAGMAN_BIN}/apt_record apt_record.go
 
+echo "building apt_replicate"
+cd "${BAGMAN_HOME}/apps/apt_replicate"
+go build -o ${BAGMAN_BIN}/apt_replicate apt_replicate.go
+
 echo "building apt_trouble"
 cd "${BAGMAN_HOME}/apps/apt_trouble"
 go build -o ${BAGMAN_BIN}/apt_trouble apt_trouble.go
