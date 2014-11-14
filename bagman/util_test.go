@@ -133,3 +133,16 @@ func TestMin(t *testing.T) {
 		t.Error("Min() thinks 12 is less than 10")
 	}
 }
+
+func TestBase64EncodeMd5(t *testing.T) {
+	digest := "4d66f1ec9491addded54d17b96df8c96"
+	expectedResult := "TWbx7JSRrd3tVNF7lt+Mlg=="
+	encodedDigest, err := bagman.Base64EncodeMd5(digest)
+	if err != nil {
+		t.Error(err)
+	}
+	if encodedDigest != expectedResult {
+		t.Errorf("Base64EncodeMd5() returned '%s'. Expected '%s'",
+			encodedDigest, expectedResult)
+	}
+}

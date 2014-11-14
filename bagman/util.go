@@ -205,7 +205,7 @@ func Min(x, y int) int {
 	}
 }
 
-// TODO: Test this
+// Returns a base64-encoded md5 digest. The is the format S3 wants.
 func Base64EncodeMd5(md5Digest string) (string, error) {
 	// We'll get error if md5 contains non-hex characters. Catch
 	// that below, when S3 tells us our md5 sum is invalid.
