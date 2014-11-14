@@ -391,3 +391,44 @@ func TestFetchAndCalculateSha256(t *testing.T) {
 		t.Errorf("Expected sha256 '%s' but got '%s'", sha256sum, fixityResult.Sha256)
 	}
 }
+
+func TestFetchToFileWithoutChecksum(t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("s3_test.go")
+		return
+	}
+
+	// Get an S3Client
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Errorf("Cannot create S3 client: %v\n", err)
+	}
+
+	testConfig := "test"
+	config := bagman.LoadRequestedConfig(&testConfig)
+	localPath := filepath.Join(
+		config.ReplicationDirectory,
+		"DownloadTestFile.tar")
+	defer os.Remove(localPath)
+
+	err = s3Client.FetchToFileWithoutChecksum(
+		"aptrust.test.fixtures",
+		"sample_good.tar",
+		localPath)
+
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	fileStat, err := os.Stat(localPath)
+	if err != nil {
+		t.Error(err)
+	}
+	// This is one of our fixture files.
+	// We know it's size. It's on S3 and in
+	// out testdata directory.
+	if fileStat.Size() != int64(23552) {
+		t.Errorf("Downloaded file %s is %d bytes. Expected 23552.",
+			localPath, fileStat.Size())
+	}
+}
