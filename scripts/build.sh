@@ -80,6 +80,10 @@ echo "building apt_fixity"
 cd "${BAGMAN_HOME}/apps/apt_fixity"
 go build -o ${BAGMAN_BIN}/apt_fixity apt_fixity.go
 
+echo "building apt_failed_fixity"
+cd "${BAGMAN_HOME}/apps/apt_failed_fixity"
+go build -o ${BAGMAN_BIN}/apt_failed_fixity apt_failed_fixity.go
+
 echo "copying config files into bin directory"
 cp ${BAGMAN_HOME}/config/config.json ${BAGMAN_BIN}/
 cp ${BAGMAN_HOME}/nsq/*.config ${BAGMAN_BIN}/
