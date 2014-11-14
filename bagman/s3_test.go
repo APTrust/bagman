@@ -7,6 +7,8 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -430,5 +432,96 @@ func TestFetchToFileWithoutChecksum(t *testing.T) {
 	if fileStat.Size() != int64(23552) {
 		t.Errorf("Downloaded file %s is %d bytes. Expected 23552.",
 			localPath, fileStat.Size())
+	}
+}
+
+func TestExists(t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("s3_test.go")
+		return
+	}
+
+	// Get an S3Client
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Errorf("Cannot create S3 client: %v\n", err)
+	}
+
+	exists, err := s3Client.Exists("aptrust.test.fixtures", "sample_good.tar")
+	if err != nil {
+		t.Error(err)
+	}
+	if exists == false {
+		t.Errorf("s3Client.Exists() says sample_good.tar does not exist.")
+	}
+
+	exists, err = s3Client.Exists("aptrust.test.fixtures", "_no_such_file_")
+	if err != nil {
+		t.Error(err)
+	}
+	if exists == true {
+		t.Errorf("s3Client.Exists() says _no_such_file_ exists.")
+	}
+}
+
+func TestGetReader(t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("s3_test.go")
+		return
+	}
+
+	// Get an S3Client
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Errorf("Cannot create S3 client: %v\n", err)
+	}
+
+	reader, err := s3Client.GetReader("aptrust.test.fixtures", "sample_good.tar")
+	if err != nil {
+		t.Error(err)
+	}
+	if reader == nil {
+		t.Errorf("s3Client.GetReader() did not return a reader.")
+	} else {
+		// Read to end and close, or you'll leave an HTTP
+		// connection to S3 hanging open.
+		io.Copy(ioutil.Discard, reader)
+		reader.Close()
+	}
+
+	reader, err = s3Client.GetReader("aptrust.test.fixtures", "_no_such_file_")
+	if err == nil {
+		t.Errorf("s3Client.GetReader() should have returned an error.")
+	}
+	if reader != nil {
+		t.Errorf("s3Client.GetReader() returned a reader when it shouldn't have.")
+		io.Copy(ioutil.Discard, reader)
+		reader.Close()
+	}
+
+}
+
+func TestHead(t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("s3_test.go")
+		return
+	}
+
+	// Get an S3Client
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Errorf("Cannot create S3 client: %v\n", err)
+	}
+
+	httpResp, err := s3Client.Head("aptrust.test.fixtures", "sample_good.tar")
+	if err != nil {
+		t.Error(err)
+	}
+	if httpResp == nil {
+		t.Errorf("s3Client.Head() did not return an HTTP response.")
+	} else {
+		// Don't leave the connection hanging.
+		io.Copy(ioutil.Discard, httpResp.Body)
+		httpResp.Body.Close()
 	}
 }

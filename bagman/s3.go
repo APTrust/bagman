@@ -470,6 +470,8 @@ func (client *S3Client) GetReader(bucketName, key string) (io.ReadCloser, error)
 }
 
 // Performs a HEAD request on an S3 object and returns the response.
+// Check the response status code. You may get a 401 or 403 for files
+// that don't exist, and the body will be an XML error message.
 func (client *S3Client) Head(bucketName, key string) (*http.Response, error) {
 	bucket := client.S3.Bucket(bucketName)
 	return bucket.Head(key, nil)
