@@ -98,14 +98,25 @@ func (replicator *Replicator) replicate() {
 			replicationObject.File.Identifier)
 		url, err := replicator.CopyAndSaveEvent(replicationObject)
 		if err != nil {
-			replicator.ProcUtil.MessageLog.Error(
-				"Requeuing %s (%s) because copy failed. Error: %v",
-				replicationObject.File.Identifier,
-				replicationObject.File.StorageURL,
-				err)
-			replicationObject.NsqMessage.Requeue(5 * time.Minute)
-			replicator.ProcUtil.IncrementFailed()
+			replicationObject.File.ReplicationError = err.Error()
+			// If we failed too many times, send this into the failure
+			// queue. Otherwise, just requeue and try again.
+			if (replicationObject.NsqMessage.Attempts >=
+				uint16(replicator.ProcUtil.Config.ReplicationWorker.MaxAttempts)) {
+				replicator.SendToTroubleQueue(replicationObject.File)
+				replicationObject.NsqMessage.Finish()
+				replicator.ProcUtil.IncrementFailed()
+			} else {
+				replicator.ProcUtil.MessageLog.Error(
+					"Requeuing %s (%s) because copy failed. Error: %v",
+					replicationObject.File.Identifier,
+					replicationObject.File.StorageURL,
+					err)
+				replicationObject.NsqMessage.Requeue(5 * time.Minute)
+				replicator.ProcUtil.IncrementFailed()
+			}
 		} else {
+			// Success!
 			replicator.ProcUtil.MessageLog.Info("Finished %s. Replication " +
 				"copy is at %s.",
 				replicationObject.File.Identifier,
@@ -312,4 +323,25 @@ func (replicator *Replicator) SaveReplicationEvent(file *bagman.File, url string
 		return nil, err
 	}
 	return savedEvent, nil
+}
+
+// Puts an item into the trouble queue.
+func (replicator *Replicator) SendToTroubleQueue(file *bagman.File) {
+	err := bagman.Enqueue(
+		replicator.ProcUtil.Config.NsqdHttpAddress,
+		replicator.ProcUtil.Config.FailedReplicationWorker.NsqTopic,
+		file)
+	if err != nil {
+		replicator.ProcUtil.MessageLog.Error(
+			"Could not send '%s' (%s) to failed replication queue: %v\n",
+			file.Identifier,
+			file.Uuid,
+			err)
+	} else {
+		message := fmt.Sprintf("Failed to copy '%s' (%s) to replication bucket. " +
+			"This item is going into the failed replication queue.",
+			file.Identifier,
+			file.Uuid)
+		replicator.ProcUtil.MessageLog.Warning(message)
+	}
 }
