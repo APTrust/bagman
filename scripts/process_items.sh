@@ -58,9 +58,17 @@ cd ~/go/src/github.com/APTrust/bagman/apps/apt_replicate
 go run apt_replicate.go -config apd4n &
 REPLICATION_PID=$!
 
+echo "Starting apt_failed_replication"
+cd ~/go/src/github.com/APTrust/bagman/apps/apt_failed_replication
+go run apt_failed_replication.go -config apd4n &
+FAILED_REPLICATION_PID=$!
+
 
 kill_all()
 {
+    echo "Shutting down replication worker"
+    kill -s SIGINT $FAILED_REPLICATION_PID
+
     echo "Shutting down replication worker"
     kill -s SIGINT $REPLICATION_PID
 
