@@ -73,6 +73,19 @@
             "MessageTimeout": "180m"
         },
 
+        "FailedReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 1,
+            "NsqTopic": "failed_replication_topic",
+            "NsqChannel": "failed_replication_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "5m"
+        },
+
         "BagDeleteWorker": {
             "NetworkConnections": 4,
             "Workers": 4,
@@ -227,6 +240,19 @@
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "180m"
+        },
+
+        "FailedReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 1,
+            "NsqTopic": "failed_replication_topic",
+            "NsqChannel": "failed_replication_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "5m"
         },
 
         "BagDeleteWorker": {
@@ -403,6 +429,19 @@
             "MessageTimeout": "180m"
         },
 
+        "FailedReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 1,
+            "NsqTopic": "failed_replication_topic",
+            "NsqChannel": "failed_replication_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "5m"
+        },
+
         "BagDeleteWorker": {
             "NetworkConnections": 8,
             "Workers": 4,
@@ -568,12 +607,25 @@
             "Workers": 8,
             "NsqTopic": "replication_topic",
             "NsqChannel": "replication_channel",
-            "MaxAttempts": 3,
+            "MaxAttempts": 5,
             "MaxInFlight": 20,
             "HeartbeatInterval": "10s",
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
             "MessageTimeout": "180m"
+        },
+
+        "FailedReplicationWorker": {
+            "NetworkConnections": 4,
+            "Workers": 1,
+            "NsqTopic": "failed_replication_topic",
+            "NsqChannel": "failed_replication_channel",
+            "MaxAttempts": 3,
+            "MaxInFlight": 20,
+            "HeartbeatInterval": "10s",
+            "ReadTimeout": "60s",
+            "WriteTimeout": "10s",
+            "MessageTimeout": "5m"
         },
 
         "BagDeleteWorker": {

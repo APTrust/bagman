@@ -98,6 +98,11 @@ type Config struct {
 	// that could not be completed.
 	FailedFixityWorker      WorkerConfig
 
+	// FailedReplicationWorker records details about failed
+	// attempts to copy generic files to the S3 replication
+	// bucket in Oregon.
+	FailedReplicationWorker      WorkerConfig
+
 	// Configuration options for apt_file_delete
 	FileDeleteWorker        WorkerConfig
 
