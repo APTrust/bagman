@@ -41,7 +41,7 @@ func (processor *FailedFixityProcessor) HandleMessage(message *nsq.Message) erro
 }
 
 func (processor *FailedFixityProcessor) dumpToFile(result *bagman.FixityResult) error {
-	outdir := path.Join(processor.ProcUtil.Config.LogDirectory, "trouble")
+	outdir := path.Join(processor.ProcUtil.Config.LogDirectory, "fixity_failures")
 	if _, err := os.Stat(outdir); os.IsNotExist(err) {
 		err := os.Mkdir(outdir, 0766)
 		if err != nil {

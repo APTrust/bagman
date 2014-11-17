@@ -44,7 +44,7 @@ func (troubleProcessor *TroubleProcessor) HandleMessage(message *nsq.Message) er
 }
 
 func (troubleProcessor *TroubleProcessor) dumpToFile(result *bagman.ProcessResult) error {
-	outdir := path.Join(troubleProcessor.ProcUtil.Config.LogDirectory, "trouble")
+	outdir := path.Join(troubleProcessor.ProcUtil.Config.LogDirectory, "ingest_failures")
 	if _, err := os.Stat(outdir); os.IsNotExist(err) {
 		err := os.Mkdir(outdir, 0766)
 		if err != nil {
