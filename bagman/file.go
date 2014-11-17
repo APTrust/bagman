@@ -63,6 +63,12 @@ type File struct {
 	// This will be true if the file is new, or if its an existing
 	// file whose contents have changed since it was last ingested.
 	NeedsSave bool
+
+	// ReplicationError describes the last error that occurred while
+	// trying to send this file to the replication bucket in Oregon.
+	// Replication is the last step in the ingest process, and before
+	// that step, this property will contain an empty string.
+	ReplicationError string
 }
 
 func NewFile() (*File) {
