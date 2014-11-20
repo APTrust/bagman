@@ -12,7 +12,7 @@ sleep 3
 # Wait for this one to finish
 echo "Starting fixity reader"
 cd ~/go/src/github.com/APTrust/bagman/apps/fixity_reader
-go run fixity_reader.go -config apd4n
+go run fixity_reader.go -config apd4n -date="2027-11-17T14:14:41Z"
 
 echo "Starting fixity checker"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_fixity
