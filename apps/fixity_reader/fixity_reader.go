@@ -1,19 +1,29 @@
 // fixity_reader periodically queries Fluctus for GenericFiles
 // that haven't had a fixity check in X days. The number of
 // days is specified in the config file. It then queues those
-// items for fixity check in nsqd.
+// items for fixity check in nsqd. This runs as a daily cron job
+// on the production server.
+//
+// It calculates the 'sinceWhen' date from the MaxDaysSinceFixityCheck
+// setting in the config file, but you can override that setting with
+// the command-line flag -date.
+//
+// Sample Usage:
+//
+// fixity_reader -config=<config> [-date='2014-11-19T19:16:38Z']
 package main
 
 import (
-       "bytes"
-       "encoding/json"
-       "fmt"
-       "github.com/APTrust/bagman/bagman"
-       "github.com/APTrust/bagman/workers"
-       "net/http"
-       "os"
-       "strings"
-       "time"
+	"bytes"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"github.com/APTrust/bagman/bagman"
+	"github.com/APTrust/bagman/workers"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 )
 
 // Queue delete requests in batches of 50.
@@ -24,6 +34,7 @@ const (
 )
 
 var workReader *bagman.WorkReader
+var cmdLineDate = flag.String("date", "", "Find files with no fixity check since this date")
 
 func main() {
 	var err error = nil
@@ -37,38 +48,71 @@ func main() {
 }
 
 func run() {
-	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
-		workReader.Config.FixityWorker.NsqTopic)
-	workReader.MessageLog.Info("Sending files needing fixity check to %s", url)
-
-	daysAgo := time.Duration(workReader.Config.MaxDaysSinceFixityCheck * -24) * time.Hour
-	sinceWhen := time.Now().UTC().Add(daysAgo)
-	genericFiles, err := workReader.FluctusClient.GetFilesNotCheckedSince(sinceWhen, 0, 5000)
-
-	if err != nil {
-		workReader.MessageLog.Fatalf("Error getting items items needing fixity check: %v", err)
-	}
-
-	workReader.MessageLog.Info("Found %d items needing fixity check", len(genericFiles))
-
-       // Create ProcessedItem records for these? Or do this in Rails?
-
+	sinceWhen := getSinceWhenDate()
 	start := 0
-	end := bagman.Min(len(genericFiles), batchSize)
-	for start <= end {
-		batch := genericFiles[start:end]
-		workReader.MessageLog.Info("Queuing batch of %d items", len(batch))
-		enqueue(url, batch)
-		start = end + 1
-		if start < len(genericFiles) {
-			end = bagman.Min(len(genericFiles), start+batchSize)
+	rows := 200
+	workReader.MessageLog.Info("Fetching files not checked since %s in batches of %d",
+		sinceWhen.Format(time.RFC822Z), rows)
+	for {
+		fileCount, err := fetchAndQueueBatch(sinceWhen, start, rows)
+		if err != nil {
+			workReader.MessageLog.Error("Error getting items items needing fixity check: %v", err)
+			break
 		}
-		time.Sleep(time.Millisecond * waitMilliseconds)
+		if fileCount == 0 {
+			workReader.MessageLog.Info("Last request returned 0 items needing fixity.")
+			workReader.MessageLog.Info("Finished getting data from Fluctus")
+			break
+		} else {
+			workReader.MessageLog.Info("Found %d items needing fixity check", fileCount)
+			start += rows
+		}
 	}
 }
 
+// Get the date we should be checking against. We're looking for
+// files with no fixity date since this date. User can pass the
+// date in on the command like using the -date flag, but typically
+// we will just calculate the date based on the config file settings.
+func getSinceWhenDate() (time.Time) {
+	var err error
+	daysAgo := time.Duration(workReader.Config.MaxDaysSinceFixityCheck * -24) * time.Hour
+	sinceWhen := time.Now().UTC().Add(daysAgo)
+	if cmdLineDate != nil && *cmdLineDate != "" {
+		sinceWhen, err = time.Parse(time.RFC3339, *cmdLineDate)
+		if err != nil {
+			workReader.MessageLog.Error("Expected date format '2006-01-02T15:04:05Z' but got %s",
+				*cmdLineDate)
+			workReader.MessageLog.Fatal(err)
+		}
+		workReader.MessageLog.Info("Using date passed in on command line")
+	} else {
+		workReader.MessageLog.Info(
+			"Calculated date from config.MaxDaysSinceFixityCheck: %d days ago",
+			workReader.Config.MaxDaysSinceFixityCheck)
+	}
+	return sinceWhen
+}
+
+// Fetches a batch of generic files needing fixity check and queues them
+// in NSQ. Returns the number of items queued.
+func fetchAndQueueBatch(sinceWhen time.Time, start, rows int) (int, error) {
+	genericFiles, err := workReader.FluctusClient.GetFilesNotCheckedSince(sinceWhen, start, rows)
+	if err != nil {
+		return 0, err
+	}
+	fileCount := len(genericFiles)
+	if fileCount > 0 {
+		enqueue(genericFiles)
+	}
+	return fileCount, nil
+}
+
 // enqueue adds a batch of items to the nsqd work queue
-func enqueue(url string, genericFiles []*bagman.GenericFile) {
+func enqueue(genericFiles []*bagman.GenericFile) {
+	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
+		workReader.Config.FixityWorker.NsqTopic)
+	workReader.MessageLog.Info("Sending files needing fixity check to %s", url)
 	jsonData := make([]string, len(genericFiles))
 	for i, genericFile := range genericFiles {
 		json, err := json.Marshal(genericFile)

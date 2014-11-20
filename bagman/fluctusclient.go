@@ -255,7 +255,7 @@ func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err e
 func (client *FluctusClient) GetFilesNotCheckedSince(daysAgo time.Time, offset, limit int) (files []*GenericFile, err error) {
 	fixityCheckUrl := client.BuildUrl(
 		fmt.Sprintf(
-			"/api/%s/files/not_checked_since.json?since=%s&offset=%d&limit=%d",
+			"/api/%s/files/not_checked_since.json?date=%s&start=%d&rows=%d",
 			client.apiVersion,
 			url.QueryEscape(daysAgo.UTC().Format(time.RFC3339)),
 			offset,
