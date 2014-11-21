@@ -8,14 +8,10 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/workers"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -73,7 +69,18 @@ func queueBatch(results []*bagman.ProcessStatus, queueName string) {
 	for start <= end {
 		batch := results[start:end]
 		workReader.MessageLog.Info("Queuing batch of %d items", len(batch))
-	enqueue(batch, queueName)
+		url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
+			workReader.Config.RestoreWorker.NsqTopic)
+		if queueName == "delete" {
+			url = fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
+				workReader.Config.FileDeleteWorker.NsqTopic)
+		}
+		genericSlice := make([]interface{}, len(batch))
+		for i := range batch {
+			genericSlice[i] = batch[i]
+		}
+		bagman.QueueToNSQ(url, genericSlice)
+		logBatch(batch, queueName)
 		start = end + 1
 		if start < len(results) {
 			end = bagman.Min(len(results), start+batchSize)
@@ -82,34 +89,9 @@ func queueBatch(results []*bagman.ProcessStatus, queueName string) {
 	}
 }
 
-// enqueue adds a batch of items to the nsqd work queue
-func enqueue(statusList []*bagman.ProcessStatus, queueName string) {
-	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
-		workReader.Config.RestoreWorker.NsqTopic)
-	if queueName == "delete" {
-		url = fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
-			workReader.Config.FileDeleteWorker.NsqTopic)
-	}
-
-	jsonData := make([]string, len(statusList))
-	for i, processStatus := range statusList {
-		json, err := json.Marshal(processStatus)
-		if err != nil {
-			workReader.MessageLog.Error("Error marshalling ProcessStatus to JSON: %v", err)
-		} else {
-			jsonData[i] = string(json)
-			workReader.MessageLog.Info("Put %s/%s into %s queue",
-				processStatus.Institution, processStatus.Name, queueName)
-		}
-	}
-	batch := strings.Join(jsonData, "\n")
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
-	if err != nil {
-		workReader.MessageLog.Error("nsqd returned an error: %s", err.Error())
-	}
-	if resp == nil {
-		workReader.MessageLog.Fatal("No response from nsqd. Is it running? restoration_reader is quitting.")
-	} else if resp.StatusCode != 200 {
-		workReader.MessageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
+func logBatch(statusList []*bagman.ProcessStatus, queueName string) {
+	for _, processStatus := range statusList {
+		workReader.MessageLog.Info("Put %s/%s into %s queue",
+			processStatus.Institution, processStatus.Name, queueName)
 	}
 }

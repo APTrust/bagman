@@ -3,13 +3,10 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/workers"
 	"github.com/crowdmob/goamz/aws"
-	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -71,7 +68,15 @@ func run() {
 	for start <= end {
 		batch := filesToProcess[start:end]
 		workReader.MessageLog.Info("Queuing batch of %d items", len(batch))
-		enqueue(url, batch)
+		genericSlice := make([]interface{}, len(batch))
+		for i := range batch {
+			genericSlice[i] = batch[i]
+		}
+		bagman.QueueToNSQ(url, genericSlice)
+		if err != nil {
+			workReader.MessageLog.Fatal(err.Error())
+		}
+		logBatch(batch)
 		start = end + 1
 		if start < len(filesToProcess) {
 			end = bagman.Min(len(filesToProcess), start+batchSize)
@@ -207,29 +212,8 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	return nil
 }
 
-// enqueue adds a batch of items to the nsqd work queue
-func enqueue(url string, s3Files []*bagman.S3File) {
-	jsonData := make([]string, len(s3Files))
-	for i, s3File := range s3Files {
-		json, err := json.Marshal(s3File)
-		if err != nil {
-			workReader.MessageLog.Error("Error marshalling s3 file to JSON: %v", err)
-		} else {
-			jsonData[i] = string(json)
-			workReader.MessageLog.Info("Put %s into fetch queue", s3File.Key.Key)
-		}
-	}
-	batch := strings.Join(jsonData, "\n")
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
-	if err != nil {
-		workReader.MessageLog.Error("nsqd returned an error: %v", err)
-	}
-	if resp == nil {
-		msg := "No response from nsqd. Is it running? bucket_reader is quitting."
-		workReader.MessageLog.Error(msg)
-		fmt.Println(msg)
-		os.Exit(1)
-	} else if resp.StatusCode != 200 {
-		workReader.MessageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
+func logBatch(s3Files []*bagman.S3File) {
+	for _, s3File := range s3Files {
+		workReader.MessageLog.Info("Put %s into fetch queue", s3File.Key.Key)
 	}
 }

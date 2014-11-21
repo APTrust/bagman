@@ -1,12 +1,14 @@
 package bagman
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/op/go-logging"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -224,4 +226,32 @@ func Base64EncodeMd5(md5Digest string) (string, error) {
 func LooksLikeURL(url string) (bool) {
 	reUrl := regexp.MustCompile(`^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$`)
 	return reUrl.Match([]byte(url))
+}
+
+
+// QueueToNSQ sends data to NSQ. The URL param must be a valid NSQ
+// URL. The data will be converted to JSON, with each object/record
+// in a single line, then posted to url. This requires an NSQ server,
+// so it's covered in the integration tests in the scripts directory.
+func QueueToNSQ(url string, data []interface{}) (error) {
+	jsonData := make([]string, len(data))
+	for i, record := range data {
+		json, err := json.Marshal(record)
+		if err != nil {
+			return fmt.Errorf("Error marshalling record %d to JSON: %v", i + 1, err)
+		} else {
+			jsonData[i] = string(json)
+		}
+	}
+	batch := strings.Join(jsonData, "\n")
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
+	if err != nil {
+		return fmt.Errorf("nsqd returned an error: %v", err)
+	}
+	if resp == nil {
+		return fmt.Errorf("No response from nsqd. Is it running? bucket_reader is quitting.")
+	} else if resp.StatusCode != 200 {
+		return fmt.Errorf("nsqd returned status code %d on last mput", resp.StatusCode)
+	}
+	return nil
 }

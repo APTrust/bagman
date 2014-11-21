@@ -4,14 +4,10 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/workers"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -52,7 +48,12 @@ func run() {
 	for start <= end {
 		batch := results[start:end]
 		workReader.MessageLog.Info("Queuing batch of %d items", len(batch))
-		enqueue(url, batch)
+		genericSlice := make([]interface{}, len(batch))
+		for i := range batch {
+			genericSlice[i] = batch[i]
+		}
+		bagman.QueueToNSQ(url, genericSlice)
+		logBatch(batch)
 		start = end + 1
 		if start < len(results) {
 			end = bagman.Min(len(results), start+batchSize)
@@ -61,29 +62,8 @@ func run() {
 	}
 }
 
-// enqueue adds a batch of items to the nsqd work queue
-func enqueue(url string, results []*bagman.CleanupResult) {
-	jsonData := make([]string, len(results))
-	for i, result := range results {
-		json, err := json.Marshal(result)
-		if err != nil {
-			workReader.MessageLog.Error("Error marshalling cleanup result to JSON: %s", err.Error())
-		} else {
-			jsonData[i] = string(json)
-			workReader.MessageLog.Info("Put %s into cleanup queue", result.BagName)
-		}
-	}
-	batch := strings.Join(jsonData, "\n")
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
-	if err != nil {
-		workReader.MessageLog.Error("nsqd returned an error: %s", err.Error())
-	}
-	if resp == nil {
-		msg := "No response from nsqd. Is it running? cleanup_reader is quitting."
-		workReader.MessageLog.Error(msg)
-		fmt.Println(msg)
-		os.Exit(1)
-	} else if resp.StatusCode != 200 {
-		workReader.MessageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
+func logBatch(results []*bagman.CleanupResult) {
+	for _, result := range results {
+		workReader.MessageLog.Info("Put %s into cleanup queue", result.BagName)
 	}
 }

@@ -14,15 +14,11 @@
 package main
 
 import (
-	"bytes"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/workers"
-	"net/http"
 	"os"
-	"strings"
 	"time"
 )
 
@@ -97,44 +93,26 @@ func getSinceWhenDate() (time.Time) {
 // Fetches a batch of generic files needing fixity check and queues them
 // in NSQ. Returns the number of items queued.
 func fetchAndQueueBatch(sinceWhen time.Time, start, rows int) (int, error) {
+	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
+		workReader.Config.FixityWorker.NsqTopic)
 	genericFiles, err := workReader.FluctusClient.GetFilesNotCheckedSince(sinceWhen, start, rows)
 	if err != nil {
 		return 0, err
 	}
 	fileCount := len(genericFiles)
 	if fileCount > 0 {
-		enqueue(genericFiles)
+		genericSlice := make([]interface{}, len(genericFiles))
+		for i := range genericFiles {
+			genericSlice[i] = genericFiles[i]
+		}
+		bagman.QueueToNSQ(url, genericSlice)
 	}
 	return fileCount, nil
 }
 
-// enqueue adds a batch of items to the nsqd work queue
-func enqueue(genericFiles []*bagman.GenericFile) {
-	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress,
-		workReader.Config.FixityWorker.NsqTopic)
-	workReader.MessageLog.Info("Sending files needing fixity check to %s", url)
-	jsonData := make([]string, len(genericFiles))
-	for i, genericFile := range genericFiles {
-		json, err := json.Marshal(genericFile)
-		if err != nil {
-			workReader.MessageLog.Error("Error marshalling GenericFile to JSON: %s", err.Error())
-		} else {
-			jsonData[i] = string(json)
-			workReader.MessageLog.Info("Put %s into fixity_check queue (%s)",
-				genericFile.Identifier, genericFile.URI)
-		}
-	}
-	batch := strings.Join(jsonData, "\n")
-	resp, err := http.Post(url, "application/json", bytes.NewBuffer([]byte(batch)))
-	if err != nil {
-		workReader.MessageLog.Error("nsqd returned an error: %s", err.Error())
-	}
-	if resp == nil {
-		msg := "No response from nsqd. Is it running? fixity_reader is quitting."
-		workReader.MessageLog.Error(msg)
-		fmt.Println(msg)
-		os.Exit(1)
-	} else if resp.StatusCode != 200 {
-		workReader.MessageLog.Error("nsqd returned status code %d on last mput", resp.StatusCode)
+func logBatch(genericFiles []*bagman.GenericFile) {
+	for _, genericFile := range genericFiles {
+		workReader.MessageLog.Info("Put %s into fixity_check queue (%s)",
+			genericFile.Identifier, genericFile.URI)
 	}
 }
