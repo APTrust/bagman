@@ -74,8 +74,19 @@ func assertTagMatch(tag bagman.Tag, expectedLabel string, expectedValue string) 
 func TestUntarWorksOnGoodFiles(t *testing.T) {
 	setup()
 	defer teardown()
+	// Untar with ingest data (sha256 and mime type)
 	for _, tarFile := range goodFiles {
 		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
+		if result.ErrorMessage != "" {
+			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
+		}
+		if len(result.FilesUnpacked) == 0 {
+			t.Errorf("Untar did not seem to unpack anything from %s", tarFile)
+		}
+	}
+	// Untar without ingest data
+	for _, tarFile := range goodFiles {
+		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", false)
 		if result.ErrorMessage != "" {
 			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
 		}
