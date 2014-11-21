@@ -138,7 +138,7 @@ func (helper *IngestHelper) ProcessBagFile() {
 	helper.Result.Stage = "Unpack"
 	instDomain := OwnerOf(helper.Result.S3File.BucketName)
 	helper.Result.TarResult = Untar(helper.Result.FetchResult.LocalTarFile,
-		instDomain, helper.Result.S3File.BagName())
+		instDomain, helper.Result.S3File.BagName(), true)
 	if helper.Result.TarResult.ErrorMessage != "" {
 		helper.Result.ErrorMessage = helper.Result.TarResult.ErrorMessage
 		// If we can't untar this, there's no reason to retry...

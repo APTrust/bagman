@@ -75,7 +75,7 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 	setup()
 	defer teardown()
 	for _, tarFile := range goodFiles {
-		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
+		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 		if result.ErrorMessage != "" {
 			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
 		}
@@ -86,7 +86,7 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 }
 
 func TestUntarCreatesFiles(t *testing.T) {
-	tarResult := bagman.Untar(sampleGood, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	tarResult := bagman.Untar(sampleGood, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 
 	// Generic files contains info about files in the /data directory
 	expectedPath := []string{
@@ -171,7 +171,7 @@ func TestUntarCreatesFiles(t *testing.T) {
 // or corrupt tar file. It should return a TarResult with an
 // Error property.
 func TestUntarSetsErrorOnBadFile(t *testing.T) {
-	result := bagman.Untar(invalidTarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	result := bagman.Untar(invalidTarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 	if result.ErrorMessage == "" {
 		t.Errorf("Untar should have reported an error about a bad tar file, but did not.")
 	}
@@ -183,7 +183,7 @@ func TestUntarSetsErrorOnBadFile(t *testing.T) {
 func TestGoodBagParsesCorrectly(t *testing.T) {
 	setup()
 	defer teardown()
-	tarResult := bagman.Untar(sampleGood, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	tarResult := bagman.Untar(sampleGood, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 	result := bagman.ReadBag(tarResult.OutputDir)
 	if result.Path != tarResult.OutputDir {
 		t.Errorf("Result path %s is incorrect, expected %s", result.Path, tarResult.OutputDir)
@@ -267,7 +267,7 @@ func TestBadBagReturnsError(t *testing.T) {
 	setup()
 	defer teardown()
 	for _, tarFile := range badFiles {
-		tarResult := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar")
+		tarResult := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 		result := bagman.ReadBag(tarResult.OutputDir)
 		if result.ErrorMessage == "" {
 			t.Errorf("Bag unpacked from %s should have produced an error, but did not",
@@ -284,7 +284,7 @@ func TestBadBagReturnsError(t *testing.T) {
 func TestErrorOnBadFolderName(t *testing.T) {
 	setup()
 	defer teardown()
-	result := bagman.Untar(sampleWrongFolderName, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	result := bagman.Untar(sampleWrongFolderName, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 	if !strings.Contains(result.ErrorMessage, "should untar to a folder named") {
 		t.Errorf("Untarring file '%s' should have generated an 'incorrect file name' error.",
 			sampleWrongFolderName)
@@ -294,7 +294,7 @@ func TestErrorOnBadFolderName(t *testing.T) {
 func TestErrorOnBadAccessValue(t *testing.T) {
 	setup()
 	defer teardown()
-	tarResult := bagman.Untar(sampleBadAccess, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	tarResult := bagman.Untar(sampleBadAccess, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 	readResult := bagman.ReadBag(tarResult.OutputDir)
 	if !strings.Contains(readResult.ErrorMessage, "Access (rights) value") {
 		t.Errorf("File '%s' should have generated an 'invalid access value' error.",
@@ -305,7 +305,7 @@ func TestErrorOnBadAccessValue(t *testing.T) {
 func TestErrorOnMissingTitle(t *testing.T) {
 	setup()
 	defer teardown()
-	tarResult := bagman.Untar(sampleNoTitle, "ncsu.edu", "ncsu.1840.16-2928.tar")
+	tarResult := bagman.Untar(sampleNoTitle, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 	readResult := bagman.ReadBag(tarResult.OutputDir)
 	if !strings.Contains(readResult.ErrorMessage, "Title is required") {
 		t.Errorf("File '%s' should have generated a missing title error.",

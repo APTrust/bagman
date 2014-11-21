@@ -30,7 +30,21 @@ var magicMime *magicmime.Magic
 // tarFilePath is the tarFilePath to the tar file that you want to unpack.
 // instDomain is the domain name of the institution that owns the bag.
 // bagName is the name of the tar file, minus the ".tar" extension.
-func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
+//
+// If param buildIngestData is true, the untar operation will run
+// md5 and sha256 checksums on all of the data files in the archive,
+// and it will use MimeMagic to figure out each file's mime type.
+// We must do this during ingest, so buildIngestData must be true
+// when we're running this on our servers.
+//
+// If we're running in a client environment--that is, an APTrust partner
+// is running the bag validation application on their laptop or desktop--
+// buildIngestData should be false. There's no need to calculate sha256
+// checksums in that case, and we cannot assume that the client would have
+// the external MimeMagic C libraries installed. The lack of those libraries
+// would cause the application to crash. So buildIngestData == false on
+// the client!!
+func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (result *TarResult) {
 
 	// Set up our result
 	tarResult := new(TarResult)
@@ -114,12 +128,27 @@ func Untar(tarFilePath, instDomain, bagName string) (result *TarResult) {
 		// a warning. The bag library does not deal with items like symlinks.
 		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
 			if strings.Contains(header.Name, "data/") {
-				genericFile := buildFile(tarReader, filepath.Dir(absInputFile), header.Name,
-					header.Size, header.ModTime)
-				cleanBagName, _ := CleanBagName(bagName)
-				genericFile.Identifier = fmt.Sprintf("%s/%s", cleanBagName, genericFile.Path)
-				genericFile.IdentifierAssigned = time.Now()
-				tarResult.Files = append(tarResult.Files, genericFile)
+				var dataFile *File = nil
+				if buildIngestData == true {
+					// Build the full generic file object with sha256 and mime type.
+					dataFile = buildFile(tarReader, filepath.Dir(absInputFile), header.Name,
+						header.Size, header.ModTime)
+					cleanBagName, _ := CleanBagName(bagName)
+					dataFile.Identifier = fmt.Sprintf("%s/%s", cleanBagName, dataFile.Path)
+					dataFile.IdentifierAssigned = time.Now()
+				} else {
+					// No sha256 or mime type. We just need the path the to untarred file.
+					tarDirectory := filepath.Dir(absInputFile)
+					fileName := header.Name[strings.Index(header.Name, "/data/")+1 : len(header.Name)]
+					absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
+					dataFile = &File{
+						Path: absPath,
+					}
+					if err != nil {
+						dataFile.ErrorMessage = fmt.Sprintf("Path error: %v", err)
+					}
+				}
+				tarResult.Files = append(tarResult.Files, dataFile)
 			} else {
 				err = saveFile(outputPath, tarReader)
 				if err != nil {
