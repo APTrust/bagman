@@ -72,6 +72,10 @@ echo "building cleanup_reader"
 cd "${BAGMAN_HOME}/apps/cleanup_reader"
 go build -o ${BAGMAN_BIN}/cleanup_reader cleanup_reader.go
 
+echo "building fixity_reader"
+cd "${BAGMAN_HOME}/apps/fixity_reader"
+go build -o ${BAGMAN_BIN}/fixity_reader fixity_reader.go
+
 echo "building apt_retry"
 cd "${BAGMAN_HOME}/apps/apt_retry"
 go build -o ${BAGMAN_BIN}/apt_retry apt_retry.go
