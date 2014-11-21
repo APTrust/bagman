@@ -14,15 +14,15 @@ import (
 
 var gopath string = os.Getenv("GOPATH")
 var testDataPath = filepath.Join(gopath, "src/github.com/APTrust/bagman/testdata")
-var sampleBadChecksums string = filepath.Join(testDataPath, "sample_bad_checksums.tar")
-var sampleGood string = filepath.Join(testDataPath, "sample_good.tar")
-var sampleMissingDataFile string = filepath.Join(testDataPath, "sample_missing_data_file.tar")
-var sampleNoBagInfo string = filepath.Join(testDataPath, "sample_no_bag_info.tar")
-var sampleNoBagit string = filepath.Join(testDataPath, "sample_no_bagit.tar")
-var sampleWrongFolderName string = filepath.Join(testDataPath, "sample_wrong_folder_name.tar")
-var sampleNoTitle string = filepath.Join(testDataPath, "sample_no_title.tar")
-var sampleBadAccess string = filepath.Join(testDataPath, "sample_bad_access.tar")
-var invalidTarFile string = filepath.Join(testDataPath, "not_a_tar_file.tar")
+var sampleBadChecksums string = filepath.Join(testDataPath, "example.edu.sample_bad_checksums.tar")
+var sampleGood string = filepath.Join(testDataPath, "example.edu.sample_good.tar")
+var sampleMissingDataFile string = filepath.Join(testDataPath, "example.edu.sample_missing_data_file.tar")
+var sampleNoBagInfo string = filepath.Join(testDataPath, "example.edu.sample_no_bag_info.tar")
+var sampleNoBagit string = filepath.Join(testDataPath, "example.edu.sample_no_bagit.tar")
+var sampleWrongFolderName string = filepath.Join(testDataPath, "example.edu.sample_wrong_folder_name.tar")
+var sampleNoTitle string = filepath.Join(testDataPath, "example.edu.sample_no_title.tar")
+var sampleBadAccess string = filepath.Join(testDataPath, "example.edu.sample_bad_access.tar")
+var invalidTarFile string = filepath.Join(testDataPath, "example.edu.not_a_tar_file.tar")
 var badFiles []string = []string{
 	sampleBadChecksums,
 	sampleMissingDataFile,
@@ -204,6 +204,9 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 	// including manifests and tag files.
 	if len(result.Files) != 8 {
 		t.Errorf("Unpacked %d files, expected %d", len(result.Files), 8)
+		for _, f := range result.Files {
+			fmt.Println(f)
+		}
 	}
 
 	if result.ErrorMessage != "" {
@@ -307,7 +310,7 @@ func TestErrorOnBadAccessValue(t *testing.T) {
 	defer teardown()
 	tarResult := bagman.Untar(sampleBadAccess, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 	readResult := bagman.ReadBag(tarResult.OutputDir)
-	if !strings.Contains(readResult.ErrorMessage, "Access (rights) value") {
+	if !strings.Contains(readResult.ErrorMessage, "access (rights) value") {
 		t.Errorf("File '%s' should have generated an 'invalid access value' error.",
 			sampleBadAccess)
 	}
@@ -318,7 +321,7 @@ func TestErrorOnMissingTitle(t *testing.T) {
 	defer teardown()
 	tarResult := bagman.Untar(sampleNoTitle, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
 	readResult := bagman.ReadBag(tarResult.OutputDir)
-	if !strings.Contains(readResult.ErrorMessage, "Title is required") {
+	if !strings.Contains(readResult.ErrorMessage, "Title is missing") {
 		t.Errorf("File '%s' should have generated a missing title error.",
 			sampleNoTitle)
 	}

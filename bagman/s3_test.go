@@ -186,7 +186,7 @@ func TestSaveToS3(t *testing.T) {
 	}
 	// Copy this file from the testdata directory to the
 	// test preservation bucket.
-	err := SaveToS3("sample_good.tar", testPreservationBucket)
+	err := SaveToS3("example.edu.sample_good.tar", testPreservationBucket)
 	if err != nil {
 		t.Error(err)
 	}
@@ -201,7 +201,7 @@ func TestGetKey(t *testing.T) {
 	if err != nil {
 		t.Errorf("Cannot create S3 client: %v\n", err)
 	}
-	key, err := s3Client.GetKey(testPreservationBucket, "sample_good.tar")
+	key, err := s3Client.GetKey(testPreservationBucket, "example.edu.sample_good.tar")
 	if err != nil {
 		t.Error(err)
 	}
@@ -209,7 +209,7 @@ func TestGetKey(t *testing.T) {
 		t.Error("s3Client.GetKey returned nil")
 		return
 	}
-	expectedETag := "\"7d5c7c1727fd538888f3eb89658abfdf\""
+	expectedETag := "\"48c876800900b64c17c9933143ca168a\""
 	if key.ETag != expectedETag {
 		t.Errorf("Expected ETag %s, got %s", expectedETag, key.ETag)
 	}
@@ -224,7 +224,7 @@ func TestDeleteFromS3(t *testing.T) {
 		return
 	}
 	// Make sure we have a file there to delete.
-	err := SaveToS3("sample_good.tar", testPreservationBucket)
+	err := SaveToS3("example.edu.sample_good.tar", testPreservationBucket)
 	if err != nil {
 		t.Error(err)
 	}
@@ -287,7 +287,7 @@ func TestSaveLargeFileToS3(t *testing.T) {
 	}
 
 	// Copy this local file to remote bucket.
-	localFile := "multi_mb_test_bag.tar"
+	localFile := "example.edu.multi_mb_test_bag.tar"
 	bucketName := testPreservationBucket
 
 	bagmanHome, err := bagman.BagmanHome()

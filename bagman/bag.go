@@ -129,25 +129,11 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
 			if strings.Contains(header.Name, "data/") {
 				var dataFile *File = nil
-				if buildIngestData == true {
-					// Build the full generic file object with sha256 and mime type.
-					dataFile = buildFile(tarReader, filepath.Dir(absInputFile), header.Name,
-						header.Size, header.ModTime)
-					cleanBagName, _ := CleanBagName(bagName)
-					dataFile.Identifier = fmt.Sprintf("%s/%s", cleanBagName, dataFile.Path)
-					dataFile.IdentifierAssigned = time.Now()
-				} else {
-					// No sha256 or mime type. We just need the path the to untarred file.
-					tarDirectory := filepath.Dir(absInputFile)
-					fileName := header.Name[strings.Index(header.Name, "/data/")+1 : len(header.Name)]
-					absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
-					dataFile = &File{
-						Path: absPath,
-					}
-					if err != nil {
-						dataFile.ErrorMessage = fmt.Sprintf("Path error: %v", err)
-					}
-				}
+				dataFile = buildFile(tarReader, filepath.Dir(absInputFile), header.Name,
+					header.Size, header.ModTime, buildIngestData)
+				cleanBagName, _ := CleanBagName(bagName)
+				dataFile.Identifier = fmt.Sprintf("%s/%s", cleanBagName, dataFile.Path)
+				dataFile.IdentifierAssigned = time.Now()
 				tarResult.Files = append(tarResult.Files, dataFile)
 			} else {
 				err = saveFile(outputPath, tarReader)
@@ -210,24 +196,24 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 		}
 	}
 	if !hasBagit {
-		errMsg += "Bag is missing bagit.txt file. "
+		errMsg += "Bag is missing bagit.txt file.\n"
 	}
 	if !hasMd5Manifest {
-		errMsg += "Bag is missing manifest-md5.txt file. "
+		errMsg += "Bag is missing manifest-md5.txt file.\n"
 	}
 	if !hasDataFiles {
-		errMsg += "Bag's data directory is missing or empty. "
+		errMsg += "Bag's data directory is missing or empty.\n"
 	}
 
 	extractTags(bag, bagReadResult)
 
 	checksumErrors := bag.Manifest.RunChecksums()
 	if len(checksumErrors) > 0 {
-		errMsg += "The following checksums could not be verified: "
+		errMsg += "The following checksums could not be verified:\n"
 		bagReadResult.ChecksumErrors = make([]error, len(checksumErrors))
 		for i, err := range checksumErrors {
 			bagReadResult.ChecksumErrors[i] = err
-			errMsg += err.Error() + ". "
+			errMsg += "  " + err.Error() + ".\n"
 		}
 	}
 
@@ -277,12 +263,14 @@ func extractTags(bag *bagins.Bag, bagReadResult *BagReadResult) {
 		}
 	}
 	if false == accessValid {
-		bagReadResult.ErrorMessage += fmt.Sprintf("Access (rights) value '%s' is not valid. ", accessRights)
+		bagReadResult.ErrorMessage += fmt.Sprintf(
+			"In tag file, access (rights) value '%s' is not valid.\n", accessRights)
 	}
 
 	// Fluctus will reject IntellectualObjects that don't have a title.
 	if bagTitle == "" {
-		bagReadResult.ErrorMessage += "Title is required. This bag has no title. "
+		bagReadResult.ErrorMessage +=
+			"Required field Title is missing from tag file.\n"
 	}
 }
 
@@ -306,7 +294,7 @@ func saveFile(destination string, tarReader *tar.Reader) error {
 // buildFile saves a data file from the tar archive to disk,
 // then returns a struct with data we'll need to construct the
 // GenericFile object in Fedora later.
-func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time) (file *File) {
+func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time, buildIngestData bool) (file *File) {
 	file = NewFile()
 	file.Path = fileName[strings.Index(fileName, "/data/")+1 : len(fileName)]
 	absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
@@ -335,34 +323,45 @@ func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size
 		file.ErrorMessage = fmt.Sprintf("Error opening writing to %s: %v", absPath, err)
 		return file
 	}
-	md5Hash := md5.New()
-	shaHash := sha256.New()
-	multiWriter := io.MultiWriter(md5Hash, shaHash, outputWriter)
-	io.Copy(multiWriter, tarReader)
 
-	file.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
-	file.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
-	file.Sha256Generated = time.Now().UTC()
+	// If we're just validating the bag format, don't bother
+	// doing the checksums or figuring out mime-type.
+	// Partners run our basic validators on their machines,
+	// which probably don't even have the required MagicMime C
+	// libraries. If we're doing full ingest, we'll calculate
+	// the additional sums & take a guess at mime type.
+	if buildIngestData == false {
+		io.Copy(outputWriter, tarReader)
+	} else {
+		md5Hash := md5.New()
+		shaHash := sha256.New()
+		multiWriter := io.MultiWriter(md5Hash, shaHash, outputWriter)
+		io.Copy(multiWriter, tarReader)
 
-	// Open the Mime Magic DB only once.
-	if magicMime == nil {
-		magicMime, err = magicmime.New()
-		if err != nil {
-			file.ErrorMessage = fmt.Sprintf("Error opening MimeMagic database: %v", err)
-			return file
+		file.Md5 = fmt.Sprintf("%x", md5Hash.Sum(nil))
+		file.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
+		file.Sha256Generated = time.Now().UTC()
+
+		// Open the Mime Magic DB only once.
+		if magicMime == nil {
+			magicMime, err = magicmime.New()
+			if err != nil {
+				file.ErrorMessage = fmt.Sprintf("Error opening MimeMagic database: %v", err)
+				return file
+			}
 		}
-	}
 
-	// Get the mime type of the file. In some cases, MagicMime
-	// returns an empty string, and in rare cases (about 1 in 10000),
-	// it returns unprintable characters. These are not valid mime
-	// types and cause ingest to fail. So we default to the safe
-	// application/binary and then set the MimeType only if
-	// MagicMime returned something that looks legit.
-	file.MimeType = "application/binary"
-	mimetype, _ := magicMime.TypeByFile(absPath)
-	if mimetype != "" && validMimeType.MatchString(mimetype) {
-		file.MimeType = mimetype
+		// Get the mime type of the file. In some cases, MagicMime
+		// returns an empty string, and in rare cases (about 1 in 10000),
+		// it returns unprintable characters. These are not valid mime
+		// types and cause ingest to fail. So we default to the safe
+		// application/binary and then set the MimeType only if
+		// MagicMime returned something that looks legit.
+		file.MimeType = "application/binary"
+		mimetype, _ := magicMime.TypeByFile(absPath)
+		if mimetype != "" && validMimeType.MatchString(mimetype) {
+			file.MimeType = mimetype
+		}
 	}
 
 	return file
