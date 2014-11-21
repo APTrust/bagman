@@ -874,7 +874,7 @@ func TestGetFilesNotCheckedSince(t *testing.T) {
 		return
 	}
 	fluctusClient := getClient(t)
-	sinceWhen := time.Date(2000,1,1,12,0,0,0,time.UTC)
+	sinceWhen := time.Date(2028,1,1,12,0,0,0,time.UTC)
 	files, err := fluctusClient.GetFilesNotCheckedSince(sinceWhen, 0, 10)
 	if err != nil {
 		t.Error(err)
