@@ -239,6 +239,21 @@ func TestUntarredDir(t *testing.T) {
 	}
 }
 
+
+func TestNonExistentFile(t *testing.T) {
+	validator, err := bagman.NewValidator("Example.Edu.SomeBogusFile.tar")
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() {
+		t.Errorf("Non-existent file should not validate!")
+	}
+	if !strings.Contains(validator.ErrorMessage, "no such file or directory") {
+		t.Errorf("Error message for missing bag file should say the file is missing!")
+	}
+}
+
 func TestInstitutionDomain(t *testing.T) {
 	validator, err := bagman.NewValidator(sampleGood)
 	if err != nil {
