@@ -360,7 +360,7 @@
         "RestoreDirectory": "/mnt/apt/restore",
         "LogDirectory": "/mnt/apt/logs",
         "ReplicationDirectory": "/mnt/apt/replication",
-        "MaxFileSize": 0,
+        "MaxFileSize": 100000000,
         "SkipAlreadyProcessed": true,
         "DeleteOnSuccess": true,
         "LogToStderr": false,
