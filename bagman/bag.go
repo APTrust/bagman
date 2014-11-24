@@ -90,7 +90,9 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 			break // end of archive
 		}
 		if err != nil {
-			tarResult.ErrorMessage = fmt.Sprintf("Error reading tar file header: %v", err)
+			tarResult.ErrorMessage = fmt.Sprintf(
+				"Error reading tar file header: %v. " +
+					"Either this is not a tar file, or the file is corrupt.", err)
 			return tarResult
 		}
 
@@ -104,7 +106,7 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 			if topLevelDir != expectedDir {
 				tarResult.ErrorMessage = fmt.Sprintf(
 					"Bag '%s' should untar to a folder named '%s', but "+
-						"it untars to '%s'. Please repackage and re-upload this bag.",
+						"it untars to '%s'. Please repackage this bag and try again.",
 					path.Base(tarFilePath), expectedDir, topLevelDir)
 				return tarResult
 			}
