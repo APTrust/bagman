@@ -71,6 +71,7 @@ func (validator *Validator) IsValid() (bool) {
 		weUntarredThisFile = true
 	}
 
+
 	validator.BagReadResult = ReadBag(validator.UntarredDir())
 	if weUntarredThisFile == true && untarredDirExisted == false {
 		// Clean up the files we untarred.
@@ -123,7 +124,7 @@ func (validator *Validator) InstitutionDomain() (string, error) {
 // .tar suffix.
 func (validator *Validator) TarFileName() (string) {
 	base := filepath.Base(validator.PathToFile)
-	if strings.HasSuffix(base, ".tar") {
+	if !strings.HasSuffix(base, ".tar") {
 		base += ".tar"
 	}
 	return base

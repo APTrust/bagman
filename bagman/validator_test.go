@@ -2,6 +2,7 @@ package bagman_test
 
 import (
 	"github.com/APTrust/bagman/bagman"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -211,4 +212,109 @@ func TestNoDataDir(t *testing.T) {
 			sampleNoDataDir)
 		t.Errorf(validator.ErrorMessage)
 	}
+}
+
+// Make sure we can validate a bag that is not yet tarred.
+func TestValidateFromDirectory(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleGoodUntarred)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == false {
+		t.Errorf("%s should be valid, but got error: %s",
+			sampleGoodUntarred, validator.ErrorMessage)
+	}
+}
+
+
+func TestUntarredDir(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleGood)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if strings.HasSuffix(validator.UntarredDir(), "bagman/testdata/example.edu.sample_good") == false {
+		t.Errorf("UntarredDir() should be 'bagman/testdata/example.edu.sample_good', but got %s", validator.UntarredDir())
+	}
+}
+
+func TestInstitutionDomain(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleGood)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	domain, err := validator.InstitutionDomain()
+	if err != nil {
+		t.Error(err)
+	}
+	if domain != "example.edu" {
+		t.Errorf("InstitutionDomain() should have returned 'example.edu', but got %s",
+			domain)
+	}
+}
+
+func TestTarFileName(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleGood)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.TarFileName() != "example.edu.sample_good.tar" {
+		t.Errorf("Tar file name should be example.edu.sample_good.tar")
+	}
+
+	validator, err = bagman.NewValidator(sampleGoodUntarred)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.TarFileName() != "example.edu.sample_good.tar" {
+		t.Errorf("Tar file name should be example.edu.sample_good.tar")
+	}
+
+}
+
+func TestFileType(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleGood)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	fileType, err := validator.FileType()
+	if err != nil {
+		t.Error(err)
+	}
+	if fileType != bagman.VAL_TYPE_TAR {
+		t.Errorf("File type for %s should be tar", sampleGood)
+	}
+
+	validator, err = bagman.NewValidator(sampleGoodUntarred)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	fileType, err = validator.FileType()
+	if err != nil {
+		t.Error(err)
+	}
+	if fileType != bagman.VAL_TYPE_DIR {
+		t.Errorf("File type for %s should be directory", sampleGoodUntarred)
+	}
+
+	pathToJsonFile := filepath.Join(testDataPath, "intel_obj.json")
+	validator, err = bagman.NewValidator(pathToJsonFile)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	fileType, err = validator.FileType()
+	if err == nil {
+		t.Error("Invalid file type should have returned an error.")
+	}
+	if fileType != bagman.VAL_TYPE_ERR {
+		t.Errorf("File type for %s should be invalid", pathToJsonFile)
+	}
+
 }
