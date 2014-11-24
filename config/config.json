@@ -349,7 +349,7 @@
             "aptrust.receiving.test.umd.edu",
             "aptrust.receiving.test.umich.edu",
             "aptrust.receiving.test.unc.edu",
-            "aptrust.receiving.test.und.edu",
+            "aptrust.receiving.test.nd.edu",
             "aptrust.receiving.test.virginia.edu",
             "aptrust.receiving.test.vt.edu"
         ]
@@ -535,7 +535,7 @@
             "aptrust.receiving.test.umd.edu",
             "aptrust.receiving.test.umich.edu",
             "aptrust.receiving.test.unc.edu",
-            "aptrust.receiving.test.und.edu",
+            "aptrust.receiving.test.nd.edu",
             "aptrust.receiving.test.virginia.edu",
             "aptrust.receiving.test.vt.edu"
         ]
@@ -721,7 +721,7 @@
             "aptrust.receiving.umd.edu",
             "aptrust.receiving.umich.edu",
             "aptrust.receiving.unc.edu",
-            "aptrust.receiving.und.edu",
+            "aptrust.receiving.nd.edu",
             "aptrust.receiving.virginia.edu",
             "aptrust.receiving.vt.edu"
         ]
