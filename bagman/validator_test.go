@@ -46,38 +46,60 @@ func TestInvalidTarFile(t *testing.T) {
 // include a note that those are expected.
 func TestBadBagsReturnError(t *testing.T) {
 	for _, tarFile := range badFiles {
-		tarResult := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
-		result := bagman.ReadBag(tarResult.OutputDir)
-		if result.ErrorMessage == "" {
-			t.Errorf("Bag unpacked from %s should have produced an error, but did not",
-				tarResult.OutputDir)
+		validator, err := bagman.NewValidator(tarFile)
+		if err != nil {
+			t.Errorf("Error creating validator: %s", err)
+			return
+		}
+		if validator.IsValid() == true {
+			t.Errorf("Bag '%s' should NOT be valid, but validator says it is", tarFile)
+		}
+		if validator.ErrorMessage == "" {
+			t.Errorf("Invalid bag '%s' should have a specific error message", tarFile)
 		}
 	}
 }
 
 func TestBadFolderName(t *testing.T) {
-	setup()
-	defer teardown()
-	result := bagman.Untar(sampleWrongFolderName, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
-	if !strings.Contains(result.ErrorMessage, "should untar to a folder named") {
+	validator, err := bagman.NewValidator(sampleWrongFolderName)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleWrongFolderName)
+	}
+	if !strings.Contains(validator.ErrorMessage, "should untar to a folder named") {
 		t.Errorf("Untarring file '%s' should have generated an 'incorrect file name' error.",
 			sampleWrongFolderName)
 	}
 }
 
 func TestBadAccessValue(t *testing.T) {
-	tarResult := bagman.Untar(sampleBadAccess, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
-	readResult := bagman.ReadBag(tarResult.OutputDir)
-	if !strings.Contains(readResult.ErrorMessage, "access (rights) value") {
+	validator, err := bagman.NewValidator(sampleBadAccess)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleWrongFolderName)
+	}
+	if !strings.Contains(validator.ErrorMessage, "access (rights) value") {
 		t.Errorf("File '%s' should have generated an 'invalid access value' error.",
 			sampleBadAccess)
 	}
 }
 
 func TestMissingTitle(t *testing.T) {
-	tarResult := bagman.Untar(sampleNoTitle, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
-	readResult := bagman.ReadBag(tarResult.OutputDir)
-	if !strings.Contains(readResult.ErrorMessage, "Title is missing") {
+	validator, err := bagman.NewValidator(sampleNoTitle)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleNoTitle)
+	}
+	if !strings.Contains(validator.ErrorMessage, "Title is missing") {
 		t.Errorf("File '%s' should have generated a missing title error.",
 			sampleNoTitle)
 	}
