@@ -16,6 +16,7 @@ var gopath string = os.Getenv("GOPATH")
 var testDataPath = filepath.Join(gopath, "src/github.com/APTrust/bagman/testdata")
 var sampleBadChecksums string = filepath.Join(testDataPath, "example.edu.sample_bad_checksums.tar")
 var sampleGood string = filepath.Join(testDataPath, "example.edu.sample_good.tar")
+var sampleGoodUntarred string = filepath.Join(testDataPath, "example.edu.sample_good")
 var sampleMissingDataFile string = filepath.Join(testDataPath, "example.edu.sample_missing_data_file.tar")
 var sampleNoBagInfo string = filepath.Join(testDataPath, "example.edu.sample_no_bag_info.tar")
 var sampleNoBagit string = filepath.Join(testDataPath, "example.edu.sample_no_bagit.tar")
@@ -47,7 +48,9 @@ func setup() {
 }
 
 // Teardown to run after tests. This deletes the directories
-// that were created when tar files were unpacked.
+// that were created when tar files were unpacked. We don't
+// delete example.edu.sample_good, because that's a fixture
+// used in validate_test.go.
 func teardown() {
 	files, err := ioutil.ReadDir(testDataPath)
 	if err != nil {
@@ -55,7 +58,7 @@ func teardown() {
 		return
 	}
 	for _, fileInfo := range files {
-		if fileInfo.IsDir() {
+		if fileInfo.IsDir() && !strings.Contains(fileInfo.Name(), "example.edu.sample_good") {
 			subDir := filepath.Join(testDataPath, fileInfo.Name())
 			err := os.RemoveAll(subDir)
 			if err != nil {
