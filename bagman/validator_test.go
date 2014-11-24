@@ -104,3 +104,111 @@ func TestMissingTitle(t *testing.T) {
 			sampleNoTitle)
 	}
 }
+
+func TestBadChecksums(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleBadChecksums)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleNoTitle)
+	}
+	if !strings.Contains(validator.ErrorMessage, "The following checksums could not be verified:") {
+		t.Errorf("File '%s' should have generated a missing title error.",
+			sampleBadChecksums)
+	}
+}
+
+func TestMissingDataFile(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleMissingDataFile)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleMissingDataFile)
+	}
+	if !strings.Contains(validator.ErrorMessage, "The following checksums could not be verified:") {
+		t.Errorf("File '%s' should have generated an error describing a missing file.",
+			sampleMissingDataFile)
+	}
+}
+
+func TestNoBagInfo(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleNoBagInfo)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleNoBagInfo)
+	}
+	if !strings.Contains(validator.ErrorMessage, "Unable to find tagfile bag-info.txt") {
+		t.Errorf("File '%s' should have generated an error describing a missing bag-info.txt file.",
+			sampleNoBagInfo)
+	}
+}
+
+func TestNoBagit(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleNoBagit)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleNoBagit)
+	}
+	if !strings.Contains(validator.ErrorMessage, "Bag is missing bagit.txt file") {
+		t.Errorf("File '%s' should have generated an error describing a missing bagit.txt file.",
+			sampleNoBagit)
+	}
+}
+
+func TestNoMd5Manifest(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleNoMd5Manifest)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleNoMd5Manifest)
+	}
+	if validator.ErrorMessage != "Required checksum file manifest-md5.txt is missing." {
+		t.Errorf("File '%s' should have generated an error describing a missing manifest-md5.txt file.",
+			sampleNoMd5Manifest)
+		t.Errorf(validator.ErrorMessage)
+	}
+}
+
+func TestNoAPTrustInfo(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleNoAPTrustInfo)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleNoAPTrustInfo)
+	}
+	if !strings.Contains(validator.ErrorMessage, "Unable to find tagfile aptrust-info.txt") {
+		t.Errorf("File '%s' should have generated an error describing a missing aptrust-info.txt file.",
+			sampleNoAPTrustInfo)
+		t.Errorf(validator.ErrorMessage)
+	}
+}
+
+func TestNoDataDir(t *testing.T) {
+	validator, err := bagman.NewValidator(sampleNoDataDir)
+	if err != nil {
+		t.Errorf("Error creating validator: %s", err)
+		return
+	}
+	if validator.IsValid() == true {
+		t.Errorf("Bag '%s' should NOT be valid, but validator says it is", sampleNoDataDir)
+	}
+	if validator.ErrorMessage != "Bag is missing the data directory, which should contain the payload files." {
+		t.Errorf("File '%s' should have generated an error describing a missing data directory.",
+			sampleNoDataDir)
+		t.Errorf(validator.ErrorMessage)
+	}
+}

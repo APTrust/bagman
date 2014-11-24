@@ -178,7 +178,7 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 
 	fileNames, err := bag.ListFiles()
 	if err != nil {
-		bagReadResult.ErrorMessage = fmt.Sprintf("Could not list bag files: %v", err)
+		bagReadResult.ErrorMessage = fmt.Sprintf("Could not list bag files: %v ", err)
 		return bagReadResult
 	}
 

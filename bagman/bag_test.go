@@ -22,6 +22,9 @@ var sampleNoBagit string = filepath.Join(testDataPath, "example.edu.sample_no_ba
 var sampleWrongFolderName string = filepath.Join(testDataPath, "example.edu.sample_wrong_folder_name.tar")
 var sampleNoTitle string = filepath.Join(testDataPath, "example.edu.sample_no_title.tar")
 var sampleBadAccess string = filepath.Join(testDataPath, "example.edu.sample_bad_access.tar")
+var sampleNoMd5Manifest string = filepath.Join(testDataPath, "example.edu.sample_no_md5_manifest.tar")
+var sampleNoAPTrustInfo string = filepath.Join(testDataPath, "example.edu.sample_no_aptrust_info.tar")
+var sampleNoDataDir string = filepath.Join(testDataPath, "example.edu.sample_no_data_dir.tar")
 var invalidTarFile string = filepath.Join(testDataPath, "example.edu.not_a_tar_file.tar")
 var badFiles []string = []string{
 	sampleBadChecksums,
@@ -29,6 +32,9 @@ var badFiles []string = []string{
 	sampleNoBagInfo,
 	sampleNoBagit,
 	sampleWrongFolderName,
+	sampleNoMd5Manifest,
+	sampleNoAPTrustInfo,
+	sampleNoDataDir,
 }
 var goodFiles []string = []string{
 	sampleGood,

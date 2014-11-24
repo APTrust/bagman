@@ -78,6 +78,13 @@ func (validator *Validator) IsValid() (bool) {
 	}
 	if validator.BagReadResult.ErrorMessage != "" {
 		validator.ErrorMessage = validator.BagReadResult.ErrorMessage
+		// Augment some of the more vague messages from the underlying
+		// bag parsing library.
+		if strings.Contains(validator.BagReadResult.ErrorMessage, "Unable to parse a manifest") {
+			validator.ErrorMessage = "Required checksum file manifest-md5.txt is missing."
+		} else if strings.Contains(validator.BagReadResult.ErrorMessage, "Payload directory does not exist") {
+			validator.ErrorMessage = "Bag is missing the data directory, which should contain the payload files."
+		}
 		return false
 	}
 	return true
