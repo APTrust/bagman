@@ -198,13 +198,13 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 		}
 	}
 	if !hasBagit {
-		errMsg += "Bag is missing bagit.txt file.\n"
+		errMsg += " Bag is missing bagit.txt file.\n"
 	}
 	if !hasMd5Manifest {
-		errMsg += "Bag is missing manifest-md5.txt file.\n"
+		errMsg += " Bag is missing manifest-md5.txt file.\n"
 	}
 	if !hasDataFiles {
-		errMsg += "Bag's data directory is missing or empty.\n"
+		errMsg += " Bag's data directory is missing or empty.\n"
 	}
 
 	extractTags(bag, bagReadResult)
