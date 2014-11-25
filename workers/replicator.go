@@ -279,9 +279,7 @@ func (replicator *Replicator) GetCopyOptions(file *bagman.File) (s3.Options, err
 // and returns the path to the local file.
 func (replicator *Replicator) DownloadFromPreservation(file *bagman.File) (string, error) {
 	// Make sure we have a folder to put the file in.
-	replicationDir := filepath.Join(
-		replicator.ProcUtil.Config.ReplicationDirectory,
-		"replication")
+	replicationDir := replicator.ProcUtil.Config.ReplicationDirectory
 	if _, err := os.Stat(replicationDir); os.IsNotExist(err) {
 		err = os.MkdirAll(replicationDir, 0755)
 		if err != nil {

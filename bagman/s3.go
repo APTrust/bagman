@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -192,6 +193,16 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 		return result
 	}
 
+	// Make sure download dir exists
+	err = os.MkdirAll(filepath.Dir(path), 0755)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf(
+			"Could not create directory %s to download file into: %v",
+			filepath.Dir(path), err)
+		return result
+	}
+
+	// Open the output file for writing
 	outputFile, err := os.Create(path)
 	if outputFile != nil {
 		defer outputFile.Close()
@@ -277,6 +288,14 @@ func (client *S3Client) FetchToFileWithoutChecksum(bucketName, key, localPath st
 	}
 	if err != nil {
 		return fmt.Errorf("Error retrieving file from receiving bucket: %v", err)
+	}
+
+	// Make sure download dir exists
+	err = os.MkdirAll(filepath.Dir(localPath), 0755)
+	if err != nil {
+		return fmt.Errorf(
+			"Could not create directory %s to download file into: %v",
+			filepath.Dir(localPath), err)
 	}
 
 	// Open the local file for writing
