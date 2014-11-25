@@ -58,6 +58,10 @@ func TestBadBagsReturnError(t *testing.T) {
 		if validator.ErrorMessage == "" {
 			t.Errorf("Invalid bag '%s' should have a specific error message", tarFile)
 		}
+		// Validator should delete the files it untarred
+		if bagman.FileExists(validator.UntarredDir()) {
+			t.Errorf("Validator did not clean up after itself!")
+		}
 	}
 }
 
@@ -330,6 +334,71 @@ func TestFileType(t *testing.T) {
 	}
 	if fileType != bagman.VAL_TYPE_ERR {
 		t.Errorf("File type for %s should be invalid", pathToJsonFile)
+	}
+}
+
+func TestLooksLikeMultipart(t *testing.T) {
+	// Test some common error cases
+	validator, _ := bagman.NewValidator("example.edu.archive.bag1of6.tar")
+	if validator.LooksLikeMultipart() == false {
+		t.Errorf("LooksLikeMultipart() should have returned true")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.bag01.of16.tar")
+	if validator.LooksLikeMultipart() == false {
+		t.Errorf("LooksLikeMultipart() should have returned true")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.b1of6.tar")
+	if validator.LooksLikeMultipart() == false {
+		t.Errorf("LooksLikeMultipart() should have returned true")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.b1.of6.tar")
+	if validator.LooksLikeMultipart() == false {
+		t.Errorf("LooksLikeMultipart() should have returned true")
+	}
+	// Test without tar extension
+	validator, _ = bagman.NewValidator("example.edu.archive.bag01.of16")
+	if validator.LooksLikeMultipart() == false {
+		t.Errorf("LooksLikeMultipart() should have returned true")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.b1.of6")
+	if validator.LooksLikeMultipart() == false {
+		t.Errorf("LooksLikeMultipart() should have returned true")
+	}
+}
+
+func TestIsValidMultipartName(t *testing.T) {
+	// Common error cases
+	validator, _ := bagman.NewValidator("example.edu.archive.bag1of6.tar")
+	if validator.IsValidMultipartName() == true {
+		t.Errorf("IsValidMultipartName() should have returned false")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.bag01.of16.tar")
+	if validator.IsValidMultipartName() == true {
+		t.Errorf("IsValidMultipartName() should have returned false")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.b1of6.tar")
+	if validator.IsValidMultipartName() == true {
+		t.Errorf("IsValidMultipartName() should have returned false")
+	}
+
+	// Without tar extension
+	validator, _ = bagman.NewValidator("example.edu.archive.bag01.of16")
+	if validator.IsValidMultipartName() == true {
+		t.Errorf("IsValidMultipartName() should have returned false")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.b1of6")
+	if validator.IsValidMultipartName() == true {
+		t.Errorf("IsValidMultipartName() should have returned false")
+	}
+
+	// Good cases
+	validator, _ = bagman.NewValidator("example.edu.archive.b1.of6.tar")
+	if validator.IsValidMultipartName() == false {
+		t.Errorf("IsValidMultipartName() should have returned true")
+	}
+	validator, _ = bagman.NewValidator("example.edu.archive.b1.of6")
+	if validator.IsValidMultipartName() == false {
+		t.Errorf("IsValidMultipartName() should have returned true")
 	}
 
 }

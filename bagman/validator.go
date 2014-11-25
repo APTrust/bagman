@@ -91,7 +91,8 @@ func (validator *Validator) IsValid() (bool) {
 	return true
 }
 
-
+// Returns the path to the directory that holds the untarred
+// contents of the bag.
 func (validator *Validator) UntarredDir() (string) {
 	re := regexp.MustCompile("\\.tar$")
 	return re.ReplaceAllString(validator.PathToFile, "")
@@ -105,10 +106,10 @@ func (validator *Validator) InstitutionDomain() (string, error) {
 	}
 	base := filepath.Base(validator.PathToFile)
 	parts := strings.Split(base, ".")
-	if len(parts) < 3 {
+	if len(parts) < 3 || len(parts) == 3 && parts[2] == "tar" {
 		message := fmt.Sprintf(
 			"Bag name '%s' should start with your institution's " +
-				"domain name, followed by a period.\n" +
+				"domain name,\n followed by a period and the object name.\n" +
 				"For example, 'university.edu.my_archive.tar' " +
 				"for a tar file,\n" +
 				"or 'university.edu.my_archive' for a directory.",
@@ -118,6 +119,21 @@ func (validator *Validator) InstitutionDomain() (string, error) {
 	instName := fmt.Sprintf("%s.%s", parts[0], parts[1])
 	return instName, nil
 }
+
+// Returns true if the bag name looks like a multipart bag.
+// This catches both correct multipart bag names and some
+// common incorrect variants, such as "bag1of2"
+func (validator *Validator) LooksLikeMultipart() (bool) {
+	reMisnamedMultiPartBag := regexp.MustCompile(`\.b\d+\.?of\d+$|\.bag\d+\.?of\d+$`)
+	return reMisnamedMultiPartBag.MatchString(validator.UntarredDir())
+}
+
+// Returns true if the bag has a valid multipart bag name.
+func (validator *Validator) IsValidMultipartName() (bool) {
+	_, err := validator.InstitutionDomain()
+	return err == nil && MultipartSuffix.MatchString(validator.UntarredDir())
+}
+
 
 // Returns the name of the tar file that the user wants to validate.
 // If this is a directory, returns the name of the directory with a
