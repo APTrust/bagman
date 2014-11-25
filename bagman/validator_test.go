@@ -402,3 +402,27 @@ func TestIsValidMultipartName(t *testing.T) {
 	}
 
 }
+
+func TestIsValidWithBadMultipartNames(t *testing.T) {
+	badNames := [4]string {
+		"example.edu.archive.bag1of6.tar",
+		"example.edu.archive.bag01.of16.tar",
+		"example.edu.archive.b1of6.tar",
+		"example.edu.archive.b1of6",
+	}
+	for i := range badNames {
+		validator, _ := bagman.NewValidator(badNames[i])
+		if validator.IsValid() == true {
+			t.Errorf("IsValid() should have returned false for item %d", i)
+		}
+		if !strings.HasPrefix(validator.ErrorMessage, "This looks like a multipart bag") {
+			t.Errorf("IsValid() did not return specific error for item %d.", i)
+		}
+	}
+
+	// Good cases
+	validator, _ := bagman.NewValidator(sampleMultipart1)
+	if validator.IsValid() == false {
+		t.Errorf("IsValid() should have returned true")
+	}
+}

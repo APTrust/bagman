@@ -47,6 +47,12 @@ func (validator *Validator) IsValid() (bool) {
 		validator.ErrorMessage = err.Error()
 		return false
 	}
+	if validator.LooksLikeMultipart() && !validator.IsValidMultipartName() {
+		validator.ErrorMessage = "This looks like a multipart bag, but it does not conform to " +
+			"naming conventions. Multipart bags should end with a suffix like '.b01.of12.tar'. " +
+			"See the APTrust BagIt specification for details."
+		return false
+	}
 	fileType, err := validator.FileType()
 	if err != nil {
 		validator.ErrorMessage = err.Error()
