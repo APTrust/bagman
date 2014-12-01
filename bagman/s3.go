@@ -44,6 +44,17 @@ func NewS3Client(region aws.Region) (*S3Client, error) {
 	return &S3Client{S3: s3Client}, nil
 }
 
+// Returns an S3 client from specific auth credentials,
+// instead of reading credentials from the environment.
+func NewS3ClientExplicitAuth(region aws.Region, accessKey, secretKey string) (*S3Client, error) {
+	auth := aws.Auth {
+		AccessKey: accessKey,
+		SecretKey: secretKey,
+	}
+	s3Client := s3.New(auth, region)
+	return &S3Client{S3: s3Client}, nil
+}
+
 // Returns a list of keys in the specified bucket.
 // If limit is zero, this will return all the keys in the bucket;
 // otherwise, it will return only the number of keys specifed.
