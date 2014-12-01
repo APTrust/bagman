@@ -43,21 +43,23 @@ func validateCommandLine() {
 	}
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Please specify a bag to validate. ")
-		fmt.Fprintf(os.Stderr, "Or use apt_validator -help for help.\n")
+		fmt.Fprintf(os.Stderr, "Or use apt_validator -h for help.\n")
 		os.Exit(1)
 	}
 }
 
 func printUsage() {
-	fmt.Println("apt_validator <path1> <path2> ... <pathN>")
-	fmt.Println("Validates bags for APTrust.")
-	fmt.Printf("Each path param should be the path to a tar file,")
-	fmt.Println("or the path to a directory that ")
-	fmt.Println("you want to tar up and send to APTrust.\n")
-	fmt.Println("Examples:")
-	fmt.Println("    apt_validator /home/josie/university.edu.my_archive.tar")
-	fmt.Println("    apt_validator university.edu.archive_one.tar university.edu.archive_two.tar")
-	fmt.Println("    apt_validator /home/josie/university.edu.my_archive/\n")
+	usage := `
+apt_validator <path1> <path2> ... <pathN>
+Validates bags for APTrust.
+Each path param should be the path to a tar file, or the path to a directory
+that you want to tar up and send to APTrust.
+	Examples:
+	    apt_validator /home/josie/university.edu.my_archive.tar
+	    apt_validator university.edu.archive_one.tar university.edu.archive_two.tar
+	    apt_validator /home/josie/university.edu.my_archive/
+`
+	fmt.Println(usage)
 	printSpecUrl()
 }
 
