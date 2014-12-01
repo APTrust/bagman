@@ -80,6 +80,7 @@ func (partnerConfig *PartnerConfig) addSetting(name, value string) {
 func (partnerConfig *PartnerConfig) addWarning(message string) {
 	partnerConfig.warnings = append(partnerConfig.warnings, message)
 }
+
 func (partnerConfig *PartnerConfig) Warnings() ([]string) {
 	warnings := make([]string, len(partnerConfig.warnings))
 	copy(warnings, partnerConfig.warnings)
@@ -104,4 +105,15 @@ func (partnerConfig *PartnerConfig) Warnings() ([]string) {
 			"AwsRestorationBucket is missing. This setting is required for downloading restored files from S3.")
 	}
 	return warnings
+}
+
+// Fill in AWS values if their missing from config file
+// but present in the environment.
+func (partnerConfig *PartnerConfig) LoadAwsFromEnv() {
+	if partnerConfig.AwsAccessKeyId == "" && os.Getenv("AWS_ACCESS_KEY_ID") != "" {
+		partnerConfig.AwsAccessKeyId = os.Getenv("AWS_ACCESS_KEY_ID")
+	}
+	if partnerConfig.AwsSecretAccessKey == "" && os.Getenv("AWS_SECRET_ACCESS_KEY") != "" {
+		partnerConfig.AwsSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
+	}
 }

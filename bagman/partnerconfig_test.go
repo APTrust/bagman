@@ -1,8 +1,10 @@
 package bagman_test
 
 import (
+	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"path/filepath"
+	"os"
 	"strings"
 	"testing"
 )
@@ -97,5 +99,33 @@ func TestLoadPartnerConfigMissingFile(t *testing.T) {
 	_, err = bagman.LoadPartnerConfig(filePath)
 	if err == nil {
 		t.Errorf("LoadPartnerConfig should have returned error saying the file cannot be found.")
+	}
+}
+
+func TestLoadAwsFromEnv(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
+		fmt.Println("Skipping AWS env test. Env vars are not set.")
+		return
+	}
+	filePath, err := getAbsPath(filepath.Join("testdata", "partner_config_invalid.conf"))
+	if err != nil {
+		t.Errorf("Can't get path to partner config file: %v", err)
+	}
+	partnerConfig, err := bagman.LoadPartnerConfig(filePath)
+	if err != nil {
+		t.Error(err)
+	}
+	if partnerConfig.AwsAccessKeyId != "" {
+		t.Errorf("Test precondition is invalid. AwsAccessKeyId has a value.")
+	}
+	if partnerConfig.AwsSecretAccessKey != "" {
+		t.Errorf("Test precondition is invalid. AwsSecretAccessKey has a value.")
+	}
+	partnerConfig.LoadAwsFromEnv()
+	if partnerConfig.AwsAccessKeyId == "" {
+		t.Errorf("Failed to load AwsAccessKeyId from environment.")
+	}
+	if partnerConfig.AwsSecretAccessKey == "" {
+		t.Errorf("Failed to load AwsSecretAccessKey from environment.")
 	}
 }
