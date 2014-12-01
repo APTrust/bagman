@@ -43,6 +43,21 @@ func TestNewS3Client(t *testing.T) {
 	}
 }
 
+// Test that we can get an S3 client with explicit auth params.
+func TestNewS3ClientExplicitAuth(t *testing.T) {
+	client, err := bagman.NewS3ClientExplicitAuth(aws.APNortheast, "Ax-S-Kee", "SeekritKee")
+	if err != nil {
+		t.Errorf("Cannot create S3 client: %v\n", err)
+	}
+	if client.S3.Auth.AccessKey != "Ax-S-Kee" {
+		t.Errorf("S3Client access key was not set correctly.")
+	}
+	if client.S3.Auth.SecretKey != "SeekritKee" {
+		t.Errorf("S3Client secret key was not set correctly.")
+	}
+}
+
+
 // Test that we can list the contents of an S3 bucket.
 // TODO: Test listing a bucket with >1000 items.
 func TestListBucket(t *testing.T) {

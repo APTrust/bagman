@@ -35,12 +35,12 @@ func TestLoadPartnerConfigGood(t *testing.T) {
 			partnerConfig.AwsSecretAccessKey)
 	}
 	// Test that value is correct and quotes are stripped.
-	if partnerConfig.ReceivingBucket != "aptrust.receive.test.edu" {
-		t.Errorf("AwsAccessKeyId: Expected 'aptrust.receive.test.edu', got '%s'",
+	if partnerConfig.ReceivingBucket != "aptrust.receiving.testbucket.edu" {
+		t.Errorf("AwsAccessKeyId: Expected 'aptrust.receiving.testbucket.edu', got '%s'",
 			partnerConfig.ReceivingBucket)
 	}
-	if partnerConfig.RestorationBucket != "aptrust.restore.test.edu" {
-		t.Errorf("AwsAccessKeyId: Expected 'aptrust.restore.test.edu', got '%s'",
+	if partnerConfig.RestorationBucket != "aptrust.restore.testbucket.edu" {
+		t.Errorf("AwsAccessKeyId: Expected 'aptrust.restore.testbucket.edu', got '%s'",
 			partnerConfig.RestorationBucket)
 	}
 }
