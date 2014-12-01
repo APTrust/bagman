@@ -30,6 +30,7 @@ func main() {
 	if anyBagFailed {
 		fmt.Println("")
 		printSpecUrl()
+		os.Exit(1)
 	}
 }
 
