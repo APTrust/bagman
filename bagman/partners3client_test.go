@@ -118,4 +118,40 @@ func TestPartnerS3ClientDownloadFile(t *testing.T) {
 	}
 	client.Test = true // turn off output
 
+	// Download with no checksum
+	checksum, err := client.DownloadFile("aptrust.receiving.test.test.edu",
+		"virginia.edu.uva-lib_2274765.tar", "none")
+	if err != nil {
+		t.Error(err)
+	}
+	if checksum != "" {
+		t.Errorf("DownloadFile should have returned an empty checksum")
+	}
+
+	// Download with md5 - our test file is about 9.5kb
+	checksum, err = client.DownloadFile("aptrust.receiving.test.test.edu",
+		"virginia.edu.uva-lib_2274765.tar", "md5")
+	if err != nil {
+		t.Error(err)
+	}
+	if checksum != "3f43304f3f7c8d51111d0846e13cb74e" {
+		t.Errorf("Expected md5 '3f43304f3f7c8d51111d0846e13cb74e', got '%s'", checksum)
+	}
+
+	// Download with sha256 - our test file is about 9.5kb
+	checksum, err = client.DownloadFile("aptrust.receiving.test.test.edu",
+		"virginia.edu.uva-lib_2274765.tar", "sha256")
+	if err != nil {
+		t.Error(err)
+	}
+	if checksum != "6f87f5341df2558967da27b12939d5e88b3af06592104041e57043af150f9309" {
+		t.Errorf("Expected sha256 '6f87f5341df2558967da27b12939d5e88b3af06592104041e57043af150f9309', got '%s'", checksum)
+	}
+
+	checksum, err = client.DownloadFile("aptrust.receiving.test.test.edu",
+		"virginia.edu.uva-lib_2274765.tar", "invalid_algo")
+	if err == nil {
+		t.Error("DownloadFile should have returned error for invalid checksum algorithm")
+	}
+
 }
