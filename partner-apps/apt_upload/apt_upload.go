@@ -13,12 +13,13 @@ var showHelp bool
 
 func main() {
 	parseCommandLine()
- 	partnerUpload, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, verbose)
+ 	client, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, verbose)
 	if err != nil {
 		fmt.Printf("[FATAL] %v\n", err)
 		return
 	}
-	partnerUpload.UploadFiles(flag.Args()[1:len(flag.Args())])
+	fmt.Printf("Uploading %d files to s3 bucket %s\n", len(flag.Args()), client.PartnerConfig.ReceivingBucket)
+	client.UploadFiles(flag.Args())
 }
 
 
@@ -66,6 +67,7 @@ AwsAccessKeyId = 123456789XYZ
 AwsSecretAccessKey = THIS KEY INCLUDES SPACES AND DOES NOT NEED QUOTES
 ReceivingBucket = 'aptrust.receive.test.edu'
 RestorationBucket = "aptrust.restore.test.edu"
+DownloadDir = "/home/josie/downloads"
 
 If you prefer not to put your AWS keys in the config file, you can
 put them into environment variables called AWS_ACCESS_KEY_ID
