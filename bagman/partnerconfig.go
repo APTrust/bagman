@@ -13,6 +13,7 @@ type PartnerConfig struct {
 	AwsSecretAccessKey     string
 	ReceivingBucket        string
 	RestorationBucket      string
+	DownloadDir            string
 	warnings               []string
 }
 
@@ -73,6 +74,7 @@ func (partnerConfig *PartnerConfig) addSetting(name, value string) {
 	case "awssecretaccesskey": partnerConfig.AwsSecretAccessKey = cleanValue
 	case "receivingbucket": partnerConfig.ReceivingBucket = cleanValue
 	case "restorationbucket": partnerConfig.RestorationBucket = cleanValue
+	case "downloaddir": partnerConfig.DownloadDir = cleanValue
 	default: partnerConfig.addWarning(fmt.Sprintf("Invalid setting: %s = %s", cleanName, cleanValue))
 	}
 }
@@ -98,11 +100,15 @@ func (partnerConfig *PartnerConfig) Warnings() ([]string) {
 	}
 	if partnerConfig.ReceivingBucket == "" {
 		warnings = append(warnings,
-			"AwsReceivingBucket is missing. This setting is required for uploading files to S3.")
+			"ReceivingBucket is missing. This setting is required for uploading files to S3.")
 	}
 	if partnerConfig.RestorationBucket == "" {
 		warnings = append(warnings,
-			"AwsRestorationBucket is missing. This setting is required for downloading restored files from S3.")
+			"RestorationBucket is missing. This setting is required for downloading restored files from S3.")
+	}
+	if partnerConfig.DownloadDir == "" {
+		warnings = append(warnings,
+			"DownloadDir is missing. This setting is required for downloading restored files from S3.")
 	}
 	return warnings
 }
@@ -135,6 +141,14 @@ func (partnerConfig *PartnerConfig) Validate() (error) {
 	}
 	if partnerConfig.RestorationBucket == "" {
 		return fmt.Errorf("Config file setting ReceivingBucket is missing.")
+	}
+	if partnerConfig.DownloadDir == "" {
+		return fmt.Errorf("Config file setting DownloadDir is missing.")
+	} else {
+		err := os.MkdirAll(partnerConfig.DownloadDir, 0755)
+		if err != nil {
+			return fmt.Errorf("Cannot created DownloadDir '%s': %v", partnerConfig.DownloadDir, err)
+		}
 	}
 	return nil
 }

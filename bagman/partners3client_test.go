@@ -19,6 +19,7 @@ func partnerConfigForTest() (*bagman.PartnerConfig) {
 		AwsSecretAccessKey: "xyz",
 		ReceivingBucket: "aptrust.receiving.xyz.edu",
 		RestorationBucket: "aptrust.receiving.xyz.edu",
+		DownloadDir: "~/tmp",
 	}
 }
 
@@ -60,7 +61,7 @@ func TestPartnerS3ClientLoadConfig(t *testing.T) {
 	}
 }
 
-func TestPartnerS3ClientFile(t *testing.T) {
+func TestPartnerS3ClientUploadFile(t *testing.T) {
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
@@ -84,7 +85,7 @@ func TestPartnerS3ClientFile(t *testing.T) {
 	}
 }
 
-func TestPartnerS3ClientFiles(t *testing.T) {
+func TestPartnerS3ClientUploadFiles(t *testing.T) {
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
@@ -105,4 +106,16 @@ func TestPartnerS3ClientFiles(t *testing.T) {
 	if failed != 0 {
 		t.Errorf("%d files failed to upload")
 	}
+}
+
+func TestPartnerS3ClientDownloadFile(t *testing.T) {
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
+		return
+	}
+ 	client, err := bagman.NewPartnerS3ClientFromConfigFile(partnerS3ConfigFile(), false)
+	if err != nil {
+		t.Error(err)
+	}
+	client.Test = true // turn off output
+
 }

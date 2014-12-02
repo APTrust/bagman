@@ -45,41 +45,6 @@ func TestLoadPartnerConfigGood(t *testing.T) {
 	}
 }
 
-func TestLoadPartnerConfigBad(t *testing.T) {
-	filePath, err := getAbsPath(filepath.Join("testdata", "partner_config_invalid.conf"))
-	if err != nil {
-		t.Errorf("Can't get path to partner config file: %v", err)
-	}
-	partnerConfig, err := bagman.LoadPartnerConfig(filePath)
-	if err != nil {
-		t.Error(err)
-	}
-	// Make sure we get warnings on unexpected settings and on
-	// expected settings that are not there.
-	warnings := partnerConfig.Warnings()
-	if len(warnings) != 6 {
-		t.Errorf("Expected 6 warnings, got %d", len(warnings))
-	}
-	if warnings[0] != "Invalid setting: FavoriteTeam = The home team" {
-		t.Errorf("Did not get expected warning about invalid setting")
-	}
-	if warnings[1] != "Invalid setting: FavoriteFlavor = Green" {
-		t.Errorf("Did not get expected warning about invalid setting")
-	}
-	if !strings.HasPrefix(warnings[2], "AwsAccessKeyId") {
-		t.Errorf("Did not get expected warning about missing AwsAccessKeyId")
-	}
-	if !strings.HasPrefix(warnings[3], "AwsSecretAccessKey is missing") {
-		t.Errorf("Did not get expected warning about missing AwsSecretAccessKey")
-	}
-	if !strings.HasPrefix(warnings[4], "AwsReceivingBucket is missing") {
-		t.Errorf("Did not get expected warning about missing AwsReceivingBucket")
-	}
-	if !strings.HasPrefix(warnings[5], "AwsRestorationBucket is missing") {
-		t.Errorf("Did not get expected warning about missing AwsRestorationBucket")
-	}
-}
-
 func TestLoadPartnerConfigWrongFileType(t *testing.T) {
 	filePath, err := getAbsPath(filepath.Join("testdata", "intel_obj.json"))
 	if err != nil {
@@ -130,12 +95,51 @@ func TestLoadAwsFromEnv(t *testing.T) {
 	}
 }
 
+func TestLoadPartnerConfigBad(t *testing.T) {
+	filePath, err := getAbsPath(filepath.Join("testdata", "partner_config_invalid.conf"))
+	if err != nil {
+		t.Errorf("Can't get path to partner config file: %v", err)
+	}
+	partnerConfig, err := bagman.LoadPartnerConfig(filePath)
+	if err != nil {
+		t.Error(err)
+	}
+       // Make sure we get warnings on unexpected settings and on
+       // expected settings that are not there.
+	warnings := partnerConfig.Warnings()
+	if len(warnings) != 7 {
+		t.Errorf("Expected 6 warnings, got %d", len(warnings))
+	}
+	if warnings[0] != "Invalid setting: FavoriteTeam = The home team" {
+		t.Errorf("Did not get expected warning about invalid setting")
+	}
+	if warnings[1] != "Invalid setting: FavoriteFlavor = Green" {
+		t.Errorf("Did not get expected warning about invalid setting")
+	}
+	if !strings.HasPrefix(warnings[2], "AwsAccessKeyId") {
+		t.Errorf("Did not get expected warning about missing AwsAccessKeyId")
+	}
+	if !strings.HasPrefix(warnings[3], "AwsSecretAccessKey is missing") {
+		t.Errorf("Did not get expected warning about missing AwsSecretAccessKey")
+	}
+	if !strings.HasPrefix(warnings[4], "ReceivingBucket is missing") {
+		t.Errorf("Did not get expected warning about missing ReceivingBucket")
+	}
+	if !strings.HasPrefix(warnings[5], "RestorationBucket is missing") {
+		t.Errorf("Did not get expected warning about missing RestorationBucket")
+	}
+	if !strings.HasPrefix(warnings[6], "DownloadDir is missing") {
+		t.Errorf("Did not get expected warning about missing DownloadDir")
+	}
+}
+
 func TestPartnerConfigValidate(t *testing.T) {
 	partnerConfig := &bagman.PartnerConfig{
 		AwsAccessKeyId: "abc",
 		AwsSecretAccessKey: "xyz",
 		ReceivingBucket: "aptrust.receiving.xyz.edu",
 		RestorationBucket: "aptrust.receiving.xyz.edu",
+		DownloadDir: "/home/josie/tmp",
 	}
 
 	// Clear these out for this test, so PartnerConfig can't read them.
@@ -177,4 +181,10 @@ func TestPartnerConfigValidate(t *testing.T) {
 		t.Errorf("Validation should have failed on missing Restoration Bucket")
 	}
 
+	partnerConfig.RestorationBucket = "blah"
+	partnerConfig.DownloadDir = ""
+	err = partnerConfig.Validate()
+	if err == nil {
+		t.Errorf("Validation should have failed on missing DownloadDir")
+	}
 }
