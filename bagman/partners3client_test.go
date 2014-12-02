@@ -1,14 +1,13 @@
 package bagman_test
 
 import (
-	//"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
-func partnerUploadConfigFile() (string) {
+func partnerS3ConfigFile() (string) {
 	configFile, _ := bagman.RelativeToAbsPath(
 		filepath.Join("testdata", "partner_config_integration_test.conf"))
 	return configFile
@@ -23,60 +22,60 @@ func partnerConfigForTest() (*bagman.PartnerConfig) {
 	}
 }
 
-func TestNewPartnerUploadFromConfigFile(t *testing.T) {
+func TestNewPartnerS3ClientFromConfigFile(t *testing.T) {
 	// This test will fail if AWS keys are not set in the environment,
 	// because they are not set in the config file.
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
- 	_, err := bagman.NewPartnerUploadFromConfigFile(partnerUploadConfigFile(), false)
+ 	_, err := bagman.NewPartnerS3ClientFromConfigFile(partnerS3ConfigFile(), false)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
-func TestNewPartnerUploadWithConfig(t *testing.T) {
+func TestNewPartnerS3ClientWithConfig(t *testing.T) {
 	partnerConfig := partnerConfigForTest()
- 	_, err := bagman.NewPartnerUploadWithConfig(partnerConfig, false)
+ 	_, err := bagman.NewPartnerS3ClientWithConfig(partnerConfig, false)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
-func TestPartnerUploadLoadConfig(t *testing.T) {
+func TestPartnerS3ClientLoadConfig(t *testing.T) {
 	// This test will fail if AWS keys are not set in the environment,
 	// because they are not set in the config file.
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
 	partnerConfig := partnerConfigForTest()
- 	partnerUpload, err := bagman.NewPartnerUploadWithConfig(partnerConfig, false)
+ 	client, err := bagman.NewPartnerS3ClientWithConfig(partnerConfig, false)
 	if err != nil {
 		t.Error(err)
 	}
 	// Load a new config from a file
-	err = partnerUpload.LoadConfig(partnerUploadConfigFile())
+	err = client.LoadConfig(partnerS3ConfigFile())
 	if err != nil {
 		t.Error(err)
 	}
 }
 
-func TestPartnerUploadFile(t *testing.T) {
+func TestPartnerS3ClientFile(t *testing.T) {
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
- 	partnerUpload, err := bagman.NewPartnerUploadFromConfigFile(partnerUploadConfigFile(), false)
+ 	client, err := bagman.NewPartnerS3ClientFromConfigFile(partnerS3ConfigFile(), false)
 	if err != nil {
 		t.Error(err)
 	}
-	partnerUpload.Test = true // turn off output
+	client.Test = true // turn off output
 	tarFile, _ := bagman.RelativeToAbsPath(
 		filepath.Join("testdata", "example.edu.sample_good.tar"))
 	file, err := os.Open(tarFile)
 	if err != nil {
 		t.Error(err)
 	}
-	md5, err := partnerUpload.UploadFile(file)
+	md5, err := client.UploadFile(file)
 	if err != nil {
 		t.Error(err)
 	}
@@ -85,21 +84,21 @@ func TestPartnerUploadFile(t *testing.T) {
 	}
 }
 
-func TestPartnerUploadFiles(t *testing.T) {
+func TestPartnerS3ClientFiles(t *testing.T) {
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
- 	partnerUpload, err := bagman.NewPartnerUploadFromConfigFile(partnerUploadConfigFile(), false)
+ 	client, err := bagman.NewPartnerS3ClientFromConfigFile(partnerS3ConfigFile(), false)
 	if err != nil {
 		t.Error(err)
 	}
-	partnerUpload.Test = true // turn off output
+	client.Test = true // turn off output
 	file0, _ := bagman.RelativeToAbsPath(filepath.Join("testdata", "example.edu.multipart.b01.of02.tar"))
 	file1, _ := bagman.RelativeToAbsPath(filepath.Join("testdata", "example.edu.multipart.b02.of02.tar"))
 	files := make([]string, 2)
 	files[0] = file0
 	files[1] = file1
-	succeeded, failed := partnerUpload.UploadFiles(files)
+	succeeded, failed := client.UploadFiles(files)
 	if succeeded != 2 {
 		t.Errorf("Expected 2 files to have uploaded, but %d actually succeeded", succeeded)
 	}

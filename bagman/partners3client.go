@@ -1,4 +1,4 @@
-// PartnerUpload is used by apt_upload, which APTrust partners
+// PartnerS3Client is used by apt_upload, which APTrust partners
 // use to upload bags to the S3 receiving buckets.
 package bagman
 
@@ -11,76 +11,76 @@ import (
 	"strings"
 )
 
-type PartnerUpload struct {
+type PartnerS3Client struct {
 	PartnerConfig  *PartnerConfig
 	S3Client       *S3Client
 	LogVerbose     bool
 	Test           bool  // used only in testing to suppress output
 }
 
-// Returns a new PartnerUpload object. Will return an error
+// Returns a new PartnerS3Client object. Will return an error
 // if the config file is missing, unreadable or incomplete.
-func NewPartnerUploadFromConfigFile(configFile string, logVerbose bool) (*PartnerUpload, error) {
-	partnerUpload := &PartnerUpload{
+func NewPartnerS3ClientFromConfigFile(configFile string, logVerbose bool) (*PartnerS3Client, error) {
+	client := &PartnerS3Client{
 		LogVerbose: logVerbose,
 	}
-	err := partnerUpload.LoadConfig(configFile)
+	err := client.LoadConfig(configFile)
 	if err != nil {
 		return nil, err
 	}
-	err = partnerUpload.initS3Client()
+	err = client.initS3Client()
 	if err != nil {
 		return nil, err
 	}
-	return partnerUpload, nil
+	return client, nil
 }
 
-// Returns a new PartnerUpload object with the specified
+// Returns a new PartnerS3Client object with the specified
 // configuration.
-func NewPartnerUploadWithConfig(partnerConfig *PartnerConfig, logVerbose bool) (*PartnerUpload, error) {
-	partnerUpload := &PartnerUpload{
+func NewPartnerS3ClientWithConfig(partnerConfig *PartnerConfig, logVerbose bool) (*PartnerS3Client, error) {
+	client := &PartnerS3Client{
 		PartnerConfig: partnerConfig,
 		LogVerbose: logVerbose,
 	}
-	err := partnerUpload.PartnerConfig.Validate()
+	err := client.PartnerConfig.Validate()
 	if err != nil {
 		return nil, err
 	}
-	err = partnerUpload.initS3Client()
+	err = client.initS3Client()
 	if err != nil {
 		return nil, err
 	}
-	return partnerUpload, nil
+	return client, nil
 }
 
-func (partnerUpload *PartnerUpload) initS3Client() (error) {
+func (client *PartnerS3Client) initS3Client() (error) {
 	s3Client, err := NewS3ClientExplicitAuth(aws.USEast,
-		partnerUpload.PartnerConfig.AwsAccessKeyId,
-		partnerUpload.PartnerConfig.AwsSecretAccessKey)
+		client.PartnerConfig.AwsAccessKeyId,
+		client.PartnerConfig.AwsSecretAccessKey)
 	if err != nil {
 		return fmt.Errorf("Cannot init S3 client: %v\n", err)
 	}
-	partnerUpload.S3Client = s3Client
+	client.S3Client = s3Client
 	return nil
 }
 
 // Loads configuration from the specified file path.
-func (partnerUpload *PartnerUpload) LoadConfig(configFile string) (error) {
+func (client *PartnerS3Client) LoadConfig(configFile string) (error) {
 	partnerConfig, err := LoadPartnerConfig(configFile)
 	if err != nil {
 		return err
 	}
-	partnerUpload.PartnerConfig = partnerConfig
-	err = partnerUpload.PartnerConfig.Validate()
+	client.PartnerConfig = partnerConfig
+	err = client.PartnerConfig.Validate()
 	return err
 }
 
 // Uploads all files in filePaths to the S3 receiving bucket.
 // Returns the number of uploads that succeeded and the number
 // that failed.
-func (partnerUpload *PartnerUpload) UploadFiles(filePaths []string) (succeeded, failed int) {
+func (client *PartnerS3Client) UploadFiles(filePaths []string) (succeeded, failed int) {
 	if filePaths == nil || len(filePaths) == 0 {
-		if partnerUpload.LogVerbose && !partnerUpload.Test {
+		if client.LogVerbose && !client.Test {
 			fmt.Println("[INFO]  There are no files in the upload list.")
 		}
 		return
@@ -90,7 +90,7 @@ func (partnerUpload *PartnerUpload) UploadFiles(filePaths []string) (succeeded, 
 	for _, filePath := range(filePaths) {
 		file, err := os.Open(filePath)
 		if err != nil {
-			if !partnerUpload.Test {
+			if !client.Test {
 				fmt.Printf("[ERROR] Cannot read local file '%s': %v\n", filePath, err)
 			}
 			failed++
@@ -98,25 +98,25 @@ func (partnerUpload *PartnerUpload) UploadFiles(filePaths []string) (succeeded, 
 		}
 		fileStat, err := file.Stat()
 		if err == nil && fileStat.IsDir() {
-			if partnerUpload.LogVerbose && !partnerUpload.Test {
+			if client.LogVerbose && !client.Test {
 				fmt.Printf("[INFO]  Skipping %s because it's a directory.\n", file.Name())
 			}
 			continue
 		}
-		etag, err := partnerUpload.UploadFile(file)
+		etag, err := client.UploadFile(file)
 		if err != nil {
-			if !partnerUpload.Test {
+			if !client.Test {
 				fmt.Printf("[ERROR] Uploading '%s' to S3: %v\n", filePath, err)
 			}
 			failed++
 			continue
 		}
-		if !partnerUpload.Test {
+		if !client.Test {
 			fmt.Printf("[OK]    S3 returned md5 checksum %s for %s\n", etag, filePath)
 		}
 		succeeded++
 	}
-	if !partnerUpload.Test {
+	if !client.Test {
 		fmt.Printf("Finished uploading. %d succeeded, %d failed.\n", succeeded, failed)
 	}
 	return succeeded, failed
@@ -126,20 +126,20 @@ func (partnerUpload *PartnerUpload) UploadFiles(filePaths []string) (succeeded, 
 // Returns S3's checksum for the file, or an error.
 // Note that S3 checksums for large multi-part uploads
 // will not be normal md5 checksums.
-func (partnerUpload *PartnerUpload) UploadFile(file *os.File) (string, error) {
+func (client *PartnerS3Client) UploadFile(file *os.File) (string, error) {
 	fileStat, err := file.Stat()
 	if err != nil {
 		return "", err
 	}
-	bucketName := partnerUpload.PartnerConfig.ReceivingBucket
+	bucketName := client.PartnerConfig.ReceivingBucket
 	fileName := filepath.Base(fileStat.Name())
 	mimeType := "application/x-tar"
 	url := ""
 	if fileStat.Size() < S3_LARGE_FILE {
-		if partnerUpload.LogVerbose && !partnerUpload.Test {
+		if client.LogVerbose && !client.Test {
 			fmt.Printf("[INFO]  Sending %s to %s in single-part put\n", fileName, bucketName)
 		}
-		url, err = partnerUpload.S3Client.SaveToS3(
+		url, err = client.S3Client.SaveToS3(
 			bucketName,
 			fileName,
 			mimeType,
@@ -147,11 +147,11 @@ func (partnerUpload *PartnerUpload) UploadFile(file *os.File) (string, error) {
 			fileStat.Size(),
 			s3.Options{})
 	} else {
-		if partnerUpload.LogVerbose && !partnerUpload.Test {
+		if client.LogVerbose && !client.Test {
 			fmt.Printf("[INFO]  Sending %s to %s in multi-part put because size is %d\n",
 				fileName, bucketName, fileStat.Size())
 		}
-		url, err = partnerUpload.S3Client.SaveLargeFileToS3(
+		url, err = client.S3Client.SaveLargeFileToS3(
 			bucketName,
 			fileName,
 			mimeType,
@@ -163,11 +163,11 @@ func (partnerUpload *PartnerUpload) UploadFile(file *os.File) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if partnerUpload.LogVerbose && !partnerUpload.Test {
+	if client.LogVerbose && !client.Test {
 		fmt.Printf("[INFO]  File %s saved to %s\n", fileName, url)
 	}
 
-	httpResponse, err := partnerUpload.S3Client.Head(bucketName, fileName)
+	httpResponse, err := client.S3Client.Head(bucketName, fileName)
 	if err != nil {
 		return "", fmt.Errorf("File %s was uploaded to S3, but cannot get md5 receipt. Try re-uploading.",
 			fileStat.Name())

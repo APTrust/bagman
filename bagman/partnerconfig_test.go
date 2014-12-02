@@ -138,7 +138,7 @@ func TestPartnerConfigValidate(t *testing.T) {
 		RestorationBucket: "aptrust.receiving.xyz.edu",
 	}
 
-	// Clear these out for this test, so PartnerUpload can't read them.
+	// Clear these out for this test, so PartnerConfig can't read them.
 	// We want to see that validation fails when these are missing.
 	awsKey := os.Getenv("AWS_ACCESS_KEY_ID")
 	awsSecret := os.Getenv("AWS_SECRET_ACCESS_KEY")
