@@ -76,12 +76,21 @@ func BagmanHome() (bagmanHome string, err error) {
 // LoadRelativeFile reads the file at the specified path
 // relative to BAGMAN_HOME and returns the contents as a byte array.
 func LoadRelativeFile(relativePath string) ([]byte, error) {
-	bagmanHome, err := BagmanHome()
+	absPath, err := RelativeToAbsPath(relativePath)
 	if err != nil {
 		return nil, err
 	}
-	absPath := filepath.Join(bagmanHome, relativePath)
 	return ioutil.ReadFile(absPath)
+}
+
+// Converts a relative path within the bagman directory tree
+// to an absolute path.
+func RelativeToAbsPath(relativePath string) (string, error) {
+	bagmanHome, err := BagmanHome()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(bagmanHome, relativePath), nil
 }
 
 // Loads a result from the test data directory.

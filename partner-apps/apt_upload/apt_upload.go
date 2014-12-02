@@ -13,7 +13,7 @@ var showHelp bool
 
 func main() {
 	parseCommandLine()
-	partnerUpload, err := bagman.NewPartnerUploadFromConfigFile(configFile, verbose)
+ 	partnerUpload, err := bagman.NewPartnerUploadFromConfigFile(configFile, verbose)
 	if err != nil {
 		fmt.Printf("[FATAL] %v\n", err)
 		return
