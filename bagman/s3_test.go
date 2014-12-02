@@ -396,9 +396,9 @@ func TestFetchAndCalculateSha256(t *testing.T) {
 		ChecksumAttributes: checksums,
 	}
 
-	// Check the SHA256 checksum on that file
+	// Check the SHA256 checksum on that file, but don't download it
 	fixityResult := bagman.NewFixityResult(genericFile)
-	err = s3Client.FetchAndCalculateSha256(fixityResult)
+	err = s3Client.FetchAndCalculateSha256(fixityResult, "")
 
 	if fixityResult.ErrorMessage != "" {
 		t.Errorf("FetchAndCalculateSha256() resulted in an error: %s",
@@ -407,6 +407,20 @@ func TestFetchAndCalculateSha256(t *testing.T) {
 	if fixityResult.Sha256 != sha256sum {
 		t.Errorf("Expected sha256 '%s' but got '%s'", sha256sum, fixityResult.Sha256)
 	}
+
+	// Run the checksu AND save the file
+	localPath := filepath.Join(
+		config.ReplicationDirectory,
+		"DownloadTestFile.tar")
+	defer os.Remove(localPath)
+	err = s3Client.FetchAndCalculateSha256(fixityResult, "")
+	if err != nil {
+		t.Error(err)
+	}
+	if fixityResult.Sha256 != sha256sum {
+		t.Errorf("Expected sha256 '%s' but got '%s'", sha256sum, fixityResult.Sha256)
+	}
+
 }
 
 func TestFetchToFileWithoutChecksum(t *testing.T) {

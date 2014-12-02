@@ -92,16 +92,19 @@ func (client *S3Client) ListBucket(bucketName string, limit int) (keys []s3.Key,
 	return contents, nil
 }
 
-// This fetches the file from S3, but does **not** save it.
-// It simply calculates the sha256 digest of the stream that
-// S3 returns.  Keep in mind that the remote file may be up
-// to 250GB, so this call can run for several hours and use
-// a lot of CPU.
+// This fetches the file from S3, but does **not** save it
+// unless you specify a localPath, in which case the file
+// will be saved into the file specified by localPath.
+//
+// Without localPath, this simply calculates the sha256 digest of
+// the stream thatS3 returns.  Keep in mind that the remote file
+// may be up to 250GB, so this call can run for several hours and
+// use a lot of CPU.
 //
 // Returns a FixityResult object that includes not only the
 // checksum, but also some information about what went wrong
 // and whether the operation should be retried.
-func (client *S3Client) FetchAndCalculateSha256(fixityResult *FixityResult) (error) {
+func (client *S3Client) FetchAndCalculateSha256(fixityResult *FixityResult, localPath string) (error) {
 	if fixityResult == nil {
 		return fmt.Errorf("Param fixityResult cannot be nil")
 	}
@@ -144,7 +147,35 @@ func (client *S3Client) FetchAndCalculateSha256(fixityResult *FixityResult) (err
 
 	fixityResult.S3FileExists = true
 	shaHash := sha256.New()
-	multiWriter := io.MultiWriter(shaHash)
+
+	var multiWriter io.Writer
+
+	// For fixity check, we don't save the file.
+	// For partners using apt_download, we do save it.
+	if localPath != "" {
+		// Make sure download dir exists
+		err = os.MkdirAll(filepath.Dir(localPath), 0755)
+		if err != nil {
+			return fmt.Errorf(
+				"Could not create directory %s to download file into: %v",
+				filepath.Dir(localPath), err)
+		}
+
+		// Open the output file for writing
+		outputFile, err := os.Create(localPath)
+		if outputFile != nil {
+			defer outputFile.Close()
+		}
+		if err != nil {
+			return fmt.Errorf("Could not create local file %s: %v", localPath, err)
+		}
+		multiWriter = io.MultiWriter(shaHash, outputFile)
+	} else {
+		// Just calculate Sha256 & discard the bytes
+		multiWriter = io.MultiWriter(shaHash)
+	}
+
+
 	_, err = io.Copy(multiWriter, readCloser)
 	if err != nil {
 		fixityResult.ErrorMessage = fmt.Sprintf(

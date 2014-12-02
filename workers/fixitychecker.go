@@ -162,7 +162,7 @@ func (fixityChecker *FixityChecker) checkFile() {
 	for result := range fixityChecker.FixityChannel {
 		fixityChecker.ProcUtil.MessageLog.Info("Checking %s", result.GenericFile.Identifier)
 		result.NsqMessage.Touch()
-		err := fixityChecker.ProcUtil.S3Client.FetchAndCalculateSha256(result)
+		err := fixityChecker.ProcUtil.S3Client.FetchAndCalculateSha256(result, "")
 		// Log usage errors. These shouldn't happen.
 		if err != nil && strings.Index(err.Error(), "cannot by nil") > 0 {
 			fixityChecker.ProcUtil.MessageLog.Error(err.Error())

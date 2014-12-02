@@ -181,11 +181,13 @@ func (client *PartnerS3Client) UploadFile(file *os.File) (string, error) {
 }
 
 // Downloads a file from the S3 restoration bucket and saves it
-// in the directory specified by localpath. Param checksum may
-// be "md5", "sha256" or "none". This returns the md5 or sha256
-// checksum of the downloaded file, or an empty string if the
-// checksum param was "none". Returns an error if any occurred.
-func (client *PartnerS3Client) DownloadFile(bucketName, key, localPath, checksum string) (string, error) {
+// in the directory specified by PartnerConfig.DownloadDir.
+// Param checksum may be "md5", "sha256" or "none". This returns
+// the md5 or sha256 checksum of the downloaded file, or an empty
+// string if the checksum param was "none". Returns an error if
+// any occurred.
+func (client *PartnerS3Client) DownloadFile(bucketName, key, checksum string) (string, error) {
+	localPath := filepath.Join(client.PartnerConfig.DownloadDir, key)
 	if checksum == "md5" {
 		s3Key, err := client.S3Client.GetKey(bucketName, key)
 		if err != nil {
@@ -195,6 +197,7 @@ func (client *PartnerS3Client) DownloadFile(bucketName, key, localPath, checksum
 		if fetchResult.ErrorMessage != "" {
 			return "", fmt.Errorf(fetchResult.ErrorMessage)
 		}
+		return fetchResult.LocalMd5, nil
 	} else if checksum == "sha256" {
 		// This is unfortunate, but this particular function was
 		// written for running fixity checks, not for partner use.
@@ -202,7 +205,7 @@ func (client *PartnerS3Client) DownloadFile(bucketName, key, localPath, checksum
 			URI: fmt.Sprintf("https://s3.amazonaws.com/%s/%s", bucketName, key),
 		}
 		fixityResult := &FixityResult{ GenericFile: genericFile }
-		err := client.S3Client.FetchAndCalculateSha256(fixityResult)
+		err := client.S3Client.FetchAndCalculateSha256(fixityResult, localPath)
 		if err != nil {
 			return "", err
 		}
