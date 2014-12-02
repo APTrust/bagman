@@ -228,7 +228,7 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 		defer readCloser.Close()
 	}
 	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Error retrieving file from receiving bucket: %v", err)
+		result.ErrorMessage = fmt.Sprintf("Error retrieving file %s/%s: %v", bucketName, key.Key, err)
 		if strings.Contains(err.Error(), "key does not exist") {
 			result.Retry = false
 		}
@@ -329,7 +329,7 @@ func (client *S3Client) FetchToFileWithoutChecksum(bucketName, key, localPath st
 		defer readCloser.Close()
 	}
 	if err != nil {
-		return fmt.Errorf("Error retrieving file from receiving bucket: %v", err)
+		return fmt.Errorf("Error retrieving file from %s/%s: %v", bucketName, key, err)
 	}
 
 	// Make sure download dir exists
