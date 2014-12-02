@@ -126,5 +126,24 @@ func TestNewPartnerUploadFile(t *testing.T) {
 }
 
 func TestNewPartnerUploadFiles(t *testing.T) {
-
+	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
+		return
+	}
+ 	partnerUpload, err := bagman.NewPartnerUploadFromConfigFile(partnerUploadConfigFile(), false)
+	if err != nil {
+		t.Error(err)
+	}
+	partnerUpload.Test = true // turn off output
+	file0, _ := bagman.RelativeToAbsPath(filepath.Join("testdata", "example.edu.multipart.b01.of02.tar"))
+	file1, _ := bagman.RelativeToAbsPath(filepath.Join("testdata", "example.edu.multipart.b02.of02.tar"))
+	files := make([]string, 2)
+	files[0] = file0
+	files[1] = file1
+	succeeded, failed := partnerUpload.UploadFiles(files)
+	if succeeded != 2 {
+		t.Errorf("Expected 2 files to have uploaded, but %d actually succeeded", succeeded)
+	}
+	if failed != 0 {
+		t.Errorf("%d files failed to upload")
+	}
 }
