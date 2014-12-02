@@ -129,3 +129,52 @@ func TestLoadAwsFromEnv(t *testing.T) {
 		t.Errorf("Failed to load AwsSecretAccessKey from environment.")
 	}
 }
+
+func TestPartnerConfigValidate(t *testing.T) {
+	partnerConfig := &bagman.PartnerConfig{
+		AwsAccessKeyId: "abc",
+		AwsSecretAccessKey: "xyz",
+		ReceivingBucket: "aptrust.receiving.xyz.edu",
+		RestorationBucket: "aptrust.receiving.xyz.edu",
+	}
+
+	// Clear these out for this test, so PartnerUpload can't read them.
+	// We want to see that validation fails when these are missing.
+	awsKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	awsSecret := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	os.Setenv("AWS_ACCESS_KEY_ID", "")
+	os.Setenv("AWS_SECRET_ACCESS_KEY", "")
+	// And make sure we restore them...
+	defer os.Setenv("AWS_ACCESS_KEY_ID", awsKey)
+	defer os.Setenv("AWS_SECRET_ACCESS_KEY", awsSecret)
+
+	// Validation should fail on missing AWS credentials
+	// and/or missing receiving bucket.
+	partnerConfig.AwsAccessKeyId = ""
+	err := partnerConfig.Validate()
+	if err == nil {
+		t.Errorf("Validation should have failed on missing Access Key")
+	}
+
+	partnerConfig.AwsAccessKeyId = "abc"
+	partnerConfig.AwsSecretAccessKey = ""
+	err = partnerConfig.Validate()
+	if err == nil {
+		t.Errorf("Validation should have failed on missing Secret Key")
+	}
+
+	partnerConfig.AwsSecretAccessKey = "xyz"
+	partnerConfig.ReceivingBucket = ""
+	err = partnerConfig.Validate()
+	if err == nil {
+		t.Errorf("Validation should have failed on missing Receiving Bucket")
+	}
+
+	partnerConfig.ReceivingBucket = "123"
+	partnerConfig.RestorationBucket = ""
+	err = partnerConfig.Validate()
+	if err == nil {
+		t.Errorf("Validation should have failed on missing Restoration Bucket")
+	}
+
+}

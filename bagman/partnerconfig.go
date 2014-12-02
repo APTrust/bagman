@@ -117,3 +117,24 @@ func (partnerConfig *PartnerConfig) LoadAwsFromEnv() {
 		partnerConfig.AwsSecretAccessKey = os.Getenv("AWS_SECRET_ACCESS_KEY")
 	}
 }
+
+func (partnerConfig *PartnerConfig) Validate() (error) {
+	if partnerConfig.AwsAccessKeyId == "" || partnerConfig.AwsSecretAccessKey == "" {
+		partnerConfig.LoadAwsFromEnv()
+	}
+	if partnerConfig.AwsAccessKeyId == "" {
+		return fmt.Errorf("AWS_ACCESS_KEY_ID is missing. This should be set in " +
+			"the config file as AwsAccessKeyId or in the environment as AWS_ACCESS_KEY_ID.")
+	}
+	if partnerConfig.AwsSecretAccessKey == "" {
+		return fmt.Errorf("AWS_SECRET_ACCESS_KEY is missing. This should be set in " +
+			"the config file as AwsSecretAccessKey or in the environment as AWS_SECRET_ACCESS_KEY.")
+	}
+	if partnerConfig.ReceivingBucket == "" {
+		return fmt.Errorf("Config file setting ReceivingBucket is missing.")
+	}
+	if partnerConfig.RestorationBucket == "" {
+		return fmt.Errorf("Config file setting ReceivingBucket is missing.")
+	}
+	return nil
+}

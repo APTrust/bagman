@@ -43,7 +43,7 @@ func TestNewPartnerUploadWithConfig(t *testing.T) {
 	}
 }
 
-func TestNewPartnerUploadLoadConfig(t *testing.T) {
+func TestPartnerUploadLoadConfig(t *testing.T) {
 	// This test will fail if AWS keys are not set in the environment,
 	// because they are not set in the config file.
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
@@ -61,47 +61,7 @@ func TestNewPartnerUploadLoadConfig(t *testing.T) {
 	}
 }
 
-func TestNewPartnerUploadValidateConfig(t *testing.T) {
-	partnerConfig := partnerConfigForTest()
- 	partnerUpload, err := bagman.NewPartnerUploadWithConfig(partnerConfig, false)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// Clear these out for this test, so PartnerUpload can't read them.
-	// We want to see that validation fails when these are missing.
-	awsKey := os.Getenv("AWS_ACCESS_KEY_ID")
-	awsSecret := os.Getenv("AWS_SECRET_ACCESS_KEY")
-	os.Setenv("AWS_ACCESS_KEY_ID", "")
-	os.Setenv("AWS_SECRET_ACCESS_KEY", "")
-	// And make sure we restore them...
-	defer os.Setenv("AWS_ACCESS_KEY_ID", awsKey)
-	defer os.Setenv("AWS_SECRET_ACCESS_KEY", awsSecret)
-
-	// Validation should fail on missing AWS credentials
-	// and/or missing receiving bucket.
-	partnerUpload.PartnerConfig.AwsAccessKeyId = ""
-	err = partnerUpload.ValidateConfig()
-	if err == nil {
-		t.Errorf("Validation should have failed on missing Access Key")
-	}
-
-	partnerUpload.PartnerConfig.AwsAccessKeyId = "abc"
-	partnerUpload.PartnerConfig.AwsSecretAccessKey = ""
-	err = partnerUpload.ValidateConfig()
-	if err == nil {
-		t.Errorf("Validation should have failed on missing Secret Key")
-	}
-
-	partnerUpload.PartnerConfig.AwsSecretAccessKey = "xyz"
-	partnerUpload.PartnerConfig.ReceivingBucket = ""
-	err = partnerUpload.ValidateConfig()
-	if err == nil {
-		t.Errorf("Validation should have failed on missing Receiving Bucket")
-	}
-}
-
-func TestNewPartnerUploadFile(t *testing.T) {
+func TestPartnerUploadFile(t *testing.T) {
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
@@ -125,7 +85,7 @@ func TestNewPartnerUploadFile(t *testing.T) {
 	}
 }
 
-func TestNewPartnerUploadFiles(t *testing.T) {
+func TestPartnerUploadFiles(t *testing.T) {
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}

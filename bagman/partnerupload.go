@@ -42,7 +42,7 @@ func NewPartnerUploadWithConfig(partnerConfig *PartnerConfig, logVerbose bool) (
 		PartnerConfig: partnerConfig,
 		LogVerbose: logVerbose,
 	}
-	err := partnerUpload.ValidateConfig()
+	err := partnerUpload.PartnerConfig.Validate()
 	if err != nil {
 		return nil, err
 	}
@@ -71,32 +71,8 @@ func (partnerUpload *PartnerUpload) LoadConfig(configFile string) (error) {
 		return err
 	}
 	partnerUpload.PartnerConfig = partnerConfig
-	err = partnerUpload.ValidateConfig()
+	err = partnerUpload.PartnerConfig.Validate()
 	return err
-}
-
-func (partnerUpload *PartnerUpload) ValidateConfig() (error) {
-	if partnerUpload.PartnerConfig == nil {
-		return fmt.Errorf("PartnerConfig cannot be nil.")
-	}
-	if partnerUpload.PartnerConfig.AwsAccessKeyId == "" || partnerUpload.PartnerConfig.AwsSecretAccessKey == "" {
-		if partnerUpload.LogVerbose && !partnerUpload.Test {
-			fmt.Println("[INFO]  AWS keys are not in config file. Loading from environment.")
-		}
-		partnerUpload.PartnerConfig.LoadAwsFromEnv()
-	}
-	if partnerUpload.PartnerConfig.AwsAccessKeyId == "" {
-		return fmt.Errorf("AWS_ACCESS_KEY_ID is missing. This should be set in " +
-			"the config file as AwsAccessKeyId or in the environment as AWS_ACCESS_KEY_ID.")
-	}
-	if partnerUpload.PartnerConfig.AwsSecretAccessKey == "" {
-		return fmt.Errorf("AWS_SECRET_ACCESS_KEY is missing. This should be set in " +
-			"the config file as AwsSecretAccessKey or in the environment as AWS_SECRET_ACCESS_KEY.")
-	}
-	if partnerUpload.PartnerConfig.ReceivingBucket == "" {
-		return fmt.Errorf("Config file setting ReceivingBucket is missing.")
-	}
-	return nil
 }
 
 // Uploads all files in filePaths to the S3 receiving bucket.
