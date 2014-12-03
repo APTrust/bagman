@@ -219,3 +219,7 @@ func (client *PartnerS3Client) DownloadFile(bucketName, key, checksum string) (s
 	}
 	return "", fmt.Errorf("checksum param '%s' is invalid. Use 'md5', 'sha256' or 'none'", checksum)
 }
+
+func (client *PartnerS3Client) List(bucketName string, limit int) (keys []s3.Key, err error) {
+	return client.S3Client.ListBucket(bucketName, limit)
+}
