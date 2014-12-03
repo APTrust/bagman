@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"github.com/APTrust/bagman/partner-apps"
 	"os"
 )
 
@@ -24,11 +25,18 @@ func main() {
 
 
 func parseCommandLine() {
+	showVersion := false
+	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
 	flag.BoolVar(&showHelp, "h", false, "Show help")
 	flag.BoolVar(&verbose, "v", false, "Verbose - print verbose messages")
 	flag.StringVar(&configFile, "config", "", "APTrust config file")
 	flag.Parse()
+	if showVersion {
+		partnerapps.PrintVersion("apt_upload")
+		os.Exit(0)
+	}
 	if showHelp || configFile == "" {
+		partnerapps.PrintVersion("apt_upload")
 		printUsage()
 		os.Exit(0)
 	}
@@ -58,25 +66,6 @@ When using the * pattern, as in the second and third examples above,
 apt_upload will not recurse into sub directories. It will upload
 files only, and will skip directories.
 
-Your config file should include the following name-value pairs,
-separated by an equal sign. The file may also include comment lines,
-which begin with a hash mark. Here's an example config file:
-
-# Config for apt_upload and apt_download
-AwsAccessKeyId = 123456789XYZ
-AwsSecretAccessKey = THIS KEY INCLUDES SPACES AND DOES NOT NEED QUOTES
-ReceivingBucket = 'aptrust.receive.test.edu'
-RestorationBucket = "aptrust.restore.test.edu"
-DownloadDir = "/home/josie/downloads"
-
-If you prefer not to put your AWS keys in the config file, you can
-put them into environment variables called AWS_ACCESS_KEY_ID
-and AWS_SECRET_ACCESS_KEY.
-
-ReceivingBucket is the name of the bucket into which you will upload
-bags for ingest. The RestorationBucket is the bucket from which you
-will download bags that you have restored.
-
 apt_upload prints all output to stdout. Typical output includes the
 result of the file upload (OK or ERROR). Failed uploads should show
 a description of the error. Successful uploads show the md5 checksum
@@ -94,10 +83,6 @@ The -v option will give verbose output, providing additional information
 about what's happening.
 `
 	fmt.Println(message)
-	printSpecUrl()
-}
-
-func printSpecUrl() {
-	fmt.Println("The full APTrust bagit specification is available at")
-	fmt.Println("https://sites.google.com/a/aptrust.org/aptrust-wiki/technical-documentation/processing-ingest/aptrust-bagit-profile \n")
+	fmt.Println(partnerapps.ConfigHelp)
+	fmt.Println(partnerapps.BagSpecMessage)
 }

@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"github.com/APTrust/bagman/partner-apps"
 	"os"
 )
 
@@ -35,9 +36,16 @@ func main() {
 }
 
 func validateCommandLine() {
+	showVersion := false
+	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
 	flag.BoolVar(&showHelp, "h", false, "Show help")
 	flag.Parse()
+	if showVersion {
+		partnerapps.PrintVersion("apt_validate")
+		os.Exit(0)
+	}
 	if showHelp {
+		partnerapps.PrintVersion("apt_validate")
 		printUsage()
 		os.Exit(0)
 	}
