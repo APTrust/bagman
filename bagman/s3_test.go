@@ -184,7 +184,7 @@ func TestFetchNonExistentFile(t *testing.T) {
 	if result.ErrorMessage == "" {
 		t.Error("FetchToFile should have returned a 'not found' error, but did not.")
 	}
-	if result.ErrorMessage != "Error retrieving file from receiving bucket: The specified key does not exist." {
+	if result.ErrorMessage != "Error retrieving file aptrust.test/non_existent_file.tar: The specified key does not exist." {
 		t.Errorf("Got unexpected error message: %v", result.ErrorMessage)
 	}
 	// Retry should be false, because file does not exist and we don't
