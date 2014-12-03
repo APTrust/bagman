@@ -118,20 +118,38 @@ The nsq folder contains service.go, which is a wrapper around NSQ. It
 also contains config files with settings for the NSQ demon. See the
 README in the nsq directory for more information.
 
-## The Apps
+## APTrust Apps
 
 Bag processing, deletion and restoration requires a number of
 apps. Here's a breakdown of the apps and what they do:
 
-### Bucket Reader
+### apt_bag_delete - Delete Bags After Ingest
 
-*apps/bucket_reader* runs as a cron job on the Go utility server. It
- scans all of the partner intake buckets, then checks the Processed
- Items list in Fluctus to see which of these items have not yet
- started the ingest process. It adds unprocessed tar files to the
- prepare_topic in NSQ.
+*apps/bag_delete* deletes bags from partners' receiving buckets after
+ the bags have been successfully ingested.
 
-### Prepare
+### apt_failed_fixity - Record Failed Fixity Events
+
+*apps/failed_fixity* records information about failed attempts to run
+ fixity checks on items in the preservation bucket.
+
+### apt_failed_replication - Record Failed Replication Events
+
+*apps/failed_replication* records information about failed attempts to
+ copy files from the preservation bucket in the US East region to the
+ replication bucket in the US West 2 region.
+
+### apt_file_delete - Delete Generic Files from Preservation
+
+*apps/apt_file_delete deletes files from the perservation bucket. This is
+ done only at the request of the institution that owns the files.
+
+### apt_fixity - Run Fixity Checks
+
+*apps/apt_fixity runs periodic fixity checks on files in the
+ preservation storage bucket.
+
+### apt_prepare - Prepare Bags for Ingest
 
 *apps/apt_prepare* handles the first stages on ingest. It reads from
  NSQ's prepare_channel, which often contains duplicate
@@ -143,7 +161,37 @@ apps. Here's a breakdown of the apps and what they do:
  finishes, but it leaves the untarred files for apt_store to work
  with.
 
-### Store
+### apt_record - Record Items in Fluctus
+
+*apps/apt_record* reads from NSQ's metadata_channel, which contains
+ information about where all of a bag's files have been stored. It
+ records this data in Fluctus (Fedora), creating or updating the
+ Intellectual Object, the Generic Files and Premis Events. apt_record
+ puts successfully ingested items into NSQ's cleanup_topic.
+
+### apt_replicate - Copy Ingested Files To Oregon
+
+*apps/apt_replicate* copies items from the preservation bucket in
+ Virginia to the replication bucket in Oregon.
+
+### apt_restore - Restore Intellectual Objects
+
+*apps/apt_restore* reassembles Intellectual Objects into APTrust bags
+ and copies them to the restoration bucket of the partner who owns the
+ object.
+
+### apt_retry - Re-attempt Recording in Fluctus
+
+*apps/apt_retry* is a manually-run app that uses JSON data dumped from
+ the trouble queue to re-record ingest data in Fluctus. It can create
+ complete, consistent records in Fluctus about any ingested bag whose
+ Fluctus data was recorded incompletely or not at all. This tool is
+ rarely needed. A typical use case occurs when a bag exposes a new bug
+ in Fluctus that prevents proper recording of metadata. Once the bug
+ is fixed, the object's metadata can be rebuilt in Fluctus from the
+ JSON data in the trouble queue.
+
+### apt_store - Store Ingested Files in the Preservation Bucket
 
 *apps/apt_store* reads from the store_channel and stores the generic
  files unpacked by apt_prepare in the S3 preservation bucket (aka
@@ -153,19 +201,52 @@ apps. Here's a breakdown of the apps and what they do:
  can be recorded in Fluctus. apt_store deletes all of the untarred
  contents of the bag from the local file system when it finishes.
 
-### Record
+### apt_trouble - Record Information About Failed Ingest
 
-*apps/apt_record* reads from NSQ's metadata_channel, which contains
- information about where all of a bag's files have been stored. It
- records this data in Fluctus (Fedora), creating or updating the
- Intellectual Object, the Generic Files and Premis Events. apt_record
- puts successfully ingested items into NSQ's cleanup_topic.
+*apps/apt_trouble* dumps information about failed ingest attempts into
+ JSON files inside the log directory of the Go server. This data is
+ useful for diagnosing bugs and for the apt_retry utility described
+ above.
 
-### Cleanup
+### Bucket Reader
 
-*apps/apt_cleanup* reads from NSQ's cleanup_channel to see which
- successfully-ingested tar files should be deleted from the partner's
- receiving buckets. It deletes those files from the S3 buckets.
+*apps/bucket_reader* runs as a cron job on the Go utility server. It
+ scans all of the partner intake buckets, then checks the Processed
+ Items list in Fluctus to see which of these items have not yet
+ started the ingest process. It adds unprocessed tar files to the
+ prepare_topic in NSQ.
+
+### Downloader
+
+*apps/downloader* is a simple command-line utility for downloading
+ files from any APTrust bucket to your local machine. You must have
+ the proper APTrust AWS keys set in your environment to use this.
+
+### Cleanup Reader
+
+*apps/cleanup_reader* is a cron job that gathers information from
+ Fluctus about what bags have been ingested recently. It adds
+ successfully-ingested bags to NSQ's bag_delete topic, so that
+ apt_bag_delete can remove them from the receiving buckets.
+
+### Fixity Reader
+
+*apps/fixity_reader* is a cron job that checks Fluctus once a day for
+ files that need a fixity check. It copies information about these
+ files into NSQ's fixity_topic.
+
+### Multiclean
+
+*apps/multiclean* finds and deletes fragments of failed multi-part S3
+ uploads. We run this periodically to avoid having to pay S3 storage
+ charges on inaccessible file fragments.
+
+### Read Test
+
+*apps/readtest* reads an APTrust bag from the local file system and
+ prints out information about what's in it (files, tags, etc.) This
+ can be useful for examining bags and diagnosing problems. See also
+ the partner app called apt_validate.
 
 ### Request Reader
 
@@ -190,8 +271,31 @@ apps. Here's a breakdown of the apps and what they do:
  match the original parts, but the restored whole will match the
  original whole.)
 
-### Deletion
+## APTrust Partner Apps
 
-*apps/apt_delete* reads from NSQ's delete_channel and deletes generic
- files from the S3 preservation bucket. Copies of the deleted files
- will remain in Glacier storage for a period of time after deletion.
+The partner-apps directory contains apps intended for use by APTrust
+partners. Note that these apps can access only the partner's own
+receiving and restoration buckets. These apps require a config file,
+which is described by providing the -h flag to any of the apps.
+
+The apps include the following:
+
+### apt_download
+
+*partner-apps/apt_download* enables partners to download restored bags
+ from their restoration buckets.
+
+### apt_list
+
+*partner-apps/apt_list* enables partners to list the contents of their
+ receiving and restoration buckets.
+
+### apt_upload
+
+*partner-apps/apt_upload* enables partners to upload bags to their
+ receiving buckets for ingest.
+
+### apt_validate
+
+*partner-apps/apt_validate* enables partners to validate bags (tarred
+ or untarred) before uploading them for ingest.
