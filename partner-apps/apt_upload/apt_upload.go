@@ -49,7 +49,7 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_upload -config=pathToConfigFile [-v] <file1> <file2> ... <fileN>
+apt_upload --config=pathToConfigFile [-v] <file1> <file2> ... <fileN>
 
 Uploads APTrust bag files to S3 so they can be archived in APTrust.
 The files you upload should be tar files that conform to the APTrust

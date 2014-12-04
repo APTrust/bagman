@@ -78,7 +78,7 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_download [-checksum=<md5|sha256>] -config=pathToConfigFile <file1>...<fileN>
+apt_download [--checksum=<md5|sha256>] --config=pathToConfigFile <file1>...<fileN>
 
 Downloads APTrust bag files from the S3 restoration bucket.
 You must first request bag restoration through the APTrust Web UI.
