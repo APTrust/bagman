@@ -36,7 +36,7 @@ func main() {
 		fmt.Printf("Bucket %s is empty\n", bucket)
 		return
 	}
-	fmt.Printf("%-24s  %-32s  %-16s  %s\n", "LastModified", "Md5", "Size", "File")
+	fmt.Printf("%-24s  %-32s  %-16s  %s\n", "LastModified", "ETag", "Size", "File")
 	printItems(keys)
 }
 
@@ -88,7 +88,13 @@ receiving.
 The limit option describes the maximum number of items to list.
 
 apt_list prints all output to stdout. Output includes the name,
-size, md5 checksum and last modified date of each file.
+size, etag and last modified date of each file.
+
+For files under 5GB, the etag is the file's md5 checksum. For files
+larger than 5GB, the etag represents a digest of the md5 sums from
+each part of a multipart upload, and will not match your original
+file's md5 checksum. More information on how etags are calculated
+for large files is available at http://bit.ly/12BH7ti
 
 `
 	fmt.Println(message)
