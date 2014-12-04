@@ -7,22 +7,14 @@ import (
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/nu7hatch/gouuid"
-	"github.com/rakyll/magicmime"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 )
-
-var validMimeType = regexp.MustCompile(`^\w+/\w+$`)
-
-// magicMime is the MimeMagic database. We want
-// just one copy of this open at a time.
-var magicMime *magicmime.Magic
 
 // Untars the file at the specified tarFilePath and returns a list
 // of files that were untarred from the archive. Check
@@ -344,26 +336,7 @@ func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size
 		file.Sha256 = fmt.Sprintf("%x", shaHash.Sum(nil))
 		file.Sha256Generated = time.Now().UTC()
 
-		// Open the Mime Magic DB only once.
-		if magicMime == nil {
-			magicMime, err = magicmime.New()
-			if err != nil {
-				file.ErrorMessage = fmt.Sprintf("Error opening MimeMagic database: %v", err)
-				return file
-			}
-		}
-
-		// Get the mime type of the file. In some cases, MagicMime
-		// returns an empty string, and in rare cases (about 1 in 10000),
-		// it returns unprintable characters. These are not valid mime
-		// types and cause ingest to fail. So we default to the safe
-		// application/binary and then set the MimeType only if
-		// MagicMime returned something that looks legit.
-		file.MimeType = "application/binary"
-		mimetype, _ := magicMime.TypeByFile(absPath)
-		if mimetype != "" && validMimeType.MatchString(mimetype) {
-			file.MimeType = mimetype
-		}
+		file.MimeType, err = GuessMimeType(absPath)
 	}
 
 	return file
