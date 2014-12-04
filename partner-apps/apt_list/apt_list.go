@@ -33,7 +33,7 @@ func main() {
 		return
 	}
 	if len(keys) == 0 {
-		fmt.Printf("Bucket %s is empty", bucket)
+		fmt.Printf("Bucket %s is empty\n", bucket)
 		return
 	}
 	fmt.Printf("%-24s  %-32s  %-16s  %s\n", "LastModified", "Md5", "Size", "File")
@@ -77,7 +77,7 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_list -config=pathToConfigFile -bucket=<restoration|receiving> [-limit=100]
+apt_list --config=pathToConfigFile --bucket=<restoration|receiving> [--limit=100]
 
 Lists the contents of your APTrust receiving bucket or restoration
 bucket.
