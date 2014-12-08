@@ -49,7 +49,7 @@ func fetchAll(client *bagman.PartnerS3Client) {
 		if checksum == "none" {
 			fmt.Printf("[OK]    Downloaded %s. %s\n", file, deleteMessage)
 		} else {
-			fmt.Printf("[OK]    Downloaded %s with %s: %s. %s\n", file, checksum, digest, deleteMessage)
+			fmt.Printf("[OK]    Downloaded %s with %s: %s %s\n", file, checksum, digest, deleteMessage)
 		}
 		succeeded++
 	}
