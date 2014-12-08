@@ -23,7 +23,6 @@ Install these prerequisites as well:
 	go get github.com/nu7hatch/gouuid
 	go get github.com/bitly/go-nsq
 	go get github.com/rakyll/magicmime
-	go get github.com/mipearson/rfw
 	go get github.com/op/go-logging
 	go get github.com/APTrust/bagins
 ```
@@ -65,15 +64,17 @@ APTrust AWS account.
 
 ## Testing
 
+You can run basic unit tests by changing into the bagman/bagman
+directory and running this:
+
 ```
 	go test
 ```
 
-Bagman will skip the S3 integration tests if it can't find your AWS
-keys in your environment, or if it can't get a response from the
-Fluctus server at the FluctusURL specified in config.json. The S3
-tests should succeed if you have any AWS keys in your environment,
-since the integration tests read from a public bucket.
+... but because bagman has to work with NSQ, S3 and a Rails app called
+Fluctus, the integration tests are much more useful and
+informative. See the [Testing Documentation](Testing.md) for more
+information about unit tests and integration tests.
 
 ## Running Locally with NSQ
 
