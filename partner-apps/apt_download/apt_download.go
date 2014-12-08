@@ -11,6 +11,7 @@ import (
 var configFile string
 var checksum string
 var showHelp bool
+var deleteFiles bool
 
 func main() {
 	parseCommandLine()
@@ -35,10 +36,20 @@ func fetchAll(client *bagman.PartnerS3Client) {
 			failed++
 			continue
 		}
+		deleteMessage := ""
+		if deleteFiles {
+			err = client.Delete(bucketName, file)
+			if err != nil {
+				deleteMessage = fmt.Sprintf("File could not be deleted from S3 " +
+					"restoration bucket after download: %v", err)
+			} else {
+				deleteMessage = "File was deleted from S3 restoration bucket."
+			}
+		}
 		if checksum == "none" {
-			fmt.Printf("[OK]    Downloaded %s\n", file)
+			fmt.Printf("[OK]    Downloaded %s. %s\n", file, deleteMessage)
 		} else {
-			fmt.Printf("[OK]    Downloaded %s with %s: %s\n", file, checksum, digest)
+			fmt.Printf("[OK]    Downloaded %s with %s: %s. %s\n", file, checksum, digest, deleteMessage)
 		}
 		succeeded++
 	}
@@ -50,6 +61,7 @@ func parseCommandLine() {
 	showVersion := false
 	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
 	flag.BoolVar(&showHelp, "h", false, "Show help")
+	flag.BoolVar(&deleteFiles, "delete", false, "Delete files from restoration bucket after download")
 	flag.StringVar(&configFile, "config", "", "APTrust config file")
 	flag.StringVar(&checksum, "checksum", "", "Checksum to calculate on download (md5 or sha256). Default is none.")
 	flag.Parse()
@@ -78,7 +90,7 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_download [--checksum=<md5|sha256>] --config=pathToConfigFile <file1>...<fileN>
+apt_download [--checksum=<md5|sha256>] [--delete] --config=pathToConfigFile <file1>...<fileN>
 
 Downloads APTrust bag files from the S3 restoration bucket.
 You must first request bag restoration through the APTrust Web UI.
@@ -92,6 +104,9 @@ md5       Calculates the md5 digest
 sha256    Calculated the sha256 digest
 none      Does not calculate any digest. This is the default, and
           this will be applied if you omit the -checksum flag.
+
+If you supply the --delete flag, files will be deleted from the S3
+restoration bucket after download.
 
 apt_download prints all output to stdout. Typical output includes the
 result of the file download (OK or ERROR) and the md5 or sha256 checksum,

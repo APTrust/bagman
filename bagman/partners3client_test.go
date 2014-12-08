@@ -61,7 +61,7 @@ func TestPartnerS3ClientLoadConfig(t *testing.T) {
 	}
 }
 
-func TestPartnerS3ClientUploadFile(t *testing.T) {
+func TestPartnerS3ClientUploadListAndDelete(t *testing.T) {
 	if os.Getenv("AWS_ACCESS_KEY_ID") == "" || os.Getenv("AWS_SECRET_ACCESS_KEY") == "" {
 		return
 	}
@@ -76,12 +76,36 @@ func TestPartnerS3ClientUploadFile(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+
+	// Test upload
 	md5, err := client.UploadFile(file)
 	if err != nil {
 		t.Error(err)
 	}
 	if md5 != "48c876800900b64c17c9933143ca168a" {
 		t.Errorf("Expected md5 sum '48c876800900b64c17c9933143ca168a', got '%s'", md5)
+	}
+
+	// Test list. There should be only a handful of files in this test bucket.
+	keys, err := client.List(client.PartnerConfig.ReceivingBucket, 500)
+	if err != nil {
+		t.Errorf("Error trying to list receiving bucket: %v", err)
+	}
+	foundFile := false
+	for _, key := range keys {
+		if key.Key == "example.edu.sample_good.tar" {
+			foundFile = true
+			break
+		}
+	}
+	if !foundFile {
+		t.Errorf("Uploaded file 'example.edu.sample_good.tar' not found in test bucket.")
+	}
+
+	// Test delete
+	err = client.Delete(client.PartnerConfig.ReceivingBucket, "example.edu.sample_good.tar")
+	if err != nil {
+		t.Errorf("Error deleting example.edu.sample_good.tar from S3: %v", err)
 	}
 }
 
