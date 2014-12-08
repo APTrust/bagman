@@ -29,7 +29,9 @@ RestorationBucket is the name of the S3 bucket that will hold your
 restored APTrust bags.
 
 DownloadDir is the name of the local directory in which to save
-files downloaded from your APTrust restoration bucket.
+files downloaded from your APTrust restoration bucket. The APTrust
+config currently does not expand ~ to your home directory, so use
+an absolute path to be safe.
 `
 var BagSpecMessage = `
 The full APTrust bagit specification is available at
