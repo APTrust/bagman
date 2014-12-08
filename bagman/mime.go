@@ -1,4 +1,4 @@
-// +build !partners cgo
+// +build !partners
 
 // This requires an external C library that our partners won't have,
 // so this file is not compiled when the flag -tags=partners

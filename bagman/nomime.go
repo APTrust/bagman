@@ -1,4 +1,4 @@
-// +build partners !cgo
+// +build partners
 
 // Stub function for GuessMimeType. This is for partner-apps, where
 // the function is never actually called. We need the function to be

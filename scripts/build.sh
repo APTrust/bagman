@@ -92,21 +92,21 @@ echo "building apt_failed_replication"
 cd "${BAGMAN_HOME}/apps/apt_failed_replication"
 go build -o ${BAGMAN_BIN}/apt_failed_replication apt_failed_replication.go
 
-echo "building apt_download -tags=partners"
+echo "building apt_download -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_download"
-go build -o ${BAGMAN_BIN}/apt_download apt_download.go
+go build -tags='partners' -o ${BAGMAN_BIN}/apt_download apt_download.go
 
-echo "building apt_list -tags=partners"
+echo "building apt_list -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_list"
-go build -o ${BAGMAN_BIN}/apt_list apt_list.go
+go build -tags='partners' -o ${BAGMAN_BIN}/apt_list apt_list.go
 
-echo "building apt_upload -tags=partners"
+echo "building apt_upload -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_upload"
-go build -o ${BAGMAN_BIN}/apt_upload apt_upload.go
+go build -tags='partners' -o ${BAGMAN_BIN}/apt_upload apt_upload.go
 
-echo "building apt_validate -tags=partners"
+echo "building apt_validate -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_validate"
-go build -o ${BAGMAN_BIN}/apt_validate apt_validate.go
+go build -tags='partners' -o ${BAGMAN_BIN}/apt_validate apt_validate.go
 
 echo "copying config files into bin directory"
 cp ${BAGMAN_HOME}/config/config.json ${BAGMAN_BIN}/
