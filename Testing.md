@@ -170,46 +170,46 @@ following.
 ### Testing apt_download
 
 ```
-    ./apt_download --config=../testdata/partner_config_download_test.conf \
-    ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
+	./apt_download --config=../testdata/partner_config_download_test.conf \
+	--no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
 To test apt_download with md5 checksums:
 
 ```
-    ./apt_download --config=../testdata/partner_config_download_test.conf --checksum=md5 \
-     ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
+	./apt_download --config=../testdata/partner_config_download_test.conf --checksum=md5 \
+	 --no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
 To test apt_download with sha256 checksums:
 
 ```
-    ./apt_download --config=../testdata/partner_config_download_test.conf --checksum=sha256 \
-     ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
+	./apt_download --config=../testdata/partner_config_download_test.conf --checksum=sha256 \
+	 --no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
-Please don't test apt_download with the --delete flag, unless you're
-testing against a file you put into aptrust.receiving.test.test.edu,
-or if you will replace the file you delete.
+If you test apt_download without the --no-delete flag, it will delete
+files from your testing bucket. This is probably not what you want,
+because that will cause future tests of apt_download to fail.
 
 ### Testing apt_list
 
 List up to 10 items from the receiving bucket:
 
 ```
-    ./apt_list -config=../testdata/partner_config_integration_test.conf --bucket=receiving --limit=10
+	./apt_list -config=../testdata/partner_config_integration_test.conf --bucket=receiving --limit=10
 ```
 
 List up to 10 items from the restoration bucket:
 
 ```
-    ./apt_list -config=../testdata/partner_config_download_test.conf --bucket=restoration --limit=10
+	./apt_list -config=../testdata/partner_config_download_test.conf --bucket=restoration --limit=10
 ```
 
 ### Testing apt_upload
 
 ```
-    ./apt_upload -config=../testdata/partner_config_integration_test.conf ../testdata/*.tar
+	./apt_upload -config=../testdata/partner_config_integration_test.conf ../testdata/*.tar
 ```
 
 ## Testing apt_validate
