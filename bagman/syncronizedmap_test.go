@@ -1,7 +1,6 @@
 package bagman_test
 
 import (
-	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"testing"
 )
@@ -72,12 +71,6 @@ func TestKeys(t *testing.T) {
 	if len(keys) != 3 {
 		t.Error("Keys() should have returned 3 items")
 	}
-	for i := 1; i <= 3; i++ {
-		key := fmt.Sprintf("key %d", i)
-		if keys[i - 1] != key {
-			t.Errorf("Key %d expected '%s', got '%s'", i - 1, key, keys[i - 1])
-		}
-	}
 }
 
 func TestValues(t *testing.T) {
@@ -92,11 +85,5 @@ func TestValues(t *testing.T) {
 	values = syncMap.Values()
 	if len(values) != 3 {
 		t.Error("Values() should have returned 3 items")
-	}
-	for i := 1; i <= 3; i++ {
-		value := fmt.Sprintf("value %d", i)
-		if values[i - 1] != value {
-			t.Errorf("Value %d expected '%s', got '%s'", i - 1, value, values[i - 1])
-		}
 	}
 }
