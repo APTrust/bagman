@@ -17,7 +17,7 @@ var showHelp bool
 
 func main() {
 	parseCommandLine()
- 	client, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, false)
+	client, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, false)
 	if err != nil {
 		fmt.Printf("[FATAL] %v\n", err)
 		return
@@ -51,7 +51,7 @@ func printItems(keys []s3.Key) {
 func parseCommandLine() {
 	showVersion := false
 	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
-	flag.BoolVar(&showHelp, "h", false, "Show help")
+	flag.BoolVar(&showHelp, "help", false, "Show help")
 	flag.StringVar(&configFile, "config", "", "APTrust config file")
 	flag.StringVar(&bucket, "bucket", "restoration", "The bucket to list: receiving or restoration")
 	flag.IntVar(&limit, "limit", 100, "Max number of items to list")

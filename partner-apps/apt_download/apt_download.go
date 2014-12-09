@@ -15,7 +15,7 @@ var deleteFiles bool
 
 func main() {
 	parseCommandLine()
- 	client, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, false)
+	client, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, false)
 	if err != nil {
 		fmt.Printf("[FATAL] %v\n", err)
 		return
@@ -60,7 +60,7 @@ func fetchAll(client *bagman.PartnerS3Client) {
 func parseCommandLine() {
 	showVersion := false
 	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
-	flag.BoolVar(&showHelp, "h", false, "Show help")
+	flag.BoolVar(&showHelp, "help", false, "Show help")
 	flag.BoolVar(&deleteFiles, "delete", false, "Delete files from restoration bucket after download")
 	flag.StringVar(&configFile, "config", "", "APTrust config file")
 	flag.StringVar(&checksum, "checksum", "", "Checksum to calculate on download (md5 or sha256). Default is none.")
@@ -103,7 +103,7 @@ be calculated on the downloaded file. Valid checksum options are:
 md5       Calculates the md5 digest
 sha256    Calculated the sha256 digest
 none      Does not calculate any digest. This is the default, and
-          this will be applied if you omit the -checksum flag.
+		  this will be applied if you omit the -checksum flag.
 
 If you supply the --delete flag, files will be deleted from the S3
 restoration bucket after download.

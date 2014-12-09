@@ -14,7 +14,7 @@ var showHelp bool
 
 func main() {
 	parseCommandLine()
- 	client, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, verbose)
+	client, err := bagman.NewPartnerS3ClientFromConfigFile(configFile, verbose)
 	if err != nil {
 		fmt.Printf("[FATAL] %v\n", err)
 		return
@@ -27,8 +27,8 @@ func main() {
 func parseCommandLine() {
 	showVersion := false
 	flag.BoolVar(&showVersion, "version", false, "Print version and exit")
-	flag.BoolVar(&showHelp, "h", false, "Show help")
-	flag.BoolVar(&verbose, "v", false, "Verbose - print verbose messages")
+	flag.BoolVar(&showHelp, "help", false, "Show help")
+	flag.BoolVar(&verbose, "verbose", false, "Verbose - print verbose messages")
 	flag.StringVar(&configFile, "config", "", "APTrust config file")
 	flag.Parse()
 	if showVersion {
@@ -49,7 +49,7 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_upload --config=pathToConfigFile [-v] <file1> <file2> ... <fileN>
+apt_upload --config=pathToConfigFile [--verbose] <file1> <file2> ... <fileN>
 
 Uploads APTrust bag files to S3 so they can be archived in APTrust.
 The files you upload should be tar files that conform to the APTrust
@@ -58,9 +58,9 @@ are valid before uploading. The bags you upload will go into the
 receiving bucket specified in your config file.
 
 Examples:
-    apt_upload -config=aptrust.conf archive1.tar archive2.tar
-    apt_upload -config=aptrust.conf ~/my_data/*.tar
-    apt_upload -config=aptrust.conf -v ~/my_data/*
+	apt_upload -config=aptrust.conf archive1.tar archive2.tar
+	apt_upload -config=aptrust.conf ~/my_data/*.tar
+	apt_upload -config=aptrust.conf --verbose ~/my_data/*
 
 When using the * pattern, as in the second and third examples above,
 apt_upload will not recurse into sub directories. It will upload
