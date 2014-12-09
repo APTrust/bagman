@@ -18,10 +18,10 @@ BAGMAN_HOME=~/go/src/github.com/APTrust/bagman
 BAGMAN_BIN=${BAGMAN_HOME}/bin
 
 if [ ! -d ${BAGMAN_DIR} ]; then
-    mkdir ${BAGMAN_DIR}
+	mkdir ${BAGMAN_DIR}
 else
-    echo "cleaning out bin directory"
-    rm ${BAGMAN_BIN}/*
+	echo "cleaning out bin directory"
+	rm ${BAGMAN_BIN}/*
 fi
 
 echo "building apt_nsq_service"
@@ -107,6 +107,10 @@ go build -tags='partners' -o ${BAGMAN_BIN}/apt_upload apt_upload.go
 echo "building apt_validate -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_validate"
 go build -tags='partners' -o ${BAGMAN_BIN}/apt_validate apt_validate.go
+
+echo "building apt_delete -tags='partners'"
+cd "${BAGMAN_HOME}/partner-apps/apt_delete"
+go build -tags='partners' -o ${BAGMAN_BIN}/apt_delete apt_delete.go
 
 echo "copying config files into bin directory"
 cp ${BAGMAN_HOME}/config/config.json ${BAGMAN_BIN}/

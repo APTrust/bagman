@@ -167,6 +167,17 @@ libraries that partners probably don't have.
 After running the build script, cd into the bin directory and run the
 following.
 
+### Testing apt_delete
+
+You'll need to add a file to the aptrust.restore.test.test.edu bucket
+to test this. Assuming you add a file called test_file.tar, you can
+test with this:
+
+```
+	./apt_download --config=../testdata/partner_config_download_test.conf \
+	test_file.tar
+```
+
 ### Testing apt_download
 
 ```

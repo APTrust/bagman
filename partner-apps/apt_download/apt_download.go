@@ -76,7 +76,7 @@ func parseCommandLine() {
 	}
 	if len(os.Args) < 2 {
 		fmt.Printf("Please specify one or more files to download. ")
-		fmt.Printf("Or use apt_upload -h for help.\n")
+		fmt.Printf("Or use apt_download -h for help.\n")
 		os.Exit(1)
 	}
 	if checksum != "" && checksum != "md5" && checksum != "sha256" && checksum != "none" {

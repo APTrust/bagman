@@ -281,6 +281,11 @@ which is described by providing the -h flag to any of the apps.
 
 The apps include the following:
 
+### apt_delete
+
+*partner-apps/apt_delete* enables partners to download restored bags
+ from their restoration buckets.
+
 ### apt_download
 
 *partner-apps/apt_download* enables partners to download restored bags
