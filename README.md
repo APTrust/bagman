@@ -42,25 +42,9 @@ AWS_SECRET_ACCESS_KEY in your environment for bagman to connect
 to S3.
 
 You can create a named custom configuration in config.json, and
-then run bagman with that named configuration using:
-
-```
-	cd cli
-	go run cli.go -config=dev
-```
-
-... or whatever named configuration you want. If you dont specify a
-configuration, the cli program will print a list of available
-configurations.
-
-You can run bagman locally with the following command. This will pull
-down files <= 200k and process them. You will likely have to change
-the TarDirectory and LogDirectory in the config.json file to paths
-that actually exist on your system.
-
-At the moment, bagman retrieves files from some hard-coded bucket
-names that you won't be able to access unless you are using the
-APTrust AWS account.
+then run bagman with that named configuration using the scripts
+in the scripts directory. See the section on Running Locally with
+NSQ below.
 
 ## Testing
 
@@ -277,7 +261,11 @@ apps. Here's a breakdown of the apps and what they do:
 The partner-apps directory contains apps intended for use by APTrust
 partners. Note that these apps can access only the partner's own
 receiving and restoration buckets. These apps require a config file,
-which is described by providing the -h flag to any of the apps.
+which is described by providing the --help flag to any of the apps.
+
+Most of these apps require a configuration file, which you can specify
+explicitly on the command line with the --config flag, or implicitly
+by creating a ~/.aptrust_partner.conf file.
 
 The apps include the following:
 

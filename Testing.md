@@ -1,4 +1,4 @@
-# Testing bagman'
+# Testing bagman
 
 ## Unit Tests and Simple Integration Tests
 
@@ -165,7 +165,10 @@ apps. You'll notice that the partner apps are built with the
 libraries that partners probably don't have.
 
 After running the build script, cd into the bin directory and run the
-following.
+following commands.
+
+**You can omit the --config parameter in all of the following examples
+by saving a config file in ~/.aptrust_partner.conf **
 
 ### Testing apt_delete
 
@@ -174,28 +177,28 @@ to test this. Assuming you add a file called test_file.tar, you can
 test with this:
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf \
+	./apt_download --config=../testdata/partner_config_integration_test.conf \
 	test_file.tar
 ```
 
 ### Testing apt_download
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf \
+	./apt_download --config=../testdata/partner_config_integration_test.conf \
 	--no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
 To test apt_download with md5 checksums:
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf --checksum=md5 \
+	./apt_download --config=../testdata/partner_config_integration_test.conf --checksum=md5 \
 	 --no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
 To test apt_download with sha256 checksums:
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf --checksum=sha256 \
+	./apt_download --config=../testdata/partner_config_integration_test.conf --checksum=sha256 \
 	 --no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
@@ -214,7 +217,7 @@ List up to 10 items from the receiving bucket:
 List up to 10 items from the restoration bucket:
 
 ```
-	./apt_list -config=../testdata/partner_config_download_test.conf --bucket=restoration --limit=10
+	./apt_list -config=../testdata/partner_config_integration_test.conf --bucket=restoration --limit=10
 ```
 
 ### Testing apt_upload
