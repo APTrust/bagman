@@ -41,7 +41,7 @@ func parsePartnerConfig(file *os.File) (*PartnerConfig, error) {
 			return nil, err
 		}
 		cleanLine := strings.TrimSpace(line)
-		if strings.HasPrefix(cleanLine, "#") {
+		if cleanLine == "" || strings.HasPrefix(cleanLine, "#") {
 			continue
 		}
 		parts := strings.SplitN(cleanLine, "=", 2)
