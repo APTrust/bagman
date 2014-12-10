@@ -5,7 +5,7 @@ rm -r ~/tmp/*
 
 echo "Starting NSQ"
 cd ~/go/src/github.com/APTrust/bagman/nsq
-go run service.go -config ~/go/src/github.com/APTrust/bagman/nsq/nsqd.apd4n.config &>/dev/null &
+go run service.go -config ~/go/src/github.com/APTrust/bagman/nsq/nsqd.dev.config &>/dev/null &
 NSQ_PID=$!
 sleep 3
 
