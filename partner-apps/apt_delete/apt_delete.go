@@ -76,9 +76,12 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_delete --config=pathToConfigFile <file1>...<fileN>
+apt_delete [--config=pathToConfigFile] <file1>...<fileN>
 
 Deletes APTrust bag files from your S3 restoration bucket.
+
+You may omit the --config option if you want to use the default
+config file in your home directory (~/.aptrust_partner.conf).
 `
 	fmt.Println(message)
 	fmt.Println(partnerapps.ConfigHelp)

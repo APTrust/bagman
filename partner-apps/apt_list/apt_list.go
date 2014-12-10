@@ -87,10 +87,13 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_list --config=pathToConfigFile --bucket=<restoration|receiving> [--limit=100]
+apt_list [--config=pathToConfigFile] --bucket=<restoration|receiving> [--limit=100]
 
 Lists the contents of your APTrust receiving bucket or restoration
 bucket.
+
+You may omit the --config option if you want to use the default
+config file in your home directory (~/.aptrust_partner.conf).
 
 The bucket argument is required, and must be either restoration or
 receiving.
