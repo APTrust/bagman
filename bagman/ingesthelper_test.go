@@ -8,8 +8,10 @@ import (
 	"github.com/bitly/go-nsq"
 	"github.com/crowdmob/goamz/s3"
 	"io/ioutil"
-	"os"
 	"net/http"
+	"os"
+	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
@@ -312,7 +314,6 @@ func verifyResult(t *testing.T, itemName, expected, actual string) {
 func verifyFetchResult(t *testing.T, fetchResult *bagman.FetchResult) {
 	verifyResult(t, "BucketName", "aptrust.receiving.test.test.edu", fetchResult.BucketName)
 	verifyResult(t, "Key", "ncsu.1840.16-2928.tar", fetchResult.Key)
-	verifyResult(t, "LocalTarFile", "tmp/ncsu.1840.16-2928.tar", fetchResult.LocalTarFile)
 	verifyResult(t, "RemoteMd5", "b4f8f3072f73598fc5b65bf416b6019a", fetchResult.RemoteMd5)
 	verifyResult(t, "LocalMd5", "b4f8f3072f73598fc5b65bf416b6019a", fetchResult.LocalMd5)
 	verifyResult(t, "Md5Verified", "true", strconv.FormatBool(fetchResult.Md5Verified))
@@ -320,12 +321,20 @@ func verifyFetchResult(t *testing.T, fetchResult *bagman.FetchResult) {
 	verifyResult(t, "ErrorMessage", "", fetchResult.ErrorMessage)
 	verifyResult(t, "Warning", "", fetchResult.Warning)
 	verifyResult(t, "Retry", "true", strconv.FormatBool(fetchResult.Retry))
+
+	currentUser, _ := user.Current()
+	expectedFile := fmt.Sprintf(filepath.Join(currentUser.HomeDir, "/tmp/test_tar/ncsu.1840.16-2928.tar"))
+	if fetchResult.LocalTarFile != expectedFile {
+		t.Errorf("LocalTarFile '%s' should be '%s'", fetchResult.LocalTarFile, expectedFile)
+	}
 }
 
 // Do a high-level check. Other unit tests cover the details
 func verifyBagReadResult(t *testing.T, bagReadResult *bagman.BagReadResult) {
-	if !strings.HasSuffix(bagReadResult.Path, "/bagman/bagman/tmp/ncsu.1840.16-2928") {
-		t.Errorf("Wrong BagReadResult.Path: '%s'", bagReadResult.Path)
+	currentUser, _ := user.Current()
+	expectedFile := fmt.Sprintf(filepath.Join(currentUser.HomeDir, "/tmp/test_tar/ncsu.1840.16-2928"))
+	if bagReadResult.Path != expectedFile {
+		t.Errorf("BagReadResult.Path: expected '%s' but got '%s'", expectedFile, bagReadResult.Path)
 	}
 	verifyResult(t, "ErrorMessage", "", bagReadResult.ErrorMessage)
 	verifyResult(t, "File Count", "9", strconv.FormatInt(int64(len(bagReadResult.Files)), 10))

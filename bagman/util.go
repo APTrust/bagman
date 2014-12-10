@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -263,4 +264,20 @@ func QueueToNSQ(url string, data []interface{}) (error) {
 		return fmt.Errorf("nsqd returned status code %d on last mput", resp.StatusCode)
 	}
 	return nil
+}
+
+// Expands the tilde in a directory path to the current
+// user's home directory. For example, on Linux, ~/data
+// would expand to something like /home/josie/data
+func ExpandTilde(filePath string) (string, error) {
+	if strings.Index(filePath, "~") < 0 {
+		return filePath, nil
+	}
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	homeDir := usr.HomeDir + "/"
+	expandedDir := strings.Replace(filePath, "~/", homeDir, 1)
+	return expandedDir, nil
 }

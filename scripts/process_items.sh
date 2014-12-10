@@ -12,11 +12,11 @@ sleep 3
 # Wait for this one to finish
 echo "Starting bucket reader"
 cd ~/go/src/github.com/APTrust/bagman/apps/bucket_reader
-go run bucket_reader.go -config apd4n
+go run bucket_reader.go -config dev
 
 echo "Starting apt_prepare"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_prepare
-go run apt_prepare.go -config apd4n &
+go run apt_prepare.go -config dev &
 PREPARE_PID=$!
 
 echo "Waiting 20 seconds to start apt_store"
@@ -24,7 +24,7 @@ sleep 20
 
 echo "Starting apt_store"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_store
-go run apt_store.go -config apd4n &
+go run apt_store.go -config dev &
 STORE_PID=$!
 
 echo "Waiting 20 seconds to start apt_record"
@@ -32,22 +32,22 @@ sleep 20
 
 echo "Starting apt_record"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_record
-go run apt_record.go -config apd4n &
+go run apt_record.go -config dev &
 RECORD_PID=$!
 
 echo "Starting trouble processor"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_trouble
-go run apt_trouble.go -config apd4n &
+go run apt_trouble.go -config dev &
 TROUBLE_PID=$!
 
 # This one exits on its own
 echo "Starting cleanup reader"
 cd ~/go/src/github.com/APTrust/bagman/apps/cleanup_reader
-go run cleanup_reader.go -config apd4n
+go run cleanup_reader.go -config dev
 
 echo "Starting cleanup processor"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_bag_delete
-go run apt_bag_delete.go -config apd4n &
+go run apt_bag_delete.go -config dev &
 CLEANUP_PID=$!
 
 echo "Waiting 20 seconds to start apt_replicate"
@@ -55,12 +55,12 @@ sleep 20
 
 echo "Starting apt_replicate"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_replicate
-go run apt_replicate.go -config apd4n &
+go run apt_replicate.go -config dev &
 REPLICATION_PID=$!
 
 echo "Starting apt_failed_replication"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_failed_replication
-go run apt_failed_replication.go -config apd4n &
+go run apt_failed_replication.go -config dev &
 FAILED_REPLICATION_PID=$!
 
 

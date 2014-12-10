@@ -46,7 +46,7 @@ then run bagman with that named configuration using:
 
 ```
 	cd cli
-	go run cli.go -config=apd4n
+	go run cli.go -config=dev
 ```
 
 ... or whatever named configuration you want. If you dont specify a
@@ -97,7 +97,7 @@ and processing an enormous amount of data.
 The scripts directory also includes process_items.sh and
 restore_items.sh. These are good for running local end-to-end
 integration tests. To run these on your own machine, you'll have to
-change the config setting in those scripts from apd4n to whatever
+change the config setting in those scripts from dev to whatever
 config name you've set up. You also *must* have Fluctus running
 locally (or at whatever URL the FluctusURL setting points to).
 

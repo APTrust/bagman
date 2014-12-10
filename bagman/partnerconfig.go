@@ -52,6 +52,7 @@ func parsePartnerConfig(file *os.File) (*PartnerConfig, error) {
 			partnerConfig.addSetting(parts[0], parts[1])
 		}
 	}
+	partnerConfig.ExpandFilePaths()
 	return partnerConfig, nil
 }
 
@@ -125,6 +126,7 @@ func (partnerConfig *PartnerConfig) LoadAwsFromEnv() {
 }
 
 func (partnerConfig *PartnerConfig) Validate() (error) {
+	partnerConfig.ExpandFilePaths()
 	if partnerConfig.AwsAccessKeyId == "" || partnerConfig.AwsSecretAccessKey == "" {
 		partnerConfig.LoadAwsFromEnv()
 	}
@@ -151,4 +153,11 @@ func (partnerConfig *PartnerConfig) Validate() (error) {
 		}
 	}
 	return nil
+}
+
+func (partnerConfig *PartnerConfig) ExpandFilePaths() {
+	expanded, err := ExpandTilde(partnerConfig.DownloadDir)
+	if err == nil {
+		partnerConfig.DownloadDir = expanded
+	}
 }

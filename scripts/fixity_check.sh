@@ -12,16 +12,16 @@ sleep 3
 # Wait for this one to finish
 echo "Starting fixity reader"
 cd ~/go/src/github.com/APTrust/bagman/apps/fixity_reader
-go run fixity_reader.go -config apd4n -date="2027-11-17T14:14:41Z"
+go run fixity_reader.go -config dev -date="2027-11-17T14:14:41Z"
 
 echo "Starting fixity checker"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_fixity
-go run apt_fixity.go -config apd4n &
+go run apt_fixity.go -config dev &
 FIXITY_PID=$!
 
 echo "Starting failed fixity worker"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_failed_fixity
-go run apt_failed_fixity.go -config apd4n &
+go run apt_failed_fixity.go -config dev &
 FAILED_FIXITY_PID=$!
 
 kill_all()

@@ -102,7 +102,7 @@ simple unit tests could not catch.
 ## Configuration for Testing
 
 Each of the scripts described above uses the hard-coded config
-"apd4n". You will want to create your own configuration section in
+"dev". You will want to create your own configuration section in
 config/config.json and then use that for local testing.
 
 To create a new config section, copy an existing section and give it a
@@ -147,10 +147,10 @@ The following settings may also need adjustment:
  server you will test against. That's usually http://localhost:3000.
 
 Once you have your config set up, you can use it in your local
-end-to-end test by replacing "-config apd4n" with "-config
+end-to-end test by replacing "-config dev" with "-config
 <your_config>" in the bash scripts.
 
-*TODO: The config name "apd4n" should not be hard-coded into the bash
+*TODO: The config name "dev" should not be hard-coded into the bash
 scripts. It should be read from the command line.*
 
 ## Testing the Partner Apps

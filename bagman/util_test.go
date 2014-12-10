@@ -4,6 +4,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -159,5 +160,25 @@ func TestLooksLikeURL(t *testing.T) {
 	}
 	if bagman.LooksLikeURL("") == true {
 		t.Error("That was not a valid URL! That was an empty string!")
+	}
+}
+
+func TestExpandTilde(t *testing.T) {
+	expanded, err := bagman.ExpandTilde("~/tmp")
+	if err != nil {
+		t.Error(err)
+	}
+	// Testing this cross-platform is pain. Different home dirs
+	// on Windows, Linux, Mac. Different separators ("/" vs "\").
+	if len(expanded) <= 5 || !strings.HasSuffix(expanded, "tmp") {
+		t.Errorf("~/tmp expanded to unexpected value %s", expanded)
+	}
+
+	expanded, err = bagman.ExpandTilde("/nothing/to/expand")
+	if err != nil {
+		t.Error(err)
+	}
+	if expanded != "/nothing/to/expand" {
+		t.Errorf("/nothing/to/expand expanded to unexpected value %s", expanded)
 	}
 }

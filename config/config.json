@@ -1,9 +1,9 @@
 {
-    "apd4n": {
-        "TarDirectory": "/Users/apd4n/tmp",
-        "LogDirectory": "/Users/apd4n/tmp",
-        "RestoreDirectory": "/Users/apd4n/tmp/restore",
-        "ReplicationDirectory": "/Users/apd4n/tmp/replicate",
+    "dev": {
+        "TarDirectory": "~/tmp/tar",
+        "LogDirectory": "~/tmp/logs",
+        "RestoreDirectory": "~/tmp/restore",
+        "ReplicationDirectory": "~/tmp/replicate",
         "MaxFileSize": 1000000,
         "SkipAlreadyProcessed": false,
         "DeleteOnSuccess": false,
@@ -169,10 +169,10 @@
         ]
     },
     "test": {
-        "TarDirectory": "./tmp",
-        "LogDirectory": "./tmp",
-        "RestoreDirectory": "./tmp/restore",
-        "ReplicationDirectory": "./tmp/replicate",
+        "TarDirectory": "~/tmp/test_tar",
+        "LogDirectory": "~/tmp/test_log",
+        "RestoreDirectory": "~/tmp/test_restore",
+        "ReplicationDirectory": "~/tmp/test_replicate",
         "MaxFileSize": 0,
         "SkipAlreadyProcessed": true,
         "DeleteOnSuccess": false,

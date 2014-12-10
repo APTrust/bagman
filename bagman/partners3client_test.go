@@ -14,13 +14,15 @@ func partnerS3ConfigFile() (string) {
 }
 
 func partnerConfigForTest() (*bagman.PartnerConfig) {
-	return &bagman.PartnerConfig{
+	config := &bagman.PartnerConfig{
 		AwsAccessKeyId: "abc",
 		AwsSecretAccessKey: "xyz",
 		ReceivingBucket: "aptrust.receiving.xyz.edu",
 		RestorationBucket: "aptrust.receiving.xyz.edu",
 		DownloadDir: "~/tmp",
 	}
+	config.ExpandFilePaths()
+	return config
 }
 
 func TestNewPartnerS3ClientFromConfigFile(t *testing.T) {
