@@ -60,10 +60,20 @@ func parseCommandLine() {
 		partnerapps.PrintVersion("apt_list")
 		os.Exit(0)
 	}
-	if showHelp || configFile == "" {
+	if showHelp {
 		partnerapps.PrintVersion("apt_list")
 		printUsage()
 		os.Exit(0)
+	}
+	if configFile == "" {
+		if partnerapps.DefaultConfigFileExists() {
+			configFile, _ = partnerapps.DefaultConfigFile()
+			fmt.Printf("Using default config file %s\n", configFile)
+		} else {
+			partnerapps.PrintVersion("apt_list")
+			printUsage()
+			os.Exit(0)
+		}
 	}
 	if bucket != "restoration" && bucket != "receiving" {
 		fmt.Printf("bucket must be either receiving or restoration\n")

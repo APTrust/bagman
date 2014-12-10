@@ -51,10 +51,20 @@ func parseCommandLine() {
 		partnerapps.PrintVersion("apt_delete")
 		os.Exit(0)
 	}
-	if showHelp || configFile == "" {
+	if showHelp {
 		partnerapps.PrintVersion("apt_delete")
 		printUsage()
 		os.Exit(0)
+	}
+	if configFile == "" {
+		if partnerapps.DefaultConfigFileExists() {
+			configFile, _ = partnerapps.DefaultConfigFile()
+			fmt.Printf("Using default config file %s\n", configFile)
+		} else {
+			partnerapps.PrintVersion("apt_delete")
+			printUsage()
+			os.Exit(0)
+		}
 	}
 	if len(os.Args) < 2 {
 		fmt.Printf("Please specify one or more files to delete.\n")
