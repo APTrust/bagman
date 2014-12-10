@@ -22,6 +22,7 @@ func LoadPartnerConfig(configFile string) (*PartnerConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Cannot open config file: %v", err)
 	}
+	defer file.Close()
 	return parsePartnerConfig(file)
 }
 
@@ -56,20 +57,9 @@ func parsePartnerConfig(file *os.File) (*PartnerConfig, error) {
 	return partnerConfig, nil
 }
 
-func cleanString(str string) (string) {
-	cleanStr := strings.TrimSpace(str)
-	// Strip leading and traling quotes, but only if string has matching
-	// quotes at both ends.
-	if strings.HasPrefix(cleanStr, "'") && strings.HasSuffix(cleanStr, "'") ||
-		strings.HasPrefix(cleanStr, "\"") && strings.HasSuffix(cleanStr, "\"") {
-		return cleanStr[1:len(cleanStr) - 1]
-	}
-	return cleanStr
-}
-
 func (partnerConfig *PartnerConfig) addSetting(name, value string) {
-	cleanName := cleanString(name)
-	cleanValue := cleanString(value)
+	cleanName := CleanString(name)
+	cleanValue := CleanString(value)
 	switch strings.ToLower(cleanName) {
 	case "awsaccesskeyid": partnerConfig.AwsAccessKeyId = cleanValue
 	case "awssecretaccesskey": partnerConfig.AwsSecretAccessKey = cleanValue
