@@ -281,3 +281,17 @@ func ExpandTilde(filePath string) (string, error) {
 	expandedDir := strings.Replace(filePath, "~/", homeDir, 1)
 	return expandedDir, nil
 }
+
+// Cleans a string we might find a config file, trimming leading
+// and trailing spaces, single quotes and double quoted. Note that
+// leading and trailing spaces inside the quotes are not trimmed.
+func CleanString(str string) (string) {
+	cleanStr := strings.TrimSpace(str)
+	// Strip leading and traling quotes, but only if string has matching
+	// quotes at both ends.
+	if strings.HasPrefix(cleanStr, "'") && strings.HasSuffix(cleanStr, "'") ||
+		strings.HasPrefix(cleanStr, "\"") && strings.HasSuffix(cleanStr, "\"") {
+		return cleanStr[1:len(cleanStr) - 1]
+	}
+	return cleanStr
+}

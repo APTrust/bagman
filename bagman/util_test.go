@@ -182,3 +182,18 @@ func TestExpandTilde(t *testing.T) {
 		t.Errorf("/nothing/to/expand expanded to unexpected value %s", expanded)
 	}
 }
+
+func TestCleanString(t *testing.T) {
+	clean := bagman.CleanString("  spaces \t\n ")
+	if clean != "spaces" {
+		t.Error("Expected to receive string 'spaces'")
+	}
+	clean = bagman.CleanString("  ' embedded spaces 1 '   ")
+	if clean != " embedded spaces 1 " {
+		t.Error("Expected to receive string ' embedded spaces 1 '")
+	}
+	clean = bagman.CleanString("  \" embedded spaces 2 \"   ")
+	if clean != " embedded spaces 2 " {
+		t.Error("Expected to receive string ' embedded spaces '")
+	}
+}
