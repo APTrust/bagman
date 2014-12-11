@@ -82,34 +82,39 @@ Here's a fuller example:
 */
 type BagRestorer struct {
 	// The intellectual object we'll be restoring.
-	IntellectualObject  *IntellectualObject
+	IntellectualObject    *IntellectualObject
 	// s3Client lets us publish restored bags to S3.
-	s3Client            *S3Client
+	s3Client              *S3Client
 	// workingDir is the root directory under which
 	// we build and tar our bags.
-	workingDir          string
+	workingDir            string
 	// fileSets is a list of FileSet structs. We'll
 	// have one for each bag we need to create.
-	fileSets            []*FileSet
+	fileSets              []*FileSet
 	// logger is optional. If provided, the functions
 	// below will log debug messages to it.
-	logger              *logging.Logger
+	logger                *logging.Logger
 	// The maximum allowed bag size. Default is 250GB,
 	// but you can set it smaller to force multiple bags.
-	bagSizeLimit        int64
+	bagSizeLimit          int64
 	// The estimated amount of space required by manifest
 	// files, tag files and tar file headers in a tarred
 	// bag.
-	bagPadding          int64
+	bagPadding            int64
 	// The bucket into which restored, tarred bags
 	// should be published.
-	customRestoreBucket string
+	customRestoreBucket   string
+	// Should we restore to the partner's test restoration
+	// bucket? This should be true in the demo config only,
+	// which runs on test.aptrust.org. Note that
+	// customRestoreBucket overrides this.
+	restoreToTestBuckets  bool
 }
 
 // Creates a new bag restorer from the intellectual object.
 // Param working dir is the path to the directory into which
 // files should be downloaded and the bag should be built.
-func NewBagRestorer(intelObj *IntellectualObject, workingDir string) (*BagRestorer, error) {
+func NewBagRestorer(intelObj *IntellectualObject, workingDir string, restoreToTestBuckets bool) (*BagRestorer, error) {
 	if intelObj == nil {
 		return nil, fmt.Errorf("IntellectualObject cannot be nil")
 	}
@@ -128,6 +133,7 @@ func NewBagRestorer(intelObj *IntellectualObject, workingDir string) (*BagRestor
 		workingDir: absWorkingDir,
 		bagSizeLimit: DefaultBagSizeLimit,
 		bagPadding: DefaultBagPadding,
+		restoreToTestBuckets: restoreToTestBuckets,
 	}
 	return &restorer, nil
 }
@@ -177,6 +183,9 @@ func (restorer *BagRestorer) RestorationBucketName () (string) {
 	// part before the first slash.
 	idParts := strings.SplitN(restorer.IntellectualObject.Identifier, "/", 2)
 	institution := idParts[0]
+	if restorer.restoreToTestBuckets {
+		return fmt.Sprintf("%s.test.%s", RestorationBucketPrefix, institution)
+	}
 	return fmt.Sprintf("%s.%s", RestorationBucketPrefix, institution)
 }
 

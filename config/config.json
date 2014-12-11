@@ -19,6 +19,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
@@ -188,6 +189,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
@@ -375,6 +377,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "",
+        "RestoreToTestBuckets": true,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
@@ -561,6 +564,7 @@
         "PreservationBucket": "aptrust.preservation.storage",
         "ReplicationBucket": "aptrust.preservation.oregon",
         "CustomRestoreBucket": "",
+        "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
