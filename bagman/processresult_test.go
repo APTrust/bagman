@@ -143,6 +143,13 @@ func TestIntellectualObject(t *testing.T) {
 			obj.Identifier,
 			"ncsu.edu.ncsu.1840.16-2928")
 	}
+	if len(obj.AltIdentifier) != 1 {
+		t.Errorf("IntellectualObject is missing AltIdentifier")
+	}
+	if len(obj.AltIdentifier) > 0 && obj.AltIdentifier[0] != "ncsu-internal-id-0001" {
+		t.Errorf("IntellectualObject.AltIdentifier is %s, expected %s",
+			obj.AltIdentifier[0], "ncsu-internal-id-0001")
+	}
 	if obj.Access != "consortia" {
 		t.Errorf("IntellectualObject.Access is '%s', expected '%s'.",
 			obj.Access,

@@ -102,6 +102,7 @@ func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, 
 		"identifier":     obj.Identifier,
 		"title":          obj.Title,
 		"description":    obj.Description,
+		"alt_identifier": obj.AltIdentifier,
 		"access":         obj.Access,
 		"institution_id": obj.InstitutionId,
 		"premisEvents":   events,
@@ -155,9 +156,10 @@ func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
 // as institution id and/or object id will be in the URL.
 func (obj *IntellectualObject) SerializeForFluctus() ([]byte, error) {
 	return json.Marshal(map[string]interface{}{
-		"identifier":  obj.Identifier,
-		"title":       obj.Title,
-		"description": obj.Description,
-		"access":      obj.Access,
+		"identifier":     obj.Identifier,
+		"title":          obj.Title,
+		"description":    obj.Description,
+		"alt_identifier": obj.AltIdentifier,
+		"access":         obj.Access,
 	})
 }
