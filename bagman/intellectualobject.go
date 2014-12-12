@@ -32,6 +32,7 @@ type IntellectualObject struct {
 	Title         string         `json:"title"`
 	Description   string         `json:"description"`
 	Access        string         `json:"access"`
+	AltIdentifier []string       `json:"alt_identifier"`
 	GenericFiles  []*GenericFile `json:"generic_files"`
 	Events        []*PremisEvent `json:"events"`
 }
