@@ -27,7 +27,7 @@ func runFluctusTests() bool {
 		if fluctusSkipMessagePrinted == false {
 			fluctusSkipMessagePrinted = true
 			fmt.Printf("Skipping fluctus integration tests: "+
-				"fluctus server is not running at %s\n", fluctusUrl)
+				"Fluctus server is not running at %s\n", fluctusUrl)
 		}
 		return false
 	}

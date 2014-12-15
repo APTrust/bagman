@@ -30,17 +30,17 @@ func fluctusAvailable() bool {
 func environmentReady() (bool) {
 	if fluctusAvailable() == false {
 		if !skipMessagePrinted {
-			msg := "Skipping IngestHelper tests because environment variables " +
-				"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not set."
+			msg := fmt.Sprintf("Skipping IngestHelper tests because Fluctus is not "+
+				"running at %s", fluctusUrl)
 			fmt.Fprintln(os.Stderr, msg)
 			skipMessagePrinted = true
 		}
 		return false
 	}
 	if awsEnvAvailable() == false {
+		msg := "Skipping IngestHelper tests because environment variables " +
+			"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not set."
 		if !skipMessagePrinted {
-			msg := fmt.Sprintf("Skipping tests because Fluctus is not "+
-				"running at %s", fluctusUrl)
 			fmt.Fprintln(os.Stderr, msg)
 			skipMessagePrinted = true
 		}
