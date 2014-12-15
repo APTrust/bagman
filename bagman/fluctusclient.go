@@ -578,7 +578,6 @@ func (client *FluctusClient) IntellectualObjectCreate(obj *IntellectualObject, m
 	// On create, Fluctus returns the new object. On update, it returns nothing.
 	if len(body) > 0 {
 		newObj = &IntellectualObject{}
-		fmt.Println(string(body))
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
 			return nil, client.formatJsonError(objUrl, body, err)
