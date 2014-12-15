@@ -1,6 +1,7 @@
 package dpn
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
@@ -119,8 +120,26 @@ func (builder *BagBuilder) DPNManifestSha256() (*bagins.Manifest) {
 	return manifest
 }
 
-// What goes in here?
 func (builder *BagBuilder) DPNTagManifest() (*bagins.Manifest) {
+	// Can't use bagins.Manifest here because manifest expects
+	manifest, err := bagins.NewManifest("tagmanifest-sha256", "sha256")
+	if err != nil {
+		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
+		return nil
+	}
+
+	// bagItData := builder.DPNBagIt()
+	// if bagIdData == nil {
+	// 	builder.ErrorMessage += "[Cannot run checksum on DPN bagit.txt: failed to produce tagfile.] "
+	// } else {
+	// 	bagItString := builder.MapToString(bagItData, " ")
+	// 	bagItSha256 := sha256.New()
+	// 	bagItSha256.Write([]byte(bagItString))
+	// 	manifest.Data["bagit.txt"] = fmt.Sprintf("%x", bagitSha256.Sum(nil))
+	// }
+	// manifest.Data["bag-info.txt"] = sha256.Digest
+	// manifest.Data["dpn-tags/dpn-info.txt"] = sha256.Digest
+
 	return nil
 }
 
