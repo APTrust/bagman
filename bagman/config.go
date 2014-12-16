@@ -199,6 +199,13 @@ type Config struct {
 	// off to the S3 restoration bucket.
 	RestoreDirectory        string
 
+	// If true, we should restore bags to our partners' test
+	// restoration buckets instead of the usual restoration
+	// buckets. This should be true only in the demo config,
+	// which is what we run on test.aptrust.org. Also note
+	// that CustomRestoreBucket overrides this.
+	RestoreToTestBuckets    bool
+
 	// Configuration options for apt_restore
 	RestoreWorker           WorkerConfig
 

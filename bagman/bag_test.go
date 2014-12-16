@@ -142,10 +142,10 @@ func TestUntarCreatesFiles(t *testing.T) {
 		"application/xml",
 	}
 	expectedSize := []int64{2388, 6191, 4663, 579}
-	t0, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:25 -0400 EDT")
-	t1, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:25 -0400 EDT")
-	t2, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:26 -0400 EDT")
-	t3, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-04-14 11:55:26 -0400 EDT")
+	t0, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
+	t1, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
+	t2, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
+	t3, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
 	expectedModTime := []time.Time{t0, t1, t2, t3}
 
 	if len(tarResult.Files) != 4 {
@@ -254,17 +254,17 @@ func TestGoodBagParsesCorrectly(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = assertTagMatch(result.Tags[5], "Bag-Group-Identifier", "")
+	err = assertTagMatch(result.Tags[5], "Bag-Group-Identifier", "Charley Horse")
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = assertTagMatch(result.Tags[6], "Internal-Sender-Description", "")
+	err = assertTagMatch(result.Tags[6], "Internal-Sender-Description", "Bag of goodies")
 	if err != nil {
 		t.Error(err)
 	}
 
-	err = assertTagMatch(result.Tags[7], "Internal-Sender-Identifier", "")
+	err = assertTagMatch(result.Tags[7], "Internal-Sender-Identifier", "uva-internal-id-0001")
 	if err != nil {
 		t.Error(err)
 	}

@@ -19,6 +19,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
@@ -188,6 +189,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
@@ -335,7 +337,7 @@
 
         "ReceivingBuckets": [
             "aptrust.receiving.test.columbia.edu",
-            "aptrust.receiving.test.iub.edu",
+            "aptrust.receiving.test.indiana.edu",
             "aptrust.receiving.test.jhu.edu",
             "aptrust.receiving.test.miami.edu",
             "aptrust.receiving.test.ncsu.edu",
@@ -375,6 +377,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "",
+        "RestoreToTestBuckets": true,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
@@ -522,7 +525,7 @@
 
         "ReceivingBuckets": [
             "aptrust.receiving.test.columbia.edu",
-            "aptrust.receiving.test.iub.edu",
+            "aptrust.receiving.test.indiana.edu",
             "aptrust.receiving.test.jhu.edu",
             "aptrust.receiving.test.miami.edu",
             "aptrust.receiving.test.ncsu.edu",
@@ -561,6 +564,7 @@
         "PreservationBucket": "aptrust.preservation.storage",
         "ReplicationBucket": "aptrust.preservation.oregon",
         "CustomRestoreBucket": "",
+        "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
         "PrepareWorker": {
@@ -708,7 +712,7 @@
 
         "ReceivingBuckets": [
             "aptrust.receiving.columbia.edu",
-            "aptrust.receiving.iub.edu",
+            "aptrust.receiving.indiana.edu",
             "aptrust.receiving.jhu.edu",
             "aptrust.receiving.miami.edu",
             "aptrust.receiving.ncsu.edu",

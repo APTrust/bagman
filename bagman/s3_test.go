@@ -224,7 +224,7 @@ func TestGetKey(t *testing.T) {
 		t.Error("s3Client.GetKey returned nil")
 		return
 	}
-	expectedETag := "\"48c876800900b64c17c9933143ca168a\""
+	expectedETag := "\"05e68e69767c772d36bd8a2baf693428\""
 	if key.ETag != expectedETag {
 		t.Errorf("Expected ETag %s, got %s", expectedETag, key.ETag)
 	}
