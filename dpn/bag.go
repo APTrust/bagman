@@ -2,7 +2,6 @@ package dpn
 
 import (
 	"github.com/APTrust/bagins"
-	"github.com/APTrust/bagman/bagman"
 )
 
 var BAG_TYPE_OBJECT = "IntellectualObject"
@@ -55,5 +54,6 @@ type DataFile struct {
 }
 
 func (bag *Bag) Write(outputPath string) (error) {
-
+	// Write me!
+	return nil
 }

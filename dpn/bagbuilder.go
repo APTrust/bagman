@@ -21,7 +21,7 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []bagman
 	}
 	return &BagBuilder{
 		IntellectualObject: obj,
-		GenericFile: gf,
+		GenericFiles: []bagman.GenericFiles{ gf },
 	}
 }
 
@@ -57,8 +57,8 @@ func (builder *BagBuilder) DPNBagIt() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(bagins.NewTagField("BagIt-Version", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Tag-File-Character-Encoding", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding", ""))
 	return tagFile
 }
 
@@ -69,15 +69,15 @@ func (builder *BagBuilder) DPNBagInfo() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(bagins.NewTagField("Source-Organization", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Organization-Address", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Contact-Name", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Contact-Phone", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Contact-Email", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Bagging-Date", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Bag-Size", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Bag-Group-Identifier", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Bag-Count", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Source-Organization", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Organization-Address", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Contact-Name", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Contact-Phone", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Contact-Email", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Size", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Group-Identifier", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Count", ""))
 	return tagFile
 }
 
@@ -88,17 +88,17 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(bagins.NewTagField("DPN-Object-ID", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Local-ID", ""))
-	tagFile.Data.AddField(bagins.NewTagField("First-Node-Name", ""))
-	tagFile.Data.AddField(bagins.NewTagField("First-Node-Address", ""))
-	tagFile.Data.AddField(bagins.NewTagField("First-Node-Contact-Name", ""))
-	tagFile.Data.AddField(bagins.NewTagField("First-Node-Contact-Email", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Version-Number", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Previous-Version-Object-ID", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Brightening-Object-ID", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Rights-Object-ID", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Object-Type", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("DPN-Object-ID", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Local-ID", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Name", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Address", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Name", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Email", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Version-Number", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Previous-Version-Object-ID", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Brightening-Object-ID", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Rights-Object-ID", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Object-Type", ""))
 	return tagFile
 }
 
@@ -128,19 +128,46 @@ func (builder *BagBuilder) DPNTagManifest() (*bagins.Manifest) {
 		return nil
 	}
 
-	// bagItData := builder.DPNBagIt()
-	// if bagIdData == nil {
-	// 	builder.ErrorMessage += "[Cannot run checksum on DPN bagit.txt: failed to produce tagfile.] "
-	// } else {
-	// 	bagItString := builder.MapToString(bagItData, " ")
-	// 	bagItSha256 := sha256.New()
-	// 	bagItSha256.Write([]byte(bagItString))
-	// 	manifest.Data["bagit.txt"] = fmt.Sprintf("%x", bagitSha256.Sum(nil))
-	// }
-	// manifest.Data["bag-info.txt"] = sha256.Digest
-	// manifest.Data["dpn-tags/dpn-info.txt"] = sha256.Digest
+	bagIt := builder.DPNBagIt()
+	if bagIt == nil {
+		builder.ErrorMessage += "[Cannot run checksum on DPN bagit.txt: failed to produce tagfile.] "
+	} else {
+		bagItStr, err := bagIt.ToString()
+		if err != nil {
+			builder.ErrorMessage += "[Cannot get contents of DPN bagit.txt.] "
+		}
+		manifest.Data["bagit.txt"] = sha256Digest(bagItStr)
+	}
 
-	return nil
+	bagInfo := builder.DPNBagInfo()
+	if bagInfo == nil {
+		builder.ErrorMessage += "[Cannot run checksum on DPN bag-info.txt: failed to produce tagfile.] "
+	} else {
+		bagInfoStr, err := bagInfo.ToString()
+		if err != nil {
+			builder.ErrorMessage += "[Cannot get contents of DPN bag-info.txt.] "
+		}
+		manifest.Data["bag-info.txt"] = sha256Digest(bagInfoStr)
+	}
+
+	dpnInfo := builder.DPNInfo()
+	if dpnInfo == nil {
+		builder.ErrorMessage += "[Cannot run checksum on DPN bag-info.txt: failed to produce tagfile.] "
+	} else {
+		dpnInfoStr, err := dpnInfo.ToString()
+		if err != nil {
+			builder.ErrorMessage += "[Cannot get contents of DPN dpn-info.txt.] "
+		}
+		manifest.Data["dpn-tags/dpn-info.txt"] = sha256Digest(dpnInfoStr)
+	}
+
+	return manifest
+}
+
+func sha256Digest(str string) (string) {
+	hasher := sha256.New()
+	hasher.Write([]byte(str))
+	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
 // For IntellectualObject bags only
@@ -150,8 +177,8 @@ func (builder *BagBuilder) APTrustBagIt() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(bagins.NewTagField("BagIt-Version", "0.97"))
-	tagFile.Data.AddField(bagins.NewTagField("Tag-File-Character-Encoding", "UTF-8"))
+	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version", "0.97"))
+	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding", "UTF-8"))
 	return tagFile
 }
 
@@ -162,11 +189,11 @@ func (builder *BagBuilder) APTrustBagInfo() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(bagins.NewTagField("Source-Organization", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Bagging-Date", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Bag-Count", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Internal-Sender-Description", ""))
-	tagFile.Data.AddField(bagins.NewTagField("Internal-Sender-Identifier", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Source-Organization", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Count", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Internal-Sender-Description", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Internal-Sender-Identifier", ""))
 	return tagFile
 }
 
@@ -177,9 +204,9 @@ func (builder *BagBuilder) APTrustInfo() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(bagins.NewTagField("Title", builder.IntellectualObject.Title))
-	tagFile.Data.AddField(bagins.NewTagField("Description", builder.IntellectualObject.Description))
-	tagFile.Data.AddField(bagins.NewTagField("Access", builder.IntellectualObject.Access))
+	tagFile.Data.AddField(*bagins.NewTagField("Title", builder.IntellectualObject.Title))
+	tagFile.Data.AddField(*bagins.NewTagField("Description", builder.IntellectualObject.Description))
+	tagFile.Data.AddField(*bagins.NewTagField("Access", builder.IntellectualObject.Access))
 	return tagFile
 }
 
@@ -203,15 +230,19 @@ func (builder *BagBuilder) APTrustManifestMd5() (*bagins.Manifest) {
 	return manifest
 }
 
+// Returns a list of files that should be packed into the data
+// directory of the DPN bag. For now, we're doing one file per
+// bag, but this code can handle multiple files.
 func (builder *BagBuilder) DataFiles() ([]DataFile) {
 	dataFiles := make([]DataFile, len(builder.GenericFiles))
-	for i, gf := builder.GenericFiles {
+	for i, gf := range builder.GenericFiles {
 		dataFiles[i] = DataFile{
 			ExternalPathType: PATH_TYPE_S3,
 			ExternalPath: gf.URI,
 			PathInBag: DataPath(gf.Identifier),
 		}
 	}
+	return dataFiles
 }
 
 // Given a GenericFile identifier, returns the path inside
