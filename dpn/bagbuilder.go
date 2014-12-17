@@ -10,18 +10,19 @@ import (
 type BagBuilder struct {
 	LocalPath          string
 	IntellectualObject *bagman.IntellectualObject
-	GenericFiles       []bagman.GenericFile
+	GenericFiles       []*bagman.GenericFile
 	ErrorMessage       string
 }
 
 
-func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []bagman.GenericFile) (*Bag) {
+func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagman.GenericFile) (*BagBuilder) {
+	// gf may be nil if bag is for IntelObj
 	if gf == nil {
-		gf = make([]bagman.GenericFile, 0)
+		gf = make([]*bagman.GenericFile, 0)
 	}
 	return &BagBuilder{
 		IntellectualObject: obj,
-		GenericFiles: []bagman.GenericFiles{ gf },
+		GenericFiles: gf,
 	}
 }
 
@@ -31,7 +32,7 @@ func (builder *BagBuilder) BuildBag() (error) {
 	}
 	if len(builder.GenericFiles) > 0 {
 		bag.Type = BAG_TYPE_FILE
-		bag.AddDataFile(builder.DataFiles())
+		bag.DataFiles = builder.DataFiles()
 	} else {
 		bag.Type = BAG_TYPE_OBJECT
 		bag.APTrustBagIt = builder.APTrustBagIt()

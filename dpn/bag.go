@@ -53,6 +53,7 @@ type DataFile struct {
 	PathInBag         string
 }
 
+
 func (bag *Bag) Write(outputPath string) (error) {
 	// Write me!
 	return nil
