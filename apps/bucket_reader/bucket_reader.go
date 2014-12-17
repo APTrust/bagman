@@ -42,10 +42,9 @@ func run() {
 		workReader.MessageLog.Error(err.Error())
 		return
 	}
-	bucketSummaries, err := s3Client.CheckAllBuckets(workReader.Config.ReceivingBuckets)
-	if err != nil {
+	bucketSummaries, errors := s3Client.CheckAllBuckets(workReader.Config.ReceivingBuckets)
+	for _, err := range errors {
 		workReader.MessageLog.Error(err.Error())
-		return
 	}
 	loadStatusCache()
 	url := fmt.Sprintf("%s/mput?topic=%s", workReader.Config.NsqdHttpAddress, workReader.Config.PrepareWorker.NsqTopic)
