@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
+	"path/filepath"
 )
 
 type BagBuilder struct {
@@ -20,10 +21,16 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagma
 	if gf == nil {
 		gf = make([]*bagman.GenericFile, 0)
 	}
-	return &BagBuilder{
+	filePath, err := filepath.Abs(localPath)
+	builder :=  &BagBuilder{
+		LocalPath: filePath,
 		IntellectualObject: obj,
 		GenericFiles: gf,
 	}
+	if err != nil {
+		builder.ErrorMessage = err.Error()
+	}
+	return builder
 }
 
 func (builder *BagBuilder) BuildBag() (error) {
@@ -52,7 +59,7 @@ func (builder *BagBuilder) BuildBag() (error) {
 }
 
 func (builder *BagBuilder) DPNBagIt() (*bagins.TagFile) {
-	tagFilePath := fmt.Sprintf("%s/bagit.txt", builder.LocalPath)
+	tagFilePath := filepath.Join(builder.LocalPath, "bagit.txt")
 	tagFile, err := bagins.NewTagFile(tagFilePath)
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
@@ -64,7 +71,7 @@ func (builder *BagBuilder) DPNBagIt() (*bagins.TagFile) {
 }
 
 func (builder *BagBuilder) DPNBagInfo() (*bagins.TagFile) {
-	tagFilePath := fmt.Sprintf("%s/bag-info.txt", builder.LocalPath)
+	tagFilePath := filepath.Join(builder.LocalPath, "bag-info.txt")
 	tagFile, err := bagins.NewTagFile(tagFilePath)
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
@@ -83,7 +90,7 @@ func (builder *BagBuilder) DPNBagInfo() (*bagins.TagFile) {
 }
 
 func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
-	tagFilePath := fmt.Sprintf("%s/dpn-tags/dpn-info.txt", builder.LocalPath)
+	tagFilePath := filepath.Join(builder.LocalPath, "dpn-tags","dpn-info.txt")
 	tagFile, err := bagins.NewTagFile(tagFilePath)
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
