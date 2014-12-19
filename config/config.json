@@ -558,8 +558,8 @@
         "FluctusURL": "https://repository.aptrust.org",
         "FluctusAPIVersion": "v1",
 
-        "NsqdHttpAddress": "http://54.175.28.251:4151",
-        "NsqLookupd": "54.175.28.251:4161",
+        "NsqdHttpAddress": "http://172.31.24.220:4151",
+        "NsqLookupd": "172.31.24.220:4161",
 
         "PreservationBucket": "aptrust.preservation.storage",
         "ReplicationBucket": "aptrust.preservation.oregon",
