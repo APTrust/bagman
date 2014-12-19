@@ -7,6 +7,8 @@ import (
 // institution's restore bucket.
 func main() {
 	procUtil := workers.CreateProcUtil()
+	procUtil.MessageLog.Info("Connecting to NSQLookupd at %s", procUtil.Config.NsqLookupd)
+	procUtil.MessageLog.Info("NSQDHttpAddress is %s", procUtil.Config.NsqdHttpAddress)
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.RestoreWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
