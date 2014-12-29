@@ -1,6 +1,6 @@
 // cleanup_reader periodically checks the processed items list
-// in Fluctus for items that should be deleted. It queues those
-// items for cleanup in nsqd.
+// in Fluctus for bags that should be deleted from the receiving
+// buckets. It queues those items for cleanup in nsqd.
 package main
 
 import (
