@@ -81,15 +81,19 @@ files we're going to download.
     sudo mount /dev/xvdc /mnt/apt
     sudo mkdir /mnt/apt/data
     sudo mkdir /mnt/apt/logs
+    sudo mkdir /mnt/apt/replication
+    sudo mkdir /mnt/apt/restore
     sudo chown ubuntu.ubuntu /mnt/apt/data/
     sudo chown ubuntu.ubuntu /mnt/apt/logs/
+    sudo chown ubuntu.ubuntu /mnt/apt/restore/
+    sudo chown ubuntu.ubuntu /mnt/apt/replication/
 ```
 
 Install the go packages we'll need:
 
 ```
-	go get github.com/diamondap/goamz/aws
-	go get github.com/diamondap/goamz/s3
+    go get github.com/diamondap/goamz/aws
+    go get github.com/diamondap/goamz/s3
     go get github.com/nu7hatch/gouuid
     go get github.com/rakyll/magicmime
     go get github.com/APTrust/bagins
