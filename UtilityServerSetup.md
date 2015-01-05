@@ -70,7 +70,7 @@ Now if you run this:
 You should see this output:
 
 ```
-    go version go1.2.1 linux/386
+    go version go1.2.2 linux/amd64
 ```
 
 Mount the EBS volume and then make directories to hold the tar/bag
