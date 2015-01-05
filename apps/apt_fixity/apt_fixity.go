@@ -12,7 +12,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_fixity started")
 	fixityChecker := workers.NewFixityChecker(procUtil)
-	consumer.SetHandler(fixityChecker)
+	consumer.AddHandler(fixityChecker)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

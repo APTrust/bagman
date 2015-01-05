@@ -18,7 +18,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_prepare started")
 	bagPreparer := workers.NewBagPreparer(procUtil)
-	consumer.SetHandler(bagPreparer)
+	consumer.AddHandler(bagPreparer)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

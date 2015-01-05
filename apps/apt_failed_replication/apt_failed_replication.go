@@ -14,7 +14,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_failed_replication started")
 	processor := workers.NewFailedReplicationProcessor(procUtil)
-	consumer.SetHandler(processor)
+	consumer.AddHandler(processor)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

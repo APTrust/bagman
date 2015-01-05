@@ -16,7 +16,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_record started")
 	bagRecorder := workers.NewBagRecorder(procUtil)
-	consumer.SetHandler(bagRecorder)
+	consumer.AddHandler(bagRecorder)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

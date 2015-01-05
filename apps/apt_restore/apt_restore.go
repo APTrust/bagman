@@ -15,7 +15,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_restore started")
 	bagRestorer := workers.NewBagRestorer(procUtil)
-	consumer.SetHandler(bagRestorer)
+	consumer.AddHandler(bagRestorer)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

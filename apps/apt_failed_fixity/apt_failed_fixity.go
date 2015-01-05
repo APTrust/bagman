@@ -14,7 +14,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_failed_fixity started")
 	processor := workers.NewFailedFixityProcessor(procUtil)
-	consumer.SetHandler(processor)
+	consumer.AddHandler(processor)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
