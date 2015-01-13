@@ -51,7 +51,7 @@ func validateCommandLine() {
 	}
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Please specify one or more bags to validate. ")
-		fmt.Fprintf(os.Stderr, "Or use apt_validate -h for help.\n")
+		fmt.Fprintf(os.Stderr, "Or use apt_validate -help for help.\n")
 		os.Exit(1)
 	}
 }
