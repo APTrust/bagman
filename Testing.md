@@ -1,4 +1,4 @@
-# Testing bagman'
+# Testing bagman
 
 ## Unit Tests and Simple Integration Tests
 
@@ -102,7 +102,7 @@ simple unit tests could not catch.
 ## Configuration for Testing
 
 Each of the scripts described above uses the hard-coded config
-"apd4n". You will want to create your own configuration section in
+"dev". You will want to create your own configuration section in
 config/config.json and then use that for local testing.
 
 To create a new config section, copy an existing section and give it a
@@ -147,10 +147,10 @@ The following settings may also need adjustment:
  server you will test against. That's usually http://localhost:3000.
 
 Once you have your config set up, you can use it in your local
-end-to-end test by replacing "-config apd4n" with "-config
+end-to-end test by replacing "-config dev" with "-config
 <your_config>" in the bash scripts.
 
-*TODO: The config name "apd4n" should not be hard-coded into the bash
+*TODO: The config name "dev" should not be hard-coded into the bash
 scripts. It should be read from the command line.*
 
 ## Testing the Partner Apps
@@ -165,7 +165,10 @@ apps. You'll notice that the partner apps are built with the
 libraries that partners probably don't have.
 
 After running the build script, cd into the bin directory and run the
-following.
+following commands.
+
+**You can omit the --config parameter in all of the following examples
+by saving a config file in ~/.aptrust_partner.conf **
 
 ### Testing apt_delete
 
@@ -174,28 +177,28 @@ to test this. Assuming you add a file called test_file.tar, you can
 test with this:
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf \
+	./apt_download --config=../testdata/partner_config_integration_test.conf \
 	test_file.tar
 ```
 
 ### Testing apt_download
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf \
+	./apt_download --config=../testdata/partner_config_integration_test.conf \
 	--no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
 To test apt_download with md5 checksums:
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf --checksum=md5 \
+	./apt_download --config=../testdata/partner_config_integration_test.conf --checksum=md5 \
 	 --no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
 To test apt_download with sha256 checksums:
 
 ```
-	./apt_download --config=../testdata/partner_config_download_test.conf --checksum=sha256 \
+	./apt_download --config=../testdata/partner_config_integration_test.conf --checksum=sha256 \
 	 --no-delete ncsu.1840.16-10.tar virginia.edu.uva-lib_2141114.tar
 ```
 
@@ -214,7 +217,7 @@ List up to 10 items from the receiving bucket:
 List up to 10 items from the restoration bucket:
 
 ```
-	./apt_list -config=../testdata/partner_config_download_test.conf --bucket=restoration --limit=10
+	./apt_list -config=../testdata/partner_config_integration_test.conf --bucket=restoration --limit=10
 ```
 
 ### Testing apt_upload

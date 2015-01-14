@@ -9,6 +9,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"github.com/nu7hatch/gouuid"
+	"strings"
 	"sync"
 	"time"
 )
@@ -124,6 +125,7 @@ func (bagRecorder *BagRecorder) logResult() {
 		// replication to Oregon.
 		if result.ErrorMessage == "" {
 			bagRecorder.QueueItemsForReplication(result)
+			bagRecorder.QueueBagForDelete(result)
 		}
 
 		// Add a message to the message log
@@ -193,6 +195,69 @@ func (bagRecorder *BagRecorder) QueueItemsForReplication(result *bagman.ProcessR
 		bagRecorder.ProcUtil.MessageLog.Warning(message)
 	} else {
 		bagRecorder.ProcUtil.MessageLog.Info(message)
+	}
+}
+
+func (bagRecorder *BagRecorder) QueueBagForDelete(result *bagman.ProcessResult) {
+	bagRecorder.ProcUtil.MessageLog.Info("Queueing bag %s for deletion from receiving bucket",
+		result.S3File.Key.Key)
+
+	// Create a cleanup result describing what needs to be
+	// deleted. The bag_delete worker will try to delete
+	// the file and store the results of the operation in
+	// the cleanup result.
+	// First, describe the file we want to delete. That's
+	// the bag in the receiving bucket.
+	cleanupFile := &bagman.CleanupFile{
+		BucketName: result.S3File.BucketName,
+		Key: result.S3File.Key.Key,
+	}
+	files := make([]*bagman.CleanupFile, 1)
+	files[0] = cleanupFile
+	// Now some metadata for housekeeping.
+    bagDate, err := time.Parse(bagman.S3DateFormat, result.S3File.Key.LastModified)
+    if err != nil {
+        msg := fmt.Sprintf("While trying to queue for cleanup, " +
+			"cannot parse mod date '%s' for bag '%s': %v",
+            result.S3File.Key.LastModified, result.S3File.Key.Key, err)
+		result.ErrorMessage += fmt.Sprintf("%s | ", msg)
+        return
+    }
+	intelObj, err := result.IntellectualObject()
+    if err != nil {
+        msg := fmt.Sprintf("While trying to queue for cleanup, " +
+			"cannot construct IntellectualObject data for '%s': %v ",
+            result.S3File.Key.Key, err)
+		result.ErrorMessage += fmt.Sprintf("%s | ", msg)
+        return
+    }
+	cleanupResult := &bagman.CleanupResult{
+		BagName:          result.S3File.Key.Key,
+		ETag:             strings.Replace(result.S3File.Key.ETag, "\"", "", -1),
+		BagDate:          bagDate,
+		ObjectIdentifier: intelObj.Identifier,
+		Files:            files,
+	}
+
+	bagRecorder.ProcUtil.MessageLog.Debug("Cleanup record for %s: " +
+		"BagName=%s, ETag=%s, BagDate=%v, ObjectIdentifier=%s, " +
+		"BucketName=%s, Key=%s", result.S3File.Key.Key,
+		cleanupResult.BagName, cleanupResult.ETag, cleanupResult.BagDate,
+		cleanupResult.ObjectIdentifier, cleanupResult.Files[0].BucketName,
+		cleanupResult.Files[0].Key)
+
+	// Send to NSQ
+	err = bagman.Enqueue(
+		bagRecorder.ProcUtil.Config.NsqdHttpAddress,
+		bagRecorder.ProcUtil.Config.BagDeleteWorker.NsqTopic,
+		cleanupResult)
+
+	if err != nil {
+		bagRecorder.ProcUtil.MessageLog.Error(
+			"Error queueing %s for deletion: %v",
+			result.S3File.Key.Key,
+			err)
+		result.ErrorMessage += fmt.Sprintf("%s | ", err.Error())
 	}
 }
 

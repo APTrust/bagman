@@ -2,6 +2,7 @@ package partnerapps
 
 import (
 	"fmt"
+	"github.com/APTrust/bagman/bagman"
 )
 
 var Version string = "1.0"
@@ -33,12 +34,25 @@ files downloaded from your APTrust restoration bucket. The APTrust
 config currently does not expand ~ to your home directory, so use
 an absolute path to be safe.
 `
+
 var BagSpecMessage = `
 The full APTrust bagit specification is available at
 https://sites.google.com/a/aptrust.org/aptrust-wiki/technical-documentation/processing-ingest/aptrust-bagit-profile
 `
 
+// Prints the current version number to stdout.
 func PrintVersion(appName string) {
 	fmt.Printf("%s Version %s\n", appName, Version)
 	fmt.Printf("Academic Preservation Trust, 2014\n")
+}
+
+// Returns the name of the default APTrust partner config file.
+func DefaultConfigFile() (string, error) {
+	return bagman.ExpandTilde("~/.aptrust_partner.conf")
+}
+
+// Returns true if the default config file exists.
+func DefaultConfigFileExists() (bool) {
+	filePath, err := DefaultConfigFile()
+	return err == nil && bagman.FileExists(filePath)
 }

@@ -22,7 +22,7 @@ http://nsq.io/overview/quick_start.html.
 You can also run the three main nsq services using service.go, like so:
 
 ```
-    go run service.go -config=$GOPATH/src/github.com/APTrust/bagman/nsq/nsqd.apd4n.config
+    go run service.go -config=$GOPATH/src/github.com/APTrust/bagman/nsq/nsqd.dev.config
 ```
 
 This requires a config file. You'll find examples of config files in

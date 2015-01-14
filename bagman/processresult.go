@@ -60,10 +60,14 @@ func (result *ProcessResult) IntellectualObject() (obj *IntellectualObject, err 
 	obj = &IntellectualObject{
 		InstitutionId: institution.BriefName,
 		Title:         result.BagReadResult.TagValue("Title"),
-		Description:   result.BagReadResult.TagValue("Description"),
+		Description:   result.BagReadResult.TagValue("Internal-Sender-Description"),
 		Identifier:    identifier,
 		Access:        accessRights,
 		GenericFiles:  files,
+	}
+	altId := result.BagReadResult.TagValue("Internal-Sender-Identifier")
+	if altId != "" {
+		obj.AltIdentifier = []string { altId }
 	}
 	return obj, nil
 }

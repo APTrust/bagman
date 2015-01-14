@@ -35,10 +35,20 @@ func parseCommandLine() {
 		partnerapps.PrintVersion("apt_upload")
 		os.Exit(0)
 	}
-	if showHelp || configFile == "" {
+	if showHelp {
 		partnerapps.PrintVersion("apt_upload")
 		printUsage()
 		os.Exit(0)
+	}
+	if configFile == "" {
+		if partnerapps.DefaultConfigFileExists() {
+			configFile, _ = partnerapps.DefaultConfigFile()
+			fmt.Printf("Using default config file %s\n", configFile)
+		} else {
+			partnerapps.PrintVersion("apt_upload")
+			printUsage()
+			os.Exit(0)
+		}
 	}
 	if len(os.Args) < 2 {
 		fmt.Printf("Please specify one or more files to upload. ")
@@ -49,7 +59,7 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_upload --config=pathToConfigFile [--verbose] <file1> <file2> ... <fileN>
+apt_upload [--config=pathToConfigFile] [--verbose] <file1> <file2> ... <fileN>
 
 Uploads APTrust bag files to S3 so they can be archived in APTrust.
 The files you upload should be tar files that conform to the APTrust
@@ -57,9 +67,12 @@ bagit specification. You may use apt_validate to make sure your bags
 are valid before uploading. The bags you upload will go into the
 receiving bucket specified in your config file.
 
+You may omit the --config option if you want to use the default
+config file in your home directory (~/.aptrust_partner.conf).
+
 Examples:
-	apt_upload -config=aptrust.conf archive1.tar archive2.tar
-	apt_upload -config=aptrust.conf ~/my_data/*.tar
+	apt_upload archive1.tar archive2.tar
+	apt_upload  ~/my_data/*.tar
 	apt_upload -config=aptrust.conf --verbose ~/my_data/*
 
 When using the * pattern, as in the second and third examples above,

@@ -60,10 +60,20 @@ func parseCommandLine() {
 		partnerapps.PrintVersion("apt_list")
 		os.Exit(0)
 	}
-	if showHelp || configFile == "" {
+	if showHelp {
 		partnerapps.PrintVersion("apt_list")
 		printUsage()
 		os.Exit(0)
+	}
+	if configFile == "" {
+		if partnerapps.DefaultConfigFileExists() {
+			configFile, _ = partnerapps.DefaultConfigFile()
+			fmt.Printf("Using default config file %s\n", configFile)
+		} else {
+			partnerapps.PrintVersion("apt_list")
+			printUsage()
+			os.Exit(0)
+		}
 	}
 	if bucket != "restoration" && bucket != "receiving" {
 		fmt.Printf("bucket must be either receiving or restoration\n")
@@ -77,10 +87,13 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_list --config=pathToConfigFile --bucket=<restoration|receiving> [--limit=100]
+apt_list [--config=pathToConfigFile] --bucket=<restoration|receiving> [--limit=100]
 
 Lists the contents of your APTrust receiving bucket or restoration
 bucket.
+
+You may omit the --config option if you want to use the default
+config file in your home directory (~/.aptrust_partner.conf).
 
 The bucket argument is required, and must be either restoration or
 receiving.

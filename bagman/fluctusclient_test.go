@@ -27,7 +27,7 @@ func runFluctusTests() bool {
 		if fluctusSkipMessagePrinted == false {
 			fluctusSkipMessagePrinted = true
 			fmt.Printf("Skipping fluctus integration tests: "+
-				"fluctus server is not running at %s\n", fluctusUrl)
+				"Fluctus server is not running at %s\n", fluctusUrl)
 		}
 		return false
 	}
@@ -229,6 +229,12 @@ func TestIntellectualObjectCreate(t *testing.T) {
 		t.Error("New object attributes don't match what was submitted.")
 	}
 
+	// Make sure alt_identifer was saved
+	if len(newObj.AltIdentifier) != 1 {
+		t.Errorf("Expected new object to have 1 alt identifier. It has %s", len(newObj.AltIdentifier))
+	} else if newObj.AltIdentifier[0] != "ncsu-internal-id-0001" {
+		t.Errorf("Expected alt_identifier 'ncsu-internal-id-0001', got '%s'", newObj.AltIdentifier[0])
+	}
 }
 
 func TestGenericFileGet(t *testing.T) {

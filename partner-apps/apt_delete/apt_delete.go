@@ -51,10 +51,20 @@ func parseCommandLine() {
 		partnerapps.PrintVersion("apt_delete")
 		os.Exit(0)
 	}
-	if showHelp || configFile == "" {
+	if showHelp {
 		partnerapps.PrintVersion("apt_delete")
 		printUsage()
 		os.Exit(0)
+	}
+	if configFile == "" {
+		if partnerapps.DefaultConfigFileExists() {
+			configFile, _ = partnerapps.DefaultConfigFile()
+			fmt.Printf("Using default config file %s\n", configFile)
+		} else {
+			partnerapps.PrintVersion("apt_delete")
+			printUsage()
+			os.Exit(0)
+		}
 	}
 	if len(os.Args) < 2 {
 		fmt.Printf("Please specify one or more files to delete.\n")
@@ -66,9 +76,12 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_delete --config=pathToConfigFile <file1>...<fileN>
+apt_delete [--config=pathToConfigFile] <file1>...<fileN>
 
 Deletes APTrust bag files from your S3 restoration bucket.
+
+You may omit the --config option if you want to use the default
+config file in your home directory (~/.aptrust_partner.conf).
 `
 	fmt.Println(message)
 	fmt.Println(partnerapps.ConfigHelp)

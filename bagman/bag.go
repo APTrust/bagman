@@ -183,12 +183,15 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 	errMsg := ""
 	bagReadResult.Files = make([]string, len(fileNames))
 	hasBagit := false
+	hasAPTrustInfo := false
 	hasMd5Manifest := false
 	hasDataFiles := false
 	for index, fileName := range fileNames {
 		bagReadResult.Files[index] = fileName
 		if fileName == "bagit.txt" {
 			hasBagit = true
+		} else if fileName == "aptrust-info.txt" {
+			hasAPTrustInfo = true
 		} else if fileName == "manifest-md5.txt" {
 			hasMd5Manifest = true
 		} else if strings.HasPrefix(fileName, "data/") {
@@ -197,6 +200,9 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 	}
 	if !hasBagit {
 		errMsg += " Bag is missing bagit.txt file.\n"
+	}
+	if !hasAPTrustInfo {
+		errMsg += " Bag is missing aptrust-info.txt file.\n"
 	}
 	if !hasMd5Manifest {
 		errMsg += " Bag is missing manifest-md5.txt file.\n"

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"github.com/APTrust/bagman/bagman"
 	"io"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 // Start the NSQ services. You can kill then all with Control-C
@@ -27,7 +30,20 @@ func main() {
 func run(configFile string) {
 	fmt.Println("Starting NSQ processes. Use Control-C to quit all")
 	nsqlookupd := startProcess("nsqlookupd", "")
-	nsqd := startProcess("nsqd", fmt.Sprintf("--config=%s", configFile))
+
+	expandedDataDir, err := expandedDataDir(configFile)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	var nsqd *exec.Cmd
+	configArg := fmt.Sprintf("--config=%s", configFile)
+	if expandedDataDir != "" {
+		dataDirArg := fmt.Sprintf("--data-path=%s", expandedDataDir)
+		nsqd = startProcess("nsqd", configArg, dataDirArg)
+	} else {
+		nsqd = startProcess("nsqd", configArg)
+	}
 	nsqadmin := startProcess("nsqadmin", "--lookupd-http-address=127.0.0.1:4161")
 
 	nsqlookupd.Wait()
@@ -38,9 +54,9 @@ func run(configFile string) {
 // Start a process, redirecting it's stderr & stdout so they show up
 // in this process's terminal. Returns the command, so we can wait while
 // it runs.
-func startProcess(command string, arg string) *exec.Cmd {
+func startProcess(command string, arg ...string) *exec.Cmd {
 	fmt.Println("Starting", command, arg)
-	cmd := exec.Command(command, arg)
+	cmd := exec.Command(command, arg...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		fmt.Println(err)
@@ -56,4 +72,40 @@ func startProcess(command string, arg string) *exec.Cmd {
 		fmt.Println("Error starting", command, err)
 	}
 	return cmd
+}
+
+// Expand the tilde the data_path setting to an absolute path.
+// Returns the expanded path, or an error.
+func expandedDataDir(configFile string) (string, error) {
+	file, err := os.Open(configFile)
+	if err != nil {
+		return "", fmt.Errorf("Cannot open config file: %v\n", err)
+	}
+	defer file.Close()
+	bufReader := bufio.NewReader(file)
+	for {
+		line, err := bufReader.ReadString('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			return "", err
+		}
+		cleanLine := strings.TrimSpace(line)
+		if strings.HasPrefix(cleanLine, "data_path") {
+			parts := strings.SplitN(cleanLine, "=", 2)
+			if len(parts) < 2 {
+				return "", fmt.Errorf("Config file setting for data_path is missing or malformed.")
+			}
+			expanded, err := bagman.ExpandTilde(bagman.CleanString(parts[1]))
+			if err != nil {
+				return "", fmt.Errorf("Cannot expand data_dir setting '%s': %v", parts[1], err)
+			}
+			if !bagman.FileExists(expanded) {
+				fmt.Printf("Creating NSQ data directory %s \n", expanded)
+				os.MkdirAll(expanded, 0755)
+			}
+			return expanded, nil
+		}
+	}
+	return "", nil
 }

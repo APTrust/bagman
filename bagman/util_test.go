@@ -4,6 +4,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -159,5 +160,40 @@ func TestLooksLikeURL(t *testing.T) {
 	}
 	if bagman.LooksLikeURL("") == true {
 		t.Error("That was not a valid URL! That was an empty string!")
+	}
+}
+
+func TestExpandTilde(t *testing.T) {
+	expanded, err := bagman.ExpandTilde("~/tmp")
+	if err != nil {
+		t.Error(err)
+	}
+	// Testing this cross-platform is pain. Different home dirs
+	// on Windows, Linux, Mac. Different separators ("/" vs "\").
+	if len(expanded) <= 5 || !strings.HasSuffix(expanded, "tmp") {
+		t.Errorf("~/tmp expanded to unexpected value %s", expanded)
+	}
+
+	expanded, err = bagman.ExpandTilde("/nothing/to/expand")
+	if err != nil {
+		t.Error(err)
+	}
+	if expanded != "/nothing/to/expand" {
+		t.Errorf("/nothing/to/expand expanded to unexpected value %s", expanded)
+	}
+}
+
+func TestCleanString(t *testing.T) {
+	clean := bagman.CleanString("  spaces \t\n ")
+	if clean != "spaces" {
+		t.Error("Expected to receive string 'spaces'")
+	}
+	clean = bagman.CleanString("  ' embedded spaces 1 '   ")
+	if clean != " embedded spaces 1 " {
+		t.Error("Expected to receive string ' embedded spaces 1 '")
+	}
+	clean = bagman.CleanString("  \" embedded spaces 2 \"   ")
+	if clean != " embedded spaces 2 " {
+		t.Error("Expected to receive string ' embedded spaces '")
 	}
 }

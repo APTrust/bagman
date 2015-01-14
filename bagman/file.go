@@ -221,9 +221,9 @@ func (file *File) ReplicationEvent(replicationUrl string) (*PremisEvent, error) 
 	}
 	event := &PremisEvent{
 		Identifier:         eventId.String(),
-		EventType:          "identifier_assignment",
+		EventType:          "ingest",
 		DateTime:           time.Now().UTC(),
-		Detail:             "Assigned new storage URL identifier for replication copy",
+		Detail:             "Ingested to replication storage and assigned replication URL identifier",
 		Outcome:            string(StatusSuccess),
 		OutcomeDetail:      replicationUrl,
 		Object:             "Go uuid library + goamz S3 library",

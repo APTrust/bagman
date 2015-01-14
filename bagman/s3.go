@@ -360,16 +360,18 @@ func (client *S3Client) FetchToFileWithoutChecksum(bucketName, key, localPath st
 
 // Collects info about all of the buckets listed in buckets.
 // TODO: Write unit test
-func (client *S3Client) CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, err error) {
+func (client *S3Client) CheckAllBuckets(buckets []string) (bucketSummaries []*BucketSummary, errors []error) {
 	bucketSummaries = make([]*BucketSummary, 0)
+	errors = make([]error, 0)
 	for _, bucketName := range buckets {
 		bucketSummary, err := client.CheckBucket(bucketName)
 		if err != nil {
-			return bucketSummaries, fmt.Errorf("%s: %v", bucketName, err)
+			errors = append(errors, fmt.Errorf("%s: %v", bucketName, err))
+		} else {
+			bucketSummaries = append(bucketSummaries, bucketSummary)
 		}
-		bucketSummaries = append(bucketSummaries, bucketSummary)
 	}
-	return bucketSummaries, nil
+	return bucketSummaries, errors
 }
 
 // Returns info about the contents of the bucket named bucketName.

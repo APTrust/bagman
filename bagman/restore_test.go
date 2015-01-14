@@ -74,7 +74,7 @@ func restoreBag(multipart bool) (*bagman.BagRestorer, []string, error){
 	}
 
 	outputDir := filepath.Join("testdata", "tmp")
-	restorer, err := bagman.NewBagRestorer(obj, outputDir)
+	restorer, err := bagman.NewBagRestorer(obj, outputDir, false)
 	if err != nil {
 		detailedErr := fmt.Errorf("NewBagRestorer() returned an error: %v", err)
 		return nil, nil, detailedErr
@@ -341,6 +341,32 @@ func TestRestorationBucketName (t *testing.T) {
 			"'bucket-o-worms', got '%s'",
 			restorer.RestorationBucketName())
 	}
+
+	// A few more simple tests.
+	intelObj := &bagman.IntellectualObject{
+		Identifier: "ncsu.edu/MyTestObject",
+	}
+	// Not restoring to test buckets
+	restorer, err = bagman.NewBagRestorer(intelObj, ".", false)
+	if restorer.RestorationBucketName() != "aptrust.restore.ncsu.edu" {
+		t.Errorf("RestorationBucketName() expected " +
+			"'aptrust.restore.ncsu.edu', got '%s'",
+			restorer.RestorationBucketName())
+	}
+	// Now we are restoring to test buckets
+	restorer, err = bagman.NewBagRestorer(intelObj, ".", true)
+	if restorer.RestorationBucketName() != "aptrust.restore.test.ncsu.edu" {
+		t.Errorf("RestorationBucketName() expected " +
+			"'aptrust.restore.test.ncsu.edu', got '%s'",
+			restorer.RestorationBucketName())
+	}
+	// And now custom restore bucket should override test restore bucket
+	restorer.SetCustomRestoreBucket("bucket-o-monkeys")
+	if restorer.RestorationBucketName() != "bucket-o-monkeys" {
+		t.Errorf("RestorationBucketName() expected " +
+			"'bucket-o-monkeys', got '%s'",
+			restorer.RestorationBucketName())
+	}
 }
 
 func TestCopyToS3 (t *testing.T) {
@@ -422,7 +448,7 @@ func TestRestoreAndPublish (t *testing.T) {
 
 	// Create a BagRestorer that will send files to aptrust.test.restore
 	outputDir := filepath.Join("testdata", "tmp")
-	restorer, err := bagman.NewBagRestorer(obj, outputDir)
+	restorer, err := bagman.NewBagRestorer(obj, outputDir, false)
 	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
 
 	// Restore to this bucket

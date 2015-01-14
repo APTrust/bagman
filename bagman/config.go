@@ -199,6 +199,13 @@ type Config struct {
 	// off to the S3 restoration bucket.
 	RestoreDirectory        string
 
+	// If true, we should restore bags to our partners' test
+	// restoration buckets instead of the usual restoration
+	// buckets. This should be true only in the demo config,
+	// which is what we run on test.aptrust.org. Also note
+	// that CustomRestoreBucket overrides this.
+	RestoreToTestBuckets    bool
+
 	// Configuration options for apt_restore
 	RestoreWorker           WorkerConfig
 
@@ -223,6 +230,8 @@ type Config struct {
 }
 
 func (config *Config) AbsLogDirectory() string {
+	config.ExpandFilePaths()
+	config.createDirectories()
 	absPath, err := filepath.Abs(config.LogDirectory)
 	if err != nil {
 		msg := fmt.Sprintf("Cannot get absolute path to log directory. "+
@@ -245,6 +254,8 @@ func LoadRequestedConfig(requestedConfig *string) (config Config) {
 		os.Exit(1)
 	}
 	config.ActiveConfig = *requestedConfig
+	config.ExpandFilePaths()
+	config.createDirectories()
 	return config
 }
 
@@ -284,6 +295,54 @@ func (config *Config) EnsureFluctusConfig() error {
 	}
 	if os.Getenv("FLUCTUS_API_KEY") == "" {
 		return fmt.Errorf("Environment variable FLUCTUS_API_KEY is not set")
+	}
+	return nil
+}
+
+// Expands ~ file paths
+func (config *Config) ExpandFilePaths() {
+	expanded, err := ExpandTilde(config.TarDirectory)
+	if err == nil {
+		config.TarDirectory = expanded
+	}
+	expanded, err = ExpandTilde(config.LogDirectory)
+	if err == nil {
+		config.LogDirectory = expanded
+	}
+	expanded, err = ExpandTilde(config.RestoreDirectory)
+	if err == nil {
+		config.RestoreDirectory = expanded
+	}
+	expanded, err = ExpandTilde(config.ReplicationDirectory)
+	if err == nil {
+		config.ReplicationDirectory = expanded
+	}
+}
+
+func (config *Config) createDirectories() (error) {
+	if !FileExists(config.TarDirectory) {
+		err := os.MkdirAll(config.TarDirectory, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	if !FileExists(config.LogDirectory) {
+		err := os.MkdirAll(config.LogDirectory, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	if !FileExists(config.RestoreDirectory) {
+		err := os.MkdirAll(config.RestoreDirectory, 0755)
+		if err != nil {
+			return err
+		}
+	}
+	if !FileExists(config.ReplicationDirectory) {
+		err := os.MkdirAll(config.ReplicationDirectory, 0755)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

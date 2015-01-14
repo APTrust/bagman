@@ -69,10 +69,20 @@ func parseCommandLine() {
 		partnerapps.PrintVersion("apt_download")
 		os.Exit(0)
 	}
-	if showHelp || configFile == "" {
+	if showHelp {
 		partnerapps.PrintVersion("apt_download")
 		printUsage()
 		os.Exit(0)
+	}
+	if configFile == "" {
+		if partnerapps.DefaultConfigFileExists() {
+			configFile, _ = partnerapps.DefaultConfigFile()
+			fmt.Printf("Using default config file %s\n", configFile)
+		} else {
+			partnerapps.PrintVersion("apt_download")
+			printUsage()
+			os.Exit(0)
+		}
 	}
 	if len(os.Args) < 2 {
 		fmt.Printf("Please specify one or more files to download. ")
@@ -90,12 +100,15 @@ func parseCommandLine() {
 
 func printUsage() {
 	message := `
-apt_download [--checksum=<md5|sha256>] [--no-delete] --config=pathToConfigFile <file1>...<fileN>
+apt_download [--checksum=<md5|sha256>] [--no-delete] [--config=pathToConfigFile] <file1>...<fileN>
 
 Downloads APTrust bag files from the S3 restoration bucket.
 You must first request bag restoration through the APTrust Web UI.
 Once you are notified that the bag has been restored, you can
 download it with apt_download.
+
+You may omit the --config option if you want to use the default
+config file in your home directory (~/.aptrust_partner.conf).
 
 The checksum param is optional. If omitted, no checksum digest will
 be calculated on the downloaded file. Valid checksum options are:

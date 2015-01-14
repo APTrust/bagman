@@ -10,13 +10,15 @@ import (
 // if they untar and validate successfully.
 func main() {
 	procUtil := workers.CreateProcUtil()
+	procUtil.MessageLog.Info("Connecting to NSQLookupd at %s", procUtil.Config.NsqLookupd)
+	procUtil.MessageLog.Info("NSQDHttpAddress is %s", procUtil.Config.NsqdHttpAddress)
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.PrepareWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatalf(err.Error())
 	}
 	procUtil.MessageLog.Info("apt_prepare started")
 	bagPreparer := workers.NewBagPreparer(procUtil)
-	consumer.SetHandler(bagPreparer)
+	consumer.AddHandler(bagPreparer)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

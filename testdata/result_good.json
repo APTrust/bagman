@@ -169,8 +169,12 @@
                 "Value": "Title of an Intellectual Object"
             },
             {
-                "Label": "Description",
+                "Label": "Internal-Sender-Description",
                 "Value": "Description of intellectual object."
+            },
+            {
+                "Label": "Internal-Sender-Identifier",
+                "Value": "ncsu-internal-id-0001"
             },
             {
                 "Label": "Access",

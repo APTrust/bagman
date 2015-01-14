@@ -92,7 +92,10 @@ func (bagRestorer *BagRestorer) HandleMessage(message *nsq.Message) error {
 		bagRestorer.ResultsChannel <- &object
 		return nil
 	} else {
-		object.BagRestorer, err = bagman.NewBagRestorer(intelObj, bagRestorer.ProcUtil.Config.RestoreDirectory)
+		object.BagRestorer, err = bagman.NewBagRestorer(
+			intelObj,
+			bagRestorer.ProcUtil.Config.RestoreDirectory,
+			bagRestorer.ProcUtil.Config.RestoreToTestBuckets)
 		if err != nil {
 			object.ErrorMessage = fmt.Sprintf("Cannot create BagRestorer for %s: %v",
 				object.Key(), err)

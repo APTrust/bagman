@@ -22,6 +22,7 @@ func LoadPartnerConfig(configFile string) (*PartnerConfig, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Cannot open config file: %v", err)
 	}
+	defer file.Close()
 	return parsePartnerConfig(file)
 }
 
@@ -40,7 +41,7 @@ func parsePartnerConfig(file *os.File) (*PartnerConfig, error) {
 			return nil, err
 		}
 		cleanLine := strings.TrimSpace(line)
-		if strings.HasPrefix(cleanLine, "#") {
+		if cleanLine == "" || strings.HasPrefix(cleanLine, "#") {
 			continue
 		}
 		parts := strings.SplitN(cleanLine, "=", 2)
@@ -52,23 +53,13 @@ func parsePartnerConfig(file *os.File) (*PartnerConfig, error) {
 			partnerConfig.addSetting(parts[0], parts[1])
 		}
 	}
+	partnerConfig.ExpandFilePaths()
 	return partnerConfig, nil
 }
 
-func cleanString(str string) (string) {
-	cleanStr := strings.TrimSpace(str)
-	// Strip leading and traling quotes, but only if string has matching
-	// quotes at both ends.
-	if strings.HasPrefix(cleanStr, "'") && strings.HasSuffix(cleanStr, "'") ||
-		strings.HasPrefix(cleanStr, "\"") && strings.HasSuffix(cleanStr, "\"") {
-		return cleanStr[1:len(cleanStr) - 1]
-	}
-	return cleanStr
-}
-
 func (partnerConfig *PartnerConfig) addSetting(name, value string) {
-	cleanName := cleanString(name)
-	cleanValue := cleanString(value)
+	cleanName := CleanString(name)
+	cleanValue := CleanString(value)
 	switch strings.ToLower(cleanName) {
 	case "awsaccesskeyid": partnerConfig.AwsAccessKeyId = cleanValue
 	case "awssecretaccesskey": partnerConfig.AwsSecretAccessKey = cleanValue
@@ -125,6 +116,7 @@ func (partnerConfig *PartnerConfig) LoadAwsFromEnv() {
 }
 
 func (partnerConfig *PartnerConfig) Validate() (error) {
+	partnerConfig.ExpandFilePaths()
 	if partnerConfig.AwsAccessKeyId == "" || partnerConfig.AwsSecretAccessKey == "" {
 		partnerConfig.LoadAwsFromEnv()
 	}
@@ -151,4 +143,11 @@ func (partnerConfig *PartnerConfig) Validate() (error) {
 		}
 	}
 	return nil
+}
+
+func (partnerConfig *PartnerConfig) ExpandFilePaths() {
+	expanded, err := ExpandTilde(partnerConfig.DownloadDir)
+	if err == nil {
+		partnerConfig.DownloadDir = expanded
+	}
 }

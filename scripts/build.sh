@@ -17,8 +17,8 @@
 BAGMAN_HOME=~/go/src/github.com/APTrust/bagman
 BAGMAN_BIN=${BAGMAN_HOME}/bin
 
-if [ ! -d ${BAGMAN_DIR} ]; then
-	mkdir ${BAGMAN_DIR}
+if [ ! -d ${BAGMAN_BIN} ]; then
+	mkdir ${BAGMAN_BIN}
 else
 	echo "cleaning out bin directory"
 	rm ${BAGMAN_BIN}/*

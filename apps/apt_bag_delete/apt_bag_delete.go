@@ -19,7 +19,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_bag_delete started")
 	bagDeleter := workers.NewBagDeleter(procUtil)
-	consumer.SetHandler(bagDeleter)
+	consumer.AddHandler(bagDeleter)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

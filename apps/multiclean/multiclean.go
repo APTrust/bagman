@@ -6,8 +6,8 @@ buckets, see cleanup.go.
 
 Usage:
 
-  go run multiclean.go -config=apd4n
-  go run multiclean.go -config=apd4n -delete
+  go run multiclean.go -config=dev
+  go run multiclean.go -config=dev -delete
 
 The first example just lists all of the unrecoverable parts of failed
 multipart uploads and prints the total number of unreachable bytes

@@ -19,7 +19,7 @@ var validMimeType = regexp.MustCompile(`^\w+/\w+$`)
 func GuessMimeType(absPath string) (mimeType string, err error) {
 	// Open the Mime Magic DB only once.
 	if magicMime == nil {
-		magicMime, err = magicmime.New()
+		magicMime, err = magicmime.New(magicmime.MAGIC_MIME_TYPE)
 		if err != nil {
 			return "", fmt.Errorf("Error opening MimeMagic database: %v", err)
 		}
