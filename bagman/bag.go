@@ -180,6 +180,11 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 		return bagReadResult
 	}
 
+	dataDirPrefix := "data/"
+	if runtime.GOOS == "windows" {
+		dataDirPrefix = "data\\"
+	}
+
 	errMsg := ""
 	bagReadResult.Files = make([]string, len(fileNames))
 	hasBagit := false
@@ -194,7 +199,7 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 			hasAPTrustInfo = true
 		} else if fileName == "manifest-md5.txt" {
 			hasMd5Manifest = true
-		} else if strings.HasPrefix(fileName, "data/") {
+		} else if strings.HasPrefix(fileName, dataDirPrefix) {
 			hasDataFiles = true
 		}
 	}
