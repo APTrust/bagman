@@ -14,7 +14,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_trouble started")
 	troubleProcessor := workers.NewTroubleProcessor(procUtil)
-	consumer.SetHandler(troubleProcessor)
+	consumer.AddHandler(troubleProcessor)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

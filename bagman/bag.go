@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -91,7 +92,12 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 		// Top-level dir will be the first header entry.
 		if header.Typeflag == tar.TypeDir && topLevelDir == "" {
 			topLevelDir = strings.Replace(header.Name, "/", "", 1)
-			expectedDir := path.Base(tarFilePath)
+			// Fix for Windows
+			systemNormalizedPath := tarFilePath
+			if runtime.GOOS == "windows" && strings.Contains(tarFilePath, "\\") {
+				systemNormalizedPath = strings.Replace(tarFilePath, "\\", "/", -1)
+			}
+			expectedDir := path.Base(systemNormalizedPath)
 			if strings.HasSuffix(expectedDir, ".tar") {
 				expectedDir = expectedDir[0 : len(expectedDir)-4]
 			}
@@ -174,6 +180,11 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 		return bagReadResult
 	}
 
+	dataDirPrefix := "data/"
+	if runtime.GOOS == "windows" {
+		dataDirPrefix = "data\\"
+	}
+
 	errMsg := ""
 	bagReadResult.Files = make([]string, len(fileNames))
 	hasBagit := false
@@ -188,7 +199,7 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 			hasAPTrustInfo = true
 		} else if fileName == "manifest-md5.txt" {
 			hasMd5Manifest = true
-		} else if strings.HasPrefix(fileName, "data/") {
+		} else if strings.HasPrefix(fileName, dataDirPrefix) {
 			hasDataFiles = true
 		}
 	}

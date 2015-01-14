@@ -36,6 +36,11 @@ func main() {
 	run()
 }
 
+type DateParseError struct {
+    message   string
+}
+func (e DateParseError) Error() string { return e.message }
+
 func run() {
 	s3Client, err := bagman.NewS3Client(aws.USEast)
 	if err != nil {
@@ -97,32 +102,50 @@ func run() {
 func filterLargeFiles(bucketSummaries []*bagman.BucketSummary) (s3Files []*bagman.S3File) {
 	for _, bucketSummary := range bucketSummaries {
 		for _, key := range bucketSummary.Keys {
+			s3File := &bagman.S3File{
+				BucketName: bucketSummary.BucketName,
+				Key: key,
+			}
 			if workReader.Config.MaxFileSize == 0 || key.Size < workReader.Config.MaxFileSize {
-				s3Files = append(s3Files, &bagman.S3File{
-					BucketName: bucketSummary.BucketName,
-					Key: key})
+				// OK. Process this.
+				s3Files = append(s3Files, s3File)
+			} else {
+				// Too big. Add a record to fluctus so partner admin can see it.
+				tellFluctusWeWontProcessThis(s3File)
 			}
 		}
 	}
 	return s3Files
 }
 
+func getStatusRecord(s3File *bagman.S3File) (status *bagman.ProcessStatus, err error) {
+	bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
+	if err != nil {
+		msg := fmt.Sprintf("Cannot parse S3File mod date '%s'. "+
+			"File %s will be re-processed.",
+			s3File.Key.LastModified, s3File.Key.Key)
+		return nil, DateParseError { message: msg, }
+	}
+	etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
+	status = findInStatusCache(etag, s3File.Key.Key, bagDate)
+	if status == nil {
+		status, err = workReader.FluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+	}
+	return status, err
+}
+
 // Remove S3 files that have been processed successfully.
 // No need to reprocess those!
 func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3File) {
 	for _, s3File := range s3Files {
-		bagDate, err := time.Parse(bagman.S3DateFormat, s3File.Key.LastModified)
+		status, err := getStatusRecord(s3File)
 		if err != nil {
-			workReader.MessageLog.Error("Cannot parse S3File mod date '%s'. "+
-				"File %s will be re-processed.",
-				s3File.Key.LastModified, s3File.Key.Key)
-			filesToProcess = append(filesToProcess, s3File)
-			continue
-		}
-		etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
-		status := findInStatusCache(etag, s3File.Key.Key, bagDate)
-		if status == nil {
-			status, err = workReader.FluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
+			_, isDateParseError := err.(DateParseError)
+			if isDateParseError {
+				workReader.MessageLog.Error(err.Error())
+				filesToProcess = append(filesToProcess, s3File)
+				continue
+			}
 		}
 		if err != nil {
 			workReader.MessageLog.Error("Cannot get Fluctus bag status for %s. "+
@@ -131,7 +154,7 @@ func filterProcessedFiles(s3Files []*bagman.S3File) (filesToProcess []*bagman.S3
 		} else if status == nil || status.ShouldTryIngest() {
 			reason := "Bag has not yet been successfully processed."
 			if status == nil {
-				err = createFluctusRecord(s3File)
+				err = createFluctusRecord(s3File, true)
 				if err != nil {
 					// TODO: Notify someone?
 					workReader.MessageLog.Error("Could not create Fluctus ProcessedItem "+
@@ -181,7 +204,23 @@ func findInStatusCache(etag, name string, bagDate time.Time) *bagman.ProcessStat
 	return nil
 }
 
-func createFluctusRecord(s3File *bagman.S3File) (err error) {
+func tellFluctusWeWontProcessThis(s3File *bagman.S3File) {
+	status, _ := getStatusRecord(s3File)
+	if status == nil {
+		err := createFluctusRecord(s3File, false)
+		if err != nil {
+			// TODO: Notify someone?
+			workReader.MessageLog.Error("Could not create Fluctus ProcessedItem "+
+				"for %s: %v", s3File.Key.Key, err)
+		} else {
+			workReader.MessageLog.Info("%s will not be processed because it is %d bytes " +
+				"and the size limit for this system is %d bytes.",
+				s3File.Key.Key, s3File.Key.Size, workReader.Config.MaxFileSize)
+		}
+	}
+}
+
+func createFluctusRecord(s3File *bagman.S3File, tryToIngest bool) (err error) {
 	status := &bagman.ProcessStatus{}
 	status.Date = time.Now().UTC()
 	status.Action = "Ingest"
@@ -192,15 +231,22 @@ func createFluctusRecord(s3File *bagman.S3File) (err error) {
 	// Strip the quotes off the ETag
 	status.ETag = strings.Replace(s3File.Key.ETag, "\"", "", 2)
 	status.Stage = bagman.StageReceive
-	status.Status = bagman.StatusPending
-	status.Note = "Item is in receiving bucket. Processing has not started."
 	status.Institution = bagman.OwnerOf(s3File.BucketName)
-	status.Outcome = string(status.Status)
 	status.Reviewed = false
 
-	// Retry should be true until we know for sure that there
-	// is something wrong with the bag.
-	status.Retry = true
+	if tryToIngest == true {
+		status.Note = "Item is in receiving bucket. Processing has not started."
+		status.Status = bagman.StatusPending
+		status.Retry = true
+	} else {
+		status.Note = fmt.Sprintf("Item will not be processed because it is %d bytes " +
+			"and the size limit for this system is %d bytes.",
+			s3File.Key.Size, workReader.Config.MaxFileSize)
+		status.Status = bagman.StatusFailed
+		status.Retry = false
+	}
+	status.Outcome = string(status.Status)
+
 
 	err = workReader.FluctusClient.UpdateProcessedItem(status)
 	if err != nil {

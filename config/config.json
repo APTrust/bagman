@@ -565,7 +565,7 @@
         "ReplicationBucket": "aptrust.preservation.oregon",
         "CustomRestoreBucket": "",
         "RestoreToTestBuckets": false,
-        "MaxDaysSinceFixityCheck": 60,
+        "MaxDaysSinceFixityCheck": 30,
 
         "PrepareWorker": {
             "NetworkConnections": 8,

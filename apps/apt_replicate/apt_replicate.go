@@ -14,7 +14,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_replicate started")
 	replicator := workers.NewReplicator(procUtil)
-	consumer.SetHandler(replicator)
+	consumer.AddHandler(replicator)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.

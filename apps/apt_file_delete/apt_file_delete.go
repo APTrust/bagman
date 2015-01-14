@@ -14,7 +14,7 @@ func main() {
 	}
 	procUtil.MessageLog.Info("apt_file_delete started")
 	fileDeleter := workers.NewFileDeleter(procUtil)
-	consumer.SetHandler(fileDeleter)
+	consumer.AddHandler(fileDeleter)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
 	// This reader blocks until we get an interrupt, so our program does not exit.
