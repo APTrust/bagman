@@ -11,6 +11,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -91,7 +92,12 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 		// Top-level dir will be the first header entry.
 		if header.Typeflag == tar.TypeDir && topLevelDir == "" {
 			topLevelDir = strings.Replace(header.Name, "/", "", 1)
-			expectedDir := path.Base(tarFilePath)
+			// Fix for Windows
+			systemNormalizedPath := tarFilePath
+			if runtime.GOOS == "windows" && strings.Contains(tarFilePath, "\\") {
+				systemNormalizedPath = strings.Replace(tarFilePath, "\\", "/", -1)
+			}
+			expectedDir := path.Base(systemNormalizedPath)
 			if strings.HasSuffix(expectedDir, ".tar") {
 				expectedDir = expectedDir[0 : len(expectedDir)-4]
 			}
