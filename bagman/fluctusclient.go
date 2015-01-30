@@ -823,7 +823,7 @@ func (client *FluctusClient) RestorationStatusSet(objectIdentifier string, stage
 	}
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/restoration_status/%s",
 		client.apiVersion, escapeSlashes(objectIdentifier)))
-	client.logger.Debug("Setting restoration status: %s - stage = %s, status = %s, retry = %s",
+	client.logger.Debug("Setting restoration status: %s - stage = %s, status = %s, retry = %t",
 		objUrl, stage, status, retry)
 	data := make(map[string]interface{})
 	data["stage"] = stage
