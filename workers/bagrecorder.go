@@ -487,7 +487,7 @@ func (bagRecorder *BagRecorder) fedoraUpdateIntellectualObject(result *bagman.Pr
 		Outcome:            bagman.StatusSuccess,
 		OutcomeDetail:      fmt.Sprintf("%d files copied", len(result.FedoraResult.GenericFilePaths)),
 		Object:             "goamz S3 client",
-		Agent:              "https://launchpad.net/goamz",
+		Agent:              "https://github.com/crowdmob/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}
 	_, err = bagRecorder.ProcUtil.FluctusClient.PremisEventSave(intellectualObject.Identifier,
