@@ -119,8 +119,17 @@ func TestBagNeedsProcessing(t *testing.T) {
 	}
 	processUtil := getProcessUtil()
 	s3File := getS3File()
-	if bagman.BagNeedsProcessing(s3File, processUtil) == true {
+	// SkipAlreadyProcessed
+	needsProcessing := bagman.BagNeedsProcessing(s3File, processUtil)
+	if processUtil.Config.SkipAlreadyProcessed && needsProcessing == true {
+		// This bag has been ingested, and config says to skip
+		// ingested items, so BagNeedsProcessing should return false.
 		t.Error("BagNeedsProcessing should have returned false")
+	} else if processUtil.Config.SkipAlreadyProcessed == false && needsProcessing == false {
+		// When SkipAlreadyProcessed is false, we should process everything.
+		// We set SkipAlreadyProcessed to true only when we want to force
+		// reprocessing, as in end-to-end tests on a dev machine.
+		t.Error("BagNeedsProcessing should have returned true")
 	}
 }
 
