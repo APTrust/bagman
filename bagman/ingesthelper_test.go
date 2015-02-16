@@ -215,6 +215,7 @@ func TestGetS3Options(t *testing.T) {
 	helper := getIngestHelper()
 	file := &bagman.File{
 		Md5: "b4f8f3072f73598fc5b65bf416b6019a",
+		Sha256: "00001111222233334444aaaabbbbccccddddeeeeffff55556666",
 		Path: "/data/hansel/und/gretel.pdf",
 	}
 	opts, err := helper.GetS3Options(file)
@@ -240,6 +241,10 @@ func TestGetS3Options(t *testing.T) {
 	if opts.Meta["bagpath"][0] != file.Path {
 		t.Errorf("Expected bag metadata '%s', but found '%s'",
 			file.Path, opts.Meta["bagpath"][0])
+	}
+	if opts.Meta["sha256"][0] != file.Sha256 {
+		t.Errorf("Expected bag metadata sha256 '%s', but found '%s'",
+			file.Path, opts.Meta["sha256"][0])
 	}
 	deleteLocalFiles()
 }
