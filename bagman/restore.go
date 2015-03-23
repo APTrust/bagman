@@ -309,7 +309,7 @@ func (restorer *BagRestorer) writeAPTrustTagFile(bag *bagins.Bag) (error) {
 	tagFile.Data.AddField(*bagins.NewTagField("Title", restorer.IntellectualObject.Title))
 	tagFile.Data.AddField(*bagins.NewTagField("Access", restorer.IntellectualObject.Access))
 	if restorer.IntellectualObject.Description != "" {
-		tagFile.Data.AddField(*bagins.NewTagField("Access", restorer.IntellectualObject.Access))
+		tagFile.Data.AddField(*bagins.NewTagField("Description", restorer.IntellectualObject.Description))
 	}
 	return nil
 }

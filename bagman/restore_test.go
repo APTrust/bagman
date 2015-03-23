@@ -34,7 +34,7 @@ func TestRestore(t *testing.T) {
 	}
 
 	// Make sure aptrust-info.txt is correct
-	expectedAPT := "Title:  Notes from the Oesper Collections\nAccess:  institution\n"
+	expectedAPT := "Title:  Notes from the Oesper Collections\nAccess:  institution\nDescription:  A collection from Cincinnati\n"
 	verifyFileContent(t, bagPaths[0], "aptrust-info.txt", expectedAPT)
 
 	// Make sure bagit.txt is correct
