@@ -128,7 +128,7 @@ func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent, error) {
 		Outcome:            "Success",
 		OutcomeDetail:      fmt.Sprintf("%d files copied", len(obj.GenericFiles)),
 		Object:             "goamz S3 client",
-		Agent:              "https://launchpad.net/goamz",
+		Agent:              "https://github.com/crowdmob/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
 	}, nil
 }

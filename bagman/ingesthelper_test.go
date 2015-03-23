@@ -119,8 +119,17 @@ func TestBagNeedsProcessing(t *testing.T) {
 	}
 	processUtil := getProcessUtil()
 	s3File := getS3File()
-	if bagman.BagNeedsProcessing(s3File, processUtil) == true {
+	// SkipAlreadyProcessed
+	needsProcessing := bagman.BagNeedsProcessing(s3File, processUtil)
+	if processUtil.Config.SkipAlreadyProcessed && needsProcessing == true {
+		// This bag has been ingested, and config says to skip
+		// ingested items, so BagNeedsProcessing should return false.
 		t.Error("BagNeedsProcessing should have returned false")
+	} else if processUtil.Config.SkipAlreadyProcessed == false && needsProcessing == false {
+		// When SkipAlreadyProcessed is false, we should process everything.
+		// We set SkipAlreadyProcessed to true only when we want to force
+		// reprocessing, as in end-to-end tests on a dev machine.
+		t.Error("BagNeedsProcessing should have returned true")
 	}
 }
 
@@ -206,6 +215,7 @@ func TestGetS3Options(t *testing.T) {
 	helper := getIngestHelper()
 	file := &bagman.File{
 		Md5: "b4f8f3072f73598fc5b65bf416b6019a",
+		Sha256: "00001111222233334444aaaabbbbccccddddeeeeffff55556666",
 		Path: "/data/hansel/und/gretel.pdf",
 	}
 	opts, err := helper.GetS3Options(file)
@@ -231,6 +241,10 @@ func TestGetS3Options(t *testing.T) {
 	if opts.Meta["bagpath"][0] != file.Path {
 		t.Errorf("Expected bag metadata '%s', but found '%s'",
 			file.Path, opts.Meta["bagpath"][0])
+	}
+	if opts.Meta["sha256"][0] != file.Sha256 {
+		t.Errorf("Expected bag metadata sha256 '%s', but found '%s'",
+			file.Path, opts.Meta["sha256"][0])
 	}
 	deleteLocalFiles()
 }

@@ -121,6 +121,7 @@ func (helper *IngestHelper) GetS3Options(file *File) (*s3.Options, error) {
 	s3Metadata["institution"] = []string{instDomain}
 	s3Metadata["bag"] = []string{bagName}
 	s3Metadata["bagpath"] = []string{file.Path}
+	s3Metadata["sha256"] = []string{file.Sha256}
 
 	// Save to S3 with the base64-encoded md5 sum
 	base64md5, err := Base64EncodeMd5(file.Md5)

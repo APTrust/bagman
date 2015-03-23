@@ -8,11 +8,24 @@ import (
 	"fmt"
 	"github.com/rakyll/magicmime"
 	"regexp"
+	"sync"
 )
 
 // magicMime is the MimeMagic database. We want
 // just one copy of this open at a time.
 var magicMime *magicmime.Magic
+
+// We need to restrict access to the underlying MagicMime
+// C library, because it sometimes fails or returns nonsense
+// (unprintable characters) when accessed by multiple goroutines
+// at once. The idiomatic way to do this would be with a
+// channel and a goroutine, but the code that calls this
+// (in bag.go) is not currently in a state to do that. (That is
+// synchronous, single-channel code that includes a lot of
+// sequential operations.) So here, we're conrolling access with
+// a mutex, which will be blocking. But the calls to MagicMime
+// are fast, and this should not be a bottleneck.
+var mutex = &sync.Mutex{}
 
 var validMimeType = regexp.MustCompile(`^\w+/\w+$`)
 
@@ -32,7 +45,9 @@ func GuessMimeType(absPath string) (mimeType string, err error) {
 	// application/binary and then set the MimeType only if
 	// MagicMime returned something that looks legit.
 	mimeType = "application/binary"
+	mutex.Lock()
 	guessedType, _ := magicMime.TypeByFile(absPath)
+	mutex.Unlock()
 	if guessedType != "" && validMimeType.MatchString(guessedType) {
 		mimeType = guessedType
 	}

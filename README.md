@@ -2,6 +2,13 @@
 
 Server side code for managing BagIt bags sent to and managed by APTrust.
 
+## Easy Vagrant Setup
+
+For an easy setup using Vagrant, see the
+[Vagrant setup instructions](https://github.com/APTrust/ansible-playbooks/blob/master/README.md)
+in the ansible-playboooks repo.
+
+
 ## Prerequisites
 
 Install libmagic first. If you're on a Mac, do it this way:

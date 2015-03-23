@@ -202,7 +202,7 @@ second working is trying to run checksums on them.
 func (procUtil *ProcessUtil) BagAlreadyInProgress(s3File *S3File, currentMessageId string) (bool) {
 	// Bag is in process if it's in the registry.
 	messageId := procUtil.MessageIdFor(s3File.BagName())
-	if messageId == currentMessageId {
+	if messageId != "" && messageId == currentMessageId {
 		return true
 	}
 
