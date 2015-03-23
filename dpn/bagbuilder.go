@@ -2,21 +2,55 @@ package dpn
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
 	"path/filepath"
 )
 
-type BagBuilder struct {
-	LocalPath          string
-	IntellectualObject *bagman.IntellectualObject
-	GenericFiles       []*bagman.GenericFile
-	ErrorMessage       string
+// DefaultMetadata includes mostly static information about bags
+// that APTrust packages for DPN. You can specify this information
+// in a json config file and load it with LoadConfig.
+type DefaultMetadata struct {
+	Comment                string
+	BagItVersion           string
+	BagItEncoding          string
+	IngestNodeName         string
+	IngestNodeAddress      string
+	IngestNodeContactName  string
+	IngestNodeContactEmail string
 }
 
+// BagBuilder builds a DPN bag from an APTrust intellectual object.
+type BagBuilder struct {
+	LocalPath              string
+	IntellectualObject     *bagman.IntellectualObject
+	GenericFiles           []*bagman.GenericFile
+	DefaultMetadata        *DefaultMetadata
+	ErrorMessage           string
+}
 
-func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagman.GenericFile) (*BagBuilder) {
+func LoadConfig(pathToFile string) (metadata *DefaultMetadata, err error) {
+	data, err := bagman.LoadRelativeFile(pathToFile)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(data, &metadata)
+    if err != nil {
+        return nil, err
+    }
+    return metadata, nil
+}
+
+// NewBagBuilder returns a new BagBuilder.
+// Param localPath is the path to which the bag builder should write the
+// DPN bag. Param obj is an IntellectualObject containing metadata
+// about the APTrust bag that we'll be repackaging. Param gf is a slice
+// of GenericFiles that should go into the bag. Param defaultMetadata
+// contains default metadata, such as the BagIt version, ingest node name,
+// etc.
+func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagman.GenericFile, defaultMetadata *DefaultMetadata) (*BagBuilder) {
 	// gf may be nil if bag is for IntelObj
 	if gf == nil {
 		gf = make([]*bagman.GenericFile, 0)
@@ -26,6 +60,7 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagma
 		LocalPath: filePath,
 		IntellectualObject: obj,
 		GenericFiles: gf,
+		DefaultMetadata: defaultMetadata,
 	}
 	if err != nil {
 		builder.ErrorMessage = err.Error()
@@ -65,8 +100,8 @@ func (builder *BagBuilder) DPNBagIt() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version", builder.DefaultMetadata.BagItVersion))
+	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding", builder.DefaultMetadata.BagItEncoding))
 	return tagFile
 }
 

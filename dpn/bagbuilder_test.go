@@ -10,12 +10,28 @@ import (
 	"testing"
 )
 
+const CONFIG_FILE = "dpn/bagbuilder_config.json"
+var defaultMetadata *dpn.DefaultMetadata
+
 func testBagPath() (string) {
 	filePath, _ := filepath.Abs("test_bag")
 	// We have to do this for the bagins bag,
 	// even if we're not going to write to disk!
 	os.MkdirAll(filePath, 0755)
 	return filePath
+}
+
+func loadConfig(t *testing.T, configPath string) (*dpn.DefaultMetadata) {
+	if defaultMetadata != nil {
+		return defaultMetadata
+	}
+	var err error
+	defaultMetadata, err = dpn.LoadConfig(configPath)
+	if err != nil {
+		t.Errorf("Error loading %s: %v\n", configPath, err)
+		return nil
+	}
+	return defaultMetadata
 }
 
 func intelObj(t *testing.T) (*bagman.IntellectualObject) {
@@ -29,11 +45,12 @@ func intelObj(t *testing.T) (*bagman.IntellectualObject) {
 
 func createBagBuilder(t *testing.T, withGenericFiles bool) (builder *dpn.BagBuilder) {
 	obj := intelObj(t)
-	if obj != nil {
+	config := loadConfig(t, CONFIG_FILE)
+	if obj != nil && config != nil {
 		if withGenericFiles {
-			builder = dpn.NewBagBuilder(testBagPath(), obj, obj.GenericFiles)
+			builder = dpn.NewBagBuilder(testBagPath(), obj, obj.GenericFiles, config)
 		} else {
-			builder = dpn.NewBagBuilder(testBagPath(), obj, nil)
+			builder = dpn.NewBagBuilder(testBagPath(), obj, nil, config)
 		}
 	} else {
 		t.Errorf("Could not create bag builder.")
@@ -73,8 +90,8 @@ func TestDPNBagit(t *testing.T) {
 	if tagfile.Name() != filepath.Join(builder.LocalPath, "bagit.txt") {
 		t.Errorf("Wrong DPN bagit.txt file path: %s", tagfile.Name())
 	}
-	verifyTagField(t, tagfile, "BagIt-Version", "")
-	verifyTagField(t, tagfile, "Tag-File-Character-Encoding", "")
+	verifyTagField(t, tagfile, "BagIt-Version", builder.DefaultMetadata.BagItVersion)
+	verifyTagField(t, tagfile, "Tag-File-Character-Encoding", builder.DefaultMetadata.BagItEncoding)
 }
 
 func TestDPNBagInfo(t *testing.T) {
