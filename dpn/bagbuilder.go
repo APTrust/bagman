@@ -7,6 +7,7 @@ import (
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/nu7hatch/gouuid"
+	"os"
 	"path/filepath"
 	"time"
 )
@@ -80,7 +81,26 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagma
 	if uuidErr != nil {
 		builder.ErrorMessage += uuidErr.Error()
 	}
+
+	err = os.MkdirAll(filepath.Join(filePath, "dpn-tags"), 0755)
+	if err != nil {
+		builder.ErrorMessage += err.Error()
+	}
+	err = os.MkdirAll(filepath.Join(filePath, "data"), 0755)
+	if err != nil {
+		builder.ErrorMessage += err.Error()
+	}
+	err = os.MkdirAll(filepath.Join(filePath, "aptrust-tags"), 0755)
+	if err != nil {
+		builder.ErrorMessage += err.Error()
+	}
 	return builder
+}
+
+// BagTime returns the datetime the bag was created,
+// in RFC3339 format (e.g. "2015-03-05T10:10:00Z")
+func (builder *BagBuilder) BagTime() (string) {
+	return builder.bagtime.Format(time.RFC3339)
 }
 
 func (builder *BagBuilder) BuildBag() (error) {
@@ -131,8 +151,7 @@ func (builder *BagBuilder) DPNBagInfo() (*bagins.TagFile) {
 	tagFile.Data.AddField(*bagins.NewTagField("Contact-Name", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Contact-Phone", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Contact-Email", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date",
-		builder.bagtime.Format(time.RFC3339)))
+	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date", builder.BagTime()))
 
 	// TODO: How can we put the bag size in a file that's inside the bag?
 	tagFile.Data.AddField(*bagins.NewTagField("Bag-Size",
@@ -168,7 +187,7 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 	// bags or save new versions in DPN, then we need a way of knowing
 	// which DPN object this is a new version of, and which version
 	// it should be.
-	tagFile.Data.AddField(*bagins.NewTagField("Version-Number", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Version-Number", "1"))
 	tagFile.Data.AddField(*bagins.NewTagField("Previous-Version-Object-ID", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Brightening-Object-ID", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Rights-Object-ID", ""))
@@ -271,8 +290,7 @@ func (builder *BagBuilder) APTrustBagInfo() (*bagins.TagFile) {
 	}
 	tagFile.Data.AddField(*bagins.NewTagField("Source-Organization",
 		builder.IntellectualObject.InstitutionId))
-	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date",
-		builder.bagtime.Format(time.RFC3339)))
+	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date", builder.BagTime()))
 	tagFile.Data.AddField(*bagins.NewTagField("Bag-Count", "1"))
 	tagFile.Data.AddField(*bagins.NewTagField("Internal-Sender-Description",
 		builder.IntellectualObject.Description))

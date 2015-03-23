@@ -15,9 +15,6 @@ var defaultMetadata *dpn.DefaultMetadata
 
 func testBagPath() (string) {
 	filePath, _ := filepath.Abs("test_bag")
-	// We have to do this for the bagins bag,
-	// even if we're not going to write to disk!
-	os.MkdirAll(filePath, 0755)
 	return filePath
 }
 
@@ -90,8 +87,8 @@ func TestDPNBagit(t *testing.T) {
 	if tagfile.Name() != filepath.Join(builder.LocalPath, "bagit.txt") {
 		t.Errorf("Wrong DPN bagit.txt file path: %s", tagfile.Name())
 	}
-	verifyTagField(t, tagfile, "BagIt-Version", builder.DefaultMetadata.BagItVersion)
-	verifyTagField(t, tagfile, "Tag-File-Character-Encoding", builder.DefaultMetadata.BagItEncoding)
+	verifyTagField(t, tagfile, "BagIt-Version", "0.97")
+	verifyTagField(t, tagfile, "Tag-File-Character-Encoding", "UTF-8")
 }
 
 func TestDPNBagInfo(t *testing.T) {
@@ -99,7 +96,27 @@ func TestDPNBagInfo(t *testing.T) {
 	if builder == nil {
 		return
 	}
+	tagfile := builder.DPNBagInfo()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if tagfile == nil {
+		t.Errorf("Got unexpected nil from DPNBagInfo()")
+		return
+	}
+	if tagfile.Name() != filepath.Join(builder.LocalPath, "bag-info.txt") {
+		t.Errorf("Wrong DPN bag-info.txt file path: %s", tagfile.Name())
+	}
 
+	verifyTagField(t, tagfile, "Source-Organization", "uc.edu")
+	verifyTagField(t, tagfile, "Organization-Address", "")
+	verifyTagField(t, tagfile, "Contact-Name", "")
+	verifyTagField(t, tagfile, "Contact-Phone", "")
+	verifyTagField(t, tagfile, "Contact-Email", "")
+	verifyTagField(t, tagfile, "Bagging-Date", builder.BagTime())
+	verifyTagField(t, tagfile, "Bag-Size", "686")
+	verifyTagField(t, tagfile, "Bag-Group-Identifier", "")
+	verifyTagField(t, tagfile, "Bag-Count", "1")
 }
 
 func TestDPNInfo(t *testing.T) {
@@ -107,7 +124,32 @@ func TestDPNInfo(t *testing.T) {
 	if builder == nil {
 		return
 	}
+	tagfile := builder.DPNInfo()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if tagfile == nil {
+		t.Errorf("Got unexpected nil from DPNInfo()")
+		return
+	}
+	if tagfile.Name() != filepath.Join(builder.LocalPath, "dpn-tags","dpn-info.txt") {
+		t.Errorf("Wrong DPN dpn-info.txt file path: %s", tagfile.Name())
+	}
 
+	verifyTagField(t, tagfile, "DPN-Object-ID", builder.UUID)
+	verifyTagField(t, tagfile, "Local-ID", "uc.edu/cin.675812")
+	verifyTagField(t, tagfile, "First-Node-Name", "APTrust")
+	verifyTagField(t, tagfile, "First-Node-Address", "160 McCormick Rd., Charlottesville, VA 22904")
+	verifyTagField(t, tagfile, "First-Node-Contact-Name", "APTrust Administrator")
+	verifyTagField(t, tagfile, "First-Node-Contact-Email", "help@aptrust.org")
+	verifyTagField(t, tagfile, "Version-Number", "1")
+	verifyTagField(t, tagfile, "Previous-Version-Object-ID", "")
+	verifyTagField(t, tagfile, "Brightening-Object-ID", "")
+	verifyTagField(t, tagfile, "Rights-Object-ID", "")
+	verifyTagField(t, tagfile, "Object-Type", dpn.BAG_TYPE_DATA)
 }
 
 func TestDPNManifestSha256(t *testing.T) {
