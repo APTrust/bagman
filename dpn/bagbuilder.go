@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
+	"github.com/nu7hatch/gouuid"
 	"path/filepath"
+	"time"
 )
 
 // DefaultMetadata includes mostly static information about bags
@@ -28,7 +30,10 @@ type BagBuilder struct {
 	IntellectualObject     *bagman.IntellectualObject
 	GenericFiles           []*bagman.GenericFile
 	DefaultMetadata        *DefaultMetadata
+	UUID                   string
 	ErrorMessage           string
+	bag                    *Bag
+	bagtime                time.Time
 }
 
 func LoadConfig(pathToFile string) (metadata *DefaultMetadata, err error) {
@@ -50,43 +55,49 @@ func LoadConfig(pathToFile string) (metadata *DefaultMetadata, err error) {
 // of GenericFiles that should go into the bag. Param defaultMetadata
 // contains default metadata, such as the BagIt version, ingest node name,
 // etc.
-func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagman.GenericFile, defaultMetadata *DefaultMetadata) (*BagBuilder) {
-	// gf may be nil if bag is for IntelObj
+func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagman.GenericFile,
+	defaultMetadata *DefaultMetadata) (*BagBuilder) {
 	if gf == nil {
 		gf = make([]*bagman.GenericFile, 0)
 	}
+	uuid, uuidErr := uuid.NewV4()
 	filePath, err := filepath.Abs(localPath)
+	bag := &Bag{
+		LocalPath: filePath,
+		Type: BAG_TYPE_DATA,
+	}
 	builder :=  &BagBuilder{
 		LocalPath: filePath,
 		IntellectualObject: obj,
 		GenericFiles: gf,
 		DefaultMetadata: defaultMetadata,
+		UUID: uuid.String(),
+		bag: bag,
 	}
 	if err != nil {
 		builder.ErrorMessage = err.Error()
+	}
+	if uuidErr != nil {
+		builder.ErrorMessage += uuidErr.Error()
 	}
 	return builder
 }
 
 func (builder *BagBuilder) BuildBag() (error) {
-	bag := &Bag{
-		LocalPath: builder.LocalPath,
+	if builder.bag.Type == BAG_TYPE_DATA {
+		builder.bag.DataFiles = builder.DataFiles()
+		builder.bag.APTrustManifestMd5 = builder.APTrustManifestMd5()
 	}
-	if len(builder.GenericFiles) > 0 {
-		bag.Type = BAG_TYPE_FILE
-		bag.DataFiles = builder.DataFiles()
-	} else {
-		bag.Type = BAG_TYPE_OBJECT
-		bag.APTrustBagIt = builder.APTrustBagIt()
-		bag.APTrustBagInfo = builder.APTrustBagInfo()
-		bag.APTrustInfo = builder.APTrustInfo()
-		bag.APTrustManifestMd5 = builder.APTrustManifestMd5()
-	}
-	bag.DPNBagIt = builder.DPNBagIt()
-	bag.DPNBagInfo = builder.DPNBagInfo()
-	bag.DPNInfo = builder.DPNInfo()
-	bag.DPNManifestSha256 = builder.DPNManifestSha256()
-	bag.DPNTagManifest = builder.DPNTagManifest()
+
+	builder.bag.APTrustBagIt = builder.APTrustBagIt()
+	builder.bag.APTrustBagInfo = builder.APTrustBagInfo()
+	builder.bag.APTrustInfo = builder.APTrustInfo()
+
+	builder.bag.DPNBagIt = builder.DPNBagIt()
+	builder.bag.DPNBagInfo = builder.DPNBagInfo()
+	builder.bag.DPNInfo = builder.DPNInfo()
+	builder.bag.DPNManifestSha256 = builder.DPNManifestSha256()
+	builder.bag.DPNTagManifest = builder.DPNTagManifest()
 	if builder.ErrorMessage != "" {
 		return fmt.Errorf(builder.ErrorMessage)
 	}
@@ -100,8 +111,10 @@ func (builder *BagBuilder) DPNBagIt() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version", builder.DefaultMetadata.BagItVersion))
-	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding", builder.DefaultMetadata.BagItEncoding))
+	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version",
+		builder.DefaultMetadata.BagItVersion))
+	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding",
+		builder.DefaultMetadata.BagItEncoding))
 	return tagFile
 }
 
@@ -112,15 +125,20 @@ func (builder *BagBuilder) DPNBagInfo() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(*bagins.NewTagField("Source-Organization", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Source-Organization",
+		builder.IntellectualObject.InstitutionId))
 	tagFile.Data.AddField(*bagins.NewTagField("Organization-Address", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Contact-Name", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Contact-Phone", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Contact-Email", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Bag-Size", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date",
+		builder.bagtime.Format(time.RFC3339)))
+
+	// TODO: How can we put the bag size in a file that's inside the bag?
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Size",
+		fmt.Sprintf("%d", builder.IntellectualObject.TotalFileSize())))
 	tagFile.Data.AddField(*bagins.NewTagField("Bag-Group-Identifier", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Bag-Count", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Count", "1"))
 	return tagFile
 }
 
@@ -131,17 +149,34 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(*bagins.NewTagField("DPN-Object-ID", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Local-ID", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Name", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Address", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Name", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Email", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("DPN-Object-ID",
+		builder.UUID))
+	tagFile.Data.AddField(*bagins.NewTagField("Local-ID",
+		builder.IntellectualObject.Identifier))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Name",
+		builder.DefaultMetadata.IngestNodeName))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Address",
+		builder.DefaultMetadata.IngestNodeAddress))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Name",
+		builder.DefaultMetadata.IngestNodeContactName))
+	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Email",
+		builder.DefaultMetadata.IngestNodeContactEmail))
+
+	// TODO: Not sure how to fill in the next three items.
+	// We have to wait until DPN versioning spec is written, then we
+	// need to know how to let depositors specify whether to overwrite
+	// bags or save new versions in DPN, then we need a way of knowing
+	// which DPN object this is a new version of, and which version
+	// it should be.
 	tagFile.Data.AddField(*bagins.NewTagField("Version-Number", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Previous-Version-Object-ID", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Brightening-Object-ID", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Rights-Object-ID", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Object-Type", ""))
+
+	// Bag Type
+	tagFile.Data.AddField(*bagins.NewTagField("Object-Type",
+		builder.bag.Type))
+
 	return tagFile
 }
 
@@ -213,34 +248,40 @@ func sha256Digest(str string) (string) {
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
 
-// For IntellectualObject bags only
+
 func (builder *BagBuilder) APTrustBagIt() (*bagins.TagFile) {
 	tagFile, err := bagins.NewTagFile(builder.APTrustMetadataPath("bagit.txt"))
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version", "0.97"))
-	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding", "UTF-8"))
+	tagFile.Data.AddField(*bagins.NewTagField("BagIt-Version",
+		APTRUST_BAGIT_VERSION))
+	tagFile.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding",
+		APTRUST_BAGIT_ENCODING))
 	return tagFile
 }
 
-// For IntellectualObject bags only
+
 func (builder *BagBuilder) APTrustBagInfo() (*bagins.TagFile) {
 	tagFile, err := bagins.NewTagFile(builder.APTrustMetadataPath("bag-info.txt"))
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	tagFile.Data.AddField(*bagins.NewTagField("Source-Organization", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Bag-Count", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Internal-Sender-Description", ""))
-	tagFile.Data.AddField(*bagins.NewTagField("Internal-Sender-Identifier", ""))
+	tagFile.Data.AddField(*bagins.NewTagField("Source-Organization",
+		builder.IntellectualObject.InstitutionId))
+	tagFile.Data.AddField(*bagins.NewTagField("Bagging-Date",
+		builder.bagtime.Format(time.RFC3339)))
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Count", "1"))
+	tagFile.Data.AddField(*bagins.NewTagField("Internal-Sender-Description",
+		builder.IntellectualObject.Description))
+	tagFile.Data.AddField(*bagins.NewTagField("Internal-Sender-Identifier",
+		builder.IntellectualObject.Identifier))
 	return tagFile
 }
 
-// For IntellectualObject bags only
+
 func (builder *BagBuilder) APTrustInfo() (*bagins.TagFile) {
 	tagFile, err := bagins.NewTagFile(builder.APTrustMetadataPath("aptrust-info.txt"))
 	if err != nil {
@@ -253,7 +294,7 @@ func (builder *BagBuilder) APTrustInfo() (*bagins.TagFile) {
 	return tagFile
 }
 
-// For IntellectualObject bags only
+
 func (builder *BagBuilder) APTrustManifestMd5() (*bagins.Manifest) {
 	manifestPath := builder.APTrustMetadataPath("manifest-md5.txt")
 	manifest, err := bagins.NewManifest(manifestPath, "md5")

@@ -4,11 +4,16 @@ import (
 	"github.com/APTrust/bagins"
 )
 
-var BAG_TYPE_OBJECT = "IntellectualObject"
-var BAG_TYPE_FILE   = "GenericFile"
+const BAG_TYPE_DATA = "Data"
+const BAG_TYPE_RIGHTS = "Rights"
+const BAG_TYPE_INTERPRETIVE = "Interpretive"
 
-var PATH_TYPE_LOCAL = "Local Filesystem"
-var PATH_TYPE_S3    = "S3 Bucket"
+const PATH_TYPE_LOCAL = "Local Filesystem"
+const PATH_TYPE_S3    = "S3 Bucket"
+
+// These values are part of the published APTrust spec.
+const APTRUST_BAGIT_VERSION = "0.97"
+const APTRUST_BAGIT_ENCODING = "UTF-8"
 
 type Bag struct {
 	// The type of bag: IntellectualObject or GenericFile
