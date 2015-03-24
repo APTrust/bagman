@@ -170,18 +170,18 @@ func TestDPNManifestSha256(t *testing.T) {
 		t.Errorf("Manifest should contain exactly 2 items, but it contains %s",
 			len(manifest.Data))
 	}
-	if manifest.Data["data/uc.edu/cin.675812/data/object.properties"] !=
+	if manifest.Data["data/object.properties"] !=
 		"8373697fe955134036d758ee6bcf1077f74c20fe038dde3238f709ed96ae80f7" {
 		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
-			manifest.Data["data/uc.edu/cin.675812/data/object.properties"],
-			"data/uc.edu/cin.675812/data/object.properties",
+			manifest.Data["data/object.properties"],
+			"data/object.properties",
 			"8373697fe955134036d758ee6bcf1077f74c20fe038dde3238f709ed96ae80f7")
 	}
-	if manifest.Data["data/uc.edu/cin.675812/data/metadata.xml"] !=
+	if manifest.Data["data/metadata.xml"] !=
 		"a418d61067718141d7254d7376d5499369706e3ade27cb84c4d5519f7cfed790" {
 		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
-			manifest.Data["data/uc.edu/cin.675812/data/metadata.xml"],
-			"data/uc.edu/cin.675812/data/metadata.xml",
+			manifest.Data["data/metadata.xml"],
+			"data/metadata.xml",
 			"a418d61067718141d7254d7376d5499369706e3ade27cb84c4d5519f7cfed790")
 	}
 }
@@ -261,7 +261,7 @@ func TestAPTrustBagInfo(t *testing.T) {
 		return
 	}
 	if tagfile.Name() != filepath.Join(builder.LocalPath, "aptrust-tags", "bag-info.txt") {
-		t.Errorf("Wrong aptrust-tags/bagit.txt file path: %s", tagfile.Name())
+		t.Errorf("Wrong aptrust-tags/bag-info.txt file path: %s", tagfile.Name())
 	}
 	verifyTagField(t, tagfile, "Source-Organization", builder.IntellectualObject.InstitutionId)
 	verifyTagField(t, tagfile, "Bagging-Date", builder.BagTime())
@@ -275,7 +275,20 @@ func TestAPTrustInfo(t *testing.T) {
 	if builder == nil {
 		return
 	}
-
+	tagfile := builder.APTrustInfo()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if tagfile == nil {
+		t.Errorf("Got unexpected nil from APTrustInfo()")
+		return
+	}
+	if tagfile.Name() != filepath.Join(builder.LocalPath, "aptrust-tags", "aptrust-info.txt") {
+		t.Errorf("Wrong aptrust-tags/aptrust-info.txt file path: %s", tagfile.Name())
+	}
+	verifyTagField(t, tagfile, "Title", builder.IntellectualObject.Title)
+	verifyTagField(t, tagfile, "Description", builder.IntellectualObject.Description)
+	verifyTagField(t, tagfile, "Access", builder.IntellectualObject.Access)
 }
 
 func TestAPTrustManifestMd5(t *testing.T) {
@@ -283,7 +296,35 @@ func TestAPTrustManifestMd5(t *testing.T) {
 	if builder == nil {
 		return
 	}
-
+	manifest := builder.APTrustManifestMd5()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if manifest == nil {
+		t.Errorf("Got unexpected nil from APTrustManifestMd5()")
+		return
+	}
+	if manifest.Name() != builder.APTrustMetadataPath("manifest-md5.txt") {
+		t.Errorf("Wrong DPN aptrust-info/manifest-md5.txt file path: %s", manifest.Name())
+	}
+	if len(manifest.Data) != 2 {
+		t.Errorf("Tag manifest should contain exactly 2 items, but it contains %s",
+			len(manifest.Data))
+	}
+	if manifest.Data["data/object.properties"] !=
+		"8d7b0e3a24fc899b1d92a73537401805" {
+		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
+			manifest.Data["data/object.properties"],
+			"data/object.properties",
+			"8d7b0e3a24fc899b1d92a73537401805")
+ 	}
+	if manifest.Data["data/metadata.xml"] !=
+		"c6d8080a39a0622f299750e13aa9c200" {
+		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
+			manifest.Data["data/metadata.xml"],
+			"data/metadata.xml",
+			"c6d8080a39a0622f299750e13aa9c200")
+	}
 }
 
 func TestDataFiles(t *testing.T) {

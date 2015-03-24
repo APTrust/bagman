@@ -9,6 +9,7 @@ import (
 	"github.com/nu7hatch/gouuid"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -352,7 +353,9 @@ func (builder *BagBuilder) DataFiles() ([]DataFile) {
 // Given a GenericFile identifier, returns the path inside
 // the bag where that file should reside.
 func DataPath(identifier string) (string) {
-	return fmt.Sprintf("data/%s", identifier)
+	index := strings.Index(identifier, "data/")
+	return identifier[index:]
+	//return fmt.Sprintf("data/%s", identifier)
 }
 
 // Returns the path inside the bag for a APTrust metadata file.
