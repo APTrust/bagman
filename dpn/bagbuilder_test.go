@@ -331,6 +331,33 @@ func TestDataFiles(t *testing.T) {
 	if builder == nil {
 		return
 	}
+	dataFiles := builder.DataFiles()
+	if len(dataFiles) != 2 {
+		t.Errorf("DataFiles() should have returned 2 files; got %d", len(dataFiles))
+	}
+
+	urlPrefix := "https://s3.amazonaws.com/aptrust.test.fixtures/restore_test/"
+	filePath0 := "data/object.properties"
+	if dataFiles[0].ExternalPathType != "S3 Bucket" {
+		t.Errorf("ExternalPathType '%s' is incorrect", dataFiles[0].ExternalPathType)
+	}
+	if dataFiles[0].ExternalPath != urlPrefix + filePath0 {
+		t.Errorf("ExternalPath '%s' is incorrect", dataFiles[0].ExternalPath)
+	}
+	if dataFiles[0].PathInBag != filePath0 {
+		t.Errorf("PathInBag '%s' is incorrect", dataFiles[0].PathInBag)
+	}
+
+	filePath1 := "data/metadata.xml"
+	if dataFiles[1].ExternalPathType != "S3 Bucket" {
+		t.Errorf("ExternalPathType '%s' is incorrect", dataFiles[1].ExternalPathType)
+	}
+	if dataFiles[1].ExternalPath != urlPrefix + filePath1 {
+		t.Errorf("ExternalPath '%s' is incorrect", dataFiles[1].ExternalPath)
+	}
+	if dataFiles[1].PathInBag != filePath1 {
+		t.Errorf("PathInBag '%s' is incorrect", dataFiles[1].PathInBag)
+	}
 
 }
 
