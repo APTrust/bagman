@@ -184,7 +184,6 @@ func TestDPNManifestSha256(t *testing.T) {
 			"data/uc.edu/cin.675812/data/metadata.xml",
 			"a418d61067718141d7254d7376d5499369706e3ade27cb84c4d5519f7cfed790")
 	}
-
 }
 
 func TestDPNTagManifest(t *testing.T) {
@@ -233,7 +232,19 @@ func TestAPTrustBagit(t *testing.T) {
 	if builder == nil {
 		return
 	}
-
+	tagfile := builder.APTrustBagIt()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if tagfile == nil {
+		t.Errorf("Got unexpected nil from APTrustBagIt()")
+		return
+	}
+	if tagfile.Name() != filepath.Join(builder.LocalPath, "aptrust-tags", "bagit.txt") {
+		t.Errorf("Wrong aptrust-tags/bagit.txt file path: %s", tagfile.Name())
+	}
+	verifyTagField(t, tagfile, "BagIt-Version", "0.97")
+	verifyTagField(t, tagfile, "Tag-File-Character-Encoding", "UTF-8")
 }
 
 func TestAPTrustBagInfo(t *testing.T) {
@@ -241,7 +252,22 @@ func TestAPTrustBagInfo(t *testing.T) {
 	if builder == nil {
 		return
 	}
-
+	tagfile := builder.APTrustBagInfo()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if tagfile == nil {
+		t.Errorf("Got unexpected nil from APTrustBagInfo()")
+		return
+	}
+	if tagfile.Name() != filepath.Join(builder.LocalPath, "aptrust-tags", "bag-info.txt") {
+		t.Errorf("Wrong aptrust-tags/bagit.txt file path: %s", tagfile.Name())
+	}
+	verifyTagField(t, tagfile, "Source-Organization", builder.IntellectualObject.InstitutionId)
+	verifyTagField(t, tagfile, "Bagging-Date", builder.BagTime())
+	verifyTagField(t, tagfile, "Bag-Count", "1")
+	verifyTagField(t, tagfile, "Internal-Sender-Description", builder.IntellectualObject.Description)
+	verifyTagField(t, tagfile, "Internal-Sender-Identifier", builder.IntellectualObject.Identifier)
 }
 
 func TestAPTrustInfo(t *testing.T) {

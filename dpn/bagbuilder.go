@@ -356,7 +356,6 @@ func DataPath(identifier string) (string) {
 }
 
 // Returns the path inside the bag for a APTrust metadata file.
-// Only IntellectualObject bags will contain these files.
 func (builder *BagBuilder) APTrustMetadataPath(filename string) (string) {
-	return fmt.Sprintf("data/%s/%s", builder.IntellectualObject.Identifier, filename)
+	return filepath.Join(builder.LocalPath, "aptrust-tags", filename)
 }
