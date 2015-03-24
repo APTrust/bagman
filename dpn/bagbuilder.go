@@ -219,8 +219,8 @@ func (builder *BagBuilder) DPNManifestSha256() (*bagins.Manifest) {
 }
 
 func (builder *BagBuilder) DPNTagManifest() (*bagins.Manifest) {
-	// Can't use bagins.Manifest here because manifest expects
-	manifest, err := bagins.NewManifest("tagmanifest-sha256", "sha256")
+	manifestPath := filepath.Join(builder.LocalPath, "tagmanifest-sha256.txt")
+	manifest, err := bagins.NewManifest(manifestPath, "sha256")
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
@@ -248,6 +248,7 @@ func (builder *BagBuilder) DPNTagManifest() (*bagins.Manifest) {
 		manifest.Data["bag-info.txt"] = sha256Digest(bagInfoStr)
 	}
 
+	// Note that dpn-info.txt contains a UUID unique to this bag.
 	dpnInfo := builder.DPNInfo()
 	if dpnInfo == nil {
 		builder.ErrorMessage += "[Cannot run checksum on DPN bag-info.txt: failed to produce tagfile.] "

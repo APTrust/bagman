@@ -192,7 +192,40 @@ func TestDPNTagManifest(t *testing.T) {
 	if builder == nil {
 		return
 	}
-
+	manifest := builder.DPNTagManifest()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if manifest == nil {
+		t.Errorf("Got unexpected nil from DPNTagManifest()")
+		return
+	}
+	if manifest.Name() != filepath.Join(builder.LocalPath, "tagmanifest-sha256.txt") {
+		t.Errorf("Wrong DPN tagmanifest-sha256.txt file path: %s", manifest.Name())
+	}
+	if len(manifest.Data) != 3 {
+		t.Errorf("Tag manifest should contain exactly 3 items, but it contains %s",
+			len(manifest.Data))
+	}
+	if manifest.Data["bagit.txt"] !=
+		"49b477e8662d591f49fce44ca5fc7bfe76c5a71f69c85c8d91952a538393e5f4" {
+		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
+			manifest.Data["bagit.txt"],
+			"bagit.txt",
+			"49b477e8662d591f49fce44ca5fc7bfe76c5a71f69c85c8d91952a538393e5f4")
+	}
+	if manifest.Data["bag-info.txt"] !=
+		"9c64f25c14313d4c6c9608dc0aa0457a610539e51c76856234783864030c6529" {
+		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
+			manifest.Data["bag-info.txt"],
+			"bag-info.txt",
+			"9c64f25c14313d4c6c9608dc0aa0457a610539e51c76856234783864030c6529")
+	}
+	// This checksum changes every time we run the tests because the
+	// dpn-info.txt file includes the randomly-generated DPN bag UUID.
+	if len(manifest.Data["dpn-tags/dpn-info.txt"]) != 64 {
+		t.Errorf("Tag manifest is missing checksum for file dpn-tags/dpn-info.txt")
+	}
 }
 
 func TestAPTrustBagit(t *testing.T) {
