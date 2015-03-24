@@ -336,11 +336,12 @@ func TestDataFiles(t *testing.T) {
 }
 
 func TestDataPath(t *testing.T) {
-	builder := createBagBuilder(t, true)
-	if builder == nil {
-		return
+	origPath := "virginia.edu/my_bag/data/my_file.txt"
+	expected := "data/my_file.txt"
+	if dpn.DataPath(origPath) != expected {
+		t.Errorf("Got data path %s, expected %s",
+			dpn.DataPath(origPath), expected)
 	}
-
 }
 
 func TestAPTrustMetadataPath(t *testing.T) {
@@ -348,7 +349,12 @@ func TestAPTrustMetadataPath(t *testing.T) {
 	if builder == nil {
 		return
 	}
-
+	origPath := "special-tag-file.txt"
+	expected := filepath.Join(builder.LocalPath, "aptrust-tags", origPath)
+	if builder.APTrustMetadataPath(origPath) != expected {
+		t.Errorf("APTrustMetadataPath returned %s, expected %s",
+			builder.APTrustMetadataPath(origPath), expected)
+	}
 }
 
 func TestBuildBag(t *testing.T) {
