@@ -162,7 +162,7 @@ func (builder *BagBuilder) DPNBagInfo() (*bagins.TagFile) {
 }
 
 func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
-	tagFilePath := filepath.Join(builder.LocalPath, "dpn-tags","dpn-info.txt")
+	tagFilePath := filepath.Join(builder.LocalPath, "dpn-tags", "dpn-info.txt")
 	tagFile, err := bagins.NewTagFile(tagFilePath)
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
@@ -200,7 +200,8 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 }
 
 func (builder *BagBuilder) DPNManifestSha256() (*bagins.Manifest) {
-	manifest, err := bagins.NewManifest("manifest", "sha256")
+	manifestPath := filepath.Join(builder.LocalPath, "manifest-sha256.txt")
+	manifest, err := bagins.NewManifest(manifestPath, "sha256")
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil

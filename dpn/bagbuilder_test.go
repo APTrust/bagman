@@ -1,6 +1,7 @@
 package dpn_test
 
 import (
+//	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
@@ -128,9 +129,6 @@ func TestDPNInfo(t *testing.T) {
 	if builder.ErrorMessage != "" {
 		t.Errorf(builder.ErrorMessage)
 	}
-	if builder.ErrorMessage != "" {
-		t.Errorf(builder.ErrorMessage)
-	}
 	if tagfile == nil {
 		t.Errorf("Got unexpected nil from DPNInfo()")
 		return
@@ -156,6 +154,35 @@ func TestDPNManifestSha256(t *testing.T) {
 	builder := createBagBuilder(t, true)
 	if builder == nil {
 		return
+	}
+	manifest := builder.DPNManifestSha256()
+	if builder.ErrorMessage != "" {
+		t.Errorf(builder.ErrorMessage)
+	}
+	if manifest == nil {
+		t.Errorf("Got unexpected nil from DPNManifestSha256()")
+		return
+	}
+	if manifest.Name() != filepath.Join(builder.LocalPath, "manifest-sha256.txt") {
+		t.Errorf("Wrong DPN manifest-sha256.txt file path: %s", manifest.Name())
+	}
+	if len(manifest.Data) != 2 {
+		t.Errorf("Manifest should contain exactly 2 items, but it contains %s",
+			len(manifest.Data))
+	}
+	if manifest.Data["data/uc.edu/cin.675812/data/object.properties"] !=
+		"8373697fe955134036d758ee6bcf1077f74c20fe038dde3238f709ed96ae80f7" {
+		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
+			manifest.Data["data/uc.edu/cin.675812/data/object.properties"],
+			"data/uc.edu/cin.675812/data/object.properties",
+			"8373697fe955134036d758ee6bcf1077f74c20fe038dde3238f709ed96ae80f7")
+	}
+	if manifest.Data["data/uc.edu/cin.675812/data/metadata.xml"] !=
+		"a418d61067718141d7254d7376d5499369706e3ade27cb84c4d5519f7cfed790" {
+		t.Errorf("Got checksum %s for file %s. Expected checksum %s.",
+			manifest.Data["data/uc.edu/cin.675812/data/metadata.xml"],
+			"data/uc.edu/cin.675812/data/metadata.xml",
+			"a418d61067718141d7254d7376d5499369706e3ade27cb84c4d5519f7cfed790")
 	}
 
 }
