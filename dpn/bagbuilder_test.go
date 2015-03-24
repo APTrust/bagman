@@ -5,18 +5,21 @@ import (
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
 const CONFIG_FILE = "dpn/bagbuilder_config.json"
 var defaultMetadata *dpn.DefaultMetadata
+var _testPath string
 
 func testBagPath() (string) {
-	filePath, _ := filepath.Abs("test_bag")
-	return filePath
+	if _testPath == "" {
+		_testPath, _ = ioutil.TempDir("", "dpn")
+	}
+	return _testPath
 }
 
 func loadConfig(t *testing.T, configPath string) (*dpn.DefaultMetadata) {
@@ -58,11 +61,7 @@ func createBagBuilder(t *testing.T, withGenericFiles bool) (builder *dpn.BagBuil
 
 // Delete the test bag directory.
 func tearDown() {
-	testPath := testBagPath()
-	// Be sure not to delete cwd!
-	if strings.HasSuffix(testPath, "test_bag") {
-		os.RemoveAll(testBagPath())
-	}
+	os.RemoveAll(testBagPath())
 }
 
 func TestNewBagBuilder(t *testing.T) {
@@ -350,7 +349,7 @@ func TestAPTrustMetadataPath(t *testing.T) {
 		return
 	}
 	origPath := "special-tag-file.txt"
-	expected := filepath.Join(builder.LocalPath, "aptrust-tags", origPath)
+	expected := filepath.Join(testBagPath(), "aptrust-tags", origPath)
 	if builder.APTrustMetadataPath(origPath) != expected {
 		t.Errorf("APTrustMetadataPath returned %s, expected %s",
 			builder.APTrustMetadataPath(origPath), expected)
