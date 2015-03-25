@@ -388,7 +388,43 @@ func TestBuildBag(t *testing.T) {
 	if builder == nil {
 		return
 	}
-
+	bag, err := builder.BuildBag()
+	if err != nil {
+		t.Errorf("BuildBag() returned error: %v", err)
+	}
+	if bag == nil {
+		t.Error("BuildBag() returned nil")
+	}
+	if len(bag.DataFiles) != 2 {
+		t.Errorf("Bag should have 2 data files, but it has %d", len(bag.DataFiles))
+	}
+	if bag.APTrustManifestMd5 == nil {
+		t.Error("APTrustManifestMd5 is missing")
+	}
+	if bag.APTrustBagIt == nil {
+		t.Error("APTrustBagIt is missing")
+	}
+	if bag.APTrustBagInfo == nil {
+		t.Error("APTrustBagInfo is missing")
+	}
+	if bag.APTrustInfo == nil {
+		t.Error("APTrustInfo is missing")
+	}
+	if bag.DPNBagIt == nil {
+		t.Error("DPNBagIt is missing")
+	}
+	if bag.DPNBagInfo == nil {
+		t.Error("DPNBagInfo is missing")
+	}
+	if bag.DPNInfo == nil {
+		t.Error("DPNInfo is missing")
+	}
+	if bag.DPNManifestSha256 == nil {
+		t.Error("DPNManifestSha256 is missing")
+	}
+	if bag.DPNTagManifest == nil {
+		t.Error("DPNTagManifest is missing")
+	}
 }
 
 func verifyTagField(t *testing.T, tagfile *bagins.TagFile, label, value string) {

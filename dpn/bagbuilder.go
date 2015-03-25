@@ -104,7 +104,7 @@ func (builder *BagBuilder) BagTime() (string) {
 	return builder.bagtime.Format(time.RFC3339)
 }
 
-func (builder *BagBuilder) BuildBag() (error) {
+func (builder *BagBuilder) BuildBag() (*Bag, error) {
 	if builder.bag.Type == BAG_TYPE_DATA {
 		builder.bag.DataFiles = builder.DataFiles()
 		builder.bag.APTrustManifestMd5 = builder.APTrustManifestMd5()
@@ -120,9 +120,9 @@ func (builder *BagBuilder) BuildBag() (error) {
 	builder.bag.DPNManifestSha256 = builder.DPNManifestSha256()
 	builder.bag.DPNTagManifest = builder.DPNTagManifest()
 	if builder.ErrorMessage != "" {
-		return fmt.Errorf(builder.ErrorMessage)
+		return nil, fmt.Errorf(builder.ErrorMessage)
 	}
-	return nil
+	return builder.bag, nil
 }
 
 func (builder *BagBuilder) DPNBagIt() (*bagins.TagFile) {
