@@ -202,7 +202,7 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 	result := new(FetchResult)
 	result.BucketName = bucketName
 	result.Key = key.Key
-	result.LocalTarFile = path
+	result.LocalFile = path
 
 	// In general, we want to retry if the fetch operation
 	// fails. We will override this in certain cases below.
@@ -308,6 +308,24 @@ func (client *S3Client) FetchToFile(bucketName string, key s3.Key, path string) 
 		}
 	}
 	return result
+}
+
+
+// Fetches the specified S3 URL and saves it in the specified localPath.
+// Ensures that the directory containing localPath exists, and calculates
+// an md5 checksum on download. The FetchResult will tell you whether the
+// md5 matched what AWS said it should be. You'll get an error if url is
+// not an S3 url, or if it doesn't exist. Check FetchResult.ErrorMessage.
+func (client *S3Client) FetchURLToFile(url, localPath string) (*FetchResult) {
+	bucketName, key := BucketNameAndKey(url)
+	s3Key, err := client.GetKey(bucketName, key)
+	if err != nil {
+		errMsg := fmt.Sprintf("Could not get key info for %s: %v", url, err)
+		return &FetchResult {
+			ErrorMessage: errMsg,
+		}
+	}
+	return client.FetchToFile(bucketName, *s3Key, localPath)
 }
 
 // Fetches file key from bucketName and saves it to localPath.

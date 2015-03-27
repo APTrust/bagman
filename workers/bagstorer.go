@@ -180,12 +180,12 @@ func (bagStorer *BagStorer) doCleanUp() {
 		result.NsqMessage.Touch()
 		bagStorer.ProcUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if (result.S3File.Key.Key != "" && result.FetchResult != nil &&
-			result.FetchResult.LocalTarFile != "") {
+			result.FetchResult.LocalFile != "") {
 			// Clean up any files we downloaded and unpacked
 			errors := helper.DeleteLocalFiles()
 			if errors != nil && len(errors) > 0 {
 				bagStorer.ProcUtil.MessageLog.Warning("Errors cleaning up %s",
-					result.FetchResult.LocalTarFile)
+					result.FetchResult.LocalFile)
 				for _, e := range errors {
 					bagStorer.ProcUtil.MessageLog.Error(e.Error())
 				}

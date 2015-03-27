@@ -295,3 +295,10 @@ func CleanString(str string) (string) {
 	}
 	return cleanStr
 }
+
+// Given an S3 URI, returns the bucket name and key.
+func BucketNameAndKey(uri string) (string, string) {
+	relativeUri := strings.Replace(uri, S3UriPrefix, "", 1)
+	parts := strings.SplitN(relativeUri, "/", 2)
+	return parts[0], parts[1]
+}

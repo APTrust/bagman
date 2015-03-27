@@ -250,6 +250,7 @@ func (restorer *BagRestorer) Restore() ([]string, error) {
 	return paths, nil
 }
 
+
 // Creates a single bag and returns a reference to the bag object.
 func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 	bagName := restorer.bagName(setNumber)
@@ -329,7 +330,7 @@ func (restorer *BagRestorer) fetchAllFiles(setNumber int) ([]string, error) {
 				gf.Identifier, gf.URI, fetchResult.ErrorMessage)
 			return nil, err
 		}
-		localFilePaths[i] = fetchResult.LocalTarFile
+		localFilePaths[i] = fetchResult.LocalFile
 	}
 	return localFilePaths, nil
 }
@@ -353,34 +354,9 @@ func (restorer *BagRestorer) fetchFile(genericFile *GenericFile, setNumber int) 
 	prefix := strings.SplitN(genericFile.Identifier, "/data/", 2)
 	subdir := strings.Replace(genericFile.Identifier, prefix[0], restorer.bagName(setNumber), 1)
 	localPath := filepath.Join(restorer.workingDir, subdir)
-	bucketName, key := bucketNameAndKey(genericFile.URI)
-	restorer.debug(fmt.Sprintf("Fetching key %s from bucket %s for file %s into %s",
-		key, bucketName, genericFile.Identifier, localPath))
-
-	// Make sure we have a place to put this file, or we'll
-	// have problems with directories nested under data/
-	err := os.MkdirAll(filepath.Dir(localPath), 0755)
-	if err != nil {
-		return &FetchResult {
-			ErrorMessage: err.Error(),
-		}
-	}
-
-	s3Key, err := restorer.s3Client.GetKey(bucketName, key)
-	if err != nil {
-		errMsg := fmt.Sprintf("Could not get key info for %s: %v", genericFile.URI, err)
-		return &FetchResult {
-			ErrorMessage: errMsg,
-		}
-	}
-	return restorer.s3Client.FetchToFile(bucketName, *s3Key, localPath)
-}
-
-// Given an S3 URI, returns the bucket name and key.
-func bucketNameAndKey(uri string) (string, string) {
-	relativeUri := strings.Replace(uri, S3UriPrefix, "", 1)
-	parts := strings.SplitN(relativeUri, "/", 2)
-	return parts[0], parts[1]
+	restorer.debug(fmt.Sprintf("Fetching URL %s for file %s into %s",
+		genericFile.URI, genericFile.Identifier, localPath))
+	return restorer.s3Client.FetchURLToFile(genericFile.URI, localPath)
 }
 
 // Deletes a single bag created by Restore()

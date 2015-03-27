@@ -281,7 +281,7 @@ func (bagPreparer *BagPreparer) doCleanUp() {
 		result.NsqMessage.Touch()
 		bagPreparer.ProcUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		if (result.S3File.Key.Key != "" && result.FetchResult != nil &&
-			result.FetchResult.LocalTarFile != "") {
+			result.FetchResult.LocalFile != "") {
 			bagPreparer.cleanupBag(helper)
 		}
 
@@ -319,17 +319,17 @@ func (bagPreparer *BagPreparer) cleanupBag(helper *bagman.IngestHelper) {
 	if result.ErrorMessage == "" {
 		// Clean up the tar file, but leave the unpacked files
 		// for apt_store to send off to long-term storage.
-		err := os.Remove(result.FetchResult.LocalTarFile)
+		err := os.Remove(result.FetchResult.LocalFile)
 		if err != nil {
 			bagPreparer.ProcUtil.MessageLog.Error("Error deleting tar file %s: %v",
-				result.FetchResult.LocalTarFile, err)
+				result.FetchResult.LocalFile, err)
 		}
 	} else {
 		// Clean up ALL files we downloaded and unpacked
 		errors := helper.DeleteLocalFiles()
 		if errors != nil && len(errors) > 0 {
 			bagPreparer.ProcUtil.MessageLog.Warning("Errors cleaning up %s",
-				result.FetchResult.LocalTarFile)
+				result.FetchResult.LocalFile)
 			for _, e := range errors {
 				bagPreparer.ProcUtil.MessageLog.Error(e.Error())
 			}

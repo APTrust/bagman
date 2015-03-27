@@ -138,7 +138,7 @@ func (helper *IngestHelper) GetS3Options(file *File) (*s3.Options, error) {
 func (helper *IngestHelper) ProcessBagFile() {
 	helper.Result.Stage = "Unpack"
 	instDomain := OwnerOf(helper.Result.S3File.BucketName)
-	helper.Result.TarResult = Untar(helper.Result.FetchResult.LocalTarFile,
+	helper.Result.TarResult = Untar(helper.Result.FetchResult.LocalFile,
 		instDomain, helper.Result.S3File.BagName(), true)
 	if helper.Result.TarResult.ErrorMessage != "" {
 		helper.Result.ErrorMessage = helper.Result.TarResult.ErrorMessage
@@ -223,8 +223,8 @@ func (helper *IngestHelper) MergeFedoraRecord() (error) {
 // unpacked from it. Param file is the path the tar file.
 func (helper *IngestHelper) DeleteLocalFiles() (errors []error) {
 	errors = make([]error, 0)
-	if FileExists(helper.Result.FetchResult.LocalTarFile) {
-		err := os.Remove(helper.Result.FetchResult.LocalTarFile)
+	if FileExists(helper.Result.FetchResult.LocalFile) {
+		err := os.Remove(helper.Result.FetchResult.LocalFile)
 		if err != nil {
 			errors = append(errors, err)
 		}
@@ -232,7 +232,7 @@ func (helper *IngestHelper) DeleteLocalFiles() (errors []error) {
 	// The untarred dir name is the same as the tar file, minus
 	// the .tar extension. This is guaranteed by bag.Untar.
 	re := regexp.MustCompile("\\.tar$")
-	untarredDir := re.ReplaceAllString(helper.Result.FetchResult.LocalTarFile, "")
+	untarredDir := re.ReplaceAllString(helper.Result.FetchResult.LocalFile, "")
 	err := os.RemoveAll(untarredDir)
 	if err != nil {
 		helper.ProcUtil.MessageLog.Error("Error deleting dir %s: %s\n", untarredDir, err.Error())

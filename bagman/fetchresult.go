@@ -5,7 +5,7 @@ package bagman
 type FetchResult struct {
 	BucketName    string
 	Key           string
-	LocalTarFile  string
+	LocalFile     string
 	RemoteMd5     string
 	LocalMd5      string
 	Md5Verified   bool

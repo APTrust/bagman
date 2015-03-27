@@ -338,8 +338,8 @@ func verifyFetchResult(t *testing.T, fetchResult *bagman.FetchResult) {
 
 	currentUser, _ := user.Current()
 	expectedFile := fmt.Sprintf(filepath.Join(currentUser.HomeDir, "/tmp/test_tar/ncsu.1840.16-2928.tar"))
-	if fetchResult.LocalTarFile != expectedFile {
-		t.Errorf("LocalTarFile '%s' should be '%s'", fetchResult.LocalTarFile, expectedFile)
+	if fetchResult.LocalFile != expectedFile {
+		t.Errorf("LocalFile '%s' should be '%s'", fetchResult.LocalFile, expectedFile)
 	}
 }
 

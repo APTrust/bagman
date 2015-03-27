@@ -126,9 +126,66 @@ func TestFetchToFile(t *testing.T) {
 	if result.Key != keyToFetch.Key {
 		t.Errorf("Expected key name %s, got %s", keyToFetch.Key, result.Key)
 	}
-	if result.LocalTarFile != outputFileAbs {
+	if result.LocalFile != outputFileAbs {
 		t.Errorf("Expected local file name %s, got %s",
-			outputFileAbs, result.LocalTarFile)
+			outputFileAbs, result.LocalFile)
+	}
+	if result.RemoteMd5 != "22ecc8c4146ad65bd0f9ddb0db32e8b9" {
+		t.Errorf("Expected remote md5 sum %s, got %s",
+			"22ecc8c4146ad65bd0f9ddb0db32e8b9", result.RemoteMd5)
+	}
+	if result.LocalMd5 != "22ecc8c4146ad65bd0f9ddb0db32e8b9" {
+		t.Errorf("Expected local md5 sum %s, got %s",
+			"22ecc8c4146ad65bd0f9ddb0db32e8b9", result.LocalMd5)
+	}
+	if result.Md5Verified == false {
+		t.Error("md5 sum should have been verified but was not")
+	}
+	if result.Md5Verifiable == false {
+		t.Error("md5 sum incorrectly marked as not verifiable")
+	}
+	if result.Warning != "" {
+		t.Errorf("Fetch result returned warning: %s", result.Warning)
+	}
+	// Retry should be true, unless file does not exist.
+	if result.Retry == false {
+		t.Error("Fetch result retry was false, but should be true.")
+	}
+}
+
+func TestFetchURLToFile(t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("s3_test.go")
+		return
+	}
+	s3Client, err := bagman.NewS3Client(aws.USEast)
+	if err != nil {
+		t.Errorf("Cannot create S3 client: %v\n", err)
+	}
+	url := "https://s3.amazonaws.com/aptrust.test/sample_good.tar"
+
+
+	// Fetch the first file from the test bucket and store
+	// it in the testdata directory. Note that testDataPath
+	// is defined in bag_test.go, which is part of the
+	// bagman_test package.
+	outputDir := filepath.Join(testDataPath, "tmp")
+	outputFile := filepath.Join(outputDir, "sample_good.tar")
+	outputFileAbs, _ := filepath.Abs(outputFile)
+	result := s3Client.FetchURLToFile(url, outputFile)
+	defer os.Remove(outputFileAbs)
+	if result.ErrorMessage != "" {
+		t.Errorf("FetchURLToFile returned an error: %s", result.ErrorMessage)
+	}
+	if result.BucketName != testBucket {
+		t.Errorf("Expected bucket name %s, got %s", testBucket, result.BucketName)
+	}
+	if result.Key != "sample_good.tar" {
+		t.Errorf("Expected key name 'sample_good.tar', got %s", result.Key)
+	}
+	if result.LocalFile != outputFileAbs {
+		t.Errorf("Expected local file name %s, got %s",
+			outputFileAbs, result.LocalFile)
 	}
 	if result.RemoteMd5 != "22ecc8c4146ad65bd0f9ddb0db32e8b9" {
 		t.Errorf("Expected remote md5 sum %s, got %s",
