@@ -1,16 +1,11 @@
 package dpn
 
 import (
-	"github.com/crowdmob/goamz/aws"
+	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"strings"
 )
 
-func FetchFiles() (error) {
-	// testConfig := "test"
-	// procUtil := NewProcessUtil(&testConfig)
-	// intellectualObject :=
-	// restorer := workers.NewBagRestorer(intellectualObject, "test_dir")
-}
 
 type DPNFetchResult struct {
 	FetchResult *bagman.FetchResult
@@ -19,7 +14,7 @@ type DPNFetchResult struct {
 
 // FetchFiles fetches remote S3 files that make up the specified
 // IntellectualObject into the specified directory.
-func FetchObjectFiles(procUtil *bagman.ProcessUtil, obj *bagman.IntellectualObject, dir string) ([]*DPNFetchResult, error) {
+func FetchObjectFiles(s3Client *bagman.S3Client, obj *bagman.IntellectualObject, dir string) ([]*DPNFetchResult, error) {
 	if !strings.HasSuffix(dir, "/") {
 		dir += "/"
 	}
@@ -30,10 +25,10 @@ func FetchObjectFiles(procUtil *bagman.ProcessUtil, obj *bagman.IntellectualObje
 			return nil, err
 		}
 		localPath := dir + origPath
-		fetchResult := procUtil.S3Client.FetchURLToFile(genericFile.URI, localPath)
+		fetchResult := s3Client.FetchURLToFile(gf.URI, localPath)
 		results[i] = &DPNFetchResult{
 			FetchResult: fetchResult,
-			GenericFile: gf
+			GenericFile: gf,
 		}
 		if fetchResult.ErrorMessage != "" {
 			err := fmt.Errorf("Error retrieving %s from %s: %s",
