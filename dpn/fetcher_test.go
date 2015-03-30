@@ -64,6 +64,9 @@ func getS3Client(t *testing.T) *bagman.S3Client {
 
 
 func TestFetchObjectFiles(t *testing.T) {
+	if canRunTests() == false {
+		return
+	}
 	fluctusClient := getFluctusClient(t)
 	s3Client := getS3Client(t)
 	if fluctusClient == nil || s3Client == nil {
