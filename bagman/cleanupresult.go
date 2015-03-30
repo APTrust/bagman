@@ -39,6 +39,9 @@ type CleanupResult struct {
 // Returns true if all files were successfully deleted.
 func (result *CleanupResult) Succeeded() bool {
 	for _, file := range result.Files {
+		if file.DeleteSkippedPerConfig == true {
+			continue
+		}
 		if file.DeleteAttempted() == false || file.DeletedAt.IsZero() == true {
 			return false
 		}

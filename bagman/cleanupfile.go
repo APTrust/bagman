@@ -20,6 +20,9 @@ type CleanupFile struct {
 	// is zero time, file was not deleted. If it's
 	// any other time, delete succeeded.
 	DeletedAt time.Time
+	// Flag to indicate whether we skipped the delete
+	// operation because config.DeleteOnSuccess == false
+	DeleteSkippedPerConfig bool
 }
 
 // Returns true if delete was attempted.

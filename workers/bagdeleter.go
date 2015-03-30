@@ -108,6 +108,10 @@ func (bagDeleter *BagDeleter) doCleanUp() {
 		if bagDeleter.ProcUtil.Config.DeleteOnSuccess == true {
 			bagDeleter.DeleteS3Files(result)
 		} else {
+			for i := range result.Files {
+				file := result.Files[i]
+				file.DeleteSkippedPerConfig = true
+			}
 			bagDeleter.ProcUtil.MessageLog.Info("Not deleting %s because " +
 				"config.DeleteOnSuccess == false", result.BagName)
 		}
