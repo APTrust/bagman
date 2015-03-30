@@ -94,6 +94,10 @@ type Config struct {
 	// bucket after successfully processing this bag?
 	DeleteOnSuccess         bool
 
+	// DPNPackageWorker records details about fixity checks
+	// that could not be completed.
+	DPNPackageWorker        WorkerConfig
+
 	// The name of the long-term storage bucket for DPN
 	DPNPreservationBucket   string
 
