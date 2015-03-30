@@ -12,11 +12,9 @@ import (
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"github.com/op/go-logging"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 )
 
 const (
@@ -420,7 +418,7 @@ func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 	for _, textFile := range textFiles {
 		textFileBase := filepath.Base(textFile)
 		filePath := filepath.Join(restorer.workingDir, bagName, textFileBase)
-		err = addToArchive(tarWriter, filePath, textFileBase)
+		err = AddToArchive(tarWriter, filePath, textFileBase)
 		if err != nil {
 			tarFile.Close()
 			os.Remove(tarFilePath)
@@ -432,7 +430,7 @@ func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 	for _, gf := range restorer.fileSets[setNumber].Files {
 		gfPath, _ := gf.OriginalPath()
 		filePath := filepath.Join(restorer.workingDir, bagName, gfPath)
-		err = addToArchive(tarWriter, filePath, gfPath)
+		err = AddToArchive(tarWriter, filePath, gfPath)
 		if err != nil {
 			tarFile.Close()
 			os.Remove(tarFilePath)
@@ -447,49 +445,6 @@ func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 	return tarFilePath, nil
 }
 
-// Adds a file to the tar archive.
-func addToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (error) {
-	finfo, err := os.Stat(filePath)
-	if err != nil {
-		return fmt.Errorf("Cannot add '%s' to archive: %v", filePath, err)
-	}
-	header := &tar.Header{
-		Name: pathWithinArchive,
-		Size: finfo.Size(),
-		Mode: int64(finfo.Mode().Perm()),
-		ModTime: finfo.ModTime(),
-	}
-	systat := finfo.Sys().(*syscall.Stat_t)
-	if systat != nil {
-		header.Uid = int(systat.Uid)
-		header.Gid = int(systat.Gid)
-	}
-
-	// Write the header entry
-	if err := tarWriter.WriteHeader(header); err != nil {
-		return err
-	}
-
-	// Open the file whose data we're going to add.
-	file, err := os.Open(filePath)
-	defer file.Close()
-	if err != nil {
-		return err
-	}
-
-	// Copy the contents of the file into the tarWriter.
-	bytesWritten, err := io.Copy(tarWriter, file)
-	if bytesWritten != header.Size {
-		return fmt.Errorf("addToArchive() copied only %d of %d bytes for file %s",
-			bytesWritten, header.Size, filePath)
-	}
-	if err != nil {
-		return fmt.Errorf("Error copying %s into tar archive: %v",
-			filePath, err)
-	}
-
-	return nil
-}
 
 /*
 Copies a tarred bag file to S3. In most cases, you'll want RestoreAndPublish()

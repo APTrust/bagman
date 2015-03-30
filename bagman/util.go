@@ -1,12 +1,14 @@
 package bagman
 
 import (
+	"archive/tar"
 	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"github.com/op/go-logging"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 )
 
 // Returns the domain name of the institution that owns the specified bucket.
@@ -301,4 +304,48 @@ func BucketNameAndKey(uri string) (string, string) {
 	relativeUri := strings.Replace(uri, S3UriPrefix, "", 1)
 	parts := strings.SplitN(relativeUri, "/", 2)
 	return parts[0], parts[1]
+}
+
+// Adds a file to a tar archive.
+func AddToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (error) {
+	finfo, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("Cannot add '%s' to archive: %v", filePath, err)
+	}
+	header := &tar.Header{
+		Name: pathWithinArchive,
+		Size: finfo.Size(),
+		Mode: int64(finfo.Mode().Perm()),
+		ModTime: finfo.ModTime(),
+	}
+	systat := finfo.Sys().(*syscall.Stat_t)
+	if systat != nil {
+		header.Uid = int(systat.Uid)
+		header.Gid = int(systat.Gid)
+	}
+
+	// Write the header entry
+	if err := tarWriter.WriteHeader(header); err != nil {
+		return err
+	}
+
+	// Open the file whose data we're going to add.
+	file, err := os.Open(filePath)
+	defer file.Close()
+	if err != nil {
+		return err
+	}
+
+	// Copy the contents of the file into the tarWriter.
+	bytesWritten, err := io.Copy(tarWriter, file)
+	if bytesWritten != header.Size {
+		return fmt.Errorf("addToArchive() copied only %d of %d bytes for file %s",
+			bytesWritten, header.Size, filePath)
+	}
+	if err != nil {
+		return fmt.Errorf("Error copying %s into tar archive: %v",
+			filePath, err)
+	}
+
+	return nil
 }
