@@ -1,7 +1,10 @@
 package bagman_test
 
 import (
+	"archive/tar"
+	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -195,5 +198,37 @@ func TestCleanString(t *testing.T) {
 	clean = bagman.CleanString("  \" embedded spaces 2 \"   ")
 	if clean != " embedded spaces 2 " {
 		t.Error("Expected to receive string ' embedded spaces '")
+	}
+}
+
+func TestBucketNameAndKey(t *testing.T) {
+	url := "https://s3.amazonaws.com/aptrust.test.restore/ncsu.1840.16-1004.tar"
+	expectedBucket := "aptrust.test.restore"
+	expectedKey := "ncsu.1840.16-1004.tar"
+	bucketName, key := bagman.BucketNameAndKey(url)
+	if bucketName != expectedBucket {
+		t.Errorf("Expected bucket name %s, got %s", expectedBucket, bucketName)
+	}
+	if key != expectedKey {
+		t.Errorf("Expected key %s, got %s", expectedKey, key)
+	}
+}
+
+func TestAddToArchive(t *testing.T) {
+	tarFile, err := ioutil.TempFile("", "util_test.tar")
+	if err != nil {
+		t.Errorf("Error creating temp file for tar archive: %v", err)
+	}
+	defer os.Remove(tarFile.Name())
+	tarWriter := tar.NewWriter(tarFile)
+	bagmanHome, _ := bagman.BagmanHome()
+	testfilePath := filepath.Join(bagmanHome, "testdata")
+	files, _ := filepath.Glob(filepath.Join(testfilePath, "*.json"))
+	for _, filePath := range files {
+		pathWithinArchive := fmt.Sprintf("data/%s", filePath)
+		err = bagman.AddToArchive(tarWriter, filePath, pathWithinArchive)
+		if err != nil {
+			t.Errorf("Error adding %s to tar file: %v", filePath, err)
+		}
 	}
 }
