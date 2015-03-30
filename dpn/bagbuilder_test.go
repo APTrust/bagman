@@ -49,9 +49,9 @@ func createBagBuilder(t *testing.T, withGenericFiles bool) (builder *dpn.BagBuil
 	config := loadConfig(t, CONFIG_FILE)
 	if obj != nil && config != nil {
 		if withGenericFiles {
-			builder = dpn.NewBagBuilder(testBagPath(), obj, obj.GenericFiles, config)
+			builder = dpn.NewBagBuilder(testBagPath(), obj, config)
 		} else {
-			builder = dpn.NewBagBuilder(testBagPath(), obj, nil, config)
+			builder = dpn.NewBagBuilder(testBagPath(), obj, config)
 		}
 	} else {
 		t.Errorf("Could not create bag builder.")

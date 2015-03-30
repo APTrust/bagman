@@ -30,7 +30,6 @@ type DefaultMetadata struct {
 type BagBuilder struct {
 	LocalPath              string
 	IntellectualObject     *bagman.IntellectualObject
-	GenericFiles           []*bagman.GenericFile
 	DefaultMetadata        *DefaultMetadata
 	UUID                   string
 	ErrorMessage           string
@@ -53,15 +52,10 @@ func LoadConfig(pathToFile string) (metadata *DefaultMetadata, err error) {
 // NewBagBuilder returns a new BagBuilder.
 // Param localPath is the path to which the bag builder should write the
 // DPN bag. Param obj is an IntellectualObject containing metadata
-// about the APTrust bag that we'll be repackaging. Param gf is a slice
-// of GenericFiles that should go into the bag. Param defaultMetadata
+// about the APTrust bag that we'll be repackaging. Param defaultMetadata
 // contains default metadata, such as the BagIt version, ingest node name,
 // etc.
-func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagman.GenericFile,
-	defaultMetadata *DefaultMetadata) (*BagBuilder) {
-	if gf == nil {
-		gf = make([]*bagman.GenericFile, 0)
-	}
+func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, defaultMetadata *DefaultMetadata) (*BagBuilder) {
 	uuid, uuidErr := uuid.NewV4()
 	filePath, err := filepath.Abs(localPath)
 	bag := &Bag{
@@ -71,7 +65,6 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, gf []*bagma
 	builder :=  &BagBuilder{
 		LocalPath: filePath,
 		IntellectualObject: obj,
-		GenericFiles: gf,
 		DefaultMetadata: defaultMetadata,
 		UUID: uuid.String(),
 		bag: bag,
@@ -207,7 +200,7 @@ func (builder *BagBuilder) DPNManifestSha256() (*bagins.Manifest) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	for _, gf := range builder.GenericFiles {
+	for _, gf := range builder.IntellectualObject.GenericFiles {
 		pathInBag := DataPath(gf.Identifier)
 		sha256 := gf.GetChecksum("sha256")
 		if sha256 == nil {
@@ -323,7 +316,7 @@ func (builder *BagBuilder) APTrustManifestMd5() (*bagins.Manifest) {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
 	}
-	for _, gf := range builder.GenericFiles {
+	for _, gf := range builder.IntellectualObject.GenericFiles {
 		pathInBag := DataPath(gf.Identifier)
 		md5 := gf.GetChecksum("md5")
 		if md5 == nil {
@@ -336,11 +329,10 @@ func (builder *BagBuilder) APTrustManifestMd5() (*bagins.Manifest) {
 }
 
 // Returns a list of files that should be packed into the data
-// directory of the DPN bag. For now, we're doing one file per
-// bag, but this code can handle multiple files.
+// directory of the DPN bag.
 func (builder *BagBuilder) DataFiles() ([]DataFile) {
-	dataFiles := make([]DataFile, len(builder.GenericFiles))
-	for i, gf := range builder.GenericFiles {
+	dataFiles := make([]DataFile, len(builder.IntellectualObject.GenericFiles))
+	for i, gf := range builder.IntellectualObject.GenericFiles {
 		dataFiles[i] = DataFile{
 			ExternalPathType: PATH_TYPE_S3,
 			ExternalPath: gf.URI,
