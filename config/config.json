@@ -19,6 +19,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "DPNPreservationBucket": "aptrust.dpn.test",
         "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
@@ -189,6 +190,7 @@
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
         "CustomRestoreBucket": "aptrust.test.restore",
+        "DPNPreservationBucket": "aptrust.dpn.test",
         "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 60,
 
@@ -376,6 +378,7 @@
 
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
+        "DPNPreservationBucket": "aptrust.dpn.test",
         "CustomRestoreBucket": "",
         "RestoreToTestBuckets": true,
         "MaxDaysSinceFixityCheck": 60,
@@ -563,6 +566,7 @@
 
         "PreservationBucket": "aptrust.preservation.storage",
         "ReplicationBucket": "aptrust.preservation.oregon",
+        "DPNPreservationBucket": "aptrust.dpn.preservation",
         "CustomRestoreBucket": "",
         "RestoreToTestBuckets": false,
         "MaxDaysSinceFixityCheck": 30,
