@@ -1,7 +1,6 @@
 package dpn
 
 import (
-	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"strings"
 )
@@ -29,12 +28,6 @@ func FetchObjectFiles(s3Client *bagman.S3Client, obj *bagman.IntellectualObject,
 		results[i] = &DPNFetchResult{
 			FetchResult: fetchResult,
 			GenericFile: gf,
-		}
-		if fetchResult.ErrorMessage != "" {
-			err := fmt.Errorf("Error retrieving %s from %s: %s",
-				gf.Identifier, gf.URI, fetchResult)
-			results = nil
-			return nil, err
 		}
 	}
 	return results, nil
