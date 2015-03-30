@@ -97,6 +97,11 @@ type Config struct {
 	// The name of the long-term storage bucket for DPN
 	DPNPreservationBucket   string
 
+	// The local directory for DPN staging. We store DPN bags
+	// here while they await transfer to the DPN preservation
+	// bucket and while they await replication to other nodes.
+	DPNStagingDirectory     string
+
 	// FailedFixityWorker records details about fixity checks
 	// that could not be completed.
 	FailedFixityWorker      WorkerConfig
