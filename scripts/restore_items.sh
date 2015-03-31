@@ -1,5 +1,13 @@
 #!/bin/bash
 
+#
+# This script provides end-to-end testing for APTrust's restore
+# and delete features. To run this, run process_items.sh first.
+# See the comment at the top of the process_items.sh script.
+# Running process_items.sh, followed by this script, exercises
+# ALL of APTrust's major features.
+#
+
 echo "Getting rid of old logs and data files"
 rm -r ~/tmp/*
 

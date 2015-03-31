@@ -1,5 +1,24 @@
 #!/bin/bash
 
+#
+# This script provides end-to-end testing for ingest functions.
+# To run this, follow these steps:
+#
+# 1. In your local Fluctus directory, run `bundle exec rake fluctus:reset_data`
+# 2. In your local Fluctus directory, run `rails server`
+# 3. Run this script.
+#
+# After running this script, use your browser to go to your local Fluctus
+# instance (localhost:3000), then delete at least one intellectual object
+# and restore at least one other. Then run the restore_items.sh script to
+# do an end-to-end test of the restore and delete features.
+#
+# This script prints output to the terminal. You should see ALL items succeed,
+# except for one bag that is rejected as invalid. You can check the STATS
+# lines of the console output, and you can also check the status of
+# objects, files and processed items in the Fluctus UI at http://localhost:3000
+#
+
 echo "Getting rid of old logs and data files"
 rm -r ~/tmp/*
 
