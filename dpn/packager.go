@@ -37,7 +37,6 @@ type PackageStatus struct {
 	BagBuilder      *BagBuilder
 	DPNFetchResults []*DPNFetchResult
 	TarFilePath     string
-	CleanedUp       bool
 	ErrorMessage    string
 	Retry           bool
 }
@@ -59,18 +58,18 @@ func (status *PackageStatus) Errors() ([]string) {
 }
 
 func (status *PackageStatus) Succeeded() (bool) {
-	return status.CleanedUp == true && len(status.Errors()) == 0
+	return status.TarFilePath != "" && len(status.Errors()) == 0
 }
 
 type Packager struct {
-	LookupChannel   chan *PackageStatus
-	FetchChannel    chan *PackageStatus
-	BuildChannel    chan *PackageStatus
-	TarChannel      chan *PackageStatus
-	CleanupChannel  chan *PackageStatus
-	ResultsChannel  chan *PackageStatus
-	DefaultMetadata *DefaultMetadata
-	ProcUtil        *bagman.ProcessUtil
+	LookupChannel       chan *PackageStatus
+	FetchChannel        chan *PackageStatus
+	BuildChannel        chan *PackageStatus
+	TarChannel          chan *PackageStatus
+	CleanupChannel      chan *PackageStatus
+	PostProcessChannel  chan *PackageStatus
+	DefaultMetadata     *DefaultMetadata
+	ProcUtil            *bagman.ProcessUtil
 }
 
 func NewPackager(procUtil *bagman.ProcessUtil, obj *bagman.IntellectualObject, defaultMetadata *DefaultMetadata) (*Packager) {
@@ -84,13 +83,13 @@ func NewPackager(procUtil *bagman.ProcessUtil, obj *bagman.IntellectualObject, d
 	packager.BuildChannel = make(chan *PackageStatus, workerBufferSize)
 	packager.TarChannel = make(chan *PackageStatus, workerBufferSize)
 	packager.CleanupChannel = make(chan *PackageStatus, workerBufferSize)
-	packager.ResultsChannel = make(chan *PackageStatus, workerBufferSize)
+	packager.PostProcessChannel = make(chan *PackageStatus, workerBufferSize)
 	for i := 0; i < procUtil.Config.DPNPackageWorker.Workers; i++ {
 		go packager.doLookup()
 		go packager.doBuild()
 		go packager.doTar()
 		go packager.doCleanup()
-		go packager.logResults()
+		go packager.postProcess()
 	}
 	for i := 0; i <  procUtil.Config.PrepareWorker.NetworkConnections; i++ {
 		go packager.doFetch()
@@ -138,7 +137,7 @@ func (packager *Packager) doLookup() {
 			status.ErrorMessage = fmt.Sprintf("Could not fetch info about IntellectualObject " +
 				"'%s' from Fluctus: %s", status.BagIdentifier, err.Error())
 			status.Retry = true
-			packager.ResultsChannel <- status
+			packager.PostProcessChannel <- status
 			continue
 		}
 		if intelObj == nil {
@@ -146,7 +145,7 @@ func (packager *Packager) doLookup() {
 			status.ErrorMessage = fmt.Sprintf("Fluctus returned nil for IntellectualObject %s",
 				status.BagIdentifier)
 			status.Retry = true
-			packager.ResultsChannel <- status
+			packager.PostProcessChannel <- status
 			continue
 		}
 		err = packager.ProcUtil.Volume.Reserve(uint64(intelObj.TotalFileSize() * 2))
@@ -156,7 +155,7 @@ func (packager *Packager) doLookup() {
 				status.BagIdentifier, intelObj.TotalFileSize())
 			status.ErrorMessage = err.Error()
 			status.Retry = true
-			packager.ResultsChannel <- status
+			packager.PostProcessChannel <- status
 			continue
 		} else {
 			// Woo-hoo!
@@ -198,45 +197,71 @@ func (packager *Packager) doTar() {
 // data files, tag files, manifests, etc. that went into the
 // DPN bag. When this is done, the tar file will still be around,
 // but the directories whose contents went into the tar file will
-// be gone. From here, data goes into the ResultsChannel.
+// be gone. From here, data goes into the PostProcessChannel.
 func (packager *Packager) doCleanup() {
+	log := packager.ProcUtil.MessageLog
 	for status := range packager.CleanupChannel {
-		// BagBuilder.LocalPath is the absolute path to the
-		// untarred bag. We want to delete that, but leave the
-		// tar file. On success, wipe out that whole working dir.
-		if status.Succeeded() && status.TarFilePath != "" {
+		if packager.shouldCleanup(status) {
 			packager.cleanup(status)
-			status.Retry = false
+		}
+		status.Retry = packager.shouldRetry(status)
+		if status.Succeeded() {
 			status.NsqMessage.Finish()
 		} else {
-			// TODO: Move this finish/requeue code to logResults...
-			if status.NsqMessage.Attempts >= uint16(packager.ProcUtil.Config.DPNPackageWorker.MaxAttempts) {
-				status.Retry = true
-				status.NsqMessage.Requeue(1 * time.Minute)
-				packager.ProcUtil.MessageLog.Warning("Requeuing bag '%s' for attempt #%d",
-					status.BagIdentifier, status.NsqMessage.Attempts + 1)
-			} else {
-				status.Retry = false
-				status.NsqMessage.Finish()
-				packager.ProcUtil.MessageLog.Error("Giving up on bag '%s' after %d attempts",
-					status.BagIdentifier, status.NsqMessage.Attempts)
-			}
+			log.Info("Requeuing %s (%s)", status.BagIdentifier, status.BagBuilder.LocalPath)
+			status.NsqMessage.Requeue(1 * time.Minute)
 		}
-		// If we get here, something went wrong. If download started,
-		// let's keep the downloaded files around so we can resume
-		// where we left off on the next run.
-		downloadStarted := status.DPNFetchResults != nil && len(status.DPNFetchResults) > 0
-		if downloadStarted == false {
-			// Clean out the directory, mark space as freed, and
-			// maybe we'll start over if this is requeued.
-			packager.cleanup(status)
-		} else {
-			// TODO: No, sucka! Requeu & resume only if we haven't hit MaxAttempts!
-			packager.ProcUtil.MessageLog.Warning("Not cleaning up bag '%s': will resume processing later",
-				status.BagIdentifier, status.NsqMessage.Attempts + 1)
-		}
-		packager.ResultsChannel <- status
+		packager.PostProcessChannel <- status
 	}
+}
+
+func (packager *Packager) reachedMaxAttempts(status *PackageStatus) (bool) {
+	return status.NsqMessage.Attempts >= uint16(packager.ProcUtil.Config.DPNPackageWorker.MaxAttempts)
+}
+
+// shouldCleanup tells us whether we should delete all of the files,
+// except the tar files, for a DPN bag. See inline comments for the logic.
+func (packager *Packager) shouldCleanup(status *PackageStatus) (cleanItUp bool) {
+	log := packager.ProcUtil.MessageLog
+	downloadStarted := status.DPNFetchResults != nil && len(status.DPNFetchResults) > 0
+	cleanItUp = false
+
+	if status.Succeeded() && status.TarFilePath != "" {
+		// We have the tar file & no longer need the untarred files.
+		cleanItUp = true
+	} else if packager.reachedMaxAttempts(status) {
+		// Failed, and we're done with this bag.
+		cleanItUp = true
+		status.ErrorMessage += fmt.Sprintf("Processing failed after %d attempts.", status.NsqMessage.Attempts)
+	} else if downloadStarted == false {
+		// No use leaving an empty directory laying around.
+		cleanItUp = true
+	} else {
+		log.Info("Skipping cleanup on bag %s at %s. Leaving files in place for retry.",
+			status.BagIdentifier, status.BagBuilder.LocalPath)
+	}
+
+	if cleanItUp {
+		log.Info("Cleaning up bag %s at %s", status.BagIdentifier, status.BagBuilder.LocalPath)
+	}
+
+	// If we get to this point, leave cleanItUp = false, because
+	// we've downloaded some files, and we still have some retries
+	// left. This may be a bag with 1000 files, and we may already
+	// have 900 of them on disk. The next retry will resume dowloading
+	// at file #901, which is what we want. The only downside here is
+	// that we might be using up a lot of disk space.
+	return cleanItUp
+}
+
+func (packager *Packager) shouldRetry(status *PackageStatus) (retry bool) {
+	retry = true
+	if status.Succeeded() && status.TarFilePath != "" {
+		retry = false
+	} else if packager.reachedMaxAttempts(status) {
+		retry = false
+	}
+	return retry
 }
 
 func (packager *Packager) cleanup(status *PackageStatus) {
@@ -245,17 +270,30 @@ func (packager *Packager) cleanup(status *PackageStatus) {
 		packager.ProcUtil.MessageLog.Error("Error cleaning up %s: %v",
 			status.BagBuilder.LocalPath, err)
 	} else {
-		// We have a problem here, since we're reserving 2x bytes
-		// and only freeing 1x. Need to have a smarter volume manager.
-		packager.ProcUtil.Volume.Release(uint64(status.BagBuilder.IntellectualObject.TotalFileSize()))
+		packager.ProcUtil.Volume.Release(uint64(status.BagBuilder.IntellectualObject.TotalFileSize() * 2))
 	}
 }
 
-// logResults logs the results of our DPN bagging operation, tells
+// postProcess logs the results of our DPN bagging operation, tells
 // NSQ that the worker is done with the job (whether successful or not),
 // and sends data to the next NSQ topic for post-processing.
-func (packager *Packager) logResults() {
-	// for status := range packager.ResultsChannel {
-
-	// }
+func (packager *Packager) postProcess() {
+	for status := range packager.PostProcessChannel {
+		if status.Succeeded() {
+			packager.ProcUtil.MessageLog.Info("Bag %s successfully packaged at %s",
+				status.BagIdentifier, status.TarFilePath)
+			packager.ProcUtil.IncrementSucceeded()
+			// TODO: Send to DPN storage queue
+		} else {
+			if packager.reachedMaxAttempts(status) {
+				packager.ProcUtil.MessageLog.Error(status.ErrorMessage)
+				packager.ProcUtil.IncrementFailed()
+				// TODO: Send to DPN trouble queue
+			} else {  // Failed, but we can still retry
+				packager.ProcUtil.MessageLog.Warning(
+					"Bag %s failed, but will retry. %s",
+					status.BagIdentifier, status.ErrorMessage)
+			}
+		}
+	}
 }

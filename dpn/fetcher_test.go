@@ -85,7 +85,7 @@ func TestFetchObjectFiles(t *testing.T) {
 	}
 	tmpDir := os.TempDir()
 	defer os.RemoveAll(tmpDir)
-	dpnFetchResults, err := dpn.FetchObjectFiles(s3Client, obj, tmpDir)
+	dpnFetchResults, err := dpn.FetchObjectFiles(s3Client, obj.GenericFiles, tmpDir)
 	if err != nil {
 		t.Errorf("FetchObjectFiles returned error %v", err)
 		return
