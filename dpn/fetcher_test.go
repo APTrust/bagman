@@ -9,12 +9,17 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 var fluctusAPIVersion string = "v1"
 var skipMessagePrinted bool = false
 var testBucket string = "aptrust.test"
 var objId string = "test.edu/virginia.edu.uva-lib_2278801"
+
+var	md5Sum = "12345678"
+var gfIdentifier = "test.edu/my_bag/file1.jpg"
+
 
 func canRunTests() bool {
 	if skipMessagePrinted {
@@ -62,6 +67,34 @@ func getS3Client(t *testing.T) *bagman.S3Client {
 	return client
 }
 
+func getGenericFile() (*bagman.GenericFile) {
+	checksumAttributes := make([]*bagman.ChecksumAttribute, 1)
+	checksumAttributes[0] = &bagman.ChecksumAttribute{
+		Algorithm: "md5",
+		DateTime: time.Now(),
+		Digest: md5Sum,
+	}
+	return &bagman.GenericFile{
+		Identifier: gfIdentifier,
+		ChecksumAttributes: checksumAttributes,
+	}
+}
+
+func getFetchResult() (*bagman.FetchResult) {
+	return &bagman.FetchResult{
+		RemoteMd5: md5Sum,
+		LocalMd5: md5Sum,
+		Md5Verified: true,
+		ErrorMessage: "",
+	}
+}
+
+func getDPNFetchResult() (*dpn.DPNFetchResult) {
+	return &dpn.DPNFetchResult{
+		FetchResult: getFetchResult(),
+		GenericFile: getGenericFile(),
+	}
+}
 
 func TestFetchObjectFiles(t *testing.T) {
 	if canRunTests() == false {
@@ -90,11 +123,11 @@ func TestFetchObjectFiles(t *testing.T) {
 		t.Errorf("FetchObjectFiles returned error %v", err)
 		return
 	}
-	if len(dpnFetchResults) != 4 {
-		t.Errorf("Expected 4 fetch results, got %d", len(dpnFetchResults))
+	if len(dpnFetchResults.Items) != 4 {
+		t.Errorf("Expected 4 fetch results, got %d", len(dpnFetchResults.Items))
 		return
 	}
-	for _, result := range dpnFetchResults {
+	for _, result := range dpnFetchResults.Items {
 		if result.FetchResult.Md5Verified == false {
 			t.Errorf("Md5 verfication failed for file %s", result.FetchResult.LocalFile)
 		}
@@ -107,5 +140,111 @@ func TestFetchObjectFiles(t *testing.T) {
 			t.Errorf("File saved to '%s' should have been saved in '%s'",
 				result.FetchResult.LocalFile, expectedLocalPath)
 		}
+	}
+}
+
+func TestFetchResultSucceeded(t *testing.T) {
+	genericFile := getGenericFile()
+	fetchResult := getFetchResult()
+	resultFailed1 := &dpn.DPNFetchResult{
+		FetchResult: nil,
+		GenericFile: nil,
+	}
+	if resultFailed1.Succeeded() == true {
+		t.Errorf("resultFailed1 should have failed")
+	}
+	resultFailed2 := &dpn.DPNFetchResult{
+		FetchResult: &bagman.FetchResult{},
+		GenericFile: &bagman.GenericFile{},
+	}
+	if resultFailed2.Succeeded() == true {
+		t.Errorf("resultFailed2 should have failed")
+	}
+	resultFailed3 := &dpn.DPNFetchResult{
+		FetchResult: fetchResult,
+		GenericFile: &bagman.GenericFile{},
+	}
+	if resultFailed3.Succeeded() == true {
+		t.Errorf("resultFailed3 should have failed")
+	}
+	resultFailed4 := &dpn.DPNFetchResult{
+		FetchResult: &bagman.FetchResult{},
+		GenericFile: genericFile,
+	}
+	if resultFailed4.Succeeded() == true {
+		t.Errorf("resultFailed4 should have failed")
+	}
+
+	// Here's our one good case
+	resultSucceeded1 := &dpn.DPNFetchResult{
+		FetchResult: fetchResult,
+		GenericFile: genericFile,
+	}
+	if resultSucceeded1.Succeeded() == false {
+		t.Errorf("resultSucceeded1 should have succeeded")
+	}
+
+	// Try with mismatched checksums
+	fetchResult.LocalMd5 = "--BadChecksum--"
+	resultFailed5 := &dpn.DPNFetchResult{
+		FetchResult: fetchResult,
+		GenericFile: genericFile,
+	}
+	if resultFailed5.Succeeded() == true {
+		t.Errorf("resultFailed5 should have failed")
+	}
+
+	// Try with error message
+	fetchResult.LocalMd5 = md5Sum
+	fetchResult.ErrorMessage = "Oops, I broke the interwebs."
+	resultFailed6 := &dpn.DPNFetchResult{
+		FetchResult: fetchResult,
+		GenericFile: genericFile,
+	}
+	if resultFailed6.Succeeded() == true {
+		t.Errorf("resultFailed6 should have failed")
+	}
+
+}
+
+func TestNewFetchResultCollection(t *testing.T) {
+	collection := dpn.NewFetchResultCollection()
+	if collection.Items == nil || len(collection.Items) != 0 {
+		t.Errorf("NewFetchResultCollection() items missing or invalid")
+	}
+}
+
+func TestFetchResultCollectionAdd(t *testing.T) {
+	collection := dpn.NewFetchResultCollection()
+	collection.Add(getDPNFetchResult())
+	if len(collection.Items) != 1 {
+		t.Errorf("There should be one item in the collection")
+	}
+	anotherResult := getDPNFetchResult()
+	anotherResult.GenericFile.Identifier = "test.edu/my_bag/file2.pdf"
+	collection.Add(anotherResult)
+	if len(collection.Items) != 2 {
+		t.Errorf("There should be two items in the collection")
+	}
+}
+
+func TestFindByIdentifier(t *testing.T) {
+	collection := dpn.NewFetchResultCollection()
+	collection.Add(getDPNFetchResult())
+	anotherResult := getDPNFetchResult()
+	anotherResult.GenericFile.Identifier = "test.edu/my_bag/file2.pdf"
+	collection.Add(anotherResult)
+
+	result1 := collection.FindByIdentifier(gfIdentifier)
+	if result1 == nil {
+		t.Errorf("First identifier was not found")
+	}
+	result2 := collection.FindByIdentifier(anotherResult.GenericFile.Identifier)
+	if result2 == nil {
+		t.Errorf("Second identifier was not found")
+	}
+	result3 := collection.FindByIdentifier("I yam what I yam and that's all what I yam.")
+	if result3 != nil {
+		t.Errorf("FindByIdenfier is trippin'")
 	}
 }
