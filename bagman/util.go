@@ -349,3 +349,16 @@ func AddToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (er
 
 	return nil
 }
+
+// RecursiveFileList returns a list of all files in path dir
+// and its subfolders. It does not return directories.
+func RecursiveFileList(dir string) ([]string, error) {
+    files := make([]string, 0)
+    err := filepath.Walk(dir, func(filePath string, f os.FileInfo, err error) error {
+		if f.IsDir() == false {
+			files = append(files, filePath)
+		}
+        return nil
+    })
+	return files, err
+}

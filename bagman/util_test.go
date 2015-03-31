@@ -232,3 +232,38 @@ func TestAddToArchive(t *testing.T) {
 		}
 	}
 }
+
+func getPath(filename string) (string) {
+	bagmanHome, _ := bagman.BagmanHome()
+	return filepath.Join(bagmanHome, filename)
+}
+
+func TestRecursiveFileList(t *testing.T) {
+	bagmanHome, _ := bagman.BagmanHome()
+	files, err := bagman.RecursiveFileList(bagmanHome)
+	if err != nil {
+		t.Errorf("RecursiveFileList() returned error: %v", err)
+	}
+	// Make a map for quick lookup & check for a handful
+	// of files at different levels.
+	fileMap := make(map[string]string, 0)
+	for _, f := range files {
+		fileMap[f] = f
+	}
+	sampleFiles := []string{
+		getPath("README.md"),
+		getPath("apps/apt_fixity/apt_fixity.go"),
+		getPath("bagman/bucketsummary.go"),
+		getPath("config/config.json"),
+		getPath("partner-apps/apt_upload/apt_upload.go"),
+		getPath("testdata/intel_obj.json"),
+		getPath("workers/fixitychecker.go"),
+		getPath("testdata/example.edu.sample_good/data/datastream-DC"),
+	}
+	for _, filePath := range sampleFiles {
+		_, present := fileMap[filePath]
+		if present == false {
+			t.Errorf("File '%s' is missing from recursive file list", filePath)
+		}
+	}
+}
