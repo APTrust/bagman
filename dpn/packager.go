@@ -6,6 +6,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -170,10 +171,46 @@ func (packager *Packager) doLookup() {
 // doFetch fetches the IntellectualObject's files from S3 and
 // stores them locally. Data then goes into the BuildChannel
 // so we can build the DPN bag.
+//
+// TODO: If we really want to resume fetching, we'll
+// need to have a constant UUID for the DPN bag. That
+// UUID is assigned in NewBagBuilder. We'll have to assign
+// it beforehand. Here's the case:
+//
+// - We fetched 50 of 100 files for DPN bag X, then we fail & requeue.
+// - We have the 50 files we fetched still on the local disk.
+// - A new worker picks up the the requeued task. It needs to know
+//   where to look to find the 50 files. But the new BagBuilder has
+//   assigned this bag UUID Y. We'll look in the wrong directory
+//   (Y instead of X). Maybe we should use the DPN bag identifier
+//   as the dirname? If we tar it up that way, and change the
+//   tar file name at the end to the UUID, then when the bag is
+//   untarred, it comes out as test.edu/my_bag. That could be a
+//   benefit.
 func (packager *Packager) doFetch() {
 	// for status := range packager.FetchChannel {
 
 	// }
+}
+
+func (packager *Packager) filesAlreadyFetched(status *PackageStatus) ([]string, error) {
+	// Get a list of all files we've already fetched.
+	// These would have been fetched in a prior run
+	// that eventually errored out. Maybe we have 50
+	// of the 100 files we need for a bag.
+	files, err := bagman.RecursiveFileList(status.BagBuilder.LocalPath)
+	if err != nil {
+		return nil, err
+	}
+	// Convert the absolute paths returned by RecursiveFileList
+	// to GenericFile.Identifiers.
+	gfIdentifiers := make([]string, len(files))
+	for i, f := range files {
+		gfIdentifiers[i] = strings.Replace(f,
+			status.BagBuilder.LocalPath,
+			status.BagIdentifier, 1)
+	}
+	return gfIdentifiers, err
 }
 
 // doBuild builds the DPN bag, creating all of the necessary
