@@ -61,6 +61,7 @@ type DataFile struct {
 	PathInBag         string
 }
 
+// Tests for the Write functions are in bagbuilder_test.go
 
 func (bag *Bag) Write() ([]string) {
 	bag.WriteManifest(bag.DPNManifestSha256)

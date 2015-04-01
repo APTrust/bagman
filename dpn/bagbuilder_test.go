@@ -1,13 +1,14 @@
 package dpn_test
 
 import (
-//	"fmt"
+	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -427,6 +428,46 @@ func TestBuildBag(t *testing.T) {
 	}
 }
 
+func TestBagWrite(t *testing.T) {
+	builder := createBagBuilder(t, true)
+	if builder == nil {
+		return
+	}
+	defer os.RemoveAll(builder.LocalPath)
+	bag, err := builder.BuildBag()
+	if err != nil {
+		t.Errorf("BuildBag() returned error: %v", err)
+	}
+	errors := bag.Write()
+	if errors != nil && len(errors) > 0 {
+		t.Errorf("Write() returned errors: %s", strings.Join(errors, "\n"))
+		return
+	}
+
+	//dumpBagFiles(bag)
+
+	verifyFile(t, bag.DPNManifestSha256.Name())
+	verifyFile(t, bag.DPNTagManifest.Name())
+	verifyFile(t, bag.APTrustManifestMd5.Name())
+	verifyFile(t, bag.DPNBagIt.Name())
+	verifyFile(t, bag.DPNBagInfo.Name())
+	verifyFile(t, bag.DPNInfo.Name())
+	verifyFile(t, bag.APTrustBagIt.Name())
+	verifyFile(t, bag.APTrustBagInfo.Name())
+	verifyFile(t, bag.APTrustInfo.Name())
+
+}
+
+func verifyFile(t *testing.T, filePath string) {
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		t.Errorf("Can't stat %s: %v", filePath, err)
+	}
+	if fileInfo.Size() == 0 {
+		t.Errorf("File %s exists but is empty", filePath)
+	}
+}
+
 func verifyTagField(t *testing.T, tagfile *bagins.TagFile, label, value string) {
 	for _, tagfield := range tagfile.Data.Fields() {
 		if tagfield.Label() == label && tagfield.Value() != value {
@@ -434,4 +475,35 @@ func verifyTagField(t *testing.T, tagfile *bagins.TagFile, label, value string) 
 				tagfile.Name(), label, value, tagfield.Value())
 		}
 	}
+}
+
+// Dumps the path and contents of the bag's manifest and tag files
+// to STDOUT.
+func dumpBagFiles(bag *dpn.Bag) {
+	str := bag.DPNManifestSha256.ToString()
+	fmt.Println(bag.DPNManifestSha256.Name(), str)
+
+	str = bag.DPNTagManifest.ToString()
+	fmt.Println(bag.DPNTagManifest.Name(), str)
+
+	str = bag.APTrustManifestMd5.ToString()
+	fmt.Println(bag.APTrustManifestMd5.Name(), str)
+
+	str, _ = bag.DPNBagIt.ToString()
+	fmt.Println(bag.DPNBagIt.Name(), str)
+
+	str, _ = bag.DPNBagInfo.ToString()
+	fmt.Println(bag.DPNBagInfo.Name(), str)
+
+	str, _ = bag.DPNInfo.ToString()
+	fmt.Println(bag.DPNInfo.Name(), str)
+
+	str, _ =  bag.APTrustBagIt.ToString()
+	fmt.Println(bag.APTrustBagIt.Name(), str)
+
+	str, _ = bag.APTrustBagInfo.ToString()
+	fmt.Println(bag.APTrustBagInfo.Name(), str)
+
+	str, _ = bag.APTrustInfo.ToString()
+	fmt.Println(bag.APTrustInfo.Name(), str)
 }
