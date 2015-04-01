@@ -75,7 +75,7 @@ type Packager struct {
 	ProcUtil            *bagman.ProcessUtil
 }
 
-func NewPackager(procUtil *bagman.ProcessUtil, obj *bagman.IntellectualObject, defaultMetadata *DefaultMetadata) (*Packager) {
+func NewPackager(procUtil *bagman.ProcessUtil, defaultMetadata *DefaultMetadata) (*Packager) {
 	packager := &Packager {
 		DefaultMetadata: defaultMetadata,
 		ProcUtil: procUtil,

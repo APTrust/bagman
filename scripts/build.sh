@@ -92,6 +92,10 @@ echo "building apt_failed_replication"
 cd "${BAGMAN_HOME}/apps/apt_failed_replication"
 go build -o ${BAGMAN_BIN}/apt_failed_replication apt_failed_replication.go
 
+echo "building dpn_package"
+cd "${BAGMAN_HOME}/apps/dpn_package"
+go build -o ${BAGMAN_BIN}/dpn_package dpn_package.go
+
 echo "building apt_download -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_download"
 go build -tags='partners' -o ${BAGMAN_BIN}/apt_download apt_download.go

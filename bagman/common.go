@@ -17,6 +17,8 @@ const (
 	ReceiveTestBucketPrefix = "aptrust.receiving.test."
 	RestoreBucketPrefix     = "aptrust.restore."
 	S3DateFormat            = "2006-01-02T15:04:05.000Z"
+	// All S3 urls begin with this.
+	S3UriPrefix             = "https://s3.amazonaws.com/"
 )
 
 

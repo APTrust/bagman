@@ -25,9 +25,6 @@ const (
 	// manifest, and tar file headers.
 	DefaultBagPadding   = int64(1000000)
 
-	// All S3 urls begin with this.
-	S3UriPrefix = "https://s3.amazonaws.com/"
-
 	// The default restoration bucket prefix.
 	RestorationBucketPrefix = "aptrust.restore"
 )
