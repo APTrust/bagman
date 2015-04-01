@@ -248,3 +248,37 @@ func TestFindByIdentifier(t *testing.T) {
 		t.Errorf("FindByIdenfier is trippin'")
 	}
 }
+
+func TestSuccessCount(t *testing.T) {
+	collection := dpn.NewFetchResultCollection()
+	collection.Add(getDPNFetchResult())
+	anotherResult := getDPNFetchResult()
+	anotherResult.GenericFile.Identifier = "test.edu/my_bag/file2.pdf"
+	collection.Add(anotherResult)
+	succeeded := collection.SuccessCount()
+	if succeeded != 2 {
+		t.Errorf("SuccessCount() should have returned 2, but returned %d", succeeded)
+	}
+	collection.Items[0].FetchResult.ErrorMessage = "Mr. Krabs"
+	succeeded = collection.SuccessCount()
+	if succeeded != 1 {
+		t.Errorf("SuccessCount() should have returned 1, but returned %d", succeeded)
+	}
+}
+
+func TestErrors(t *testing.T) {
+	collection := dpn.NewFetchResultCollection()
+	collection.Add(getDPNFetchResult())
+	anotherResult := getDPNFetchResult()
+	anotherResult.GenericFile.Identifier = "test.edu/my_bag/file2.pdf"
+	collection.Add(anotherResult)
+	errors := collection.Errors()
+	if len(errors) != 0 {
+		t.Errorf("Errors() should have returned 0 errors, but returned %d", len(errors))
+	}
+	collection.Items[0].FetchResult.ErrorMessage = "Mr. Krabs"
+	errors = collection.Errors()
+	if len(errors) != 1 {
+		t.Errorf("Errors() should have returned 1 error, but returned %d", len(errors))
+	}
+}

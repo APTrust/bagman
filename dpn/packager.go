@@ -203,64 +203,11 @@ func (packager *Packager) doFetch() {
 	}
 }
 
-// Returns the path to the directory where we will build the DPN bag.
-// If the DPN staging dir is at /mnt/dpn, and the bag we're restoring
-// has the identifier test.edu/my_bag, this will return
-// /mnt/dpn/test.edu/my_bag
-func (packager *Packager) DPNBagDirectory(result *PackageResult) (string, error) {
-	return filepath.Abs(filepath.Join(
-		packager.ProcUtil.Config.DPNStagingDirectory,
-		result.BagIdentifier))
-}
-
-func (packager *Packager) FilesToFetch(result *PackageResult) ([]*bagman.GenericFile, error) {
-	alreadyFetched, err := packager.FilesAlreadyFetched(result)
-	if err != nil {
-		return nil, err
-	}
-	filesToFetch := make([]*bagman.GenericFile, 0)
-	for _, gf := range result.BagBuilder.IntellectualObject.GenericFiles {
-		_, alreadyOnDisk := alreadyFetched[gf.Identifier]
-		if !alreadyOnDisk {
-			filesToFetch = append(filesToFetch, gf)
-		}
-	}
-	return filesToFetch, nil
-}
-
-func (packager *Packager) FilesAlreadyFetched(result *PackageResult) (map[string]bool, error) {
-	// Get a list of all files we've already fetched.
-	// These would have been fetched in a prior run
-	// that eventually errored out. Maybe we have 50
-	// of the 100 files we need for a bag.
-	files, err := bagman.RecursiveFileList(result.BagBuilder.LocalPath)
-	if err != nil {
-		return nil, err
-	}
-	// Convert the absolute paths returned by RecursiveFileList
-	// to GenericFile.Identifiers.
-	gfIdentifiers := make(map[string]bool, 0)
-	for _, f := range files {
-		identifier := strings.Replace(f,
-			result.BagBuilder.LocalPath,
-			result.BagIdentifier, 1)
-		fmt.Println(identifier)
-		gfIdentifiers[identifier] = true
-	}
-	return gfIdentifiers, err
-}
-
 // doBuild builds the DPN bag, creating all of the necessary
 // tag files, manifests and directories. Data then goes into the
 // TarChannel, so the bag can be tarred up.
 func (packager *Packager) doBuild() {
 	for result := range packager.BuildChannel {
-		// bagDir, err := packager.DPNBagDirectory(result)
-		// if err != nil {
-		// 	result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory: %s", err.Error())
-		// 	packager.CleanupChannel <- result
-		// 	continue
-		// }
 		bag, err := result.BagBuilder.BuildBag()
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Error building bag: %v", err.Error())
@@ -307,6 +254,36 @@ func (packager *Packager) doCleanup() {
 		packager.PostProcessChannel <- result
 	}
 }
+
+// postProcess logs the results of our DPN bagging operation, tells
+// NSQ that the worker is done with the job (whether successful or not),
+// and sends data to the next NSQ topic for post-processing.
+func (packager *Packager) postProcess() {
+	for result := range packager.PostProcessChannel {
+		if result.Succeeded() {
+			packager.ProcUtil.MessageLog.Info("Bag %s successfully packaged at %s",
+				result.BagIdentifier, result.TarFilePath)
+			packager.ProcUtil.IncrementSucceeded()
+			// TODO: Send to DPN storage queue
+		} else {
+			if packager.reachedMaxAttempts(result) {
+				packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
+				packager.ProcUtil.IncrementFailed()
+				// TODO: Send to DPN trouble queue
+			} else {  // Failed, but we can still retry
+				packager.ProcUtil.MessageLog.Warning(
+					"Bag %s failed, but will retry. %s",
+					result.BagIdentifier, result.ErrorMessage)
+			}
+		}
+	}
+}
+
+
+//
+// ----- END OF GO ROUTINES. SYNCHRONOUS FUNCTIONS FROM HERE DOWN -----
+//
+
 
 func (packager *Packager) reachedMaxAttempts(result *PackageResult) (bool) {
 	return result.NsqMessage.Attempts >= uint16(packager.ProcUtil.Config.DPNPackageWorker.MaxAttempts)
@@ -375,26 +352,49 @@ func (packager *Packager) cleanup(result *PackageResult) {
 	packager.ProcUtil.Volume.Release(uint64(result.BagBuilder.IntellectualObject.TotalFileSize() * 2))
 }
 
-// postProcess logs the results of our DPN bagging operation, tells
-// NSQ that the worker is done with the job (whether successful or not),
-// and sends data to the next NSQ topic for post-processing.
-func (packager *Packager) postProcess() {
-	for result := range packager.PostProcessChannel {
-		if result.Succeeded() {
-			packager.ProcUtil.MessageLog.Info("Bag %s successfully packaged at %s",
-				result.BagIdentifier, result.TarFilePath)
-			packager.ProcUtil.IncrementSucceeded()
-			// TODO: Send to DPN storage queue
-		} else {
-			if packager.reachedMaxAttempts(result) {
-				packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
-				packager.ProcUtil.IncrementFailed()
-				// TODO: Send to DPN trouble queue
-			} else {  // Failed, but we can still retry
-				packager.ProcUtil.MessageLog.Warning(
-					"Bag %s failed, but will retry. %s",
-					result.BagIdentifier, result.ErrorMessage)
-			}
+// Returns the path to the directory where we will build the DPN bag.
+// If the DPN staging dir is at /mnt/dpn, and the bag we're restoring
+// has the identifier test.edu/my_bag, this will return
+// /mnt/dpn/test.edu/my_bag
+func (packager *Packager) DPNBagDirectory(result *PackageResult) (string, error) {
+	return filepath.Abs(filepath.Join(
+		packager.ProcUtil.Config.DPNStagingDirectory,
+		result.BagIdentifier))
+}
+
+func (packager *Packager) FilesToFetch(result *PackageResult) ([]*bagman.GenericFile, error) {
+	alreadyFetched, err := packager.FilesAlreadyFetched(result)
+	if err != nil {
+		return nil, err
+	}
+	filesToFetch := make([]*bagman.GenericFile, 0)
+	for _, gf := range result.BagBuilder.IntellectualObject.GenericFiles {
+		_, alreadyOnDisk := alreadyFetched[gf.Identifier]
+		if !alreadyOnDisk {
+			filesToFetch = append(filesToFetch, gf)
 		}
 	}
+	return filesToFetch, nil
+}
+
+func (packager *Packager) FilesAlreadyFetched(result *PackageResult) (map[string]bool, error) {
+	// Get a list of all files we've already fetched.
+	// These would have been fetched in a prior run
+	// that eventually errored out. Maybe we have 50
+	// of the 100 files we need for a bag.
+	files, err := bagman.RecursiveFileList(result.BagBuilder.LocalPath)
+	if err != nil {
+		return nil, err
+	}
+	// Convert the absolute paths returned by RecursiveFileList
+	// to GenericFile.Identifiers.
+	gfIdentifiers := make(map[string]bool, 0)
+	for _, f := range files {
+		identifier := strings.Replace(f,
+			result.BagBuilder.LocalPath,
+			result.BagIdentifier, 1)
+		fmt.Println(identifier)
+		gfIdentifiers[identifier] = true
+	}
+	return gfIdentifiers, err
 }
