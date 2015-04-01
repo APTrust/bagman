@@ -36,13 +36,16 @@ func NewFetchResultCollection() (*FetchResultCollection) {
 }
 
 func (results *FetchResultCollection) SuccessCount() (int) {
-	count := 0
+	// Map prevents the same file being counted twice
+	// if it was added twice with Add().
+	succeeded := make(map[string]bool)
 	for _, result := range results.Items {
-		if result.Succeeded() {
-			count += 1
+		_, alreadyCounted := succeeded[result.GenericFile.Identifier]
+		if result.Succeeded() && !alreadyCounted {
+			succeeded[result.GenericFile.Identifier] = true
 		}
 	}
-	return count
+	return len(succeeded)
 }
 
 func (results *FetchResultCollection) Errors() ([]string) {

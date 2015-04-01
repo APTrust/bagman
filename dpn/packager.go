@@ -1,6 +1,7 @@
 package dpn
 
 import (
+	"archive/tar"
 	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
@@ -228,9 +229,66 @@ func (packager *Packager) doBuild() {
 // doTar tars up the DPN bag and then sends data along to the
 // CleanupChannel.
 func (packager *Packager) doTar() {
-	// for result := range packager.TarChannel {
+	for result := range packager.TarChannel {
+		// Figure out where the files are for this bag
+		bagDir, err := packager.DPNBagDirectory(result)
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory for bag %s: %s",
+				result.BagIdentifier, err.Error())
+			packager.CleanupChannel <- result
+			continue
+		}
+		// Get the list of all files (manifests, tag files & payload)
+		files, err := bagman.RecursiveFileList(bagDir)
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf("Cannot get list of files in directory %s: %s",
+				bagDir, err.Error())
+			packager.CleanupChannel <- result
+			continue
+		}
+		// The name of the tar file will be the DPN UUID + .tar
+		tarFileName := fmt.Sprintf("%s.tar", result.BagBuilder.UUID)
+		tarFilePath := filepath.Join(packager.ProcUtil.Config.DPNStagingDirectory,
+			"bags", tarFileName)
+		// Make sure the directory exists, then open a new tar file for writing
+		err = os.MkdirAll(filepath.Dir(tarFilePath), 0755)
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf("Cannot create directory %s: %s",
+				filepath.Dir(tarFilePath), err.Error())
+			packager.CleanupChannel <- result
+			continue
+		}
+		tarFile, err := os.Create(tarFilePath)
+		if err != nil {
+			result.ErrorMessage += fmt.Sprintf("Error creating tar file %s for bag %s: %v",
+				tarFilePath, result.BagIdentifier, err)
+			packager.CleanupChannel <- result
+			continue
+		}
 
-	// }
+		// Set up our tar writer, and put all items from the bag
+		// directory into the tar file.
+		tarWriter := tar.NewWriter(tarFile)
+		pathSeparator := string(os.PathSeparator)
+		for _, filePath := range files {
+			pathWithinArchive := strings.Replace(filePath, bagDir, "", 1)
+			if strings.HasPrefix(pathWithinArchive, pathSeparator) {
+				pathWithinArchive = strings.Replace(pathWithinArchive, pathSeparator, "", 1)
+			}
+			err = bagman.AddToArchive(tarWriter, filePath, pathWithinArchive)
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf("Error adding file %s to archive %s: %v",
+					filePath, tarFilePath, err)
+				tarFile.Close()
+				tarWriter.Close()
+				os.Remove(tarFilePath)
+				packager.CleanupChannel <- result
+				continue
+			}
+		}
+		tarFile.Close()
+		packager.CleanupChannel <- result
+	}
 }
 
 // doCleanup cleans up the the directory containing all of the
