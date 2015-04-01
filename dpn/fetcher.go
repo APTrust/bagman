@@ -2,6 +2,7 @@ package dpn
 
 import (
 	"github.com/APTrust/bagman/bagman"
+	"path/filepath"
 	"strings"
 )
 
@@ -32,6 +33,26 @@ func NewFetchResultCollection() (*FetchResultCollection) {
 		Items: make([]*DPNFetchResult, 0),
 		idMap: make(map[string]*DPNFetchResult, 0),
 	}
+}
+
+func (results *FetchResultCollection) SuccessCount() (int) {
+	count := 0
+	for _, result := range results.Items {
+		if result.Succeeded() {
+			count += 1
+		}
+	}
+	return count
+}
+
+func (results *FetchResultCollection) Errors() ([]string) {
+	errors := make([]string, 0)
+	for _, result := range results.Items {
+		if !result.Succeeded() {
+			errors = append(errors, result.FetchResult.ErrorMessage)
+		}
+	}
+	return errors
 }
 
 func (results *FetchResultCollection) Add(result *DPNFetchResult) {
@@ -68,7 +89,7 @@ func FetchObjectFiles(s3Client *bagman.S3Client, genericFiles []*bagman.GenericF
 		if err != nil {
 			return nil, err
 		}
-		localPath := dir + origPath
+		localPath := filepath.Join(dir, origPath)
 		fetchResult := s3Client.FetchURLToFile(gf.URI, localPath)
 		result := &DPNFetchResult{
 			FetchResult: fetchResult,

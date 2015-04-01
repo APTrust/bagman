@@ -23,7 +23,7 @@ type Bag struct {
 	// should it reside when we write it? Use an
 	// absolute path that ends with the bag name.
 	// For example:
-	// /mnt/aptrust/dpn/DPN-91e09518-e910-464c-8b6c-8e39685e9acc
+	// /mnt/aptrust/dpn/test.edu/my_bag
 	LocalPath           string
 
 	// The name/id of the bag
@@ -50,6 +50,9 @@ type Bag struct {
 
 	// Files inside the data directory
 	DataFiles           []DataFile
+
+	// Bag Errors
+	errors              []string
 }
 
 type DataFile struct {
@@ -59,7 +62,27 @@ type DataFile struct {
 }
 
 
-func (bag *Bag) Write(outputPath string) (error) {
-	// Write me!
-	return nil
+func (bag *Bag) Write() ([]string) {
+	bag.WriteManifest(bag.DPNManifestSha256)
+	bag.WriteManifest(bag.DPNTagManifest)
+	bag.WriteManifest(bag.APTrustManifestMd5)
+	bag.WriteTagFile(bag.DPNBagIt)
+	bag.WriteTagFile(bag.DPNBagInfo)
+	bag.WriteTagFile(bag.DPNInfo)
+	bag.WriteTagFile(bag.APTrustBagIt)
+	bag.WriteTagFile(bag.APTrustBagInfo)
+	bag.WriteTagFile(bag.APTrustInfo)
+	return bag.errors
+}
+
+func (bag *Bag) WriteTagFile(tagFile *bagins.TagFile) {
+	if err := tagFile.Create(); err != nil {
+		bag.errors = append(bag.errors, err.Error())
+	}
+}
+
+func (bag *Bag) WriteManifest(manifest *bagins.Manifest) {
+	if err := manifest.Create(); err != nil {
+		bag.errors = append(bag.errors, err.Error())
+	}
 }
