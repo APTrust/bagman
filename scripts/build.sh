@@ -96,6 +96,10 @@ echo "building dpn_package"
 cd "${BAGMAN_HOME}/apps/dpn_package"
 go build -o ${BAGMAN_BIN}/dpn_package dpn_package.go
 
+echo "building dpn_package_test"
+cd "${BAGMAN_HOME}/apps/dpn_package_devtest"
+go build -o ${BAGMAN_BIN}/dpn_package_devtest dpn_package_devtest.go
+
 echo "building apt_download -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_download"
 go build -tags='partners' -o ${BAGMAN_BIN}/apt_download apt_download.go

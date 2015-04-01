@@ -329,6 +329,10 @@ func (config *Config) ExpandFilePaths() {
 	if err == nil {
 		config.ReplicationDirectory = expanded
 	}
+	expanded, err = ExpandTilde(config.DPNStagingDirectory)
+	if err == nil {
+		config.DPNStagingDirectory = expanded
+	}
 }
 
 func (config *Config) createDirectories() (error) {
