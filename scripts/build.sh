@@ -96,9 +96,9 @@ echo "building dpn_package"
 cd "${BAGMAN_HOME}/apps/dpn_package"
 go build -o ${BAGMAN_BIN}/dpn_package dpn_package.go
 
-echo "building dpn_package_test"
-cd "${BAGMAN_HOME}/apps/dpn_package_devtest"
-go build -o ${BAGMAN_BIN}/dpn_package_devtest dpn_package_devtest.go
+echo "building dpn_ingest_devtest"
+cd "${BAGMAN_HOME}/apps/dpn_ingest_devtest"
+go build -o ${BAGMAN_BIN}/dpn_ingest_devtest dpn_ingest_devtest.go
 
 echo "building apt_download -tags='partners'"
 cd "${BAGMAN_HOME}/partner-apps/apt_download"
@@ -123,3 +123,4 @@ go build -tags='partners' -o ${BAGMAN_BIN}/apt_delete apt_delete.go
 echo "copying config files into bin directory"
 cp ${BAGMAN_HOME}/config/config.json ${BAGMAN_BIN}/
 cp ${BAGMAN_HOME}/nsq/*.config ${BAGMAN_BIN}/
+cp ${BAGMAN_HOME}/dpn/bagbuilder_config.json ${BAGMAN_BIN}/
