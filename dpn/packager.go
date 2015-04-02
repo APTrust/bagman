@@ -36,9 +36,14 @@ import (
 // Steps 5 and 6 are guaranteed to occur, no matter what happens
 // in the other steps.
 
+// PackageResult maintains information about the state of the
+// packaging process. This struct is passed from channel to channel,
+// accumulating information along the way. If packaging fails after
+// max attempts, this struct will be dumped into the trouble queue
+// as JSON.
 type PackageResult struct {
 	BagIdentifier   string
-	NsqMessage      *nsq.Message `json:"-"`
+	NsqMessage      *nsq.Message  `json:"-"`
 	BagBuilder      *BagBuilder
 	DPNFetchResults []*DPNFetchResult
 	TarFilePath     string
@@ -307,22 +312,11 @@ func (packager *Packager) doTar() {
 // but the directories whose contents went into the tar file will
 // be gone. From here, data goes into the PostProcessChannel.
 func (packager *Packager) doCleanup() {
-	log := packager.ProcUtil.MessageLog
 	for result := range packager.CleanupChannel {
 		if packager.shouldCleanup(result) {
 			packager.cleanup(result)
 		}
 		result.Retry = packager.shouldRetry(result)
-		// NsqMessage will be nil if we're running a local dev test
-		// using RunTest() instead of NSQ.
-		if result.NsqMessage != nil {
-			if result.Succeeded() {
-				result.NsqMessage.Finish()
-			} else {
-				log.Info("Requeuing %s (%s)", result.BagIdentifier, result.BagBuilder.LocalPath)
-				result.NsqMessage.Requeue(1 * time.Minute)
-			}
-		}
 		packager.PostProcessChannel <- result
 	}
 }
@@ -336,16 +330,31 @@ func (packager *Packager) postProcess() {
 			packager.ProcUtil.MessageLog.Info("Bag %s successfully packaged at %s",
 				result.BagIdentifier, result.TarFilePath)
 			packager.ProcUtil.IncrementSucceeded()
-			// TODO: Send to DPN storage queue
+			// All's well. Send this into the storage queue, so
+			// it will be uploaded to Glacier.
+			if result.NsqMessage != nil {
+				result.NsqMessage.Finish()
+				packager.SendToStorageQueue(result)
+			}
 		} else {
 			if packager.reachedMaxAttempts(result) {
 				packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 				packager.ProcUtil.IncrementFailed()
-				// TODO: Send to DPN trouble queue
+				// Item failed after max attempts. Put in trouble queue
+				// for admin review.
+				if result.NsqMessage != nil {
+					result.NsqMessage.Finish()
+					packager.SendToTroubleQueue(result)
+				}
 			} else {  // Failed, but we can still retry
 				packager.ProcUtil.MessageLog.Warning(
 					"Bag %s failed, but will retry. %s",
 					result.BagIdentifier, result.ErrorMessage)
+				if result.NsqMessage != nil {
+					packager.ProcUtil.MessageLog.Info("Requeuing %s (%s)",
+						result.BagIdentifier, result.BagBuilder.LocalPath)
+					result.NsqMessage.Requeue(1 * time.Minute)
+				}
 			}
 		}
 		if result.NsqMessage == nil {
@@ -360,6 +369,35 @@ func (packager *Packager) postProcess() {
 // ----- END OF GO ROUTINES. SYNCHRONOUS FUNCTIONS FROM HERE DOWN -----
 //
 
+func (packager *Packager) SendToStorageQueue(result *PackageResult) {
+	storageResult := StorageResult{
+		BagIdentifier: result.BagIdentifier,
+		TarFilePath: result.TarFilePath,
+		UUID: result.BagBuilder.UUID,
+		Retry: true,
+	}
+	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
+		packager.ProcUtil.Config.DPNStoreWorker.NsqTopic, storageResult)
+	if err != nil {
+		message := fmt.Sprintf("Could not send '%s' (at %s) to storage queue: %v",
+			result.BagIdentifier, result.TarFilePath, err)
+		result.ErrorMessage += message
+		packager.ProcUtil.MessageLog.Error(message)
+		packager.SendToTroubleQueue(result)
+	}
+}
+
+func (packager *Packager) SendToTroubleQueue(result *PackageResult) {
+	result.ErrorMessage += " This item has been queued for administrative review."
+	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
+		packager.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
+	if err != nil {
+		packager.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
+			result.BagIdentifier, err)
+		packager.ProcUtil.MessageLog.Error("Original error on '%s' was %s",
+			result.BagIdentifier, result.ErrorMessage)
+	}
+}
 
 func (packager *Packager) reachedMaxAttempts(result *PackageResult) (bool) {
 	if result.NsqMessage == nil {
