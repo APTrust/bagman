@@ -204,6 +204,10 @@ func (storer *Storer) cleanup() {
 			if err != nil {
 				storer.ProcUtil.MessageLog.Warning("Error cleaning up %s: %v",
 					result.TarFilePath, err)
+			} else {
+				storer.ProcUtil.MessageLog.Info(
+					"After successful upload, deleted local DPN bag at %s",
+					result.TarFilePath)
 			}
 		}
 		storer.PostProcessChannel <- result
