@@ -101,7 +101,8 @@ type Config struct {
 	// The name of the long-term storage bucket for DPN
 	DPNPreservationBucket   string
 
-	// DPNRecordWorker records DPN storage events in Fluctus.
+	// DPNRecordWorker records DPN storage events in Fluctus
+	// and through the DPN REST API.
 	DPNRecordWorker      WorkerConfig
 
 	// The local directory for DPN staging. We store DPN bags

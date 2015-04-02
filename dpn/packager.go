@@ -82,7 +82,6 @@ type Packager struct {
 	ProcUtil            *bagman.ProcessUtil
 	// WaitGroup is for running local tests only.
 	WaitGroup           sync.WaitGroup
-
 }
 
 func NewPackager(procUtil *bagman.ProcessUtil, defaultMetadata *DefaultMetadata) (*Packager) {
@@ -521,7 +520,7 @@ func (packager *Packager) FilesAlreadyFetched(result *PackageResult) (map[string
 // testing. You still need to have Fluctus running to retrieve bag info,
 // and you need to have your S3 environment or config vars set up.
 // Run: `dpn_package_devtest -config=dev`
-func (packager *Packager) RunTest(bagIdentifier string) {
+func (packager *Packager) RunTest(bagIdentifier string) (*PackageResult, *StorageResult) {
 	packageResult := &PackageResult{
 		BagIdentifier: bagIdentifier,
 	}
@@ -530,5 +529,12 @@ func (packager *Packager) RunTest(bagIdentifier string) {
 		packageResult.BagIdentifier)
 	packager.LookupChannel <- packageResult
 	packager.WaitGroup.Wait()
+	storageResult := &StorageResult{
+		BagIdentifier: packageResult.BagIdentifier,
+		TarFilePath: packageResult.TarFilePath,
+		UUID: packageResult.BagBuilder.UUID,
+		Retry: true,
+	}
 	fmt.Println("Inspect the tar file output. It's your job to delete the file manually.")
+	return packageResult, storageResult
 }
