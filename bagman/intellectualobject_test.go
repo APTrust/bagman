@@ -47,13 +47,17 @@ func TestSerializeForCreate(t *testing.T) {
 	objEvents := data[0]["premisEvents"].([]interface{})
 	firstEvent := objEvents[0].(map[string]interface{})
 	secondEvent := objEvents[1].(map[string]interface{})
+	thirdEvent := objEvents[2].(map[string]interface{})
 	assertValue(t, firstEvent, "type", "identifier_assignment")
 	assertValue(t, firstEvent, "outcome", "Success")
 	assertValue(t, secondEvent, "type", "ingest")
 	assertValue(t, secondEvent, "outcome", "Success")
 	assertValue(t, secondEvent, "outcome_detail", "4 files copied")
-	if len(objEvents) != 2 {
-		t.Errorf("Expected 2 object events but found %d", len(objEvents))
+	assertValue(t, thirdEvent, "type", "access_assignment")
+	assertValue(t, thirdEvent, "outcome", "Success")
+	assertValue(t, thirdEvent, "outcome_detail", "consortia")
+	if len(objEvents) != 3 {
+		t.Errorf("Expected 3 object events but found %d", len(objEvents))
 	}
 
 	// Generic files
