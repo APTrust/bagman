@@ -83,7 +83,7 @@ func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, 
 
 	genericFileMaps := GenericFilesToBulkSaveMaps(genericFiles)
 
-	events := make([]*PremisEvent, 2)
+	events := make([]*PremisEvent, 3)
 	ingestEvent, err := obj.CreateIngestEvent()
 	if err != nil {
 		return nil, err
@@ -92,8 +92,13 @@ func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, 
 	if err != nil {
 		return nil, err
 	}
+	rightsEvent, err := obj.CreateRightsEvent()
+	if err != nil {
+		return nil, err
+	}
 	events[0] = idEvent
 	events[1] = ingestEvent
+	events[2] = rightsEvent
 
 	// Even though we're sending only one object,
 	// Fluctus expects an array.
@@ -148,6 +153,24 @@ func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
 		Object:             "APTrust bagman",
 		Agent:              "https://github.com/APTrust/bagman",
 		OutcomeInformation: "Institution domain + tar file name",
+	}, nil
+}
+
+func (obj *IntellectualObject) CreateRightsEvent() (*PremisEvent, error) {
+	eventId, err := uuid.NewV4()
+	if err != nil {
+		return nil, fmt.Errorf("Error generating UUID for ingest access/rights event: %v", err)
+	}
+	return &PremisEvent{
+		Identifier:         eventId.String(),
+		EventType:          "access_assignment",
+		DateTime:           time.Now(),
+		Detail:             "Assigned bag access rights",
+		Outcome:            "Success",
+		OutcomeDetail:      obj.Access,
+		Object:             "APTrust bagman",
+		Agent:              "https://github.com/APTrust/bagman",
+		OutcomeInformation: "Set access to " + obj.Access,
 	}, nil
 }
 
