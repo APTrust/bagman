@@ -144,6 +144,53 @@ func TestIntellectualObjectGet(t *testing.T) {
 
 }
 
+func TestIntellectualObjectGetForRestore(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	fluctusClient := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
+
+	// Get the lightweight version of an existing object
+	obj, err := fluctusClient.IntellectualObjectGetForRestore(objId)
+	if err != nil {
+		t.Errorf("Error asking fluctus for IntellectualObjectGetForRestore: %v", err)
+	}
+	if obj == nil {
+		t.Error("IntellectualObjectGetForRestore did not return the expected object")
+	}
+
+	// IntellectualObjectGetForRestore returns only a bare minimum of
+	// info about each generic file. Just enough to restore: identifier,
+	// size and uri.
+	if obj != nil {
+		if len(obj.GenericFiles) == 0 {
+			t.Error("IntellectualObject has no GenericFiles, but it should.")
+		}
+		gf := findFile(obj.GenericFiles, gfId)
+		fmt.Println(gf.Size)
+		fmt.Println(gf.URI)
+		fmt.Println(gf.Identifier)
+		if gf.Size == 0 {
+			t.Error("GenericFile from Fluctus is missing size attribute.")
+		}
+		if gf.URI == "" {
+			t.Error("GenericFile from Fluctus is missing URI attribute.")
+		}
+	}
+
+	// Make sure we get an error on a bad call
+	obj, err = fluctusClient.IntellectualObjectGetForRestore("changeme:99999")
+	if err == nil {
+		t.Errorf("IntellectualObjectGetForRestore should have returned an error.")
+	}
+
+}
+
 // Returns the file with the specified id. We use this in testing
 // because we want to look at a file that we know has both events
 // and checksums.

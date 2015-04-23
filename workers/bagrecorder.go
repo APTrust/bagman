@@ -169,6 +169,10 @@ func (bagRecorder *BagRecorder) logResult() {
 }
 
 func (bagRecorder *BagRecorder) QueueItemsForReplication(result *bagman.ProcessResult) {
+	if result.NsqMessage == nil {
+		// We're running without NSQ
+		return
+	}
 	bagRecorder.ProcUtil.MessageLog.Info("Queueing %d files for replication",
 		len(result.TarResult.Files))
 	itemsQueued := 0
@@ -247,10 +251,12 @@ func (bagRecorder *BagRecorder) QueueBagForDelete(result *bagman.ProcessResult) 
 		cleanupResult.Files[0].Key)
 
 	// Send to NSQ
-	err = bagman.Enqueue(
-		bagRecorder.ProcUtil.Config.NsqdHttpAddress,
-		bagRecorder.ProcUtil.Config.BagDeleteWorker.NsqTopic,
-		cleanupResult)
+	if result.NsqMessage != nil {
+		err = bagman.Enqueue(
+			bagRecorder.ProcUtil.Config.NsqdHttpAddress,
+			bagRecorder.ProcUtil.Config.BagDeleteWorker.NsqTopic,
+			cleanupResult)
+	}
 
 	if err != nil {
 		bagRecorder.ProcUtil.MessageLog.Error(
