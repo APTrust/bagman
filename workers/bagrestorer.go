@@ -85,7 +85,7 @@ func (bagRestorer *BagRestorer) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Get the IntellectualObject from Fluctus & build a BagRestorer
-	intelObj, err := bagRestorer.ProcUtil.FluctusClient.IntellectualObjectGet(object.Key(), true)
+	intelObj, err := bagRestorer.ProcUtil.FluctusClient.IntellectualObjectGetForRestore(object.Key())
 	if err != nil {
 		object.ErrorMessage = fmt.Sprintf("Cannot retrieve IntellectualObject %s from Fluctus: %v",
 			object.Key(), err)

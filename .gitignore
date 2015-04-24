@@ -37,3 +37,4 @@ testdata/sample_no_bagit/
 testdata/multi_mb_test_bag.tar
 tmp/
 bin/*
+apps/data_generator/data_generator

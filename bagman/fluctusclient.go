@@ -279,6 +279,29 @@ func (client *FluctusClient) GetFilesNotCheckedSince(daysAgo time.Time, offset, 
 	return files, nil
 }
 
+// Returns a lightweight version of the generic files belonging
+// to an intellectual object. See the comments above on IntellectualObjectGetForRestore.
+func (client *FluctusClient) GetGenericFileSummaries(intelObjIdentifier string) (files []*GenericFile, err error) {
+	url := client.BuildUrl(fmt.Sprintf("/api/%s/file_summary/%s",
+		client.apiVersion, escapeSlashes(intelObjIdentifier)))
+
+	request, err := client.NewJsonRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, _, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	files = make([]*GenericFile, 0)
+	err = json.Unmarshal(body, &files)
+	if err != nil {
+		return nil, client.formatJsonError("GetGenericFileSummaries", body, err)
+	}
+	return files, nil
+}
+
 
 // UpdateProcessedItem sends a message to Fluctus describing whether bag
 // processing succeeded or failed. If it failed, the ProcessStatus
@@ -481,6 +504,26 @@ func (client *FluctusClient) IntellectualObjectGet(identifier string, includeRel
 	if err != nil {
 		return nil, client.formatJsonError(objUrl, body, err)
 	}
+	return obj, nil
+}
+
+// Returns an IntellectualObject with GenericFiles that have just enough
+// info filled in to restore the object. Each GenericFile will have Size,
+// Identifier and URI, and no other data. This special call works around
+// some problems in Fedora, where getting a list of 10k GenericFiles can
+// take over an hour at 100% CPU. This specially optimized call can get
+// 10k files in about 2 seconds. Just keep in mind that you will not get
+// fully-formed GenericFile objects.
+func (client *FluctusClient) IntellectualObjectGetForRestore(identifier string) (*IntellectualObject, error) {
+	obj, err := client.IntellectualObjectGet(identifier, false)
+	if err != nil {
+		return nil, err
+	}
+	files, err := client.GetGenericFileSummaries(identifier)
+	if err != nil {
+		return nil, err
+	}
+	obj.GenericFiles = files
 	return obj, nil
 }
 
@@ -712,7 +755,6 @@ func (client *FluctusClient) GenericFileSaveBatch(objId string, files []*Generic
 
 	// Fluctus returns 201 (Created) on create, 204 (No content) on update
 	if response.StatusCode != 201 {
-		fmt.Println(string(body))
 		err = fmt.Errorf("GenericFileSaveBatch Expected status code 201 but got %d. URL: %s\n",
 			response.StatusCode, request.URL)
 		client.logger.Error(err.Error(), strings.Replace(string(body), "\n", " ", -1))
