@@ -172,14 +172,14 @@ func TestIntellectualObjectGetForRestore(t *testing.T) {
 			t.Error("IntellectualObject has no GenericFiles, but it should.")
 		}
 		gf := findFile(obj.GenericFiles, gfId)
-		fmt.Println(gf.Size)
-		fmt.Println(gf.URI)
-		fmt.Println(gf.Identifier)
-		if gf.Size == 0 {
-			t.Error("GenericFile from Fluctus is missing size attribute.")
+		if gf.Size != 73 {
+			t.Error("GenericFile from Fluctus has incorrect size attribute.")
 		}
-		if gf.URI == "" {
-			t.Error("GenericFile from Fluctus is missing URI attribute.")
+		if gf.URI != "https://s3.amazonaws.com/aptrust.test.fixtures/ncsu_files/data/object.properties" {
+			t.Error("GenericFile from Fluctus has incorrect URI.")
+		}
+		if gf.Identifier != "ncsu.edu/ncsu.1840.16-2928/data/object.properties" {
+			t.Error("GenericFile from Fluctus has incorrect identifier.")
 		}
 	}
 
