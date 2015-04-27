@@ -177,7 +177,15 @@ func (bagRestorer *BagRestorer) logResult() {
 func (bagRestorer *BagRestorer) doRestore() {
 	for object := range bagRestorer.RestoreChannel {
 		bagRestorer.ProcUtil.MessageLog.Info("Restoring %s", object.Key())
+		if object.NsqMessage != nil {
+			// Touch to prevent timeout. PivotalTracker #93237522
+			object.NsqMessage.Touch()
+		}
 		urls, err := object.BagRestorer.RestoreAndPublish()
+		if object.NsqMessage != nil {
+			// Touch to prevent timeout. PivotalTracker #93237522
+			object.NsqMessage.Touch()
+		}
 		if err != nil {
 			object.ErrorMessage = fmt.Sprintf("An error occurred during the restoration process: %v",
 				err)

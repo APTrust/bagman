@@ -589,6 +589,9 @@ func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
 	}
 	if err != nil {
 		return "", nil
+	} else {
+		restorer.debug(fmt.Sprintf("Finished putting to S3 %s/%s", bucketName, keyName))
+		restorer.debug(fmt.Sprintf("File is stored at %s", url))
 	}
 	return url, nil
 }
