@@ -387,7 +387,12 @@ func (packager *Packager) SendToStorageQueue(result *PackageResult) {
 }
 
 func (packager *Packager) SendToTroubleQueue(result *PackageResult) {
+	dpnResult := NewDPNResult(result.BagIdentifier)
+	dpnResult.Stage = STAGE_PACKAGE
+	dpnResult.PackageResult = result
 	result.ErrorMessage += " This item has been queued for administrative review."
+	dpnResult.ErrorMessage = result.ErrorMessage
+	dpnResult.BagIdentifier = result.BagIdentifier
 	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
 		packager.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
 	if err != nil {

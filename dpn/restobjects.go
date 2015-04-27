@@ -6,7 +6,7 @@ with the DPN REST service. This file defines only those DPN REST structures
 related to storing bags and creating and fulfilling replication requests.
 */
 
-include (
+import (
 	"time"
 )
 
@@ -56,9 +56,6 @@ type DPNBag struct {
 
 	// Interpretive is a list of UUIDs of interpretive objects for this bag.
 	Interpretive       []string
-
-	// ReplicatingNodes is a list of nodes that have replicated this bag.
-	Rights             []string
 
 	// AdminNode is the authoritative node for this bag. If various nodes
 	// have conflicting registry info for this bag, the admin node wins.

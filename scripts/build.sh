@@ -96,6 +96,10 @@ echo "building dpn_package"
 cd "${BAGMAN_HOME}/apps/dpn_package"
 go build -o ${BAGMAN_BIN}/dpn_package dpn_package.go
 
+echo "building dpn_trouble"
+cd "${BAGMAN_HOME}/apps/dpn_trouble"
+go build -o ${BAGMAN_BIN}/dpn_trouble dpn_trouble.go
+
 echo "building dpn_ingest_devtest"
 cd "${BAGMAN_HOME}/apps/dpn_ingest_devtest"
 go build -o ${BAGMAN_BIN}/dpn_ingest_devtest dpn_ingest_devtest.go

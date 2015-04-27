@@ -291,14 +291,19 @@ func (storer *Storer) SendToRecordQueue(result *StorageResult) {
 }
 
 func (storer *Storer) SendToTroubleQueue(result *StorageResult) {
+	dpnResult := NewDPNResult(result.BagIdentifier)
+	dpnResult.Stage = STAGE_STORE
+	dpnResult.StorageResult = result
 	result.ErrorMessage += " This item has been queued for administrative review."
+	dpnResult.ErrorMessage = result.ErrorMessage
+	dpnResult.BagIdentifier = result.BagIdentifier
 	err := bagman.Enqueue(storer.ProcUtil.Config.NsqdHttpAddress,
-		storer.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
+		storer.ProcUtil.Config.DPNTroubleWorker.NsqTopic, dpnResult)
 	if err != nil {
 		storer.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
-			result.BagIdentifier, err)
+			dpnResult.BagIdentifier, err)
 		storer.ProcUtil.MessageLog.Error("Original error on '%s' was %s",
-			result.BagIdentifier, result.ErrorMessage)
+			dpnResult.BagIdentifier, dpnResult.ErrorMessage)
 	}
 }
 
