@@ -274,9 +274,9 @@ func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 	 	return nil, err
 	}
 
-	// Add the fetched files to the bag
+	// Add the fetched files to the bag.
 	for _, fileName := range filesFetched {
-		err = bag.AddFile(fileName, filepath.Base(fileName))
+		err = bag.AddFile(fileName, restorer.PathWithinDataDir(fileName, bagName))
 		if err != nil {
 			return nil, err
 		}
@@ -294,6 +294,30 @@ func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 	}
 
 	return bag, nil
+}
+
+// Notes for fix to PivotalTracker #93237220: data files
+// were being put into the wrong directory.
+//
+// We've already pulled the files down into the proper
+// directory structure. The fileName here is an absolute
+// path. We need to extract from that the file's path
+// within the bag. The call to bag.AddFile says "add the
+// file at absolute path x into the bag at relative path y."
+// If the two paths wind up being the same (and they will
+// be the same here), AddFile does not peform a copy,
+// but it does calculate the md5 checksum for the manifest.
+//
+// The vars below look something like this:
+//
+// fileName: /Users/apd4n/tmp/restore/test.edu/ncsu.1840.16-1004/data/metadata.xml
+// bagName: test.edu/ncsu.1840.16-1004
+// workingDir: /Users/apd4n/tmp/restore
+// pathWithinBag: data/metadata.xml
+func (restorer *BagRestorer) PathWithinDataDir(fileName, bagName string) (string) {
+	fileNamePrefix := fmt.Sprintf("%s%c%s%cdata%c", restorer.workingDir,
+		os.PathSeparator, bagName, os.PathSeparator, os.PathSeparator)
+	return strings.Replace(fileName, fileNamePrefix, "", 1)
 }
 
 // Writes the aptrust-info.txt tag file.

@@ -497,6 +497,34 @@ func TestRestoreAndPublish (t *testing.T) {
 
 }
 
+// Test for fix to PivotalTracker #93237220: data files
+// put into wrong subdirectory upon restore.
+func TestPathWithinDataDir (t *testing.T) {
+	if !awsEnvAvailable() {
+		printSkipMessage("restore_test.go")
+		return
+	}
+
+	// Make sure we clean up after ourselves
+	outputDir := filepath.Join("testdata", "tmp")
+	defer os.RemoveAll(filepath.Join(outputDir, "uc.edu"))
+
+	restorer, _, err := restoreBag(true)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	absOutputDir, _ := filepath.Abs(outputDir)
+	fileName := filepath.Join(
+		absOutputDir,
+		"uc.edu/cin.675812.b0001.of0002/data/object.properties")
+	bagName := "uc.edu/cin.675812.b0001.of0002"
+	pathWithinDir := restorer.PathWithinDataDir(fileName, bagName)
+	if pathWithinDir != "object.properties" {
+		t.Errorf("PathWithinDir returned '%s', expected 'object.properties'", pathWithinDir)
+	}
+}
 
 func cleanupRestorationBucket (s3Client *bagman.S3Client) {
 	s3Client.Delete("aptrust.test.restore", "cin.675812.b0001.of0002.tar")
