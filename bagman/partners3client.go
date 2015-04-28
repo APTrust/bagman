@@ -8,7 +8,6 @@ import (
 	"github.com/crowdmob/goamz/s3"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type PartnerS3Client struct {
@@ -103,16 +102,13 @@ func (client *PartnerS3Client) UploadFiles(filePaths []string) (succeeded, faile
 			}
 			continue
 		}
-		etag, err := client.UploadFile(file)
+		err = client.UploadFile(file)
 		if err != nil {
 			if !client.Test {
 				fmt.Printf("[ERROR] Uploading '%s' to S3: %v\n", filePath, err)
 			}
 			failed++
 			continue
-		}
-		if !client.Test {
-			fmt.Printf("[OK]    S3 returned md5 checksum %s for %s\n", etag, filePath)
 		}
 		succeeded++
 	}
@@ -126,10 +122,10 @@ func (client *PartnerS3Client) UploadFiles(filePaths []string) (succeeded, faile
 // Returns S3's checksum for the file, or an error.
 // Note that S3 checksums for large multi-part uploads
 // will not be normal md5 checksums.
-func (client *PartnerS3Client) UploadFile(file *os.File) (string, error) {
+func (client *PartnerS3Client) UploadFile(file *os.File) (error) {
 	fileStat, err := file.Stat()
 	if err != nil {
-		return "", err
+		return err
 	}
 	bucketName := client.PartnerConfig.ReceivingBucket
 	fileName := filepath.Base(fileStat.Name())
@@ -161,23 +157,20 @@ func (client *PartnerS3Client) UploadFile(file *os.File) (string, error) {
 			S3_CHUNK_SIZE)
 	}
 	if err != nil {
-		return "", err
+		return err
 	}
 	if client.LogVerbose && !client.Test {
 		fmt.Printf("[INFO]  File %s saved to %s\n", fileName, url)
 	}
 
-	httpResponse, err := client.S3Client.Head(bucketName, fileName)
-	if err != nil {
-		return "", fmt.Errorf("File %s was uploaded to S3, but cannot get md5 receipt. Try re-uploading.",
-			fileStat.Name())
-	}
-	etag := ""
-	etags := httpResponse.Header["Etag"]
-	if etags != nil && len(etags) > 0 {
-		etag = strings.Replace(etags[0], "\"", "", -1)
-	}
-	return etag, nil
+	// PivotalTracker #93448534.
+	// Deleted HTTP HEAD post-check because it often fails due to race condition
+	// (S3 object is there, but does not show up for 1-5 seconds). S3 will check
+	// the md5 digest on its end, and will return an error if it does not match
+	// the digest sent by underlying client. The underlying client will pass that
+	// error up to us here. So if err is nil, we're OK. See this for md5 check:
+	// http://docs.aws.amazon.com/AmazonS3/latest/API/RESTObjectPUT.html
+	return nil
 }
 
 // Downloads a file from the S3 restoration bucket and saves it
