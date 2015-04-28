@@ -43,9 +43,9 @@ cp ${BAGMAN_HOME}/dpn/bagbuilder_config.json ${BAGMAN_BIN}/
 
 echo "running dpn ingest test and dpn trouble processor"
 cd ${BAGMAN_BIN}
-./dpn_ingest_devtest -config=dev
+./dpn_ingest_devtest -config=dev &
 INGEST_PID=$!
-./dpn_trouble -config=dev
+./dpn_trouble -config=dev &
 TROUBLE_PID=$!
 cd ${ORIGINAL_DIR}
 
@@ -53,10 +53,10 @@ cd ${ORIGINAL_DIR}
 kill_all()
 {
     echo "Shutting down ingest worker"
-    kill -s SIGINT $INGEST_PID
+    kill $INGEST_PID
 
     echo "Shutting down trouble worker"
-    kill -s SIGINT $TROUBLE_PID
+    kill $TROUBLE_PID
 
     echo "Shutting down NSQ"
     kill -s SIGINT $NSQ_PID

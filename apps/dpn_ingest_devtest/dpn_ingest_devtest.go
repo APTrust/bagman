@@ -24,4 +24,8 @@ func main() {
 		fmt.Println("Packager failed. Skipping storage step.")
 		fmt.Println(dpnResult.ErrorMessage)
 	}
+
+	dpnResult.ErrorMessage += "  Nothing wrong. Just testing the trouble processor."
+	troubleProcessor := dpn.NewTroubleProcessor(procUtil)
+	troubleProcessor.RunTest(dpnResult)
 }

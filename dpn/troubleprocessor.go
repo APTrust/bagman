@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"sync"
 )
 
@@ -40,6 +41,7 @@ func (troubleProcessor *TroubleProcessor) HandleMessage(message *nsq.Message) er
 		message.Finish()
 		return detailedError
 	}
+	result.NsqMessage = message
 	troubleProcessor.dumpToFile(&result)
 	troubleProcessor.ProcUtil.MessageLog.Info("Processed DPN bag %s", result.BagIdentifier)
 	return nil
@@ -57,9 +59,14 @@ func (troubleProcessor *TroubleProcessor) dumpToFile(result *DPNResult) error {
 	if err != nil {
 		panic(err)
 	}
-	err = ioutil.WriteFile(path.Join(outdir, result.BagIdentifier), json, 0644)
+	filePath := path.Join(outdir, result.BagIdentifier)
+	os.MkdirAll(filepath.Dir(filePath), 0755)
+	err = ioutil.WriteFile(filePath, json, 0644)
 	if err != nil {
 		panic(err)
+	}
+	if result.NsqMessage != nil {
+		result.NsqMessage.Finish()
 	}
 	return nil
 }
