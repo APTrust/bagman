@@ -5,7 +5,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 )
 
-var Version string = "1.0"
+var Version string = "1.01"
 
 var ConfigHelp string = `
 Your config file should include the following name-value pairs,
@@ -43,7 +43,7 @@ https://sites.google.com/a/aptrust.org/aptrust-wiki/technical-documentation/proc
 // Prints the current version number to stdout.
 func PrintVersion(appName string) {
 	fmt.Printf("%s Version %s\n", appName, Version)
-	fmt.Printf("Academic Preservation Trust, 2014\n")
+	fmt.Printf("Academic Preservation Trust, 2015\n")
 }
 
 // Returns the name of the default APTrust partner config file.
