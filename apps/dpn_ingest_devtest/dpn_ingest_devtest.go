@@ -15,12 +15,13 @@ func main() {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
 	packager := dpn.NewPackager(procUtil, defaultMetadata)
-	packageResult, storageResult := packager.RunTest("test.edu/ncsu.1840.16-1004")
-	if packageResult.Succeeded() {
+	dpnResult := packager.RunTest("test.edu/ncsu.1840.16-1004")
+	if dpnResult.ErrorMessage == "" {
 		fmt.Println("Packager succeeded. Moving to storage.")
 		storer := dpn.NewStorer(procUtil)
-		storer.RunTest(storageResult)
+		storer.RunTest(dpnResult)
 	} else {
 		fmt.Println("Packager failed. Skipping storage step.")
+		fmt.Println(dpnResult.ErrorMessage)
 	}
 }

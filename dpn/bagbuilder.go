@@ -13,50 +13,6 @@ import (
 	"time"
 )
 
-// DefaultMetadata includes mostly static information about bags
-// that APTrust packages for DPN. You can specify this information
-// in a json config file and load it with LoadConfig.
-type DefaultMetadata struct {
-	Comment                string
-	BagItVersion           string
-	BagItEncoding          string
-	IngestNodeName         string
-	IngestNodeAddress      string
-	IngestNodeContactName  string
-	IngestNodeContactEmail string
-}
-
-// BagBuilder builds a DPN bag from an APTrust intellectual object.
-type BagBuilder struct {
-	// LocalPath is the full, absolute path the the untarred bag
-	// the builder will create. It will end with the bag's UUID,
-	// so it should look something like this:
-	// /mnt/dpn/bags/00000000-0000-0000-0000-000000000000.
-	LocalPath              string
-
-	// IntellectualObject is the APTrust IntellectualObject that
-	// we'll be repackaging as a DPN bag.
-	IntellectualObject     *bagman.IntellectualObject
-
-	// DefaultMetadata is some metadata that goes into EVERY DPN
-	// bag we create. This includes our name and address in the
-	// DPN data section that describes who packaged the bag.
-	// DefaultMetadata should be loaded from a JSON file using
-	// the dpn.LoadConfig() function.
-	DefaultMetadata        *DefaultMetadata
-
-	// UUID is the DPN identifier for this bag. This has nothing to
-	// do with any APTrust UUID. It's generated in the constructor.
-	UUID                   string
-
-	// ErrorMessage describes what when wrong while trying to
-	// package this bag. If it's an empty string, packaging
-	// succeeded.
-	ErrorMessage           string
-
-	bag                    *Bag
-	bagtime                time.Time
-}
 
 func LoadConfig(pathToFile string) (metadata *DefaultMetadata, err error) {
 	data, err := bagman.LoadRelativeFile(pathToFile)

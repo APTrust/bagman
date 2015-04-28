@@ -13,52 +13,11 @@ import (
 	"time"
 )
 
-// StorageResult maintains information about the state of
-// an attempt to store a DPN bag in AWS Glacier.
-type StorageResult struct {
-
-	// The NSQ message. This will be always have a value
-	// in production, and will be nil when running local
-	// developer tests.
-	NsqMessage      *nsq.Message  `json:"-"`
-
-	// BagIdentifier is the APTrust bag identifier. If this is
-	// a non-empty value, it means this bag came from APTrust,
-	// and we will need to record a PREMIS event noting that
-	// it was ingested into DPN. If the bag identifier is empty,
-	// this bag came from somewhere else. We're just replicating
-	// and we don't need to store a PREMIS event in Fluctus.
-	BagIdentifier   string
-
-	// UUID is the DPN identifier for this bag.
-	UUID            string
-
-	// The path to the bag, which is stored on disk as a tar file.
-	TarFilePath     string
-
-	// The URL of this file in Glacier. This will be empty until
-	// we actually manage to store the file.
-	StorageURL      string
-
-	// A message describing what went wrong in the storage process.
-	// If we have a StorageURL and ErrorMessage is empty,
-	// storage succeeded.
-	ErrorMessage    string
-
-	// The file's md5 digest. We need this to copy to Amazon S3/Glacier.
-	Md5Digest       string
-
-	// Should we try again to store this object? Usually, this is
-	// true if we encounter network errors, false if there's some
-	// fatal error, like TarFilePath cannot be found.
-	Retry           bool
-}
-
 type Storer struct {
-	DigestChannel       chan *StorageResult
-	StorageChannel      chan *StorageResult
-	CleanupChannel      chan *StorageResult
-	PostProcessChannel  chan *StorageResult
+	DigestChannel       chan *DPNResult
+	StorageChannel      chan *DPNResult
+	CleanupChannel      chan *DPNResult
+	PostProcessChannel  chan *DPNResult
 	ProcUtil            *bagman.ProcessUtil
 	// WaitGroup is for running local tests only.
 	WaitGroup           sync.WaitGroup
@@ -69,10 +28,10 @@ func NewStorer(procUtil *bagman.ProcessUtil) (*Storer) {
 		ProcUtil: procUtil,
 	}
 	workerBufferSize := procUtil.Config.DPNStoreWorker.Workers * 10
-	storer.DigestChannel = make(chan *StorageResult, workerBufferSize)
-	storer.StorageChannel = make(chan *StorageResult, workerBufferSize)
-	storer.CleanupChannel = make(chan *StorageResult, workerBufferSize)
-	storer.PostProcessChannel = make(chan *StorageResult, workerBufferSize)
+	storer.DigestChannel = make(chan *DPNResult, workerBufferSize)
+	storer.StorageChannel = make(chan *DPNResult, workerBufferSize)
+	storer.CleanupChannel = make(chan *DPNResult, workerBufferSize)
+	storer.PostProcessChannel = make(chan *DPNResult, workerBufferSize)
 	for i := 0; i < procUtil.Config.DPNStoreWorker.Workers; i++ {
 		go storer.calculateDigest()
 		go storer.cleanup()
@@ -86,7 +45,7 @@ func NewStorer(procUtil *bagman.ProcessUtil) (*Storer) {
 
 func (storer *Storer) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
-	var result *StorageResult
+	var result *DPNResult
 	err := json.Unmarshal(message.Body, result)
 	if err != nil {
 		storer.ProcUtil.MessageLog.Error("Could not unmarshal JSON data from nsq:",
@@ -100,47 +59,47 @@ func (storer *Storer) HandleMessage(message *nsq.Message) error {
 		bagIdentifier = "DPN Replication Bag"
 	}
 	storer.ProcUtil.MessageLog.Info("Putting %s into the storage queue (%s)",
-		result.TarFilePath, bagIdentifier)
+		result.PackageResult.TarFilePath, bagIdentifier)
 	storer.DigestChannel <- result
 	return nil
 }
 
 func (storer *Storer) calculateDigest() {
 	for result := range storer.DigestChannel {
-		if result.Md5Digest != "" {
+		if result.StorageResult.Md5Digest != "" {
 			storer.StorageChannel <- result
 		}
 		md5Hash := md5.New()
-		reader, err := os.Open(result.TarFilePath)
+		reader, err := os.Open(result.PackageResult.TarFilePath)
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Error opening file '%s': %v",
-				result.TarFilePath, err)
+				result.PackageResult.TarFilePath, err)
 			storer.PostProcessChannel <- result
 			continue
 		}
 		fileInfo, err := reader.Stat()
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Cannot stat file '%s': %v",
-				result.TarFilePath, err)
+				result.PackageResult.TarFilePath, err)
 			storer.PostProcessChannel <- result
 			continue
 		}
 		bytesWritten, err := io.Copy(md5Hash, reader)
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Error running md5 checksum on file '%s': %v",
-				result.TarFilePath, err)
+				result.PackageResult.TarFilePath, err)
 			storer.PostProcessChannel <- result
 			continue
 		}
 		if bytesWritten != fileInfo.Size() {
 			result.ErrorMessage = fmt.Sprintf("Error running md5 checksum on file '%s': " +
 				"read only %d of %d bytes.",
-				result.TarFilePath, bytesWritten, fileInfo.Size())
+				result.PackageResult.TarFilePath, bytesWritten, fileInfo.Size())
 			storer.PostProcessChannel <- result
 			continue
 		}
 		reader.Close()
-		result.Md5Digest = fmt.Sprintf("%x", md5Hash.Sum(nil))
+		result.StorageResult.Md5Digest = fmt.Sprintf("%x", md5Hash.Sum(nil))
 		storer.StorageChannel <- result
 	}
 }
@@ -151,17 +110,17 @@ func (storer *Storer) store() {
 			result.NsqMessage.Touch()
 		}
 
-		reader, err := os.Open(result.TarFilePath)
+		reader, err := os.Open(result.PackageResult.TarFilePath)
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Error opening file '%s': %v",
-				result.TarFilePath, err)
+				result.PackageResult.TarFilePath, err)
 			storer.PostProcessChannel <- result
 			continue
 		}
 		fileInfo, err := reader.Stat()
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Cannot stat file '%s': %v",
-				result.TarFilePath, err)
+				result.PackageResult.TarFilePath, err)
 			storer.PostProcessChannel <- result
 			continue
 		}
@@ -172,7 +131,7 @@ func (storer *Storer) store() {
 			continue
 		}
 
-		fileName := fmt.Sprintf("%s.tar", result.UUID)
+		fileName := fmt.Sprintf("%s.tar", result.PackageResult.BagBuilder.UUID)
 		url, err := storer.ProcUtil.S3Client.SaveToS3(
 			storer.ProcUtil.Config.DPNPreservationBucket,
 			fileName,
@@ -187,7 +146,7 @@ func (storer *Storer) store() {
 			continue
 		}
 
-		result.StorageURL = url
+		result.StorageResult.StorageURL = url
 
 		if result.NsqMessage != nil {
 			result.NsqMessage.Touch()
@@ -199,15 +158,15 @@ func (storer *Storer) store() {
 
 func (storer *Storer) cleanup() {
 	for result := range storer.CleanupChannel {
-		if result.ErrorMessage == "" && result.StorageURL != "" {
-			err := os.Remove(result.TarFilePath)
+		if result.ErrorMessage == "" && result.StorageResult.StorageURL != "" {
+			err := os.Remove(result.PackageResult.TarFilePath)
 			if err != nil {
 				storer.ProcUtil.MessageLog.Warning("Error cleaning up %s: %v",
-					result.TarFilePath, err)
+					result.PackageResult.TarFilePath, err)
 			} else {
 				storer.ProcUtil.MessageLog.Info(
 					"After successful upload, deleted local DPN bag at %s",
-					result.TarFilePath)
+					result.PackageResult.TarFilePath)
 			}
 		}
 		storer.PostProcessChannel <- result
@@ -218,12 +177,12 @@ func (storer *Storer) postProcess() {
 	for result := range storer.PostProcessChannel {
 		bagIdentifier := result.BagIdentifier
 		if bagIdentifier == "" {
-			bagIdentifier = result.UUID
+			bagIdentifier = result.PackageResult.BagBuilder.UUID
 		}
-		if result.ErrorMessage == "" && result.StorageURL != "" {
+		if result.ErrorMessage == "" && result.StorageResult.StorageURL != "" {
 			// SUCCESS :)
 			storer.ProcUtil.MessageLog.Info("Bag %s successfully stored at %s",
-				bagIdentifier, result.StorageURL)
+				bagIdentifier, result.StorageResult.StorageURL)
 			storer.ProcUtil.IncrementSucceeded()
 			// Send to queue for recording in Fluctus and/or DPN REST
 			if result.NsqMessage != nil {
@@ -243,7 +202,7 @@ func (storer *Storer) postProcess() {
 					storer.SendToTroubleQueue(result)
 				} else {
 					storer.ProcUtil.MessageLog.Info("Requeuing %s (%s)",
-						bagIdentifier, result.TarFilePath)
+						bagIdentifier, result.PackageResult.TarFilePath)
 					result.NsqMessage.Requeue(1 * time.Minute)
 				}
 			}
@@ -255,14 +214,14 @@ func (storer *Storer) postProcess() {
 	}
 }
 
-func (storer *Storer) GetS3Options(result *StorageResult) (s3.Options, error) {
+func (storer *Storer) GetS3Options(result *DPNResult) (s3.Options, error) {
 	// Prepare metadata for save to S3
 	s3Metadata := make(map[string][]string)
 	if result.BagIdentifier != "" {
 		s3Metadata["aptrust-bag"] = []string{result.BagIdentifier}
 	}
 	// Save to S3 with the base64-encoded md5 sum
-	base64md5, err := bagman.Base64EncodeMd5(result.Md5Digest)
+	base64md5, err := bagman.Base64EncodeMd5(result.StorageResult.Md5Digest)
 	if err != nil {
 		return s3.Options{}, err
 	}
@@ -271,7 +230,7 @@ func (storer *Storer) GetS3Options(result *StorageResult) (s3.Options, error) {
 }
 
 
-func (storer *Storer) SendToRecordQueue(result *StorageResult) {
+func (storer *Storer) SendToRecordQueue(result *DPNResult) {
 	// Record has to record PREMIS event in Fluctus if
 	// BagIdentifier is present. It will definitely have
 	// to record information in the DPN REST API.
@@ -280,34 +239,30 @@ func (storer *Storer) SendToRecordQueue(result *StorageResult) {
 	if err != nil {
 		bagIdentifier := result.BagIdentifier
 		if bagIdentifier == "" {
-			bagIdentifier = result.UUID
+			bagIdentifier = result.PackageResult.BagBuilder.UUID
 		}
 		message := fmt.Sprintf("Could not send '%s' (at %s) to record queue: %v",
-			bagIdentifier, result.TarFilePath, err)
+			bagIdentifier, result.PackageResult.TarFilePath, err)
 		result.ErrorMessage += message
 		storer.ProcUtil.MessageLog.Error(message)
 		storer.SendToTroubleQueue(result)
 	}
 }
 
-func (storer *Storer) SendToTroubleQueue(result *StorageResult) {
-	dpnResult := NewDPNResult(result.BagIdentifier)
-	dpnResult.Stage = STAGE_STORE
-	dpnResult.StorageResult = result
+func (storer *Storer) SendToTroubleQueue(result *DPNResult) {
+	result.Stage = STAGE_STORE
 	result.ErrorMessage += " This item has been queued for administrative review."
-	dpnResult.ErrorMessage = result.ErrorMessage
-	dpnResult.BagIdentifier = result.BagIdentifier
 	err := bagman.Enqueue(storer.ProcUtil.Config.NsqdHttpAddress,
-		storer.ProcUtil.Config.DPNTroubleWorker.NsqTopic, dpnResult)
+		storer.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
 	if err != nil {
 		storer.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
-			dpnResult.BagIdentifier, err)
+			result.BagIdentifier, err)
 		storer.ProcUtil.MessageLog.Error("Original error on '%s' was %s",
-			dpnResult.BagIdentifier, dpnResult.ErrorMessage)
+			result.BagIdentifier, result.ErrorMessage)
 	}
 }
 
-func (storer *Storer) RunTest(result *StorageResult) {
+func (storer *Storer) RunTest(result *DPNResult) {
 	storer.WaitGroup.Add(1)
 	storer.ProcUtil.MessageLog.Info("Putting %s into digest channel",
 		result.BagIdentifier)

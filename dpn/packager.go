@@ -36,48 +36,13 @@ import (
 // Steps 5 and 6 are guaranteed to occur, no matter what happens
 // in the other steps.
 
-// PackageResult maintains information about the state of the
-// packaging process. This struct is passed from channel to channel,
-// accumulating information along the way. If packaging fails after
-// max attempts, this struct will be dumped into the trouble queue
-// as JSON.
-type PackageResult struct {
-	BagIdentifier   string
-	NsqMessage      *nsq.Message  `json:"-"`
-	BagBuilder      *BagBuilder
-	DPNFetchResults []*DPNFetchResult
-	TarFilePath     string
-	ErrorMessage    string
-	Retry           bool
-}
-
-func (result *PackageResult) Errors() ([]string) {
-	errors := make([]string, 0)
-	if result.ErrorMessage != "" {
-		errors = append(errors, result.ErrorMessage)
-	}
-	if result.BagBuilder.ErrorMessage != "" {
-		errors = append(errors, result.BagBuilder.ErrorMessage)
-	}
-	for _, result := range result.DPNFetchResults {
-		if result.FetchResult.ErrorMessage != "" {
-			errors = append(errors, result.FetchResult.ErrorMessage)
-		}
-	}
-	return errors
-}
-
-func (result *PackageResult) Succeeded() (bool) {
-	return result.TarFilePath != "" && len(result.Errors()) == 0
-}
-
 type Packager struct {
-	LookupChannel       chan *PackageResult
-	FetchChannel        chan *PackageResult
-	BuildChannel        chan *PackageResult
-	TarChannel          chan *PackageResult
-	CleanupChannel      chan *PackageResult
-	PostProcessChannel  chan *PackageResult
+	LookupChannel       chan *DPNResult
+	FetchChannel        chan *DPNResult
+	BuildChannel        chan *DPNResult
+	TarChannel          chan *DPNResult
+	CleanupChannel      chan *DPNResult
+	PostProcessChannel  chan *DPNResult
 	DefaultMetadata     *DefaultMetadata
 	ProcUtil            *bagman.ProcessUtil
 	// WaitGroup is for running local tests only.
@@ -91,11 +56,11 @@ func NewPackager(procUtil *bagman.ProcessUtil, defaultMetadata *DefaultMetadata)
 	}
 
 	workerBufferSize := procUtil.Config.DPNPackageWorker.Workers * 4
-	packager.LookupChannel = make(chan *PackageResult, workerBufferSize)
-	packager.BuildChannel = make(chan *PackageResult, workerBufferSize)
-	packager.TarChannel = make(chan *PackageResult, workerBufferSize)
-	packager.CleanupChannel = make(chan *PackageResult, workerBufferSize)
-	packager.PostProcessChannel = make(chan *PackageResult, workerBufferSize)
+	packager.LookupChannel = make(chan *DPNResult, workerBufferSize)
+	packager.BuildChannel = make(chan *DPNResult, workerBufferSize)
+	packager.TarChannel = make(chan *DPNResult, workerBufferSize)
+	packager.CleanupChannel = make(chan *DPNResult, workerBufferSize)
+	packager.PostProcessChannel = make(chan *DPNResult, workerBufferSize)
 	for i := 0; i < procUtil.Config.DPNPackageWorker.Workers; i++ {
 		go packager.doLookup()
 		go packager.doBuild()
@@ -105,7 +70,7 @@ func NewPackager(procUtil *bagman.ProcessUtil, defaultMetadata *DefaultMetadata)
 	}
 
 	fetcherBufferSize := procUtil.Config.DPNPackageWorker.NetworkConnections * 4
-	packager.FetchChannel = make(chan *PackageResult, fetcherBufferSize)
+	packager.FetchChannel = make(chan *DPNResult, fetcherBufferSize)
 	for i := 0; i <  procUtil.Config.DPNPackageWorker.NetworkConnections; i++ {
 		go packager.doFetch()
 	}
@@ -118,8 +83,8 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
 
 	// TODO: Change this. We'll actually just have the bag identifier in the queue.
-	var packageResult *PackageResult
-	err := json.Unmarshal(message.Body, packageResult)
+	var dpnResult *DPNResult
+	err := json.Unmarshal(message.Body, dpnResult)
 	if err != nil {
 		detailedError := fmt.Errorf("Could not unmarshal JSON data from nsq:",
 			string(message.Body))
@@ -129,9 +94,9 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Start processing.
-	packager.LookupChannel <- packageResult
+	packager.LookupChannel <- dpnResult
 	packager.ProcUtil.MessageLog.Info("Put %s into lookup channel",
-		packageResult.BagIdentifier)
+		dpnResult.BagIdentifier)
 	return nil
 }
 
@@ -179,7 +144,7 @@ func (packager *Packager) doLookup() {
 				continue
 			}
 			// Woo-hoo!
-			result.BagBuilder = NewBagBuilder(dir, intelObj, packager.DefaultMetadata)
+			result.PackageResult.BagBuilder = NewBagBuilder(dir, intelObj, packager.DefaultMetadata)
 			packager.FetchChannel <- result
 		}
 	}
@@ -222,7 +187,7 @@ func (packager *Packager) doFetch() {
 // TarChannel, so the bag can be tarred up.
 func (packager *Packager) doBuild() {
 	for result := range packager.BuildChannel {
-		bag, err := result.BagBuilder.BuildBag()
+		bag, err := result.PackageResult.BagBuilder.BuildBag()
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Error building bag: %v", err.Error())
 			packager.CleanupChannel <- result
@@ -260,7 +225,7 @@ func (packager *Packager) doTar() {
 			continue
 		}
 		// The name of the tar file will be the DPN UUID + .tar
-		tarFileName := fmt.Sprintf("%s.tar", result.BagBuilder.UUID)
+		tarFileName := fmt.Sprintf("%s.tar", result.PackageResult.BagBuilder.UUID)
 		tarFilePath := filepath.Join(packager.ProcUtil.Config.DPNStagingDirectory,
 			"bags", tarFileName)
 		// Make sure the directory exists, then open a new tar file for writing
@@ -300,7 +265,7 @@ func (packager *Packager) doTar() {
 			}
 		}
 		tarFile.Close()
-		result.TarFilePath = tarFilePath
+		result.PackageResult.TarFilePath = tarFilePath
 		packager.CleanupChannel <- result
 	}
 }
@@ -325,9 +290,9 @@ func (packager *Packager) doCleanup() {
 // and sends data to the next NSQ topic for post-processing.
 func (packager *Packager) postProcess() {
 	for result := range packager.PostProcessChannel {
-		if result.Succeeded() {
+		if result.PackageResult.Succeeded() {
 			packager.ProcUtil.MessageLog.Info("Bag %s successfully packaged at %s",
-				result.BagIdentifier, result.TarFilePath)
+				result.BagIdentifier, result.PackageResult.TarFilePath)
 			packager.ProcUtil.IncrementSucceeded()
 			// All's well. Send this into the storage queue, so
 			// it will be uploaded to Glacier.
@@ -351,7 +316,7 @@ func (packager *Packager) postProcess() {
 					result.BagIdentifier, result.ErrorMessage)
 				if result.NsqMessage != nil {
 					packager.ProcUtil.MessageLog.Info("Requeuing %s (%s)",
-						result.BagIdentifier, result.BagBuilder.LocalPath)
+						result.BagIdentifier, result.PackageResult.BagBuilder.LocalPath)
 					result.NsqMessage.Requeue(1 * time.Minute)
 				}
 			}
@@ -368,31 +333,21 @@ func (packager *Packager) postProcess() {
 // ----- END OF GO ROUTINES. SYNCHRONOUS FUNCTIONS FROM HERE DOWN -----
 //
 
-func (packager *Packager) SendToStorageQueue(result *PackageResult) {
-	storageResult := StorageResult{
-		BagIdentifier: result.BagIdentifier,
-		TarFilePath: result.TarFilePath,
-		UUID: result.BagBuilder.UUID,
-		Retry: true,
-	}
+func (packager *Packager) SendToStorageQueue(result *DPNResult) {
 	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
-		packager.ProcUtil.Config.DPNStoreWorker.NsqTopic, storageResult)
+		packager.ProcUtil.Config.DPNStoreWorker.NsqTopic, result)
 	if err != nil {
 		message := fmt.Sprintf("Could not send '%s' (at %s) to storage queue: %v",
-			result.BagIdentifier, result.TarFilePath, err)
+			result.BagIdentifier, result.PackageResult.TarFilePath, err)
 		result.ErrorMessage += message
 		packager.ProcUtil.MessageLog.Error(message)
 		packager.SendToTroubleQueue(result)
 	}
 }
 
-func (packager *Packager) SendToTroubleQueue(result *PackageResult) {
-	dpnResult := NewDPNResult(result.BagIdentifier)
-	dpnResult.Stage = STAGE_PACKAGE
-	dpnResult.PackageResult = result
+func (packager *Packager) SendToTroubleQueue(result *DPNResult) {
+	result.Stage = STAGE_PACKAGE
 	result.ErrorMessage += " This item has been queued for administrative review."
-	dpnResult.ErrorMessage = result.ErrorMessage
-	dpnResult.BagIdentifier = result.BagIdentifier
 	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
 		packager.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
 	if err != nil {
@@ -403,7 +358,7 @@ func (packager *Packager) SendToTroubleQueue(result *PackageResult) {
 	}
 }
 
-func (packager *Packager) reachedMaxAttempts(result *PackageResult) (bool) {
+func (packager *Packager) reachedMaxAttempts(result *DPNResult) (bool) {
 	if result.NsqMessage == nil {
 		// If no NSQ message, we're running RunTest() without NSQ
 		return true
@@ -413,28 +368,28 @@ func (packager *Packager) reachedMaxAttempts(result *PackageResult) (bool) {
 
 // shouldCleanup tells us whether we should delete all of the files,
 // except the tar files, for a DPN bag. See inline comments for the logic.
-func (packager *Packager) shouldCleanup(result *PackageResult) (cleanItUp bool) {
+func (packager *Packager) shouldCleanup(result *DPNResult) (cleanItUp bool) {
 	log := packager.ProcUtil.MessageLog
-	downloadStarted := result.DPNFetchResults != nil && len(result.DPNFetchResults) > 0
+	downloadStarted := result.PackageResult.DPNFetchResults != nil && len(result.PackageResult.DPNFetchResults) > 0
 	cleanItUp = false
 
-	if result.Succeeded() {
+	if result.PackageResult.Succeeded() {
 		// We have the tar file & no longer need the untarred files.
 		cleanItUp = true
 	} else if packager.reachedMaxAttempts(result) {
 		// Failed, and we're done with this bag.
 		cleanItUp = true
-		result.ErrorMessage += fmt.Sprintf("Processing failed after max attempts.")
+		result.ErrorMessage += " Processing failed after max attempts."
 	} else if downloadStarted == false {
 		// No use leaving an empty directory laying around.
 		cleanItUp = true
 	} else {
 		log.Info("Skipping cleanup on bag %s at %s. Leaving files in place for retry.",
-			result.BagIdentifier, result.BagBuilder.LocalPath)
+			result.BagIdentifier, result.PackageResult.BagBuilder.LocalPath)
 	}
 
 	if cleanItUp {
-		log.Info("Cleaning up bag %s at %s", result.BagIdentifier, result.BagBuilder.LocalPath)
+		log.Info("Cleaning up bag %s at %s", result.BagIdentifier, result.PackageResult.BagBuilder.LocalPath)
 	}
 
 	// If we get to this point, leave cleanItUp = false, because
@@ -446,9 +401,9 @@ func (packager *Packager) shouldCleanup(result *PackageResult) (cleanItUp bool) 
 	return cleanItUp
 }
 
-func (packager *Packager) shouldRetry(result *PackageResult) (retry bool) {
+func (packager *Packager) shouldRetry(result *DPNResult) (retry bool) {
 	retry = true
-	if result.Succeeded() && result.TarFilePath != "" {
+	if result.PackageResult.Succeeded() && result.PackageResult.TarFilePath != "" {
 		retry = false
 	} else if packager.reachedMaxAttempts(result) {
 		retry = false
@@ -456,7 +411,7 @@ func (packager *Packager) shouldRetry(result *PackageResult) (retry bool) {
 	return retry
 }
 
-func (packager *Packager) cleanup(result *PackageResult) {
+func (packager *Packager) cleanup(result *DPNResult) {
 	bagDir, err := packager.DPNBagDirectory(result)
 	if err != nil {
 		result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory: %s", err.Error())
@@ -471,26 +426,26 @@ func (packager *Packager) cleanup(result *PackageResult) {
 	if err != nil {
 		packager.ProcUtil.MessageLog.Error("Error cleaning up %s: %v", bagDir, err)
 	}
-	packager.ProcUtil.Volume.Release(uint64(result.BagBuilder.IntellectualObject.TotalFileSize() * 2))
+	packager.ProcUtil.Volume.Release(uint64(result.PackageResult.BagBuilder.IntellectualObject.TotalFileSize() * 2))
 }
 
 // Returns the path to the directory where we will build the DPN bag.
 // If the DPN staging dir is at /mnt/dpn, and the bag we're restoring
 // has the identifier test.edu/my_bag, this will return
 // /mnt/dpn/test.edu/my_bag
-func (packager *Packager) DPNBagDirectory(result *PackageResult) (string, error) {
+func (packager *Packager) DPNBagDirectory(result *DPNResult) (string, error) {
 	return filepath.Abs(filepath.Join(
 		packager.ProcUtil.Config.DPNStagingDirectory,
 		result.BagIdentifier))
 }
 
-func (packager *Packager) FilesToFetch(result *PackageResult) ([]*bagman.GenericFile, error) {
+func (packager *Packager) FilesToFetch(result *DPNResult) ([]*bagman.GenericFile, error) {
 	alreadyFetched, err := packager.FilesAlreadyFetched(result)
 	if err != nil {
 		return nil, err
 	}
 	filesToFetch := make([]*bagman.GenericFile, 0)
-	for _, gf := range result.BagBuilder.IntellectualObject.GenericFiles {
+	for _, gf := range result.PackageResult.BagBuilder.IntellectualObject.GenericFiles {
 		_, alreadyOnDisk := alreadyFetched[gf.Identifier]
 		if !alreadyOnDisk {
 			filesToFetch = append(filesToFetch, gf)
@@ -499,12 +454,12 @@ func (packager *Packager) FilesToFetch(result *PackageResult) ([]*bagman.Generic
 	return filesToFetch, nil
 }
 
-func (packager *Packager) FilesAlreadyFetched(result *PackageResult) (map[string]bool, error) {
+func (packager *Packager) FilesAlreadyFetched(result *DPNResult) (map[string]bool, error) {
 	// Get a list of all files we've already fetched.
 	// These would have been fetched in a prior run
 	// that eventually errored out. Maybe we have 50
 	// of the 100 files we need for a bag.
-	files, err := bagman.RecursiveFileList(result.BagBuilder.LocalPath)
+	files, err := bagman.RecursiveFileList(result.PackageResult.BagBuilder.LocalPath)
 	if err != nil {
 		return nil, err
 	}
@@ -513,7 +468,7 @@ func (packager *Packager) FilesAlreadyFetched(result *PackageResult) (map[string
 	gfIdentifiers := make(map[string]bool, 0)
 	for _, f := range files {
 		identifier := strings.Replace(f,
-			result.BagBuilder.LocalPath,
+			result.PackageResult.BagBuilder.LocalPath,
 			result.BagIdentifier, 1)
 		//fmt.Println(identifier)
 		gfIdentifiers[identifier] = true
@@ -525,21 +480,13 @@ func (packager *Packager) FilesAlreadyFetched(result *PackageResult) (map[string
 // testing. You still need to have Fluctus running to retrieve bag info,
 // and you need to have your S3 environment or config vars set up.
 // Run: `dpn_package_devtest -config=dev`
-func (packager *Packager) RunTest(bagIdentifier string) (*PackageResult, *StorageResult) {
-	packageResult := &PackageResult{
-		BagIdentifier: bagIdentifier,
-	}
+func (packager *Packager) RunTest(bagIdentifier string) (*DPNResult) {
+	dpnResult := NewDPNResult(bagIdentifier)
 	packager.WaitGroup.Add(1)
 	packager.ProcUtil.MessageLog.Info("Putting %s into lookup channel",
-		packageResult.BagIdentifier)
-	packager.LookupChannel <- packageResult
+		dpnResult.BagIdentifier)
+	packager.LookupChannel <- dpnResult
 	packager.WaitGroup.Wait()
-	storageResult := &StorageResult{
-		BagIdentifier: packageResult.BagIdentifier,
-		TarFilePath: packageResult.TarFilePath,
-		UUID: packageResult.BagBuilder.UUID,
-		Retry: true,
-	}
 	fmt.Println("Inspect the tar file output. It's your job to delete the file manually.")
-	return packageResult, storageResult
+	return dpnResult
 }
