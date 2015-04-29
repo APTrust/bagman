@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
+	"os"
 	"time"
 )
 
@@ -111,6 +112,9 @@ func LoadConfig(pathToFile string) (*DPNConfig, error) {
     if err != nil {
         return nil, err
     }
+	if config.RestClient.LocalAuthToken == "" {
+		config.RestClient.LocalAuthToken = os.Getenv("DPN_REST_TOKEN")
+	}
     return &config, nil
 }
 

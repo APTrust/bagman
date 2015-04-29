@@ -23,19 +23,6 @@ func testBagPath() (string) {
 	return _testPath
 }
 
-func loadConfig(t *testing.T, configPath string) (*dpn.DPNConfig) {
-	if dpnConfig != nil {
-		return dpnConfig
-	}
-	var err error
-	dpnConfig, err = dpn.LoadConfig(configPath)
-	if err != nil {
-		t.Errorf("Error loading %s: %v\n", configPath, err)
-		return nil
-	}
-	return dpnConfig
-}
-
 func intelObj(t *testing.T) (*bagman.IntellectualObject) {
 	filename := filepath.Join("testdata", "intel_obj.json")
 	obj, err := bagman.LoadIntelObjFixture(filename)
