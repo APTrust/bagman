@@ -2,7 +2,6 @@ package dpn
 
 import (
 	"crypto/sha256"
-	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
@@ -13,18 +12,6 @@ import (
 	"time"
 )
 
-
-func LoadConfig(pathToFile string) (metadata *DefaultMetadata, err error) {
-	data, err := bagman.LoadRelativeFile(pathToFile)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(data, &metadata)
-    if err != nil {
-        return nil, err
-    }
-    return metadata, nil
-}
 
 // NewBagBuilder returns a new BagBuilder.
 // Param localPath is the path to which the bag builder should write the

@@ -1,6 +1,7 @@
 package dpn
 
 import (
+	"encoding/json"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"time"
@@ -87,6 +88,32 @@ type DefaultMetadata struct {
 	IngestNodeContactName  string
 	IngestNodeContactEmail string
 }
+
+type RestClientConfig struct {
+	Comment                string
+	LocalServiceURL        string
+	LocalAPIRoot           string
+	LocalAuthToken         string
+}
+
+type DPNConfig struct {
+	DefaultMetadata       *DefaultMetadata
+	RestClient            *RestClientConfig
+}
+
+func LoadConfig(pathToFile string) (*DPNConfig, error) {
+	data, err := bagman.LoadRelativeFile(pathToFile)
+	if err != nil {
+		return nil, err
+	}
+	config := DPNConfig{}
+	err = json.Unmarshal(data, &config)
+    if err != nil {
+        return nil, err
+    }
+    return &config, nil
+}
+
 
 // BagBuilder builds a DPN bag from an APTrust intellectual object.
 type BagBuilder struct {

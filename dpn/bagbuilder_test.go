@@ -12,8 +12,8 @@ import (
 	"testing"
 )
 
-const CONFIG_FILE = "dpn/bagbuilder_config.json"
-var defaultMetadata *dpn.DefaultMetadata
+const CONFIG_FILE = "dpn/dpn_config.json"
+var dpnConfig *dpn.DPNConfig
 var _testPath string
 
 func testBagPath() (string) {
@@ -23,17 +23,17 @@ func testBagPath() (string) {
 	return _testPath
 }
 
-func loadConfig(t *testing.T, configPath string) (*dpn.DefaultMetadata) {
-	if defaultMetadata != nil {
-		return defaultMetadata
+func loadConfig(t *testing.T, configPath string) (*dpn.DPNConfig) {
+	if dpnConfig != nil {
+		return dpnConfig
 	}
 	var err error
-	defaultMetadata, err = dpn.LoadConfig(configPath)
+	dpnConfig, err = dpn.LoadConfig(configPath)
 	if err != nil {
 		t.Errorf("Error loading %s: %v\n", configPath, err)
 		return nil
 	}
-	return defaultMetadata
+	return dpnConfig
 }
 
 func intelObj(t *testing.T) (*bagman.IntellectualObject) {
@@ -50,9 +50,9 @@ func createBagBuilder(t *testing.T, withGenericFiles bool) (builder *dpn.BagBuil
 	config := loadConfig(t, CONFIG_FILE)
 	if obj != nil && config != nil {
 		if withGenericFiles {
-			builder = dpn.NewBagBuilder(testBagPath(), obj, config)
+			builder = dpn.NewBagBuilder(testBagPath(), obj, config.DefaultMetadata)
 		} else {
-			builder = dpn.NewBagBuilder(testBagPath(), obj, config)
+			builder = dpn.NewBagBuilder(testBagPath(), obj, config.DefaultMetadata)
 		}
 	} else {
 		t.Errorf("Could not create bag builder.")

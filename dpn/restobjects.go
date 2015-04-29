@@ -2,10 +2,8 @@ package dpn
 
 /*
 restobjects.go includes a number of structures used in communicating
-with the DPN REST service. This file defines only those DPN REST structures
-related to storing bags and creating and fulfilling replication requests.
-
-More info about the DPN REST service is available at:
+with the DPN REST service. More info about the DPN REST service is
+available at:
 
 https://github.com/dpn-admin/DPN-REST-Wiki
 https://github.com/dpn-admin/DPN-REST
@@ -14,6 +12,27 @@ https://github.com/dpn-admin/DPN-REST
 import (
 	"time"
 )
+
+type DPNNode struct {
+	Name                 string       `json:"name"`
+	Namespace            string       `json:"namespace"`
+	APIRoot              string       `json:"api_root"`
+	SSHPubKey            string       `json:"ssh_pubkey"`
+	ReplicateFrom        []string     `json:"replicate_from"`
+	ReplicateTo          []string     `json:"replicate_to"`
+	RestoreFrom          []string     `json:"restore_from"`
+	RestoreTo            []string     `json:"restore_to"`
+	Protocols            []string     `json:"protocols"`
+	FixityAlgorithms     []string     `json:"fixity_algorithms"`
+	CreatedAt            time.Time    `json:"created_at"`
+	UpdatedAt            time.Time    `json:"updated_at"`
+	Storage              *DPNStorage  `json:"storage"`
+}
+
+type DPNStorage struct {
+	Region               string        `json:"region"`
+	Type                 string        `json:"type"`
+}
 
 // DPNFixity represents a checksum for a bag in the DPN REST
 // service.

@@ -10,11 +10,11 @@ import (
 // This is for ad-hoc dev testing.
 func main() {
 	procUtil := workers.CreateProcUtil()
-	defaultMetadata, err := dpn.LoadConfig("dpn/bagbuilder_config.json")
+	dpnConfig, err := dpn.LoadConfig("dpn/dpn_config.json")
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
-	packager := dpn.NewPackager(procUtil, defaultMetadata)
+	packager := dpn.NewPackager(procUtil, dpnConfig.DefaultMetadata)
 	dpnResult := packager.RunTest("test.edu/ncsu.1840.16-1004")
 	if dpnResult.ErrorMessage == "" {
 		fmt.Println("Packager succeeded. Moving to storage.")

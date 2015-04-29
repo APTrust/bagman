@@ -1,0 +1,17 @@
+{
+    "RestClient": {
+        "Comment": "Settings for our local DPN REST API server.",
+        "LocalServiceURL": "http://localhost:5000",
+        "LocalAPIRoot": "/api-v1/",
+        "LocalAuthToken": ""
+    },
+    "DefaultMetadata": {
+        "Comment": "Config settings for common DPN bagit metadata",
+        "BagItVersion": "0.97",
+        "BagItEncoding": "UTF-8",
+        "IngestNodeName": "APTrust",
+        "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
+        "IngestNodeContactName": "APTrust Administrator",
+        "IngestNodeContactEmail": "help@aptrust.org"
+    }
+}
