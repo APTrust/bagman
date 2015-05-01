@@ -40,13 +40,13 @@ type DPNFixity struct {
 
 	// The algorithm used to check the fixity. Usually 'sha256',
 	// but others may be valid in the future.
-	Algorithm string
+	Algorithm string                   `json:"algorithm"`
 
 	// The fixity digest, as a hex-encoded string.
-	Digest string
+	Digest string                      `json:"digest"`
 
 	// The datetime at which this digest was calculated.
-	CreatedAt time.Time
+	CreatedAt time.Time                `json:"created_at"`
 }
 
 // DPNBag represents a Bag object in the DPN REST service.
@@ -70,13 +70,14 @@ type DPNBag struct {
 	Version            uint32               `json:"version"`
 
 	// IngestNode is the node that first ingested or produced the bag.
-	IngestNode       string                 `json:"ingest_node"`
+	// TODO: Check whether JSON changes from original_node to ingest_node!
+	IngestNode       string                 `json:"original_node"`
 
 	// AdminNode is the authoritative node for this bag. If various nodes
 	// have conflicting registry info for this bag, the admin node wins.
 	// The admin node also has some authority in restoring and (if its ever
 	// possible) deleting bags.
-	AdminNode          string               `json:"ingest_node"`
+	AdminNode          string               `json:"admin_node"`
 
 	// BagType is one of 'D' (Data), 'R' (Rights) or 'I' (Interpretive)
 	BagType            string               `json:"bag_type"`
@@ -92,11 +93,25 @@ type DPNBag struct {
 	// which are strings. E.g. ['aptrust', 'chron', 'tdr']
 	ReplicatingNodes   []string             `json:"replicating_nodes"`
 
-	// Fixities is a list of hashes. In each hash, the key is the
-	// fixity algorithm and the value is the fixity digest. So you
-	// might see something like this:
+	// TODO: Check REST service's serialization of Fixity values!
+	//
+	// Hmm... we seem to have two implementations of how fixities
+	// are serialized. In one, we get this:
+	// [
+	//   { "algorithm": "sha256",
+	//     "digest": "tums-for-digestion",
+	//     "created_at": "2015-05-01T12:32:17.703526Z"
+    //   }
+	// ]
+	//
+	// In the other, we get this:
 	// [{ "sha256": "1fdc62a", "sha512": "9f8d23ae" }]
-	Fixities           []map[string]string  `json:"fixities"`
+	//
+	// If the second is correct, we'll need to switch
+	// Fixities to this:
+	//
+	// Fixities           []map[string]string  `json:"fixities"`
+	Fixities           []*DPNFixity         `json:"fixities"`
 
 	// CreatedAt is when this record was created.
 	CreatedAt          time.Time            `json:"created_at"`
