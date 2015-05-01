@@ -61,6 +61,17 @@ func getClient(t *testing.T) (*dpn.DPNRestClient) {
 	return client
 }
 
+func TestBuildUrl(t *testing.T) {
+	config := loadConfig(t, configFile)
+	client := getClient(t)
+	relativeUrl := "/api-v1/popeye/olive/oyl/"
+	expectedUrl := config.RestClient.LocalServiceURL + relativeUrl
+	if client.BuildUrl(relativeUrl) != expectedUrl {
+		t.Errorf("BuildUrl returned '%s', expected '%s'",
+			client.BuildUrl(relativeUrl), expectedUrl)
+	}
+}
+
 func TestDPNBagGet(t *testing.T) {
 	if runRestTests(t) == false {
 		return
