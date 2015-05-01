@@ -70,8 +70,7 @@ type DPNBag struct {
 	Version            uint32               `json:"version"`
 
 	// IngestNode is the node that first ingested or produced the bag.
-	// TODO: Check whether JSON changes from original_node to ingest_node!
-	IngestNode       string                 `json:"original_node"`
+	IngestNode       string                 `json:"ingest_node"`
 
 	// AdminNode is the authoritative node for this bag. If various nodes
 	// have conflicting registry info for this bag, the admin node wins.
@@ -123,7 +122,7 @@ type DPNBag struct {
 type DPNReplicationTransfer struct {
 	FromNode        string       `json:"from_node"`
 	ToNode          string       `json:"to_node"`
-	UUID            string       `json:"bag"`
+	UUID            string       `json:"uuid"`
 	ReplicationId   string       `json:"replication_id"`
 	FixityAlgorithm string       `json:"fixity_algorithm"`
 	FixityNonce     string       `json:"fixity_nonce"`
@@ -140,7 +139,7 @@ type DPNReplicationTransfer struct {
 type DPNRestoreTransfer struct {
 	FromNode        string       `json:"from_node"`
 	ToNode          string       `json:"to_node"`
-	UUID            string       `json:"bag"`
+	UUID            string       `json:"uuid"`
 	Status          string       `json:"status"`
 	Protocol        string       `json:"protocol"`
 	Link            string       `json:"link"`

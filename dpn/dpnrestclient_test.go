@@ -28,7 +28,7 @@ load that test data into your DPN instance.
 var configFile = "dpn/dpn_config.json"
 var skipRestMessagePrinted = false
 var aptrustBagIdentifier = "9998e960-fc6d-44f4-9d73-9a60a8eae609"
-var chronBagIdentifier = "87f2d0ac-94c8-4bb2-90e8-24c076cef9f0"
+var replicationIdentifier = "aptrust-999999"
 
 func runRestTests(t *testing.T) bool {
 	config := loadConfig(t, configFile)
@@ -150,5 +150,64 @@ func TestDPNBagGet(t *testing.T) {
 	if dpnBag.Fixities[0].CreatedAt.Format(time.RFC3339) != "2015-05-01T12:32:17Z" {
 		t.Errorf("Fixities[0].CreatedAt: expected '2015-05-01T12:32:17Z', got '%s'",
 			dpnBag.Fixities[0].CreatedAt.Format(time.RFC3339))
+	}
+}
+
+func TestReplicationTransferGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	xfer, err := client.ReplicationTransferGet(replicationIdentifier)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xfer.FromNode != "aptrust" {
+		t.Errorf("FromNode: expected 'aptrust', got '%s'", xfer.FromNode)
+	}
+	if xfer.ToNode != "chron" {
+		t.Errorf("ToNode: expected 'chron', got '%s'", xfer.ToNode)
+	}
+	if xfer.UUID != aptrustBagIdentifier {
+		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, xfer.UUID)
+	}
+	if xfer.ReplicationId != replicationIdentifier {
+		t.Errorf("ReplicationId: expected '%s', got '%s'", replicationIdentifier, xfer.ReplicationId)
+	}
+	if xfer.FixityNonce != "dunce" {
+		t.Errorf("FixityNonce: expected 'dunce', got '%s'", xfer.FixityNonce)
+	}
+	if xfer.FixityValue != "98765" {
+		t.Errorf("FixityValue: expected '98765', got '%s'", xfer.FixityValue)
+	}
+	if xfer.FixityAlgorithm != "sha256" {
+		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
+	}
+	if xfer.BagValid != true {
+		t.Errorf("BagValid: expected true, got %s", xfer.BagValid)
+	}
+	if xfer.Status != "Confirmed" {
+		t.Errorf("Status: expected 'Confirmed', got '%s'", xfer.Status)
+	}
+	if xfer.Protocol != "R" {
+		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
+	}
+	if xfer.Link != "rsync://are/sink" {
+		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
+	}
+	if xfer.Link != "rsync://are/sink" {
+		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
+	}
+	if xfer.CreatedAt.Format(time.RFC3339) != "2015-05-01T12:19:44Z" {
+		t.Errorf("CreatedAt: expected '2015-05-01T12:19:44Z', got '%s'",
+			xfer.CreatedAt.Format(time.RFC3339))
+	}
+	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-05-01T12:19:44Z" {
+		t.Errorf("UpdatedAt: expected '2015-05-01T12:19:44Z', got '%s'",
+			xfer.UpdatedAt.Format(time.RFC3339))
+	}
+	if xfer.Link != "rsync://are/sink" {
+		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
 	}
 }

@@ -90,6 +90,36 @@ func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 	return obj, nil
 }
 
+func (client *DPNRestClient) ReplicationTransferGet(identifier string) (*DPNReplicationTransfer, error) {
+	// api-v1/replicate/aptrust-999999/
+	objUrl := client.BuildUrl(fmt.Sprintf("/%s/replication/%s/", client.apiVersion, identifier))
+	client.logger.Debug("Requesting replication xfer record from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// 404 for object not found
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("ReplicationTransferGet expected status 200 but got %d. URL: %s",
+			response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	obj := &DPNReplicationTransfer{}
+	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return obj, nil
+}
+
 
 // Reads the response body and returns a byte slice.
 // You must read and close the response body, or the
