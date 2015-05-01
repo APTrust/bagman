@@ -137,6 +137,7 @@ type DPNReplicationTransfer struct {
 }
 
 type DPNRestoreTransfer struct {
+	RestoreId       string       `json:"restore_id"`
 	FromNode        string       `json:"from_node"`
 	ToNode          string       `json:"to_node"`
 	UUID            string       `json:"uuid"`

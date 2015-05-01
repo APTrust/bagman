@@ -29,6 +29,7 @@ var configFile = "dpn/dpn_config.json"
 var skipRestMessagePrinted = false
 var aptrustBagIdentifier = "9998e960-fc6d-44f4-9d73-9a60a8eae609"
 var replicationIdentifier = "aptrust-999999"
+var restoreIdentifier = "aptrust-64"
 
 func runRestTests(t *testing.T) bool {
 	config := loadConfig(t, configFile)
@@ -196,9 +197,6 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.Link != "rsync://are/sink" {
 		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
 	}
-	if xfer.Link != "rsync://are/sink" {
-		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
-	}
 	if xfer.CreatedAt.Format(time.RFC3339) != "2015-05-01T12:19:44Z" {
 		t.Errorf("CreatedAt: expected '2015-05-01T12:19:44Z', got '%s'",
 			xfer.CreatedAt.Format(time.RFC3339))
@@ -209,5 +207,47 @@ func TestReplicationTransferGet(t *testing.T) {
 	}
 	if xfer.Link != "rsync://are/sink" {
 		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
+	}
+}
+
+func TestRestoreTransferGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	xfer, err := client.RestoreTransferGet(restoreIdentifier)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xfer.FromNode != "tdr" {
+		t.Errorf("FromNode: expected 'tdr', got '%s'", xfer.FromNode)
+	}
+	if xfer.ToNode != "aptrust" {
+		t.Errorf("ToNode: expected 'aptrust', got '%s'", xfer.ToNode)
+	}
+	if xfer.UUID != "6078e948-d561-42b4-b13b-cf0404575cf7" {
+		t.Errorf("UUID: expected '6078e948-d561-42b4-b13b-cf0404575cf7', got '%s'",
+			xfer.UUID)
+	}
+	if xfer.RestoreId != restoreIdentifier {
+		t.Errorf("RestoreId: expected '%s', got '%s'", restoreIdentifier, xfer.RestoreId)
+	}
+	if xfer.Status != "Requested" {
+		t.Errorf("Status: expected 'Requested', got '%s'", xfer.Status)
+	}
+	if xfer.Protocol != "R" {
+		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
+	}
+	if xfer.CreatedAt.Format(time.RFC3339) != "2015-02-25T15:27:40Z" {
+		t.Errorf("CreatedAt: expected '2015-02-25T15:27:40Z', got '%s'",
+			xfer.CreatedAt.Format(time.RFC3339))
+	}
+	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-05-01T20:11:49Z" {
+		t.Errorf("UpdatedAt: expected '2015-05-01T20:11:49Z', got '%s'",
+			xfer.UpdatedAt.Format(time.RFC3339))
+	}
+	if xfer.Link != "rsync://path/to/file.tar" {
+		t.Errorf("Link: expected 'rsync://path/to/file.tar', got '%s'", xfer.Link)
 	}
 }
