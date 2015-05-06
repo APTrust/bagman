@@ -83,6 +83,25 @@ func makeBag() (*dpn.DPNBag) {
 	}
 }
 
+func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTransfer) {
+	id, _ := uuid.NewV4()
+	idString := id.String()
+	randChars := idString[0:8]
+	return &dpn.DPNReplicationTransfer{
+		FromNode: fromNode,
+		ToNode: toNode,
+		UUID: bagUuid,
+		FixityAlgorithm: "sha256",
+		FixityNonce: "McNunce",
+		FixityValue: randChars,
+		FixityAccept: nil,
+		BagValid: nil,
+		Status: "Requested",
+		Protocol: "R",
+		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
+	}
+}
+
 func TestBuildUrl(t *testing.T) {
 	config := loadConfig(t, configFile)
 	client := getClient(t)
@@ -319,8 +338,11 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.FixityAlgorithm != "sha256" {
 		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
 	}
-	if xfer.BagValid != true {
-		t.Errorf("BagValid: expected true, got %s", xfer.BagValid)
+	if *xfer.FixityAccept != true {
+		t.Errorf("FixityAccept: expected true, got %s", *xfer.FixityAccept)
+	}
+	if *xfer.BagValid != true {
+		t.Errorf("BagValid: expected true, got %s", *xfer.BagValid)
 	}
 	if xfer.Status != "Confirmed" {
 		t.Errorf("Status: expected 'Confirmed', got '%s'", xfer.Status)
@@ -341,6 +363,81 @@ func TestReplicationTransferGet(t *testing.T) {
 	}
 	if xfer.Link != "rsync://are/sink" {
 		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
+	}
+}
+
+func TestReplicationTransferCreate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+
+	// The transfer request must refer to an actual bag,
+	// so let's make a bag...
+	bag := makeBag()
+	dpnBag, err := client.DPNBagCreate(bag)
+	if err != nil {
+		t.Errorf("DPNBagCreate returned error %v", err)
+		return
+	}
+
+	// Make sure we can create a transfer request.
+	xfer := makeXferRequest("aptrust", "chron", dpnBag.UUID)
+	newXfer, err := client.ReplicationTransferCreate(xfer)
+	if err != nil {
+		t.Errorf("ReplicationTransferCreate returned error %v", err)
+	}
+	if newXfer == nil {
+		t.Errorf("ReplicationTransferCreate did not return an object")
+	}
+
+	// Make sure the fields were set correctly.
+	if newXfer.FromNode != xfer.FromNode {
+		t.Errorf("FromNode is %s; expected %s", newXfer.FromNode, xfer.FromNode)
+	}
+	if newXfer.ToNode != xfer.ToNode {
+		t.Errorf("ToNode is %s; expected %s", newXfer.ToNode, xfer.ToNode)
+	}
+	if newXfer.UUID != xfer.UUID {
+		t.Errorf("UUID is %s; expected %s", newXfer.UUID, xfer.UUID)
+	}
+	fmt.Println(newXfer.ReplicationId)
+	if newXfer.ReplicationId == "" {
+		t.Errorf("ReplicationId is missing")
+	}
+	if newXfer.FixityAlgorithm != xfer.FixityAlgorithm {
+		t.Errorf("FixityAlgorithm is %s; expected %s",
+			newXfer.FixityAlgorithm, xfer.FixityAlgorithm)
+	}
+	if newXfer.FixityNonce != xfer.FixityNonce {
+		t.Errorf("FixityNonce is %s; expected %s",
+			newXfer.FixityNonce, xfer.FixityNonce)
+	}
+	if newXfer.FixityValue != "" {
+		t.Errorf("FixityValue was set to %s but it shouldn't have been. " +
+			"(This is a problem with the server implementation, not our code!",
+			newXfer.FixityValue)
+	}
+	if newXfer.FixityAccept != nil {
+		t.Errorf("FixityAccept is %s; expected nil", *newXfer.FixityAccept)
+	}
+	if newXfer.BagValid != nil {
+		t.Errorf("BagValid is %s; expected nil", *newXfer.BagValid)
+	}
+	if newXfer.Status != "Requested" {
+		t.Errorf("Status is %s; expected Requested", newXfer.Status)
+	}
+	if newXfer.Protocol != xfer.Protocol {
+		t.Errorf("Protocol is %s; expected %s", newXfer.Protocol, xfer.Protocol)
+	}
+	if newXfer.Link != xfer.Link {
+		t.Errorf("Link is %s; expected %s", newXfer.Link, xfer.Link)
+	}
+	if newXfer.CreatedAt.IsZero() {
+		t.Errorf("CreatedAt was not set")
+	}
+	if newXfer.UpdatedAt.IsZero() {
+		t.Errorf("UpdatedAt was not set")
 	}
 }
 

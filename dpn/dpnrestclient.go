@@ -108,7 +108,7 @@ func (client *DPNRestClient) dpnBagSave(bag *DPNBag, method string) (*DPNBag, er
 		objUrl = client.BuildUrl(fmt.Sprintf("/%s/bag/%s/", client.apiVersion, bag.UUID))
 		expectedResponseCode = 200
 	}
-	client.logger.Debug("%sing new bag to DPN REST service: %s", method, objUrl)
+	client.logger.Debug("%sing bag to DPN REST service: %s", method, objUrl)
 	postData, err := json.Marshal(bag)
 	if err != nil {
 		return nil, err
@@ -165,6 +165,48 @@ func (client *DPNRestClient) ReplicationTransferGet(identifier string) (*DPNRepl
 		return nil, client.formatJsonError(objUrl, body, err)
 	}
 	return obj, nil
+}
+
+func (client *DPNRestClient) ReplicationTransferCreate(xfer *DPNReplicationTransfer) (*DPNReplicationTransfer, error) {
+	return client.replicationTransferSave(xfer, "POST")
+}
+
+func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfer, method string) (*DPNReplicationTransfer, error) {
+	// POST/Create
+	objUrl := client.BuildUrl(fmt.Sprintf("/%s/replicate/", client.apiVersion))
+	expectedResponseCode := 201
+	if method == "PUT" {
+		// PUT/Update
+		objUrl = client.BuildUrl(fmt.Sprintf("/%s/replicate/%s/", client.apiVersion, xfer.ReplicationId))
+		expectedResponseCode = 200
+	}
+	client.logger.Debug("%sing replication transfer to DPN REST service: %s", method, objUrl)
+	postData, err := json.Marshal(xfer)
+	if err != nil {
+		return nil, err
+	}
+	req, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(postData))
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != expectedResponseCode {
+		error := fmt.Errorf("%s to %s returned status code %d", method, objUrl, response.StatusCode)
+		client.buildAndLogError(body, error.Error())
+		fmt.Println(string(body))
+		return nil, error
+	}
+	returnedXfer := DPNReplicationTransfer{}
+	err = json.Unmarshal(body, &returnedXfer)
+	if err != nil {
+		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+	return &returnedXfer, nil
 }
 
 func (client *DPNRestClient) RestoreTransferGet(identifier string) (*DPNRestoreTransfer, error) {
