@@ -40,13 +40,8 @@ type DPNFixity struct {
 
 	// The algorithm used to check the fixity. Usually 'sha256',
 	// but others may be valid in the future.
-	Algorithm string                   `json:"algorithm"`
+	Sha256               string       `json:"sha256"`
 
-	// The fixity digest, as a hex-encoded string.
-	Digest string                      `json:"digest"`
-
-	// The datetime at which this digest was calculated.
-	CreatedAt time.Time                `json:"created_at"`
 }
 
 // DPNBag represents a Bag object in the DPN REST service.

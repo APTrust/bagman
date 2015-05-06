@@ -2,6 +2,7 @@
 package dpn
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/op/go-logging"
@@ -90,9 +91,40 @@ func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 	return obj, nil
 }
 
+func (client *DPNRestClient) DPNBagCreate(bag *DPNBag) (*DPNBag, error) {
+	objUrl := client.BuildUrl(fmt.Sprintf("/%s/bag/", client.apiVersion))
+	client.logger.Debug("Posting new bag to DPN REST service: %s", objUrl)
+	postData, err := json.Marshal(bag)
+	if err != nil {
+		return nil, err
+	}
+	req, err := client.NewJsonRequest("POST", objUrl, bytes.NewBuffer(postData))
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != 201 {
+		error := fmt.Errorf("POST to %s returned status code %d", objUrl, response.StatusCode)
+		client.buildAndLogError(body, error.Error())
+		fmt.Println(string(body))
+		return nil, error
+	}
+	returnedBag := DPNBag{}
+	err = json.Unmarshal(body, &returnedBag)
+	if err != nil {
+		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+	return &returnedBag, nil
+}
+
 func (client *DPNRestClient) ReplicationTransferGet(identifier string) (*DPNReplicationTransfer, error) {
 	// /api-v1/replicate/aptrust-999999/
-	objUrl := client.BuildUrl(fmt.Sprintf("/%s/replication/%s/", client.apiVersion, identifier))
+	objUrl := client.BuildUrl(fmt.Sprintf("/%s/replicate/%s/", client.apiVersion, identifier))
 	client.logger.Debug("Requesting replication xfer record from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
 	if err != nil {
@@ -149,6 +181,7 @@ func (client *DPNRestClient) RestoreTransferGet(identifier string) (*DPNRestoreT
 	}
 	return obj, nil
 }
+
 
 
 // Reads the response body and returns a byte slice.

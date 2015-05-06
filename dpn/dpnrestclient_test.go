@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
-//	"github.com/nu7hatch/gouuid"
+	"github.com/nu7hatch/gouuid"
 	"net/http"
 //	"os"
 //	"path/filepath"
@@ -60,6 +60,27 @@ func getClient(t *testing.T) (*dpn.DPNRestClient) {
 		t.Errorf("Error constructing DPN REST client: %v", err)
 	}
 	return client
+}
+
+func makeBag() (*dpn.DPNBag) {
+	youyoueyedee, _ := uuid.NewV4()
+	randChars := youyoueyedee.String()[0:8]
+	return &dpn.DPNBag {
+		UUID: youyoueyedee.String(),
+		Interpretive: []string{},
+		Rights: []string{},
+		ReplicatingNodes: []string{},
+		Fixities: []*dpn.DPNFixity {
+			&dpn.DPNFixity{
+				Sha256: randChars,
+			},
+		},
+		LocalId: "my_bag",
+		Size: 12345678,
+		FirstVersionUUID: youyoueyedee.String(),
+		Version: 1,
+		BagType: "D",
+	}
 }
 
 func TestBuildUrl(t *testing.T) {
@@ -140,18 +161,82 @@ func TestDPNBagGet(t *testing.T) {
 	if len(dpnBag.Fixities) != 1 {
 		t.Errorf("Fixities: expected 1 item, got %d", len(dpnBag.Fixities))
 	}
-	if dpnBag.Fixities[0].Algorithm != "sha256" {
-		t.Errorf("Fixities[0].Algorithm: expected 'sha256', got '%s'",
-			dpnBag.Fixities[0].Algorithm)
+	if dpnBag.Fixities[0].Sha256 != "tums-for-digestion" {
+		t.Errorf("Fixities[0].Sha256: expected 'tums-for-digestion', got '%s'",
+			dpnBag.Fixities[0].Sha256)
 	}
-	if dpnBag.Fixities[0].Digest != "tums-for-digestion" {
-		t.Errorf("Fixities[0].Digest: expected 'tums-for-digestion', got '%s'",
-			dpnBag.Fixities[0].Digest)
+}
+
+func TestDPNBagCreate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
 	}
-	if dpnBag.Fixities[0].CreatedAt.Format(time.RFC3339) != "2015-05-01T12:32:17Z" {
-		t.Errorf("Fixities[0].CreatedAt: expected '2015-05-01T12:32:17Z', got '%s'",
-			dpnBag.Fixities[0].CreatedAt.Format(time.RFC3339))
+	client := getClient(t)
+	bag := makeBag()
+	dpnBag, err := client.DPNBagCreate(bag)
+	if err != nil {
+		t.Errorf("DPNBagCreate returned error %v", err)
+		return
 	}
+
+	// We should get back a copy of the same bag we sent,
+	// with some additional info filled in.
+	if dpnBag.UUID != bag.UUID {
+		t.Errorf("UUIDs don't match. Ours = %s, Theirs = %s", bag.UUID, dpnBag.UUID)
+	}
+	if dpnBag.LocalId != bag.LocalId {
+		t.Errorf("LocalIds don't match. Ours = %s, Theirs = %s", bag.LocalId, dpnBag.LocalId)
+	}
+	if dpnBag.Size != bag.Size {
+		t.Errorf("Sizes don't match. Ours = %d, Theirs = %d", bag.Size, dpnBag.Size)
+	}
+	if dpnBag.FirstVersionUUID != bag.FirstVersionUUID {
+		t.Errorf("FirstVersionUUIDs don't match. Ours = %s, Theirs = %s",
+			bag.FirstVersionUUID, dpnBag.FirstVersionUUID)
+	}
+	if dpnBag.Version != bag.Version {
+		t.Errorf("Versions don't match. Ours = %d, Theirs = %d", bag.Version, dpnBag.Version)
+	}
+	if dpnBag.BagType != bag.BagType {
+		t.Errorf("BagTypes don't match. Ours = %s, Theirs = %s", bag.BagType, dpnBag.BagType)
+	}
+	if dpnBag.Fixities == nil || len(dpnBag.Fixities) == 0 {
+		t.Errorf("Bag fixities are missing")
+	}
+	if dpnBag.Fixities[0].Sha256 != bag.Fixities[0].Sha256 {
+		t.Errorf("Fixities don't match. Ours = %s, Theirs = %s",
+			bag.Fixities[0].Sha256, dpnBag.Fixities[0].Sha256)
+	}
+
+	// These tests really check that the server is behaving correctly,
+	// which isn't our business, but if it's not, we want to know.
+	if dpnBag.IngestNode == "" {
+		t.Errorf("IngestNode was not set")
+	}
+	if dpnBag.IngestNode != dpnBag.AdminNode {
+		t.Errorf("Ingest/Admin node mismatch. Ingest = %s, Admin = %s",
+			dpnBag.IngestNode, dpnBag.AdminNode)
+	}
+	if dpnBag.CreatedAt.IsZero() {
+		t.Errorf("CreatedAt was not set")
+	}
+	if dpnBag.UpdatedAt.IsZero() {
+		t.Errorf("UpdatedAt was not set")
+	}
+
+	// Make sure we can create a bag that has rights and interpretive
+	// uuids specified.
+	anotherBag := makeBag()
+	anotherBag.Rights = append(anotherBag.Rights, bag.UUID)
+	anotherBag.Interpretive = append(anotherBag.Interpretive, bag.UUID)
+
+	dpnBag, err = client.DPNBagCreate(anotherBag)
+	if err != nil {
+		t.Errorf("DPNBagCreate returned error when creating bag " +
+			"with rights and interpretive UUIDs: %v", err)
+		return
+	}
+
 }
 
 func TestReplicationTransferGet(t *testing.T) {
