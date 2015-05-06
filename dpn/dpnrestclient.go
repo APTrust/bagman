@@ -92,13 +92,28 @@ func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 }
 
 func (client *DPNRestClient) DPNBagCreate(bag *DPNBag) (*DPNBag, error) {
+	return client.dpnBagSave(bag, "POST")
+}
+
+func (client *DPNRestClient) DPNBagUpdate(bag *DPNBag) (*DPNBag, error) {
+	return client.dpnBagSave(bag, "PUT")
+}
+
+func (client *DPNRestClient) dpnBagSave(bag *DPNBag, method string) (*DPNBag, error) {
+	// POST/Create
 	objUrl := client.BuildUrl(fmt.Sprintf("/%s/bag/", client.apiVersion))
-	client.logger.Debug("Posting new bag to DPN REST service: %s", objUrl)
+	expectedResponseCode := 201
+	if method == "PUT" {
+		// PUT/Update
+		objUrl = client.BuildUrl(fmt.Sprintf("/%s/bag/%s/", client.apiVersion, bag.UUID))
+		expectedResponseCode = 200
+	}
+	client.logger.Debug("%sing new bag to DPN REST service: %s", method, objUrl)
 	postData, err := json.Marshal(bag)
 	if err != nil {
 		return nil, err
 	}
-	req, err := client.NewJsonRequest("POST", objUrl, bytes.NewBuffer(postData))
+	req, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(postData))
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +121,8 @@ func (client *DPNRestClient) DPNBagCreate(bag *DPNBag) (*DPNBag, error) {
 	if err != nil {
 		return nil, err
 	}
-	if response.StatusCode != 201 {
-		error := fmt.Errorf("POST to %s returned status code %d", objUrl, response.StatusCode)
+	if response.StatusCode != expectedResponseCode {
+		error := fmt.Errorf("%s to %s returned status code %d", method, objUrl, response.StatusCode)
 		client.buildAndLogError(body, error.Error())
 		fmt.Println(string(body))
 		return nil, error
