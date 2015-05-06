@@ -401,7 +401,6 @@ func TestReplicationTransferCreate(t *testing.T) {
 	if newXfer.UUID != xfer.UUID {
 		t.Errorf("UUID is %s; expected %s", newXfer.UUID, xfer.UUID)
 	}
-	fmt.Println(newXfer.ReplicationId)
 	if newXfer.ReplicationId == "" {
 		t.Errorf("ReplicationId is missing")
 	}
@@ -438,6 +437,90 @@ func TestReplicationTransferCreate(t *testing.T) {
 	}
 	if newXfer.UpdatedAt.IsZero() {
 		t.Errorf("UpdatedAt was not set")
+	}
+}
+
+func TestReplicationTransferUpdate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+
+	// The transfer request must refer to an actual bag,
+	// so let's make a bag...
+	bag := makeBag()
+	dpnBag, err := client.DPNBagCreate(bag)
+	if err != nil {
+		t.Errorf("DPNBagCreate returned error %v", err)
+		return
+	}
+
+	// Make sure we can create a transfer request.
+	xfer := makeXferRequest("aptrust", "chron", dpnBag.UUID)
+	newXfer, err := client.ReplicationTransferCreate(xfer)
+	if err != nil {
+		t.Errorf("ReplicationTransferCreate returned error %v", err)
+	}
+	if newXfer == nil {
+		t.Errorf("ReplicationTransferCreate did not return an object")
+	}
+
+	// Reject this one...
+	newXfer.Status = "Rejected"
+
+	updatedXfer, err := client.ReplicationTransferUpdate(newXfer)
+	if err != nil {
+		t.Errorf("ReplicationTransferUpdate returned error %v", err)
+		return
+	}
+	if updatedXfer == nil {
+		t.Errorf("ReplicationTransferUpdate did not return an object")
+		return
+	}
+
+	// ... make sure status is correct
+	if updatedXfer.Status != "Rejected" {
+		t.Errorf("Status is %s; expected Rejected", updatedXfer.Status)
+	}
+
+
+	// Update the allowed fields. We're going to send a bad
+	// fixity value, because we don't know the good one, so
+	// the server will cancel this transfer.
+	bagValid := true
+	newXfer.Status = "Received"
+	newXfer.BagValid = &bagValid
+	newXfer.FixityValue = "1234567890"
+
+	updatedXfer, err = client.ReplicationTransferUpdate(newXfer)
+	if err != nil {
+		t.Errorf("ReplicationTransferUpdate returned error %v", err)
+		return
+	}
+	if updatedXfer == nil {
+		t.Errorf("ReplicationTransferUpdate did not return an object")
+		return
+	}
+
+	// Make sure the fields were set correctly.
+	if updatedXfer.FixityValue != "1234567890" {
+		t.Errorf("FixityValue was %s; expected 1234567890",
+			updatedXfer.FixityValue)
+	}
+	if *updatedXfer.FixityAccept != false {
+		t.Errorf("FixityAccept is %s; expected false", *updatedXfer.FixityAccept)
+	}
+	if *updatedXfer.BagValid != true {
+		t.Errorf("BagValid is %s; expected true", *updatedXfer.BagValid)
+	}
+	// Note: Status will be cancelled instead of received because
+	// we sent a bogus checksum, and that causes the server to cancel
+	// the transfer.
+	if updatedXfer.Status != "Cancelled" {
+		t.Errorf("Status is %s; expected Cancelled", updatedXfer.Status)
+	}
+	if updatedXfer.UpdatedAt.After(newXfer.UpdatedAt) == false {
+		t.Errorf("UpdatedAt was not updated")
 	}
 }
 

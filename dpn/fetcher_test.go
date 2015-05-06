@@ -35,7 +35,7 @@ func canRunTests() bool {
 	if err != nil {
 		if skipMessagePrinted == false {
 			skipMessagePrinted = true
-			fmt.Printf("Skipping integration tests: "+
+			fmt.Printf("Skipping fetcher tests: "+
 				"Fluctus server is not running at %s\n", fluctusUrl)
 		}
 		return false

@@ -171,6 +171,10 @@ func (client *DPNRestClient) ReplicationTransferCreate(xfer *DPNReplicationTrans
 	return client.replicationTransferSave(xfer, "POST")
 }
 
+func (client *DPNRestClient) ReplicationTransferUpdate(xfer *DPNReplicationTransfer) (*DPNReplicationTransfer, error) {
+	return client.replicationTransferSave(xfer, "PUT")
+}
+
 func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfer, method string) (*DPNReplicationTransfer, error) {
 	// POST/Create
 	objUrl := client.BuildUrl(fmt.Sprintf("/%s/replicate/", client.apiVersion))
