@@ -127,4 +127,4 @@ go build -tags='partners' -o ${BAGMAN_BIN}/apt_delete apt_delete.go
 echo "copying config files into bin directory"
 cp ${BAGMAN_HOME}/config/config.json ${BAGMAN_BIN}/
 cp ${BAGMAN_HOME}/nsq/*.config ${BAGMAN_BIN}/
-cp ${BAGMAN_HOME}/dpn/bagbuilder_config.json ${BAGMAN_BIN}/
+cp ${BAGMAN_HOME}/dpn/dpn_config.json ${BAGMAN_BIN}/
