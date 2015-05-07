@@ -9,6 +9,7 @@ import (
 	"archive/tar"
 	"fmt"
 	"github.com/APTrust/bagins"
+	"github.com/bitly/go-nsq"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"github.com/op/go-logging"
@@ -375,7 +376,21 @@ func (restorer *BagRestorer) fetchFile(genericFile *GenericFile, setNumber int) 
 	localPath := filepath.Join(restorer.workingDir, subdir)
 	restorer.debug(fmt.Sprintf("Fetching URL %s for file %s into %s",
 		genericFile.URI, genericFile.Identifier, localPath))
-	return restorer.s3Client.FetchURLToFile(genericFile.URI, localPath)
+
+	// Pivotal #94090170: Retry failed downloads as long as error is not fatal.
+	// We get a fair number of "connection reset by peer" errors, which are
+	// transient. For fatal errors, Retry will be set to false. We'll break
+	// out of this loop if 1) fetch succeeded (no error) or 2) fetch failed
+	// on a fatal error (Retry == false).
+	var fetchResult *FetchResult
+	for i := 0; i < 5; i++ {
+		fetchResult = restorer.s3Client.FetchURLToFile(genericFile.URI, localPath)
+		if (fetchResult.ErrorMessage == "" ||
+			(fetchResult.ErrorMessage != "" && fetchResult.Retry == false)) {
+                       break
+		}
+	}
+       return fetchResult
 }
 
 // Deletes a single bag created by Restore()
@@ -500,7 +515,7 @@ func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
 		url, err = restorer.s3Client.SaveToS3(
 			bucketName,
 			keyName,
-			"application/binary",
+			"application/x-tar",
 			reader,
 			fileInfo.Size(),
 			s3.Options{})
@@ -509,13 +524,15 @@ func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
 		url, err = restorer.s3Client.SaveLargeFileToS3(
 			bucketName,
 			keyName,
-			"application/binary",
+			"application/x-tar",
 			reader,
 			fileInfo.Size(),
 			s3.Options{},
 			S3_CHUNK_SIZE)
 	}
 	if err != nil {
+		restorer.logger.Error("Error putting key %s into bucket %s: %v",
+			keyName, bucketName, err)
 		return "", nil
 	} else {
 		restorer.debug(fmt.Sprintf("Finished putting to S3 %s/%s", bucketName, keyName))
@@ -526,23 +543,34 @@ func (restorer *BagRestorer) CopyToS3(setNumber int) (string, error) {
 
 // Restores a bag (including multi-part bags), publishes them to the
 // restoration bucket, and returns the URLs to access them.
-func (restorer *BagRestorer) RestoreAndPublish() (urls []string, err error) {
+// Param message is an NSQ message and may be nil. In production, we
+// want this param, because we need to remind NSQ frequently that
+// we're still working on the message. Otherwise, NSQ thinks the
+// message timed out.
+func (restorer *BagRestorer) RestoreAndPublish(message *nsq.Message) (urls []string, err error) {
 	// Make sure we clean up, no matter what happens.
 	defer restorer.Cleanup()
+	restorer.touch(message)
 	restorer.buildFileSets()
+	restorer.touch(message)
 
 	// Fully process each bag as we go, including cleanup,
 	// so we can preserve disk space.
 	for i := range(restorer.fileSets) {
+		restorer.touch(message)
 		bag, err := restorer.buildBag(i)
 		if err != nil {
 			return nil, err
 		}
 		restorer.debug(fmt.Sprintf("Created local bag %s", bag.Path()))
+
+		restorer.touch(message)
 		_, err = restorer.TarBag(i)
 		if err != nil {
 			return nil, err
 		}
+
+		restorer.touch(message)
 		s3Url, err := restorer.CopyToS3(i)
 		if err != nil {
 			return nil, err
@@ -550,7 +578,15 @@ func (restorer *BagRestorer) RestoreAndPublish() (urls []string, err error) {
 		urls = append(urls, s3Url)
 
 		// Cleanup now, so we don't fill up the disk.
+		restorer.touch(message)
 		restorer.cleanup(i)
 	}
 	return urls, nil
+}
+
+// Try to avoid problem with NSQ timeouts.
+func (restorer *BagRestorer) touch(message *nsq.Message) {
+	if message != nil {
+		message.Touch()
+	}
 }

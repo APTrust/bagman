@@ -460,7 +460,7 @@ func TestRestoreAndPublish (t *testing.T) {
 
 
 	// Tell it restore, tar, copy to S3 and clean up after itself.
-	urls, err := restorer.RestoreAndPublish()
+	urls, err := restorer.RestoreAndPublish(nil)
 	if err != nil {
 		t.Error(err)
 		return

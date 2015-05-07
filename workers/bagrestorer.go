@@ -181,7 +181,7 @@ func (bagRestorer *BagRestorer) doRestore() {
 			// Touch to prevent timeout. PivotalTracker #93237522
 			object.NsqMessage.Touch()
 		}
-		urls, err := object.BagRestorer.RestoreAndPublish()
+		urls, err := object.BagRestorer.RestoreAndPublish(object.NsqMessage)
 		if object.NsqMessage != nil {
 			// Touch to prevent timeout. PivotalTracker #93237522
 			object.NsqMessage.Touch()
