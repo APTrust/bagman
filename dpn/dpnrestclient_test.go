@@ -6,9 +6,7 @@ import (
 	"github.com/APTrust/bagman/dpn"
 	"github.com/nu7hatch/gouuid"
 	"net/http"
-//	"os"
-//	"path/filepath"
-//	"strings"
+	"strings"
 	"testing"
 	"time"
 )
@@ -123,6 +121,27 @@ func TestBuildUrl(t *testing.T) {
 	if client.BuildUrl(relativeUrl) != expectedUrl {
 		t.Errorf("BuildUrl returned '%s', expected '%s'",
 			client.BuildUrl(relativeUrl), expectedUrl)
+	}
+}
+
+func TestDPNNodeGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	dpnNode, err := client.DPNNodeGet("aptrust")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if dpnNode.Name != "APTrust" {
+		t.Errorf("Name: expected 'APTrust', got '%s'", dpnNode.Name)
+	}
+	if dpnNode.Namespace != "aptrust" {
+		t.Errorf("Namespace: expected 'aptrust', got '%s'", dpnNode.Namespace)
+	}
+	if !strings.HasPrefix(dpnNode.APIRoot, "https://") {
+		t.Errorf("APIRoot should begin with https://")
 	}
 }
 

@@ -63,6 +63,35 @@ func (client *DPNRestClient) NewJsonRequest(method, targetUrl string, body io.Re
 	return req, nil
 }
 
+func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
+	objUrl := client.BuildUrl(fmt.Sprintf("/%s/node/%s/", client.apiVersion, identifier))
+	client.logger.Debug("Requesting node from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// 404 for object not found
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("DPNNodeGet expected status 200 but got %d. URL: %s", response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	obj := &DPNNode{}
+	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return obj, nil
+}
+
+
 func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 	objUrl := client.BuildUrl(fmt.Sprintf("/%s/bag/%s/", client.apiVersion, identifier))
 	client.logger.Debug("Requesting bag from DPN REST service: %s", objUrl)
