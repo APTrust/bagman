@@ -102,6 +102,19 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 	}
 }
 
+func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransfer) {
+	id, _ := uuid.NewV4()
+	idString := id.String()
+	return &dpn.DPNRestoreTransfer{
+		FromNode: fromNode,
+		ToNode: toNode,
+		UUID: bagUuid,
+		Status: "Requested",
+		Protocol: "R",
+		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
+	}
+}
+
 func TestBuildUrl(t *testing.T) {
 	config := loadConfig(t, configFile)
 	client := getClient(t)
@@ -460,9 +473,11 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	newXfer, err := client.ReplicationTransferCreate(xfer)
 	if err != nil {
 		t.Errorf("ReplicationTransferCreate returned error %v", err)
+		return
 	}
 	if newXfer == nil {
 		t.Errorf("ReplicationTransferCreate did not return an object")
+		return
 	}
 
 	// Reject this one...
@@ -563,5 +578,62 @@ func TestRestoreTransferGet(t *testing.T) {
 	}
 	if xfer.Link != "rsync://path/to/file.tar" {
 		t.Errorf("Link: expected 'rsync://path/to/file.tar', got '%s'", xfer.Link)
+	}
+}
+
+func TestRestoreTransferCreate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+
+	// The transfer request must refer to an actual bag,
+	// so let's make a bag...
+	bag := makeBag()
+	dpnBag, err := client.DPNBagCreate(bag)
+	if err != nil {
+		t.Errorf("DPNBagCreate returned error %v", err)
+		return
+	}
+
+	// Make sure we can create a transfer request.
+	xfer := makeRestoreRequest("tdr", "aptrust", dpnBag.UUID)
+	newXfer, err := client.RestoreTransferCreate(xfer)
+	if err != nil {
+		t.Errorf("RestoreTransferCreate returned error %v", err)
+		return
+	}
+	if newXfer == nil {
+		t.Errorf("RestoreTransferCreate did not return an object")
+		return
+	}
+
+	// Make sure the fields were set correctly.
+	if newXfer.FromNode != xfer.FromNode {
+		t.Errorf("FromNode is %s; expected %s", newXfer.FromNode, xfer.FromNode)
+	}
+	if newXfer.ToNode != xfer.ToNode {
+		t.Errorf("ToNode is %s; expected %s", newXfer.ToNode, xfer.ToNode)
+	}
+	if newXfer.UUID != xfer.UUID {
+		t.Errorf("UUID is %s; expected %s", newXfer.UUID, xfer.UUID)
+	}
+	if newXfer.RestoreId == "" {
+		t.Errorf("RestoreId is missing")
+	}
+	if newXfer.Status != "Requested" {
+		t.Errorf("Status is %s; expected Requested", newXfer.Status)
+	}
+	if newXfer.Protocol != xfer.Protocol {
+		t.Errorf("Protocol is %s; expected %s", newXfer.Protocol, xfer.Protocol)
+	}
+	if newXfer.Link != xfer.Link {
+		t.Errorf("Link is %s; expected %s", newXfer.Link, xfer.Link)
+	}
+	if newXfer.CreatedAt.IsZero() {
+		t.Errorf("CreatedAt was not set")
+	}
+	if newXfer.UpdatedAt.IsZero() {
+		t.Errorf("UpdatedAt was not set")
 	}
 }

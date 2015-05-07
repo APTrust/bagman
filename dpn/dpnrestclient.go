@@ -243,6 +243,53 @@ func (client *DPNRestClient) RestoreTransferGet(identifier string) (*DPNRestoreT
 	return obj, nil
 }
 
+func (client *DPNRestClient) RestoreTransferCreate(xfer *DPNRestoreTransfer) (*DPNRestoreTransfer, error) {
+	return client.restoreTransferSave(xfer, "POST")
+}
+
+func (client *DPNRestClient) RestoreTransferUpdate(xfer *DPNRestoreTransfer) (*DPNRestoreTransfer, error) {
+	return client.restoreTransferSave(xfer, "PUT")
+}
+
+func (client *DPNRestClient) restoreTransferSave(xfer *DPNRestoreTransfer, method string) (*DPNRestoreTransfer, error) {
+	// POST/Create
+	objUrl := client.BuildUrl(fmt.Sprintf("/%s/restore/", client.apiVersion))
+	expectedResponseCode := 201
+	if method == "PUT" {
+		// PUT/Update
+		objUrl = client.BuildUrl(fmt.Sprintf("/%s/restore/%s/", client.apiVersion, xfer.RestoreId))
+		expectedResponseCode = 200
+	}
+	client.logger.Debug("%sing restore transfer to DPN REST service: %s", method, objUrl)
+	postData, err := json.Marshal(xfer)
+	if err != nil {
+		return nil, err
+	}
+	req, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(postData))
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != expectedResponseCode {
+		error := fmt.Errorf("%s to %s returned status code %d", method, objUrl, response.StatusCode)
+		client.buildAndLogError(body, error.Error())
+		fmt.Println(string(body))
+		return nil, error
+	}
+	fmt.Println(string(body))
+	returnedXfer := DPNRestoreTransfer{}
+	err = json.Unmarshal(body, &returnedXfer)
+	if err != nil {
+		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+	return &returnedXfer, nil
+}
+
 
 
 // Reads the response body and returns a byte slice.
