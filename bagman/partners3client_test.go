@@ -80,12 +80,9 @@ func TestPartnerS3ClientUploadListAndDelete(t *testing.T) {
 	}
 
 	// Test upload
-	md5, err := client.UploadFile(file)
+	err = client.UploadFile(file)
 	if err != nil {
 		t.Error(err)
-	}
-	if md5 != "05e68e69767c772d36bd8a2baf693428" {
-		t.Errorf("Expected md5 sum '05e68e69767c772d36bd8a2baf693428', got '%s'", md5)
 	}
 
 	// Test list. There should be only a handful of files in this test bucket.
