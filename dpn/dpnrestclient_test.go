@@ -637,3 +637,78 @@ func TestRestoreTransferCreate(t *testing.T) {
 		t.Errorf("UpdatedAt was not set")
 	}
 }
+
+func TestRestoreTransferUpdate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+
+	// The transfer request must refer to an actual bag,
+	// so let's make a bag...
+	bag := makeBag()
+	dpnBag, err := client.DPNBagCreate(bag)
+	if err != nil {
+		t.Errorf("DPNBagCreate returned error %v", err)
+		return
+	}
+
+	// Make sure we can create a transfer request.
+	xfer := makeRestoreRequest("chron", "aptrust", dpnBag.UUID)
+	newXfer, err := client.RestoreTransferCreate(xfer)
+	if err != nil {
+		t.Errorf("RestoreTransferCreate returned error %v", err)
+		return
+	}
+	if newXfer == nil {
+		t.Errorf("RestoreTransferCreate did not return an object")
+		return
+	}
+
+	// Reject this one...
+	newXfer.Status = "Rejected"
+
+	updatedXfer, err := client.RestoreTransferUpdate(newXfer)
+	if err != nil {
+		t.Errorf("RestoreTransferUpdate returned error %v", err)
+		return
+	}
+	if updatedXfer == nil {
+		t.Errorf("RestoreTransferUpdate did not return an object")
+		return
+	}
+
+	// ... make sure status is correct
+	if updatedXfer.Status != "Rejected" {
+		t.Errorf("Status is %s; expected Rejected", updatedXfer.Status)
+	}
+
+
+	// Update the allowed fields. We're going to send a bad
+	// fixity value, because we don't know the good one, so
+	// the server will cancel this transfer.
+	link := "rsync://blah/blah/blah/yadda/yadda/beer"
+	newXfer.Status = "Prepared"
+	newXfer.Link = link
+
+	updatedXfer, err = client.RestoreTransferUpdate(newXfer)
+	if err != nil {
+		t.Errorf("RestoreTransferUpdate returned error %v", err)
+		return
+	}
+	if updatedXfer == nil {
+		t.Errorf("RestoreTransferUpdate did not return an object")
+		return
+	}
+
+	// Make sure values were stored...
+	if updatedXfer.Status != "Prepared" {
+		t.Errorf("Status is %s; expected Prepared", updatedXfer.Status)
+	}
+	if updatedXfer.Link != link {
+		t.Errorf("Status is %s; expected %s", updatedXfer.Link, link)
+	}
+	if updatedXfer.UpdatedAt.After(newXfer.UpdatedAt) == false {
+		t.Errorf("UpdatedAt was not updated")
+	}
+}

@@ -279,7 +279,7 @@ func (client *DPNRestClient) restoreTransferSave(xfer *DPNRestoreTransfer, metho
 		fmt.Println(string(body))
 		return nil, error
 	}
-	fmt.Println(string(body))
+
 	returnedXfer := DPNRestoreTransfer{}
 	err = json.Unmarshal(body, &returnedXfer)
 	if err != nil {
