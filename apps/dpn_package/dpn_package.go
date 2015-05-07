@@ -14,11 +14,11 @@ func main() {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
 	procUtil.MessageLog.Info("dpn_package started")
-	defaultMetadata, err := dpn.LoadConfig("dpn/bagbuilder_config.json")
+	dpnConfig, err := dpn.LoadConfig("dpn/bagbuilder_config.json")
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
-	packager := dpn.NewPackager(procUtil, defaultMetadata)
+	packager := dpn.NewPackager(procUtil, dpnConfig.DefaultMetadata)
 	consumer.AddHandler(packager)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
