@@ -241,6 +241,10 @@ func LooksLikeURL(url string) (bool) {
 	return reUrl.Match([]byte(url))
 }
 
+func LooksLikeUUID(uuid string) (bool) {
+	reUUID := regexp.MustCompile(`(?i)^([a-f\d]{8}(-[a-f\d]{4}){3}-[a-f\d]{12}?)$`)
+	return reUUID.Match([]byte(uuid))
+}
 
 // QueueToNSQ sends data to NSQ. The URL param must be a valid NSQ
 // URL. The data will be converted to JSON, with each object/record

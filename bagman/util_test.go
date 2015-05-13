@@ -166,6 +166,28 @@ func TestLooksLikeURL(t *testing.T) {
 	}
 }
 
+func TestLooksLikeUUID(t *testing.T) {
+	if bagman.LooksLikeUUID("1552abf5-28f3-46a5-ba63-95302d08e209") == false {
+		t.Error("That was a valid UUID!")
+	}
+	if bagman.LooksLikeUUID("88198c5a-ec91-4ce1-bfcc-0f607ebdcca3") == false {
+		t.Error("That was a valid UUID!")
+	}
+	if bagman.LooksLikeUUID("88198C5A-EC91-4CE1-BFCC-0F607EBDCCA3") == false {
+		t.Error("That was a valid UUID!")
+	}
+	if bagman.LooksLikeUUID("88198c5a-ec91-4ce1-bfcc-0f607ebdccx3") == true {
+		t.Error("That was not a valid UUID!")
+	}
+	if bagman.LooksLikeUUID("88198c5a-ec91-4ce1-bfcc-0f6c") == true {
+		t.Error("That was not a valid UUID!")
+	}
+	if bagman.LooksLikeUUID("") == true {
+		t.Error("That was not a valid UUID! That was an empty string!")
+	}
+}
+
+
 func TestExpandTilde(t *testing.T) {
 	expanded, err := bagman.ExpandTilde("~/tmp")
 	if err != nil {
