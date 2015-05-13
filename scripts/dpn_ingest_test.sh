@@ -38,8 +38,8 @@ echo "building dpn_trouble"
 cd "${BAGMAN_HOME}/apps/dpn_trouble"
 go build -o ${BAGMAN_BIN}/dpn_trouble dpn_trouble.go
 
-echo "copying bagbuilder_config.json into bin directory"
-cp ${BAGMAN_HOME}/dpn/bagbuilder_config.json ${BAGMAN_BIN}/
+echo "copying dpn_config.json into bin directory"
+cp ${BAGMAN_HOME}/dpn/dpn_config.json ${BAGMAN_BIN}/
 
 echo "running dpn ingest test and dpn trouble processor"
 cd ${BAGMAN_BIN}
