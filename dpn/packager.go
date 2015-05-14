@@ -247,11 +247,16 @@ func (packager *Packager) doTar() {
 		// Set up our tar writer, and put all items from the bag
 		// directory into the tar file.
 		tarWriter := tar.NewWriter(tarFile)
-		pathSeparator := string(os.PathSeparator)
 		for _, filePath := range files {
-			pathWithinArchive := strings.Replace(filePath, bagDir, "", 1)
-			if strings.HasPrefix(pathWithinArchive, pathSeparator) {
-				pathWithinArchive = strings.Replace(pathWithinArchive, pathSeparator, "", 1)
+			pathWithinArchive, err := PathWithinArchive(result, filePath, bagDir)
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf(
+					"Cannot create base folder in tar archive: %v", err)
+				tarFile.Close()
+				tarWriter.Close()
+				os.Remove(tarFilePath)
+				packager.CleanupChannel <- result
+				break
 			}
 			err = bagman.AddToArchive(tarWriter, filePath, pathWithinArchive)
 			if err != nil {
@@ -261,9 +266,10 @@ func (packager *Packager) doTar() {
 				tarWriter.Close()
 				os.Remove(tarFilePath)
 				packager.CleanupChannel <- result
-				continue
+				break
 			}
 		}
+		tarWriter.Flush()
 		tarFile.Close()
 		result.PackageResult.TarFilePath = tarFilePath
 		packager.CleanupChannel <- result
@@ -489,4 +495,31 @@ func (packager *Packager) RunTest(bagIdentifier string) (*DPNResult) {
 	packager.WaitGroup.Wait()
 	fmt.Println("Inspect the tar file output. It's your job to delete the file manually.")
 	return dpnResult
+}
+
+func PathWithinArchive(result *DPNResult, filePath, bagDir string) (string, error) {
+	// Figure out this file's base path within the archive.
+	// It should be something like data/subdir/file1.pdf
+	basePath := strings.Replace(filePath, bagDir, "", 1)
+	pathSeparator := string(os.PathSeparator)
+	if strings.HasPrefix(basePath, pathSeparator) {
+		basePath = strings.Replace(basePath, pathSeparator, "", 1)
+	}
+
+	// The top-level folder within the archive should have the
+	// same name as the original bag, so that when the bag is
+	// restored and untarred, it produces a folder with a
+	// meaningful name. So if a bag has identifier
+	// "test.edu/ncsu.1840.16-1004", it should untar to a
+	// directory called "ncsu.1840.16-1004" so the depositor
+	// knows what bag they got back.
+	bagName, err := result.OriginalBagName()
+	if err != nil {
+		return "", err
+	}
+
+	// The path within the arcive for data/subdir/file1.pdf
+	// will be something like ncsu.1840.16-1004/data/subdir/file1.pdf
+	pathWithinArchive := filepath.Join(bagName, basePath)
+	return pathWithinArchive, nil
 }
