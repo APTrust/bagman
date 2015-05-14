@@ -1,10 +1,10 @@
 package dpn_test
 
 import (
-	"fmt"
+//	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
-//	"os"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -15,6 +15,13 @@ const (
 
 func getBagPath(whichBag string) (string, error) {
 	return bagman.RelativeToAbsPath(filepath.Join("dpn", "testdata", whichBag))
+}
+
+func cleanup(validator *dpn.Validator) {
+	if _, err := os.Stat(validator.UntarredPath); os.IsNotExist(err) {
+		return
+	}
+	os.RemoveAll(validator.UntarredPath)
 }
 
 func TestValidate_Good(t *testing.T) {
@@ -28,16 +35,12 @@ func TestValidate_Good(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
-	fmt.Println(validator.ErrorMessages)
-
-	// Bagins is blowing up because it can't find the tag manifest.
-	//
-	// validator.ValidateBag()
-	// if !validator.IsValid() {
-	// 	for _, message := range validator.ErrorMessages {
-	// 		t.Errorf(message)
-	// 	}
-	// 	t.Errorf("Bag should be valid.")
-	// }
+	defer cleanup(validator)
+	validator.ValidateBag()
+	if !validator.IsValid() {
+		for _, message := range validator.ErrorMessages {
+			t.Errorf(message)
+		}
+		t.Errorf("Bag should be valid.")
+	}
 }
