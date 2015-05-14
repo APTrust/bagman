@@ -150,9 +150,10 @@ func (validator *Validator) ValidateBag()  {
 			return
 		}
 	}
-	// if validator.validateTagManifest() == false {
-	// 	return
-	// }
+	if validator.tagManifestPresent() == false {
+		validator.AddError("Tag manifest file 'tagmanifest-sha256.txt' is missing.")
+		return
+	}
 
 	// OK, the name is good, we untarred it and the tag manifest is valid.
 	// Now do the heavy work... and there can be a lot to do on bags
@@ -160,6 +161,7 @@ func (validator *Validator) ValidateBag()  {
 	bag, err := bagins.ReadBag(validator.UntarredPath, TagFiles(), "manifest-sha256.txt")
 	if err != nil {
 		validator.AddError(fmt.Sprintf("Error unpacking bag: %v", err))
+		return
 	}
 
 	fileNames, err := bag.ListFiles()
@@ -242,23 +244,11 @@ func (validator *Validator) BagNameValid() (bool) {
 	return bagman.LooksLikeUUID(basename)
 }
 
-func (validator *Validator) validateTagManifest() (bool) {
-	valid := true
-	manifest, errors := bagins.ReadManifest(validator.PathToFileInBag("tagmanifest-sha256.txt"))
-	if errors != nil {
-		for i := range errors {
-			validator.AddError(errors[i].Error())
-			valid = false
-		}
-	}
-	errors = manifest.RunChecksums()
-	if errors != nil {
-		for i := range errors {
-			validator.AddError(errors[i].Error())
-			valid = false
-		}
-	}
-	return valid
+// If the tag manifest is present, bagins will validate it.
+// We have to make sure it's here, and bagins will do the rest.
+func (validator *Validator) tagManifestPresent() (bool) {
+	fullPath := filepath.Join(validator.UntarredPath, "tagmanifest-sha256.txt")
+	return bagman.FileExists(fullPath)
 }
 
 func (validator *Validator) CalculateTagManifestDigest(nonce string)  {
