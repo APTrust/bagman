@@ -2,9 +2,11 @@ package dpn
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -15,6 +17,9 @@ const (
 )
 
 type DPNResult struct {
+	// BagIdentifier is the APTrust bag identifier, composed of
+	// the institution domain name, a slash, and the institution's
+	// internal bag identifier. E.g. "test.edu/ncsu.1840.16-1004"
 	BagIdentifier   string
 	NsqMessage      *nsq.Message  `json:"-"`
 	Stage           string
@@ -32,6 +37,16 @@ func NewDPNResult(bagIdentifier string) (*DPNResult) {
 		StorageResult: &StorageResult{},
 		Retry: true,
 	}
+}
+
+func (result *DPNResult) OriginalBagName() (string, error) {
+	parts := strings.SplitN(result.BagIdentifier, "/", 2)
+	if len(parts) == 2 {
+		return parts[1], nil
+	}
+	err := fmt.Errorf("BagIdentifier '%s' does not conform to " +
+		"expected format of domain/bag_name.", result.BagIdentifier)
+	return "", err
 }
 
 // PackageResult maintains information about the state of the
