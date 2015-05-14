@@ -37,16 +37,15 @@ var BAG_INFO_TAGS = []string {
 var DPN_INFO_TAGS = []string {
 	"DPN-Object-ID",
 	"Local-ID",
-	"First-Node-Name",
-	"First-Node-Address",
-	"First-Node-Contact-Name",
-	"First-Node-Contact-Email",
+	"Ingest-Node-Name",
+	"Ingest-Node-Address",
+	"Ingest-Node-Contact-Name",
+	"Ingest-Node-Contact-Email",
 	"Version-Number",
-//	"Previous-Version-Object-ID",  // This may be deleted from the spec.
 	"First-Version-Object-ID",
 	"Brightening-Object-ID",
 	"Rights-Object-ID",
-	"Object-Type",
+	"Bag-Type",
 }
 
 // TAGS_FOR_FILE maps a tag file to the list of tags it should contain.

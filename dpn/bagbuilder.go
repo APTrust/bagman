@@ -130,13 +130,13 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 		builder.UUID))
 	tagFile.Data.AddField(*bagins.NewTagField("Local-ID",
 		builder.IntellectualObject.Identifier))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Name",
+	tagFile.Data.AddField(*bagins.NewTagField("Ingest-Node-Name",
 		builder.DefaultMetadata.IngestNodeName))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Address",
+	tagFile.Data.AddField(*bagins.NewTagField("Ingest-Node-Address",
 		builder.DefaultMetadata.IngestNodeAddress))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Name",
+	tagFile.Data.AddField(*bagins.NewTagField("Ingest-Node-Contact-Name",
 		builder.DefaultMetadata.IngestNodeContactName))
-	tagFile.Data.AddField(*bagins.NewTagField("First-Node-Contact-Email",
+	tagFile.Data.AddField(*bagins.NewTagField("Ingest-Node-Contact-Email",
 		builder.DefaultMetadata.IngestNodeContactEmail))
 
 	// TODO: Not sure how to fill in the next three items.
@@ -154,7 +154,7 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 	tagFile.Data.AddField(*bagins.NewTagField("Rights-Object-ID", ""))
 
 	// Bag Type
-	tagFile.Data.AddField(*bagins.NewTagField("Object-Type",
+	tagFile.Data.AddField(*bagins.NewTagField("Bag-Type",
 		builder.bag.Type))
 
 	return tagFile
