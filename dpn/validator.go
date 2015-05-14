@@ -42,7 +42,7 @@ var DPN_INFO_TAGS = []string {
 	"First-Node-Contact-Name",
 	"First-Node-Contact-Email",
 	"Version-Number",
-	"Previous-Version-Object-ID",
+//	"Previous-Version-Object-ID",  // This may be deleted from the spec.
 	"First-Version-Object-ID",
 	"Brightening-Object-ID",
 	"Rights-Object-ID",
@@ -151,9 +151,9 @@ func (validator *Validator) ValidateBag()  {
 			return
 		}
 	}
-	if validator.validateTagManifest() == false {
-		return
-	}
+	// if validator.validateTagManifest() == false {
+	// 	return
+	// }
 
 	// OK, the name is good, we untarred it and the tag manifest is valid.
 	// Now do the heavy work... and there can be a lot to do on bags
@@ -228,7 +228,7 @@ func (validator *Validator) checkRequiredTags(bag *bagins.Bag) {
 		}
 		for _, tagName := range requiredTags {
 			if _, ok := tagsFound[tagName]; !ok {
-				validator.AddError(fmt.Sprintf("Required tag '%s' is missing from %f", tagName, file))
+				validator.AddError(fmt.Sprintf("Required tag '%s' is missing from %s", tagName, file))
 			}
 		}
 	}
@@ -240,8 +240,6 @@ func (validator *Validator) BagNameValid() (bool) {
 		bagPath = validator.UntarredPath
 	}
 	basename := strings.Replace(filepath.Base(bagPath), ".tar", "", 1)
-	//DEBUG
-	fmt.Printf("'%s'\n",basename)
 	return bagman.LooksLikeUUID(basename)
 }
 
@@ -319,11 +317,11 @@ func (validator *Validator) untar() (bool) {
 			return false
 		}
 
-		// Top-level dir will be the first header entry.
-		if header.Typeflag == tar.TypeDir && validator.UntarredPath == "" {
-			validator.UntarredPath = filepath.Join(filepath.Dir(absInputFile), header.Name)
-			// DEBUG
-			fmt.Println("***** UNTARRED PATH *****", validator.UntarredPath)
+		// Set the untarred path, which will usually be the depositor's
+		// bag identifier.
+		if validator.UntarredPath == "" {
+			nameParts := strings.Split(header.Name, string(os.PathSeparator))
+			validator.UntarredPath = filepath.Join(filepath.Dir(absInputFile), nameParts[0])
 		}
 
 		outputPath := filepath.Join(filepath.Dir(absInputFile), header.Name)

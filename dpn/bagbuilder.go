@@ -146,7 +146,10 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 	// which DPN object this is a new version of, and which version
 	// it should be.
 	tagFile.Data.AddField(*bagins.NewTagField("Version-Number", "1"))
-	tagFile.Data.AddField(*bagins.NewTagField("Previous-Version-Object-ID", ""))
+	// Are we also using First-Version-Object-ID?
+	// Check https://wiki.duraspace.org/display/DPN/BagIt+Specification
+	// for updates.
+	tagFile.Data.AddField(*bagins.NewTagField("First-Version-Object-ID", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Brightening-Object-ID", ""))
 	tagFile.Data.AddField(*bagins.NewTagField("Rights-Object-ID", ""))
 
