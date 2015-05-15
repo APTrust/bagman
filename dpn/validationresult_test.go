@@ -22,11 +22,11 @@ func getBagPath(whichBag string) (string, error) {
 	return bagman.RelativeToAbsPath(filepath.Join("dpn", "testdata", whichBag))
 }
 
-func cleanup(validator *dpn.ValidationResult) {
-	if _, err := os.Stat(validator.UntarredPath); os.IsNotExist(err) {
+func cleanup(result *dpn.ValidationResult) {
+	if _, err := os.Stat(result.UntarredPath); os.IsNotExist(err) {
 		return
 	}
-	os.RemoveAll(validator.UntarredPath)
+	os.RemoveAll(result.UntarredPath)
 }
 
 func TestValidate_Good(t *testing.T) {
@@ -35,15 +35,15 @@ func TestValidate_Good(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	validator, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer cleanup(validator)
-	validator.ValidateBag()
-	if !validator.IsValid() {
-		for _, message := range validator.ErrorMessages {
+	defer cleanup(result)
+	result.ValidateBag()
+	if !result.IsValid() {
+		for _, message := range result.ErrorMessages {
 			t.Errorf(message)
 		}
 		t.Errorf("Bag should be valid.")
@@ -56,24 +56,24 @@ func TestValidate_BagMissingDataFile(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	validator, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer cleanup(validator)
-	validator.ValidateBag()
-	if validator.IsValid() {
+	defer cleanup(result)
+	result.ValidateBag()
+	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
-	if len(validator.ErrorMessages) != 2 {
+	if len(result.ErrorMessages) != 2 {
 		t.Errorf("Bag should have exactly 2 error messages")
 		return
 	}
-	if !strings.Contains(validator.ErrorMessages[0], "checksum") {
+	if !strings.Contains(result.ErrorMessages[0], "checksum") {
 		t.Errorf("ValidationResult should have noted bad checksum")
 	}
-	if !strings.Contains(validator.ErrorMessages[1], "no such file") {
+	if !strings.Contains(result.ErrorMessages[1], "no such file") {
 		t.Errorf("ValidationResult should have noted missing file")
 	}
 }
@@ -84,21 +84,21 @@ func TestValidate_BagMissingManifest256(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	validator, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer cleanup(validator)
-	validator.ValidateBag()
-	if validator.IsValid() {
+	defer cleanup(result)
+	result.ValidateBag()
+	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
-	if len(validator.ErrorMessages) != 1 {
+	if len(result.ErrorMessages) != 1 {
 		t.Errorf("Bag should have exactly 1 error message")
 		return
 	}
-	if !strings.Contains(validator.ErrorMessages[0],
+	if !strings.Contains(result.ErrorMessages[0],
 		"Manifest 'manifest-sha256.txt' does not exist") {
 		t.Errorf("ValidationResult should have noted missing manifest-sha256.txt")
 	}
@@ -110,24 +110,24 @@ func TestValidate_BagMissingTags(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	validator, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer cleanup(validator)
-	validator.ValidateBag()
-	if validator.IsValid() {
+	defer cleanup(result)
+	result.ValidateBag()
+	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
-	if len(validator.ErrorMessages) != 2 {
+	if len(result.ErrorMessages) != 2 {
 		t.Errorf("Bag should have exactly 2 error messages")
 		return
 	}
-	if !strings.Contains(validator.ErrorMessages[0], "'DPN-Object-ID' is missing") {
+	if !strings.Contains(result.ErrorMessages[0], "'DPN-Object-ID' is missing") {
 		t.Errorf("ValidationResult should have noted missing DPN-Object-ID tag")
 	}
-	if !strings.Contains(validator.ErrorMessages[1], "'Version-Number' is missing") {
+	if !strings.Contains(result.ErrorMessages[1], "'Version-Number' is missing") {
 		t.Errorf("ValidationResult should have noted missing Version-Number tag")
 	}
 }
@@ -138,25 +138,56 @@ func TestValidate_BagMissingTagManifest(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	validator, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath)
 	if err != nil {
 		t.Error(err)
 		return
 	}
-	defer cleanup(validator)
-	validator.ValidateBag()
-	if validator.IsValid() {
+	defer cleanup(result)
+	result.ValidateBag()
+	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
-	// for _, m := range(validator.ErrorMessages) {
+	// for _, m := range(result.ErrorMessages) {
 	// 	fmt.Println(m)
 	// }
-	if len(validator.ErrorMessages) != 1 {
+	if len(result.ErrorMessages) != 1 {
 		t.Errorf("Bag should have exactly 1 error message")
 		return
 	}
-	if !strings.Contains(validator.ErrorMessages[0],
+	if !strings.Contains(result.ErrorMessages[0],
 		"'tagmanifest-sha256.txt' is missing") {
 		t.Errorf("ValidationResult should have noted missing tagmanifest-sha256.txt")
+	}
+}
+
+func TestValidate_Digest(t *testing.T) {
+	bagPath, err := getBagPath(GOOD_BAG)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	result, err := dpn.NewValidationResult(bagPath)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup(result)
+
+	// Calling this unpacks the bag
+	result.ValidateBag()
+
+	result.CalculateTagManifestDigest("")
+	expected := "c4e254c4432d8f8755de161c42c4f8188455ca1c5ca1e2fd548d2a991dff009a"
+	if result.TagManifestChecksum != expected {
+		t.Errorf("Got tag manifest checksum '%s', expected '%s'",
+			result.TagManifestChecksum, expected)
+	}
+
+	result.CalculateTagManifestDigest("GeorgeWBush")
+	expected = "47656f7267655742757368c4e254c4432d8f8755de161c42c4f8188455ca1c5ca1e2fd548d2a991dff009a"
+	if result.TagManifestChecksum != expected {
+		t.Errorf("Got tag manifest checksum '%s', expected '%s'",
+			result.TagManifestChecksum, expected)
 	}
 }
