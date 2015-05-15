@@ -11,25 +11,66 @@ import (
 )
 
 const (
-	STAGE_PACKAGE = "Packaging"
-	STAGE_STORE   = "Storage"
-	STAGE_RECORD  = "Recoding"
+	STAGE_PACKAGE  = "Packaging"
+	STAGE_RECEIVE  = "Receiving"
+	STAGE_VALIDATE = "Validation"
+	STAGE_STORE    = "Storage"
+	STAGE_RECORD   = "Recording"
 )
 
 type DPNResult struct {
 	// BagIdentifier is the APTrust bag identifier, composed of
 	// the institution domain name, a slash, and the institution's
 	// internal bag identifier. E.g. "test.edu/ncsu.1840.16-1004"
-	BagIdentifier   string
-	NsqMessage      *nsq.Message  `json:"-"`
-	Stage           string
-	ErrorMessage    string
-	PackageResult   *PackageResult
-	StorageResult   *StorageResult
-	Retry           bool
+	// For bags coming from other nodes, this will be blank.
+	BagIdentifier    string
+
+	// The NSQ message being processed. May be nil if we're
+	// running tests.
+	NsqMessage       *nsq.Message  `json:"-"`
+
+	// The current stage of processing for this bag.
+	Stage            string
+
+	// A general error message describing what went wrong with
+	// processing. More specific errors will appear in the
+	// PackageResult, StorageResult or ValidationResult, depending
+	// on the stage where processing failed. If this is empty,
+	// there was no error.
+	ErrorMessage     string
+
+	// The DPN bag record for this object. This will be nil for
+	// bags ingested through APTrust and in the packaging stage,
+	// since the bag won't have a UUID until after it's packaged.
+	DPNBag           *DPNBag
+
+	// The result of the attempt to package this object as a DPN
+	// bag. We only package APTrust bags that we ingested and that
+	// the depositor has indicated should go to DPN. Bags we
+	// replicate from other nodes will already have been packaged
+	// by the ingesting node, so  the PackageResult for those will
+	// be empty.
+	PackageResult    *PackageResult
+
+	// The result of the attempt to store the bag in the long-term
+	// storage bucket for DPN.
+	StorageResult    *StorageResult
+
+	// The result of the attempt to validate the bag. This includes
+	// information about whether the bag's structure is valid, whether
+	// all required tags are present, checksums checked out, etc.
+	ValidationResult *ValidationResult
+
+	// Indicates whether we should try to process this bag again.
+	// For transient problems, such as network outages and lack of
+	// disk space, this will be true. For fatal problems, such as
+	// an invalid bag, this will be false.
+	Retry            bool
 }
 
 func NewDPNResult(bagIdentifier string) (*DPNResult) {
+	// Note that DPNBag and ValidationResult are not
+	// initialized, so they are nil to begin with.
 	return &DPNResult{
 		BagIdentifier: bagIdentifier,
 		Stage: STAGE_PACKAGE,

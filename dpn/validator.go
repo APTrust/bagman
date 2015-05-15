@@ -66,9 +66,9 @@ func TagFiles() ([]string) {
 }
 
 
-// Validator stores information about whether a DPN
+// ValidationResult stores information about whether a DPN
 // bag is valid.
-type Validator struct {
+type ValidationResult struct {
 	// TarFilePath is the path to the tarred bag we'll be validating.
 	TarFilePath          string
 
@@ -81,10 +81,6 @@ type Validator struct {
 	// replication requests, we don't need to even calculate this value.
 	TagManifestChecksum  string
 
-	// Nonce value to use when calculating the TagManifestChecksum. This
-	// may be an empty string.
-	ChecksumNonce        string
-
 	// ErrorMessages contains a list of everything that's wrong with the
 	// bag. If this list is empty, the bag is valid.
 	ErrorMessages        []string
@@ -93,22 +89,22 @@ type Validator struct {
 	Warnings             []string
 }
 
-func NewValidator(pathToFile string) (*Validator, error) {
+func NewValidationResult(pathToFile string) (*ValidationResult, error) {
 	absPath, err := filepath.Abs(pathToFile)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot determine absolute path from '%s': %v",
 			pathToFile, err)
 	}
-	var validator *Validator
+	var validator *ValidationResult
 	if _, err := os.Stat(absPath); os.IsNotExist(err) {
 		return nil, fmt.Errorf("File does not exist at %s", absPath)
 	}
 	if strings.HasSuffix(absPath, ".tar") {
-		validator = &Validator{
+		validator = &ValidationResult{
 			TarFilePath: absPath,
 		}
 	} else {
-		validator = &Validator{
+		validator = &ValidationResult{
 			UntarredPath: absPath,
 		}
 	}
@@ -116,17 +112,17 @@ func NewValidator(pathToFile string) (*Validator, error) {
 }
 
 // IsValid() returns true if the bag is valid.
-func (validator *Validator) IsValid() (bool) {
+func (validator *ValidationResult) IsValid() (bool) {
 	return len(validator.ErrorMessages) == 0
 }
 
 // AddError adds a message to the list of validation errors.
-func (validator *Validator) AddError(message string) () {
+func (validator *ValidationResult) AddError(message string) () {
 	validator.ErrorMessages = append(validator.ErrorMessages, message)
 }
 
 // AddWarning adds a message to the list of validation errors.
-func (validator *Validator) AddWarning(message string) () {
+func (validator *ValidationResult) AddWarning(message string) () {
 	validator.Warnings = append(validator.Warnings, message)
 }
 
@@ -134,13 +130,13 @@ func (validator *Validator) AddWarning(message string) () {
 // If your bag is untarred to /mnt/data/my_bag and you call
 // this function with param 'dpn-tags/dpn-info.txt', you'll
 // get /mnt/data/my_bag/dpn-tags/dpn-info.txt
-func (validator *Validator) PathToFileInBag(relativePath string) (string) {
+func (validator *ValidationResult) PathToFileInBag(relativePath string) (string) {
 	return filepath.Join(validator.UntarredPath, relativePath)
 }
 
 
 // Run all validation checks on the bag.
-func (validator *Validator) ValidateBag()  {
+func (validator *ValidationResult) ValidateBag()  {
 	if validator.BagNameValid() == false {
 		validator.AddError("Bag name is not valid. It should be a UUID.")
 		return
@@ -214,7 +210,7 @@ func (validator *Validator) ValidateBag()  {
 // and "dpn-info.txt" and make sure the required tags are present.
 // There may be other tag files, but since they're optional, we don't
 // have to check their content.
-func (validator *Validator) checkRequiredTags(bag *bagins.Bag) {
+func (validator *ValidationResult) checkRequiredTags(bag *bagins.Bag) {
 	for _, file := range TagFiles() {
 		tagFile, err := bag.TagFile(file)
 		if err != nil {
@@ -235,7 +231,7 @@ func (validator *Validator) checkRequiredTags(bag *bagins.Bag) {
 	}
 }
 
-func (validator *Validator) BagNameValid() (bool) {
+func (validator *ValidationResult) BagNameValid() (bool) {
 	bagPath := validator.TarFilePath
 	if bagPath == "" {
 		bagPath = validator.UntarredPath
@@ -246,12 +242,12 @@ func (validator *Validator) BagNameValid() (bool) {
 
 // If the tag manifest is present, bagins will validate it.
 // We have to make sure it's here, and bagins will do the rest.
-func (validator *Validator) tagManifestPresent() (bool) {
+func (validator *ValidationResult) tagManifestPresent() (bool) {
 	fullPath := filepath.Join(validator.UntarredPath, "tagmanifest-sha256.txt")
 	return bagman.FileExists(fullPath)
 }
 
-func (validator *Validator) CalculateTagManifestDigest(nonce string)  {
+func (validator *ValidationResult) CalculateTagManifestDigest(nonce string)  {
 	filePath := validator.PathToFileInBag("tagmanifest-sha256.txt")
 	src, err := os.Open(filePath)
 	if err != nil {
@@ -272,7 +268,7 @@ func (validator *Validator) CalculateTagManifestDigest(nonce string)  {
 }
 
 
-func (validator *Validator) untar() (bool) {
+func (validator *ValidationResult) untar() (bool) {
 	absInputFile, err := filepath.Abs(validator.TarFilePath)
 	if err != nil {
 		validator.AddError(fmt.Sprintf("Before untarring, could not determine "+
@@ -336,7 +332,7 @@ func (validator *Validator) untar() (bool) {
 	return true
 }
 
-func (validator *Validator) saveFile (destination string, tarReader *tar.Reader) {
+func (validator *ValidationResult) saveFile (destination string, tarReader *tar.Reader) {
 	outputWriter, err := os.OpenFile(destination, os.O_CREATE|os.O_WRONLY, 0644)
 	if outputWriter != nil {
 		defer outputWriter.Close()
@@ -351,7 +347,7 @@ func (validator *Validator) saveFile (destination string, tarReader *tar.Reader)
 	}
 }
 
-func (validator *Validator) DeleteUntarredBag () {
+func (validator *ValidationResult) DeleteUntarredBag () {
 	fmt.Println(validator.UntarredPath)
 	//os.RemoveAll(validator.UntarredPath)
 }
