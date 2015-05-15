@@ -25,6 +25,11 @@ type DPNResult struct {
 	// For bags coming from other nodes, this will be blank.
 	BagIdentifier    string
 
+	// LocalPath is where this bag is stored on disk. The bag
+	// may be a file ending in .tar or a directory if the bag
+	// is not tarred.
+	LocalPath        string
+
 	// The NSQ message being processed. May be nil if we're
 	// running tests.
 	NsqMessage       *nsq.Message  `json:"-"`
@@ -43,6 +48,11 @@ type DPNResult struct {
 	// bags ingested through APTrust and in the packaging stage,
 	// since the bag won't have a UUID until after it's packaged.
 	DPNBag           *DPNBag
+
+	// The DPN transfer request associated with this bag. This will
+	// be nil if it's a bag created at our own node. It will be
+	// non-nil for bags we're replicating from other nodes.
+	TransferRequest  *DPNReplicationTransfer
 
 	// The result of the attempt to package this object as a DPN
 	// bag. We only package APTrust bags that we ingested and that
