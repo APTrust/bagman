@@ -94,6 +94,7 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Start processing.
+	dpnResult.Stage = STAGE_PACKAGE
 	packager.LookupChannel <- dpnResult
 	packager.ProcUtil.MessageLog.Info("Put %s into lookup channel",
 		dpnResult.BagIdentifier)
@@ -331,6 +332,7 @@ func (packager *Packager) postProcess() {
 			// This is a test message, running outside production.
 			packager.WaitGroup.Done()
 		}
+		packager.ProcUtil.LogStats()
 	}
 }
 
@@ -352,7 +354,6 @@ func (packager *Packager) SendToStorageQueue(result *DPNResult) {
 }
 
 func (packager *Packager) SendToTroubleQueue(result *DPNResult) {
-	result.Stage = STAGE_PACKAGE
 	result.ErrorMessage += " This item has been queued for administrative review."
 	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
 		packager.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
