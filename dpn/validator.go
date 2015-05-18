@@ -17,13 +17,32 @@ type Validator struct {
 	ValidationChannel   chan *DPNResult
 	PostProcessChannel  chan *DPNResult
 	ProcUtil            *bagman.ProcessUtil
+	DPNConfig           *DPNConfig
+	LocalRESTClient     *DPNRestClient
 	// WaitGroup is for running local tests only.
 	WaitGroup           sync.WaitGroup
 }
 
-func NewValidator(procUtil *bagman.ProcessUtil) (*Validator) {
+func NewValidator(procUtil *bagman.ProcessUtil, pathToConfigFile string) (*Validator, error) {
+	// Config contains settings for connecting to our local DPN REST service
+	config, err := LoadConfig(pathToConfigFile)
+	if err != nil {
+		return nil, err
+	}
+	// Set up a DPN REST client that talks to our local DPN REST service.
+	localClient, err := NewDPNRestClient(
+		config.RestClient.LocalServiceURL,
+		config.RestClient.LocalAPIRoot,
+		config.RestClient.LocalAuthToken,
+		procUtil.MessageLog)
+	if err != nil {
+		return nil, err
+	}
+
 	validator := &Validator {
 		ProcUtil: procUtil,
+		LocalRESTClient: localClient,
+		DPNConfig: config,
 	}
 	workerBufferSize := procUtil.Config.DPNPackageWorker.Workers * 4
 	validator.ValidationChannel = make(chan *DPNResult, workerBufferSize)
@@ -32,7 +51,7 @@ func NewValidator(procUtil *bagman.ProcessUtil) (*Validator) {
 		go validator.validate()
 		go validator.postProcess()
 	}
-	return validator
+	return validator, nil
 }
 
 func (validator *Validator) HandleMessage(message *nsq.Message) error {
@@ -113,6 +132,13 @@ func (validator *Validator) validate() {
 			}
 		}
 
+		// If this is a transfer request, tell the remote node
+		// whether the bag was valid, and what checksum we calculated
+		// on the tag manifest.
+		if result.TransferRequest != nil {
+			validator.updateRemoteNode(result)
+		}
+
 		// Now everything goes into the post-process channel.
 		validator.PostProcessChannel <- result
 	}
@@ -127,17 +153,8 @@ func (validator *Validator) postProcess() {
 			validator.ProcUtil.IncrementFailed()
 			SendToTroubleQueue(result, validator.ProcUtil)
 		} else {
-
 			SendToStorageQueue(result, validator.ProcUtil)
 		}
-		// If bag failed validation, send to trouble queue
-		// If bag is OK:
-		//    1) send message to remote node
-		//    2) retrieve Xfer request from remote node and
-		//       make sure fixity accept is true and request
-		//       status is not 'Cancelled'
-		//    3) If Xfer is a go, send to storage queue,
-		//       otherwise, send to trouble queue
 
 		if result.NsqMessage == nil {
 			// This is a test message, running outside production.
@@ -147,4 +164,57 @@ func (validator *Validator) postProcess() {
 		}
 		validator.ProcUtil.LogStats()
 	}
+}
+
+// We update the remote node for transfer requests only. We don't
+// to this for bags we packaged locally.
+//
+// When we receive a valid bag, tell the remote node that we
+// got the bag and it looks OK. Send the tag manifest checksum.
+// If the remote node accepts the checksum, we'll send the bag
+// off to storage. There could be one of two problems here:
+//
+// 1. We determined that the bag was not valid. (Bad checksum,
+//    missing files, or some similar issue.)
+// 2. The remote node did not accept the checksum we calculated
+//    on the tag manifest.
+//
+// In either case, the remote node will set the status of the
+// transfer request to 'Cancelled'. If that happens, we'll set
+// the error message on the result and we will delete the bag
+// without sending it to storage.
+//
+// If the bag is valid and the remote node accepts our tag
+// manifest checksum, this bag will go into the storage queue.
+func (validator *Validator) updateRemoteNode(result *DPNResult) {
+	//    2) retrieve Xfer request from remote node and
+	//       make sure fixity accept is true and request
+	//       status is not 'Cancelled'
+
+	if result.TransferRequest == nil {
+		result.ErrorMessage = "Cannot update remote node because transfer request is missing."
+		return
+	}
+
+	// Update the transfer request
+	result.TransferRequest.Status = "Received"
+	result.TransferRequest.FixityValue = result.ValidationResult.TagManifestChecksum
+
+	// Get a DPN REST client that can talk to the node that
+	// this transfer originated from.
+	remoteNode, err := validator.LocalRESTClient.DPNNodeGet(result.TransferRequest.FromNode)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Error retrieving node record for '%s' "+
+			"from local DPN REST service: %v", result.TransferRequest.FromNode, err)
+		return
+	}
+
+	authToken := "" // TODO: Get from settings or environment?
+	remoteRESTClient, err := NewDPNRestClient(
+		remoteNode.APIRoot,
+		validator.DPNConfig.RestClient.LocalAPIRoot, // All nodes should be on same version as local
+		authToken,
+		validator.ProcUtil.MessageLog)
+
+	fmt.Println(remoteRESTClient) // Temporary. Stops go build's "declared and not used" error
 }
