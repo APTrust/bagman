@@ -59,7 +59,7 @@ func (validator *Validator) validate() {
 			result.NsqMessage.Touch()
 		}
 		var err error
-		result.ValidationResult, err = NewValidationResult(result.LocalPath)
+		result.ValidationResult, err = NewValidationResult(result.LocalPath, result.NsqMessage)
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf(
 				"Could not create ValidationResult for bag %s: %v",
@@ -73,11 +73,15 @@ func (validator *Validator) validate() {
 			validator.ProcUtil.MessageLog.Info("FixityNonce for bag %s is %s",
 				result.DPNBag.UUID, nonce)
 		} else {
-			validator.ProcUtil.MessageLog.Info("FixityNonce for bag %s", result.DPNBag.UUID)
+			validator.ProcUtil.MessageLog.Info("No FixityNonce for bag %s", result.DPNBag.UUID)
 		}
 		result.ValidationResult.CalculateTagManifestDigest(nonce)
 		if !result.ValidationResult.IsValid() {
 			result.ErrorMessage = "Bag failed validation. See error messages in ValidationResult."
+			validator.ProcUtil.MessageLog.Error(result.ErrorMessage)
+			for _, message := range result.ValidationResult.ErrorMessages {
+				validator.ProcUtil.MessageLog.Error(message)
+			}
 		}
 		validator.PostProcessChannel <- result
 	}

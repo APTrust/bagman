@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
+	"github.com/bitly/go-nsq"
 	"io"
 	"os"
 	"path/filepath"
@@ -75,6 +76,12 @@ type ValidationResult struct {
 	// UntarredPath is the path to the untarred version of this bag.
 	UntarredPath         string
 
+	// The NSQ message we're currently working on. This will be nil
+	// outside of production. In production, we need to touch the
+	// message periodically to keep it from timing out, especially
+	// on very large bags.
+	NsqMessage           *nsq.Message
+
 	// TagManifestChecksum is the sha256 digest (calculated with a nonce)
 	// that we need to send back to the originating node as a receipt
 	// when we're fulfilling replication requests. Outside of fulfilling
@@ -89,7 +96,7 @@ type ValidationResult struct {
 	Warnings             []string
 }
 
-func NewValidationResult(pathToFile string) (*ValidationResult, error) {
+func NewValidationResult(pathToFile string, nsqMessage *nsq.Message) (*ValidationResult, error) {
 	absPath, err := filepath.Abs(pathToFile)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot determine absolute path from '%s': %v",
@@ -102,10 +109,12 @@ func NewValidationResult(pathToFile string) (*ValidationResult, error) {
 	if strings.HasSuffix(absPath, ".tar") {
 		validator = &ValidationResult{
 			TarFilePath: absPath,
+			NsqMessage: nsqMessage,
 		}
 	} else {
 		validator = &ValidationResult{
 			UntarredPath: absPath,
+			NsqMessage: nsqMessage,
 		}
 	}
 	return validator, nil
@@ -141,11 +150,20 @@ func (validator *ValidationResult) ValidateBag()  {
 		validator.AddError("Bag name is not valid. It should be a UUID.")
 		return
 	}
+	if validator.NsqMessage != nil {
+		validator.NsqMessage.Touch()
+	}
 	if validator.TarFilePath != "" && validator.UntarredPath == "" {
 		if validator.untar() == false {
 			return
 		}
 	}
+	// Untar can take a long time on large bags.
+	// Let NSQ know we're still working on it.
+	if validator.NsqMessage != nil {
+		validator.NsqMessage.Touch()
+	}
+
 	if validator.tagManifestPresent() == false {
 		validator.AddError("Tag manifest file 'tagmanifest-sha256.txt' is missing.")
 		return
@@ -198,9 +216,19 @@ func (validator *ValidationResult) ValidateBag()  {
 		validator.AddError("Bag's data directory is missing or empty.")
 	}
 
+	// Make sure the tag files have the required tags.
+	// They can be empty, but they have to be present.
 	validator.checkRequiredTags(bag)
 
+	// Run all the checksums on all files.
 	checksumErrors := bag.Manifest.RunChecksums()
+
+	// Running the checksums takes a long time on
+	// large bags, so let NSQ know we're still working.
+	if validator.NsqMessage != nil {
+		validator.NsqMessage.Touch()
+	}
+
 	for _, err := range checksumErrors {
 		validator.AddError(err.Error())
 	}

@@ -35,7 +35,7 @@ func TestValidate_Good(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -56,7 +56,7 @@ func TestValidate_BagMissingDataFile(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -84,7 +84,7 @@ func TestValidate_BagMissingManifest256(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -110,7 +110,7 @@ func TestValidate_BagMissingTags(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -138,7 +138,7 @@ func TestValidate_BagMissingTagManifest(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath, nil)
 	if err != nil {
 		t.Error(err)
 		return
@@ -167,7 +167,7 @@ func TestValidate_Digest(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	result, err := dpn.NewValidationResult(bagPath)
+	result, err := dpn.NewValidationResult(bagPath, nil)
 	if err != nil {
 		t.Error(err)
 		return
