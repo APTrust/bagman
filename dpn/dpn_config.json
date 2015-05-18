@@ -13,5 +13,11 @@
         "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
         "IngestNodeContactName": "APTrust Administrator",
         "IngestNodeContactEmail": "help@aptrust.org"
+    },
+    "RemoteNodeTokens": {
+        "chron": "00000000",
+        "hathi": "11111111",
+        "sdr":   "22222222",
+        "tdr":   "33333333"
     }
 }

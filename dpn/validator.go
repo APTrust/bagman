@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
-//	"os"
+	"os"
 //	"path/filepath"
 //	"strings"
 	"sync"
@@ -152,7 +152,14 @@ func (validator *Validator) postProcess() {
 		if result.ErrorMessage != "" {
 			validator.ProcUtil.IncrementFailed()
 			SendToTroubleQueue(result, validator.ProcUtil)
+			if bagman.FileExists(result.ValidationResult.TarFilePath) {
+				os.Remove(result.ValidationResult.TarFilePath)
+			}
+			if bagman.FileExists(result.ValidationResult.UntarredPath) {
+				os.RemoveAll(result.ValidationResult.UntarredPath)
+			}
 		} else {
+			validator.ProcUtil.Succeeded()
 			SendToStorageQueue(result, validator.ProcUtil)
 		}
 
@@ -196,10 +203,6 @@ func (validator *Validator) updateRemoteNode(result *DPNResult) {
 		return
 	}
 
-	// Update the transfer request
-	result.TransferRequest.Status = "Received"
-	result.TransferRequest.FixityValue = result.ValidationResult.TagManifestChecksum
-
 	// Get a DPN REST client that can talk to the node that
 	// this transfer originated from.
 	remoteNode, err := validator.LocalRESTClient.DPNNodeGet(result.TransferRequest.FromNode)
@@ -209,12 +212,33 @@ func (validator *Validator) updateRemoteNode(result *DPNResult) {
 		return
 	}
 
-	authToken := "" // TODO: Get from settings or environment?
+	authToken := validator.DPNConfig.RemoteNodeTokens[remoteNode.Namespace]
+	if authToken == "" {
+		result.ErrorMessage = fmt.Sprintf("Cannot get auth token for node %s", remoteNode.Namespace)
+		return
+	}
 	remoteRESTClient, err := NewDPNRestClient(
 		remoteNode.APIRoot,
 		validator.DPNConfig.RestClient.LocalAPIRoot, // All nodes should be on same version as local
 		authToken,
 		validator.ProcUtil.MessageLog)
 
-	fmt.Println(remoteRESTClient) // Temporary. Stops go build's "declared and not used" error
+	// Update the transfer request and send it back to the remote node.
+	// We'll get an updated transfer request back from that node.
+	result.TransferRequest.Status = "Received"
+	result.TransferRequest.FixityValue = result.ValidationResult.TagManifestChecksum
+	xfer, err := remoteRESTClient.ReplicationTransferUpdate(result.TransferRequest)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Error updating transfer request on remote node: %v", err)
+		return
+	}
+	if *xfer.FixityAccept == false {
+		result.ErrorMessage = "Remote node did not accept the fixity value we sent for this bag. " +
+			"This cancels the transfer request, and we will not store the bag."
+		return
+	}
+	if xfer.Status == "Cancelled" {
+		result.ErrorMessage = "This transfer request has been marked as cancelled on the remote node. " +
+			"This bag will not be copied to storage."
+	}
 }

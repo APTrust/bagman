@@ -164,8 +164,12 @@ type RestClientConfig struct {
 }
 
 type DPNConfig struct {
+	// Default metadata that goes into bags produced at our node.
 	DefaultMetadata       *DefaultMetadata
+	// Settings for connecting to our own REST service
 	RestClient            *RestClientConfig
+	// API Tokens for connecting to remote nodes
+	RemoteNodeTokens      map[string]string
 }
 
 func LoadConfig(pathToFile string) (*DPNConfig, error) {
