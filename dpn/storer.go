@@ -54,6 +54,7 @@ func (storer *Storer) HandleMessage(message *nsq.Message) error {
 		return fmt.Errorf("Could not unmarshal JSON data from nsq")
 	}
 	result.NsqMessage = message
+	result.Stage = STAGE_STORE
 	bagIdentifier := result.BagIdentifier
 	if bagIdentifier == "" {
 		bagIdentifier = "DPN Replication Bag"
@@ -187,7 +188,7 @@ func (storer *Storer) postProcess() {
 			// Send to queue for recording in Fluctus and/or DPN REST
 			if result.NsqMessage != nil {
 				result.NsqMessage.Finish()
-				storer.SendToRecordQueue(result)
+				SendToRecordQueue(result, storer.ProcUtil)
 			}
 		} else {
 			// FAILURE :(
@@ -199,7 +200,7 @@ func (storer *Storer) postProcess() {
 				if result.NsqMessage.Attempts >= uint16(storer.ProcUtil.Config.DPNStoreWorker.MaxAttempts) {
 					// No more retries
 					result.NsqMessage.Finish()
-					storer.SendToTroubleQueue(result)
+					SendToTroubleQueue(result, storer.ProcUtil)
 				} else {
 					storer.ProcUtil.MessageLog.Info("Requeuing %s (%s)",
 						bagIdentifier, result.PackageResult.TarFilePath)
@@ -227,39 +228,6 @@ func (storer *Storer) GetS3Options(result *DPNResult) (s3.Options, error) {
 	}
 	options := storer.ProcUtil.S3Client.MakeOptions(base64md5, s3Metadata)
 	return options, nil
-}
-
-
-func (storer *Storer) SendToRecordQueue(result *DPNResult) {
-	// Record has to record PREMIS event in Fluctus if
-	// BagIdentifier is present. It will definitely have
-	// to record information in the DPN REST API.
-	err := bagman.Enqueue(storer.ProcUtil.Config.NsqdHttpAddress,
-		storer.ProcUtil.Config.DPNRecordWorker.NsqTopic, result)
-	if err != nil {
-		bagIdentifier := result.BagIdentifier
-		if bagIdentifier == "" {
-			bagIdentifier = result.PackageResult.BagBuilder.UUID
-		}
-		message := fmt.Sprintf("Could not send '%s' (at %s) to record queue: %v",
-			bagIdentifier, result.PackageResult.TarFilePath, err)
-		result.ErrorMessage += message
-		storer.ProcUtil.MessageLog.Error(message)
-		storer.SendToTroubleQueue(result)
-	}
-}
-
-func (storer *Storer) SendToTroubleQueue(result *DPNResult) {
-	result.Stage = STAGE_STORE
-	result.ErrorMessage += " This item has been queued for administrative review."
-	err := bagman.Enqueue(storer.ProcUtil.Config.NsqdHttpAddress,
-		storer.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
-	if err != nil {
-		storer.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
-			result.BagIdentifier, err)
-		storer.ProcUtil.MessageLog.Error("Original error on '%s' was %s",
-			result.BagIdentifier, result.ErrorMessage)
-	}
 }
 
 func (storer *Storer) RunTest(result *DPNResult) {

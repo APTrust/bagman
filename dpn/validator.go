@@ -125,9 +125,10 @@ func (validator *Validator) postProcess() {
 		}
 		if result.ErrorMessage != "" {
 			validator.ProcUtil.IncrementFailed()
-			validator.SendToTroubleQueue(result)
+			SendToTroubleQueue(result, validator.ProcUtil)
 		} else {
 
+			SendToStorageQueue(result, validator.ProcUtil)
 		}
 		// If bag failed validation, send to trouble queue
 		// If bag is OK:
@@ -145,18 +146,5 @@ func (validator *Validator) postProcess() {
 			result.NsqMessage.Finish()
 		}
 		validator.ProcUtil.LogStats()
-	}
-}
-
-
-
-func (validator *Validator) SendToTroubleQueue(result *DPNResult) {
-	err := bagman.Enqueue(validator.ProcUtil.Config.NsqdHttpAddress,
-		validator.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
-	if err != nil {
-		validator.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
-			result.BagIdentifier, err)
-		validator.ProcUtil.MessageLog.Error("Original error on '%s' was %s",
-			result.BagIdentifier, result.ErrorMessage)
 	}
 }

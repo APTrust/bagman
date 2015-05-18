@@ -305,7 +305,7 @@ func (packager *Packager) postProcess() {
 			// it will be uploaded to Glacier.
 			if result.NsqMessage != nil {
 				result.NsqMessage.Finish()
-				packager.SendToStorageQueue(result)
+				SendToStorageQueue(result, packager.ProcUtil)
 			}
 		} else {
 			if packager.reachedMaxAttempts(result) {
@@ -315,7 +315,7 @@ func (packager *Packager) postProcess() {
 				// for admin review.
 				if result.NsqMessage != nil {
 					result.NsqMessage.Finish()
-					packager.SendToTroubleQueue(result)
+					SendToTroubleQueue(result, packager.ProcUtil)
 				}
 			} else {  // Failed, but we can still retry
 				packager.ProcUtil.MessageLog.Warning(
@@ -340,30 +340,6 @@ func (packager *Packager) postProcess() {
 //
 // ----- END OF GO ROUTINES. SYNCHRONOUS FUNCTIONS FROM HERE DOWN -----
 //
-
-func (packager *Packager) SendToStorageQueue(result *DPNResult) {
-	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
-		packager.ProcUtil.Config.DPNStoreWorker.NsqTopic, result)
-	if err != nil {
-		message := fmt.Sprintf("Could not send '%s' (at %s) to storage queue: %v",
-			result.BagIdentifier, result.PackageResult.TarFilePath, err)
-		result.ErrorMessage += message
-		packager.ProcUtil.MessageLog.Error(message)
-		packager.SendToTroubleQueue(result)
-	}
-}
-
-func (packager *Packager) SendToTroubleQueue(result *DPNResult) {
-	result.ErrorMessage += " This item has been queued for administrative review."
-	err := bagman.Enqueue(packager.ProcUtil.Config.NsqdHttpAddress,
-		packager.ProcUtil.Config.DPNTroubleWorker.NsqTopic, result)
-	if err != nil {
-		packager.ProcUtil.MessageLog.Error("Could not send '%s' to trouble queue: %v",
-			result.BagIdentifier, err)
-		packager.ProcUtil.MessageLog.Error("Original error on '%s' was %s",
-			result.BagIdentifier, result.ErrorMessage)
-	}
-}
 
 func (packager *Packager) reachedMaxAttempts(result *DPNResult) (bool) {
 	if result.NsqMessage == nil {
