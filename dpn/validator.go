@@ -6,10 +6,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"os"
-//	"path/filepath"
-//	"strings"
 	"sync"
-//	"time"
 )
 
 
@@ -23,17 +20,12 @@ type Validator struct {
 	WaitGroup           sync.WaitGroup
 }
 
-func NewValidator(procUtil *bagman.ProcessUtil, pathToConfigFile string) (*Validator, error) {
-	// Config contains settings for connecting to our local DPN REST service
-	config, err := LoadConfig(pathToConfigFile)
-	if err != nil {
-		return nil, err
-	}
+func NewValidator(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Validator, error) {
 	// Set up a DPN REST client that talks to our local DPN REST service.
 	localClient, err := NewDPNRestClient(
-		config.RestClient.LocalServiceURL,
-		config.RestClient.LocalAPIRoot,
-		config.RestClient.LocalAuthToken,
+		dpnConfig.RestClient.LocalServiceURL,
+		dpnConfig.RestClient.LocalAPIRoot,
+		dpnConfig.RestClient.LocalAuthToken,
 		procUtil.MessageLog)
 	if err != nil {
 		return nil, err
@@ -42,7 +34,7 @@ func NewValidator(procUtil *bagman.ProcessUtil, pathToConfigFile string) (*Valid
 	validator := &Validator {
 		ProcUtil: procUtil,
 		LocalRESTClient: localClient,
-		DPNConfig: config,
+		DPNConfig: dpnConfig,
 	}
 	workerBufferSize := procUtil.Config.DPNPackageWorker.Workers * 4
 	validator.ValidationChannel = make(chan *DPNResult, workerBufferSize)
@@ -194,10 +186,6 @@ func (validator *Validator) postProcess() {
 // If the bag is valid and the remote node accepts our tag
 // manifest checksum, this bag will go into the storage queue.
 func (validator *Validator) updateRemoteNode(result *DPNResult) {
-	//    2) retrieve Xfer request from remote node and
-	//       make sure fixity accept is true and request
-	//       status is not 'Cancelled'
-
 	if result.TransferRequest == nil {
 		result.ErrorMessage = "Cannot update remote node because transfer request is missing."
 		return
@@ -240,5 +228,22 @@ func (validator *Validator) updateRemoteNode(result *DPNResult) {
 	if xfer.Status == "Cancelled" {
 		result.ErrorMessage = "This transfer request has been marked as cancelled on the remote node. " +
 			"This bag will not be copied to storage."
+	}
+}
+
+func (validator *Validator) RunTest(result *DPNResult) {
+	validator.WaitGroup.Add(1)
+	validator.ProcUtil.MessageLog.Info("Putting %s into validation channel",
+		result.BagIdentifier)
+	validator.ValidationChannel <- result
+	validator.WaitGroup.Wait()
+	if result.ErrorMessage != "" {
+		validator.ProcUtil.MessageLog.Error("Failed :( %s", result.ErrorMessage)
+		return
+	}
+	if result.ValidationResult.IsValid() {
+		validator.ProcUtil.MessageLog.Info("--- Validation Succeeded! ---")
+	} else {
+		validator.ProcUtil.MessageLog.Error("Bag failed validation.")
 	}
 }
