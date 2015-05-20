@@ -43,28 +43,16 @@ type Packager struct {
 	TarChannel          chan *DPNResult
 	CleanupChannel      chan *DPNResult
 	PostProcessChannel  chan *DPNResult
-	DPNConfig           *DPNConfig
+	DefaultMetadata     *DefaultMetadata
 	ProcUtil            *bagman.ProcessUtil
-	LocalRESTClient     *DPNRestClient
 	// WaitGroup is for running local tests only.
 	WaitGroup           sync.WaitGroup
 }
 
-func NewPackager(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Packager, error) {
-	// Set up a DPN REST client that talks to our local DPN REST service.
-	localClient, err := NewDPNRestClient(
-		dpnConfig.RestClient.LocalServiceURL,
-		dpnConfig.RestClient.LocalAPIRoot,
-		dpnConfig.RestClient.LocalAuthToken,
-		procUtil.MessageLog)
-	if err != nil {
-		return nil, err
-	}
-
+func NewPackager(procUtil *bagman.ProcessUtil, defaultMetadata *DefaultMetadata) (*Packager) {
 	packager := &Packager {
-		DPNConfig: dpnConfig,
+		DefaultMetadata: defaultMetadata,
 		ProcUtil: procUtil,
-		LocalRESTClient: localClient,
 	}
 
 	workerBufferSize := procUtil.Config.DPNPackageWorker.Workers * 4
@@ -86,7 +74,7 @@ func NewPackager(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Packager,
 	for i := 0; i <  procUtil.Config.DPNPackageWorker.NetworkConnections; i++ {
 		go packager.doFetch()
 	}
-	return packager, nil
+	return packager
 }
 
 // MessageHandler handles messages from NSQ, putting each
@@ -157,7 +145,7 @@ func (packager *Packager) doLookup() {
 				continue
 			}
 			// Woo-hoo!
-			result.PackageResult.BagBuilder = NewBagBuilder(dir, intelObj, packager.DPNConfig.DefaultMetadata)
+			result.PackageResult.BagBuilder = NewBagBuilder(dir, intelObj, packager.DefaultMetadata)
 			packager.FetchChannel <- result
 		}
 	}
