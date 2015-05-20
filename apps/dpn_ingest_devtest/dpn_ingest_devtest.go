@@ -16,10 +16,7 @@ func main() {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
 	fmt.Println("Creating packager...")
-	packager, err := dpn.NewPackager(procUtil, dpnConfig)
-	if err != nil {
-		procUtil.MessageLog.Fatal(err.Error())
-	}
+	packager := dpn.NewPackager(procUtil, dpnConfig)
 	dpnResult := packager.RunTest("test.edu/ncsu.1840.16-1004")
 	if dpnResult.ErrorMessage == "" {
 		fmt.Println("Packager succeeded. Moving to storage.")
@@ -32,13 +29,13 @@ func main() {
 
 	// The bag that the packager created should still be on disk.
 	// Let's validate it.
-	fmt.Println("Creating validator...")
-	validator, err := dpn.NewValidator(procUtil, dpnConfig)
-	if err != nil {
-		procUtil.MessageLog.Fatal(err.Error())
-	}
-	// This will print success or error messages to the console & log.
-	validator.RunTest(dpnResult)
+	// fmt.Println("Creating validator...")
+	// validator, err := dpn.NewValidator(procUtil, dpnConfig)
+	// if err != nil {
+	// 	procUtil.MessageLog.Fatal(err.Error())
+	// }
+	// // This will print success or error messages to the console & log.
+	// validator.RunTest(dpnResult)
 
 	dpnResult.ErrorMessage += "  Nothing wrong. Just testing the trouble processor."
 	troubleProcessor := dpn.NewTroubleProcessor(procUtil)

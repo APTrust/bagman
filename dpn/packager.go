@@ -43,15 +43,15 @@ type Packager struct {
 	TarChannel          chan *DPNResult
 	CleanupChannel      chan *DPNResult
 	PostProcessChannel  chan *DPNResult
-	DefaultMetadata     *DefaultMetadata
+	DPNConfig           *DPNConfig
 	ProcUtil            *bagman.ProcessUtil
 	// WaitGroup is for running local tests only.
 	WaitGroup           sync.WaitGroup
 }
 
-func NewPackager(procUtil *bagman.ProcessUtil, defaultMetadata *DefaultMetadata) (*Packager) {
+func NewPackager(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Packager) {
 	packager := &Packager {
-		DefaultMetadata: defaultMetadata,
+		DPNConfig: dpnConfig,
 		ProcUtil: procUtil,
 	}
 
@@ -145,7 +145,7 @@ func (packager *Packager) doLookup() {
 				continue
 			}
 			// Woo-hoo!
-			result.PackageResult.BagBuilder = NewBagBuilder(dir, intelObj, packager.DefaultMetadata)
+			result.PackageResult.BagBuilder = NewBagBuilder(dir, intelObj, packager.DPNConfig.DefaultMetadata)
 			packager.FetchChannel <- result
 		}
 	}
