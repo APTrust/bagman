@@ -20,7 +20,10 @@ func main() {
 	dpnResult := packager.RunTest("test.edu/ncsu.1840.16-1004")
 	if dpnResult.ErrorMessage == "" {
 		fmt.Println("Packager succeeded. Moving to storage.")
-		storer := dpn.NewStorer(procUtil)
+		storer, err := dpn.NewStorer(procUtil, dpnConfig)
+		if err != nil {
+			procUtil.MessageLog.Fatal(err.Error())
+		}
 		storer.RunTest(dpnResult)
 	} else {
 		fmt.Println("Packager failed. Skipping storage step.")

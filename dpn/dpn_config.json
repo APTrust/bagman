@@ -1,4 +1,5 @@
 {
+    "LocalNode": "aptrust",
     "RestClient": {
         "Comment": "Settings for our local DPN REST API server. LocalAuthToken should be loaded from environment.",
         "LocalServiceURL": "http://localhost:8000",

@@ -141,6 +141,9 @@ type StorageResult struct {
 
 	// The file's md5 digest. We need this to copy to Amazon S3/Glacier.
 	Md5Digest       string
+
+	// Digest to be recorded in DPN.
+	Sha256Digest    string
 }
 
 // DefaultMetadata includes mostly static information about bags
@@ -164,6 +167,9 @@ type RestClientConfig struct {
 }
 
 type DPNConfig struct {
+	// LocalNode is the namespace of the node this code is running on.
+	// E.g. "aptrust", "chron", "hathi", "tdr", "sdr"
+	LocalNode             string
 	// Default metadata that goes into bags produced at our node.
 	DefaultMetadata       *DefaultMetadata
 	// Settings for connecting to our own REST service
