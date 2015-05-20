@@ -188,8 +188,18 @@ func LoadConfig(pathToFile string) (*DPNConfig, error) {
     if err != nil {
         return nil, err
     }
+	// Load local API token from environment to keep it out of config file.
+	// Need a better solution for this.
 	if config.RestClient.LocalAuthToken == "" {
 		config.RestClient.LocalAuthToken = os.Getenv("DPN_REST_TOKEN")
+	}
+	// Add local node token into the map of remote node tokens if we can,
+	// because in some of our integration tests, we do local-to-local
+	// transfers, and the code in validator.go will look in this map
+	// for the API token of the transfer from_node. In short, we really
+	// only need to do this for testing.
+	if config.RemoteNodeTokens[config.LocalNode] == "" && config.RestClient.LocalAuthToken != "" {
+		config.RemoteNodeTokens[config.LocalNode] = config.RestClient.LocalAuthToken
 	}
     return &config, nil
 }

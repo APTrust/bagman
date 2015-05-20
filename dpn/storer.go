@@ -240,7 +240,9 @@ func (storer *Storer) createBagRecord() {
 
 func (storer *Storer) cleanup() {
 	for result := range storer.CleanupChannel {
-		if result.ErrorMessage == "" && result.StorageResult.StorageURL != "" {
+		thisIsNotATest := (result.NsqMessage != nil)
+		storageSucceeded := (result.ErrorMessage == "" && result.StorageResult.StorageURL != "")
+		if storageSucceeded && thisIsNotATest {
 			err := os.Remove(result.PackageResult.TarFilePath)
 			if err != nil {
 				storer.ProcUtil.MessageLog.Warning("Error cleaning up %s: %v",

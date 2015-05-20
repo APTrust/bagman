@@ -37,6 +37,10 @@ func NewDPNRestClient(hostUrl, apiVersion, apiKey string, logger *logging.Logger
 		DisableKeepAlives:   false,
 	}
 	httpClient := &http.Client{Jar: cookieJar, Transport: transport}
+	// Trim trailing slashes from host url
+	for strings.HasSuffix(hostUrl, "/") {
+		hostUrl = hostUrl[:len(hostUrl)-1]
+	}
 	return &DPNRestClient{hostUrl, apiVersion, apiKey, httpClient, transport, logger, nil}, nil
 }
 
