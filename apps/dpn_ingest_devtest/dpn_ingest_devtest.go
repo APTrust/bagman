@@ -66,14 +66,6 @@ func main() {
 		procUtil.MessageLog.Error(
 			"Could not create replication request on local DPN REST node: %v", err)
 	} else {
-		procUtil.MessageLog.Info("\n\nTrying validation with replication request. \n" +
-			"We have a problem here. The REST server does not store the nonced checksum \n" +
-			"of the tag manifest. It actually only stores the fixity value of \n" +
-			"the bag, and checks against that, which is wrong, according to the \n" +
-			"spec. For now, if you see a message below saying \n" +
-			"Remote node did not accept the fixity value we sent for this bag.\n" +
-			"Then this test is passing. We need to fix our service implementation.\n")
-
 		dpnResult.TransferRequest = xferRequest
 		dpnResult.ValidationResult = nil
 		validator.RunTest(dpnResult)

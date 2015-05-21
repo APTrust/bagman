@@ -30,6 +30,15 @@ type DPNResult struct {
 	// is not tarred.
 	LocalPath        string
 
+	// The bag's md5 digest. We need this to copy to Amazon S3/Glacier.
+	BagMd5Digest     string
+
+	// Digest to be recorded in DPN.
+	BagSha256Digest  string
+
+	// The size of the bag
+	BagSize          int64
+
 	// The NSQ message being processed. May be nil if we're
 	// running tests.
 	NsqMessage       *nsq.Message  `json:"-"`
@@ -138,12 +147,6 @@ type StorageResult struct {
 	// The URL of this file in Glacier. This will be empty until
 	// we actually manage to store the file.
 	StorageURL      string
-
-	// The file's md5 digest. We need this to copy to Amazon S3/Glacier.
-	Md5Digest       string
-
-	// Digest to be recorded in DPN.
-	Sha256Digest    string
 }
 
 // DefaultMetadata includes mostly static information about bags

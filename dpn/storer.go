@@ -1,21 +1,17 @@
 package dpn
 
 import (
-	"crypto/md5"
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
 	"github.com/crowdmob/goamz/s3"
-	"io"
 	"os"
 	"sync"
 	"time"
 )
 
 type Storer struct {
-	DigestChannel       chan *DPNResult
 	StorageChannel      chan *DPNResult
 	CleanupChannel      chan *DPNResult
 	BagCreateChannel    chan *DPNResult
@@ -44,13 +40,11 @@ func NewStorer(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Storer, err
 		DPNConfig: dpnConfig,
 	}
 	workerBufferSize := procUtil.Config.DPNStoreWorker.Workers * 10
-	storer.DigestChannel = make(chan *DPNResult, workerBufferSize)
 	storer.StorageChannel = make(chan *DPNResult, workerBufferSize)
 	storer.BagCreateChannel = make(chan *DPNResult, workerBufferSize)
 	storer.CleanupChannel = make(chan *DPNResult, workerBufferSize)
 	storer.PostProcessChannel = make(chan *DPNResult, workerBufferSize)
 	for i := 0; i < procUtil.Config.DPNStoreWorker.Workers; i++ {
-		go storer.calculateDigest()
 		go storer.createBagRecord()
 		go storer.cleanup()
 		go storer.postProcess()
@@ -71,6 +65,14 @@ func (storer *Storer) HandleMessage(message *nsq.Message) error {
 		message.Finish()
 		return fmt.Errorf("Could not unmarshal JSON data from nsq")
 	}
+	if result.BagMd5Digest == "" || result.BagSha256Digest == "" {
+		errMsg := "Bag cannot be stored because DPNResult is missing either md5 or sha256 checksum."
+		storer.ProcUtil.MessageLog.Error(errMsg)
+		result.ErrorMessage = errMsg
+		SendToTroubleQueue(result, storer.ProcUtil)
+		message.Finish()
+		return fmt.Errorf(errMsg)
+	}
 	result.NsqMessage = message
 	result.Stage = STAGE_STORE
 	bagIdentifier := result.BagIdentifier
@@ -79,52 +81,8 @@ func (storer *Storer) HandleMessage(message *nsq.Message) error {
 	}
 	storer.ProcUtil.MessageLog.Info("Putting %s into the storage queue (%s)",
 		result.PackageResult.TarFilePath, bagIdentifier)
-	storer.DigestChannel <- result
+	storer.StorageChannel <- result
 	return nil
-}
-
-func (storer *Storer) calculateDigest() {
-	for result := range storer.DigestChannel {
-		if result.StorageResult.Md5Digest != "" {
-			storer.StorageChannel <- result
-		}
-		md5Hash := md5.New()
-		shaHash := sha256.New()
-		multiWriter := io.MultiWriter(md5Hash, shaHash)
-		reader, err := os.Open(result.PackageResult.TarFilePath)
-		if err != nil {
-			result.ErrorMessage = fmt.Sprintf("Error opening file '%s': %v",
-				result.PackageResult.TarFilePath, err)
-			storer.PostProcessChannel <- result
-			continue
-		}
-		fileInfo, err := reader.Stat()
-		if err != nil {
-			result.ErrorMessage = fmt.Sprintf("Cannot stat file '%s': %v",
-				result.PackageResult.TarFilePath, err)
-			storer.PostProcessChannel <- result
-			continue
-		}
-		// Calculate md5 and sha256 checksums in one read
-		bytesWritten, err := io.Copy(multiWriter, reader)
-		if err != nil {
-			result.ErrorMessage = fmt.Sprintf("Error running md5 checksum on file '%s': %v",
-				result.PackageResult.TarFilePath, err)
-			storer.PostProcessChannel <- result
-			continue
-		}
-		if bytesWritten != fileInfo.Size() {
-			result.ErrorMessage = fmt.Sprintf("Error running md5 checksum on file '%s': " +
-				"read only %d of %d bytes.",
-				result.PackageResult.TarFilePath, bytesWritten, fileInfo.Size())
-			storer.PostProcessChannel <- result
-			continue
-		}
-		reader.Close()
-		result.StorageResult.Md5Digest = fmt.Sprintf("%x", md5Hash.Sum(nil))
-		result.StorageResult.Sha256Digest = fmt.Sprintf("%x", shaHash.Sum(nil))
-		storer.StorageChannel <- result
-	}
 }
 
 func (storer *Storer) store() {
@@ -213,9 +171,9 @@ func (storer *Storer) createBagRecord() {
 		bagStoredSuccessfully := (result.ErrorMessage == "" && result.StorageResult.StorageURL != "")
 		if bagWasCreatedHere && bagStoredSuccessfully {
 			storer.ProcUtil.MessageLog.Debug("Creating bag record for %s with md5 %s and sha256 %s",
-				result.BagIdentifier, result.StorageResult.Md5Digest, result.StorageResult.Sha256Digest)
+				result.BagIdentifier, result.BagMd5Digest, result.BagSha256Digest)
 			fixity := &DPNFixity{
-				Sha256: result.StorageResult.Sha256Digest,
+				Sha256: result.BagSha256Digest,
 			}
 			fileInfo, err := os.Stat(result.PackageResult.TarFilePath)
 			if err != nil {
@@ -327,7 +285,7 @@ func (storer *Storer) GetS3Options(result *DPNResult) (s3.Options, error) {
 		s3Metadata["aptrust-bag"] = []string{result.BagIdentifier}
 	}
 	// Save to S3 with the base64-encoded md5 sum
-	base64md5, err := bagman.Base64EncodeMd5(result.StorageResult.Md5Digest)
+	base64md5, err := bagman.Base64EncodeMd5(result.BagMd5Digest)
 	if err != nil {
 		return s3.Options{}, err
 	}
@@ -339,7 +297,7 @@ func (storer *Storer) RunTest(result *DPNResult) {
 	storer.WaitGroup.Add(1)
 	storer.ProcUtil.MessageLog.Info("Putting %s into digest channel",
 		result.BagIdentifier)
-	storer.DigestChannel <- result
+	storer.StorageChannel <- result
 	storer.WaitGroup.Wait()
 	fmt.Println("Storer is done")
 }

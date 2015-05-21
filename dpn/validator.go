@@ -117,7 +117,13 @@ func (validator *Validator) validate() {
 			validator.ProcUtil.MessageLog.Info("No FixityNonce for bag %s", result.DPNBag.UUID)
 		}
 
-		// Calculate fixity of the tag manifest to send as receipt.
+		// Calculate fixity of the tag manifest.
+		// We were sending this as the receipt to the originating
+		// node to verify that we received the bag correctly.
+		// For now, we've switched to sending the sha256 checksum
+		// of the entire bag. But that may change again. Leave this
+		// in for now, so that the ValidationResult has a value in
+		// the TagManifestChecksum field.
 		result.ValidationResult.CalculateTagManifestDigest(nonce)
 
 		// If our call to ValidateBag() above found any errors, set an
@@ -130,6 +136,20 @@ func (validator *Validator) validate() {
 				validator.ProcUtil.MessageLog.Error(message)
 			}
 		}
+
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
+		}
+		fileDigest, err := bagman.CalculateDigests(result.PackageResult.TarFilePath)
+		if err != nil {
+			result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
+				result.PackageResult.TarFilePath, err)
+			validator.PostProcessChannel <- result
+			continue
+		}
+		result.BagMd5Digest = fileDigest.Md5Digest
+		result.BagSha256Digest = fileDigest.Sha256Digest
+		result.BagSize = fileDigest.Size
 
 		// If this is a transfer request, tell the remote node
 		// whether the bag was valid, and what checksum we calculated
@@ -221,10 +241,10 @@ func (validator *Validator) updateRemoteNode(result *DPNResult) {
 	bagValid := result.ValidationResult.IsValid()
 	result.TransferRequest.Status = "Received"
 	result.TransferRequest.BagValid = &bagValid
-	result.TransferRequest.FixityValue = result.ValidationResult.TagManifestChecksum
+	result.TransferRequest.FixityValue = result.BagSha256Digest
 
 	validator.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
-		"Setting status to 'Received', BagValid to %t, and tag manifest checksum to %s",
+		"Setting status to 'Received', BagValid to %t, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		result.TransferRequest.FixityValue)

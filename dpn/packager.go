@@ -185,14 +185,22 @@ func (packager *Packager) doFetch() {
 
 // doBuild builds the DPN bag, creating all of the necessary
 // tag files, manifests and directories. Data then goes into the
-// TarChannel, so the bag can be tarred up.
+// TarChannel, so the bag can be tarred up. This process can take
+// quite a while, so we poke NSQ several times to let it know
+// we're still here.
 func (packager *Packager) doBuild() {
 	for result := range packager.BuildChannel {
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
+		}
 		bag, err := result.PackageResult.BagBuilder.BuildBag()
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Error building bag: %v", err.Error())
 			packager.CleanupChannel <- result
 			continue
+		}
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
 		}
 		errors := bag.Write()
 		if errors != nil && len(errors) > 0 {
@@ -201,6 +209,10 @@ func (packager *Packager) doBuild() {
 			packager.CleanupChannel <- result
 			continue
 		}
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
+		}
+
 		packager.TarChannel <- result
 	}
 }
@@ -209,6 +221,11 @@ func (packager *Packager) doBuild() {
 // CleanupChannel.
 func (packager *Packager) doTar() {
 	for result := range packager.TarChannel {
+
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
+		}
+
 		// Figure out where the files are for this bag
 		bagDir, err := packager.DPNBagDirectory(result)
 		if err != nil {
@@ -273,6 +290,24 @@ func (packager *Packager) doTar() {
 		tarWriter.Flush()
 		tarFile.Close()
 		result.PackageResult.TarFilePath = tarFilePath
+
+		// Calculate the checksums. We need the md5 for the put to S3,
+		// and the sha256 for the bag record.
+		fileDigest, err := bagman.CalculateDigests(result.PackageResult.TarFilePath)
+		if err != nil {
+			result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
+				result.PackageResult.TarFilePath, err)
+			packager.CleanupChannel <- result
+			continue
+		}
+		result.BagMd5Digest = fileDigest.Md5Digest
+		result.BagSha256Digest = fileDigest.Sha256Digest
+		result.BagSize = fileDigest.Size
+
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
+		}
+
 		packager.CleanupChannel <- result
 	}
 }
