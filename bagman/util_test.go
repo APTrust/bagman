@@ -289,3 +289,23 @@ func TestRecursiveFileList(t *testing.T) {
 		}
 	}
 }
+
+func TestCalculateDigests(t *testing.T) {
+	bagmanHome, _ := bagman.BagmanHome()
+	absPath := filepath.Join(bagmanHome, "testdata", "result_good.json")
+	fileDigest, err := bagman.CalculateDigests(absPath)
+	if err != nil {
+		t.Errorf("CalculateDigests returned unexpected error: %v", err)
+	}
+	expectedMd5 := "9cd263b67bad7ae264fda8987fd221e7"
+	if fileDigest.Md5Digest != expectedMd5 {
+		t.Errorf("Expected digest '%s', got '%s'", expectedMd5, fileDigest.Md5Digest)
+	}
+	expectedSha := "3c04086d429b4dcba91891dad54759a465869d381f180908203a73b9e3120a87"
+	if fileDigest.Sha256Digest != expectedSha {
+		t.Errorf("Expected digest '%s', got '%s'", expectedSha, fileDigest.Sha256Digest)
+	}
+	if fileDigest.Size != 7718 {
+		t.Errorf("Expected file size 7718, got %d", fileDigest.Size)
+	}
+}
