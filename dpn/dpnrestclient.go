@@ -324,6 +324,38 @@ func (client *DPNRestClient) restoreTransferSave(xfer *DPNRestoreTransfer, metho
 }
 
 
+// Returns a DPN REST client that can talk to a remote node.
+// This function has to connect to out local DPN node to get
+// information about the remote node. It returns a new client
+// that can connect to the remote node with the correct URL
+// and API key. We use this function to get a client that can
+// update a replication request or a restore request on the
+// originating node.
+func (client *DPNRestClient) GetRemoteClient(remoteNodeNamespace string, dpnConfig *DPNConfig, logger *logging.Logger) (*DPNRestClient, error) {
+	remoteNode, err := client.DPNNodeGet(remoteNodeNamespace)
+	if err != nil {
+		detailedError := fmt.Errorf("Error retrieving node record for '%s' "+
+			"from local DPN REST service: %v", remoteNodeNamespace, err)
+		return nil, detailedError
+	}
+
+	authToken := dpnConfig.RemoteNodeTokens[remoteNode.Namespace]
+	if authToken == "" {
+		detailedError := fmt.Errorf("Cannot get auth token for node %s", remoteNode.Namespace)
+		return nil, detailedError
+	}
+	remoteRESTClient, err := NewDPNRestClient(
+		remoteNode.APIRoot,
+		dpnConfig.RestClient.LocalAPIRoot, // All nodes should be on same version as local
+		authToken,
+		logger)
+	if err != nil {
+		detailedError := fmt.Errorf("Could not create REST client for remote node %s: %v",
+			remoteNode.Namespace, err)
+		return nil, detailedError
+	}
+	return remoteRESTClient, nil
+}
 
 // Reads the response body and returns a byte slice.
 // You must read and close the response body, or the

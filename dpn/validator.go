@@ -207,29 +207,14 @@ func (validator *Validator) updateRemoteNode(result *DPNResult) {
 
 	// Get a DPN REST client that can talk to the node that
 	// this transfer originated from.
-	remoteNode, err := validator.LocalRESTClient.DPNNodeGet(result.TransferRequest.FromNode)
-	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Error retrieving node record for '%s' "+
-			"from local DPN REST service: %v", result.TransferRequest.FromNode, err)
-		return
-	}
-
-	authToken := validator.DPNConfig.RemoteNodeTokens[remoteNode.Namespace]
-	if authToken == "" {
-		result.ErrorMessage = fmt.Sprintf("Cannot get auth token for node %s", remoteNode.Namespace)
-		return
-	}
-	remoteRESTClient, err := NewDPNRestClient(
-		remoteNode.APIRoot,
-		validator.DPNConfig.RestClient.LocalAPIRoot, // All nodes should be on same version as local
-		authToken,
+	remoteRESTClient, err := validator.LocalRESTClient.GetRemoteClient(
+		result.TransferRequest.FromNode,
+		validator.DPNConfig,
 		validator.ProcUtil.MessageLog)
 	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Could not create REST client for remote node %s: %v",
-			remoteNode.Namespace, err)
+		result.ErrorMessage = err.Error()
 		return
 	}
-
 
 	// Update the transfer request and send it back to the remote node.
 	// We'll get an updated transfer request back from that node.
@@ -241,7 +226,7 @@ func (validator *Validator) updateRemoteNode(result *DPNResult) {
 	validator.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
 		"Setting status to 'Received', BagValid to %t, and tag manifest checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
-		remoteNode.Namespace, *result.TransferRequest.BagValid,
+		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		result.TransferRequest.FixityValue)
 	xfer, err := remoteRESTClient.ReplicationTransferUpdate(result.TransferRequest)
 	if err != nil {

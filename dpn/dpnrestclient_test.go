@@ -140,8 +140,8 @@ func TestDPNNodeGet(t *testing.T) {
 	if dpnNode.Namespace != "aptrust" {
 		t.Errorf("Namespace: expected 'aptrust', got '%s'", dpnNode.Namespace)
 	}
-	if !strings.HasPrefix(dpnNode.APIRoot, "https://") {
-		t.Errorf("APIRoot should begin with https://")
+	if !strings.HasPrefix(dpnNode.APIRoot, "https://") && !strings.HasPrefix(dpnNode.APIRoot, "http://") {
+		t.Errorf("APIRoot should begin with http:// or https://")
 	}
 }
 
@@ -729,5 +729,21 @@ func TestRestoreTransferUpdate(t *testing.T) {
 	}
 	if updatedXfer.UpdatedAt.After(newXfer.UpdatedAt) == false {
 		t.Errorf("UpdatedAt was not updated")
+	}
+}
+
+func TestGetRemoteClient(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	config := loadConfig(t, configFile)
+	logger := bagman.DiscardLogger("dpnrestclient_test")
+	client := getClient(t)
+	nodes := []string { "aptrust", "chron", "tdr" }
+	for _, node := range nodes {
+		_, err := client.GetRemoteClient(node, config, logger)
+		if err != nil {
+			t.Errorf("Error creating remote client: %v", err)
+		}
 	}
 }

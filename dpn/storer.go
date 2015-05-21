@@ -179,6 +179,27 @@ func (storer *Storer) store() {
 	}
 }
 
+// Get the replication request from the originating node and
+// make sure it's still valid.
+func (storer *Storer) verifReplicationRequest(result *DPNResult) {
+	if result.TransferRequest == nil {
+		bagName := result.BagIdentifier
+		if bagName == "" && result.DPNBag != nil {
+			// This should not happen, but we want to log it
+			// if it does.
+			bagName = result.DPNBag.UUID
+		}
+		storer.ProcUtil.MessageLog.Debug("Not checking replication request for bag " +
+			"'%s' because there is no associated replication request.", bagName)
+		return
+	}
+
+}
+
+func (storer *Storer) updateReplicationRequest() {
+
+}
+
 func (storer *Storer) createBagRecord() {
 	for result := range storer.BagCreateChannel {
 		// If result has a local identifier, it's a bag we created
