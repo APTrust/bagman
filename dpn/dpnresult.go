@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	STAGE_PACKAGE  = "Packaging"
-	STAGE_RECEIVE  = "Receiving"
-	STAGE_VALIDATE = "Validation"
-	STAGE_STORE    = "Storage"
-	STAGE_RECORD   = "Recording"
+	STAGE_PACKAGE   = "Packaging"
+	STAGE_RECEIVE   = "Receiving"
+	STAGE_VALIDATE  = "Validation"
+	STAGE_STORE     = "Storage"
+	STAGE_CANCELLED = "Cancelled"
 )
 
 type DPNResult struct {

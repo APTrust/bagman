@@ -91,10 +91,32 @@ func (storer *Storer) store() {
 			result.NsqMessage.Touch()
 		}
 
+		// By the time we get our hands on this replication request,
+		// it may be many hours old. Fetch the request again from the
+		// originating node and make sure it hasn't been cancelled.
+		if result.TransferRequest != nil {
+			storer.refetchReplicationRequest(result)
+		}
+		if result.ErrorMessage != "" {
+			storer.PostProcessChannel <- result
+			continue
+		}
+		// Remember that TransferRequest will be nil
+		// for bags we built ourselves.
+		if result.TransferRequest != nil && result.TransferRequest.Status == "Cancelled" {
+			result.Stage = STAGE_CANCELLED
+			result.Retry = false
+			storer.PostProcessChannel <- result
+			continue
+		}
+
+		// Now we'll open a file reader and stream the tar file
+		// up to S3.
 		reader, err := os.Open(result.PackageResult.TarFilePath)
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Error opening file '%s': %v",
 				result.PackageResult.TarFilePath, err)
+			reader.Close()
 			storer.PostProcessChannel <- result
 			continue
 		}
@@ -102,12 +124,14 @@ func (storer *Storer) store() {
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Cannot stat file '%s': %v",
 				result.PackageResult.TarFilePath, err)
+			reader.Close()
 			storer.PostProcessChannel <- result
 			continue
 		}
 		options, err := storer.GetS3Options(result)
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Error generating S3 options: %v", err)
+			reader.Close()
 			storer.PostProcessChannel <- result
 			continue
 		}
@@ -120,6 +144,8 @@ func (storer *Storer) store() {
 			reader,
 			fileInfo.Size(),
 			options)
+
+		// Close the reader
 		reader.Close()
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Error saving file to S3/Glacier: %v", err)
@@ -127,34 +153,81 @@ func (storer *Storer) store() {
 			continue
 		}
 
+		// Record where we stored the file
 		result.StorageResult.StorageURL = url
+
+		// Update the transfer request, if there is one.
+		if result.TransferRequest != nil {
+			result.TransferRequest.Status = "Stored"
+			storer.updateReplicationRequest(result)
+		}
+		if result.ErrorMessage != "" {
+			result.ErrorMessage = fmt.Sprintf("Bag was stored, but we couldn't " +
+				"update the replication request on the originating node: %v", err)
+			storer.PostProcessChannel <- result
+			continue
+		}
 
 		if result.NsqMessage != nil {
 			result.NsqMessage.Touch()
 		}
 
+		// This channel really only applies to bags we created
+		// at our own node. (Not replication requests.)
 		storer.BagCreateChannel <- result
 	}
 }
 
 // Get the replication request from the originating node and
 // make sure it's still valid.
-func (storer *Storer) verifReplicationRequest(result *DPNResult) {
+func (storer *Storer) refetchReplicationRequest(result *DPNResult) {
+	storer.makeReplicationRequest(result, "GET")
+}
+
+func (storer *Storer) updateReplicationRequest(result *DPNResult) {
+	storer.makeReplicationRequest(result, "POST")
+}
+
+func (storer *Storer) makeReplicationRequest(result *DPNResult, whatKind string) {
+
 	if result.TransferRequest == nil {
-		bagName := result.BagIdentifier
-		if bagName == "" && result.DPNBag != nil {
-			// This should not happen, but we want to log it
-			// if it does.
-			bagName = result.DPNBag.UUID
-		}
-		storer.ProcUtil.MessageLog.Debug("Not checking replication request for bag " +
-			"'%s' because there is no associated replication request.", bagName)
+		// This is a local bag and there is no replication request.
+		storer.ProcUtil.MessageLog.Error("makeReplicationRequest was called for bag %s (%s), " +
+			"which has no associated replication request. Is this a local bag?",
+			result.BagIdentifier, result.DPNBag.UUID)
 		return
 	}
 
-}
+	// Get a REST client that can talk the remote node.
+	// This client will be configured with the correct URL
+	// and API token to talk to the node that issues the
+	// replication request.
+	remoteClient, err := storer.LocalRESTClient.GetRemoteClient(
+		result.TransferRequest.FromNode,  // the node we want to talk to
+		storer.DPNConfig,
+		storer.ProcUtil.MessageLog)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Could not create a REST client to connect to node %s: %v",
+			result.TransferRequest.FromNode, err)
+		return
+	}
 
-func (storer *Storer) updateReplicationRequest() {
+	var xferRequest *DPNReplicationTransfer
+	if whatKind == "GET" {
+		xferRequest, err = remoteClient.ReplicationTransferGet(result.TransferRequest.ReplicationId)
+	} else if whatKind == "POST" {
+		xferRequest, err = remoteClient.ReplicationTransferUpdate(result.TransferRequest)
+	} else {
+		panic("makeReplicationRequest doesn't understand that kind of request")
+	}
+
+
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Could not get replication record %s from node %s: %v",
+			result.TransferRequest.ReplicationId, result.TransferRequest.FromNode, err)
+		return
+	}
+	result.TransferRequest = xferRequest
 
 }
 

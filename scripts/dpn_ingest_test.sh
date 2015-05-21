@@ -20,6 +20,11 @@ else
 	rm ${BAGMAN_BIN}/dpn_trouble
 fi
 
+if [ -d ~/tmp/nsq ]; then
+    echo "Removing old NSQ files"
+    rm ~/tmp/nsq/*
+fi
+
 echo "Starting NSQ"
 cd ~/go/src/github.com/APTrust/bagman/nsq
 go run service.go -config ~/go/src/github.com/APTrust/bagman/nsq/nsqd.dev.config &>/dev/null &
