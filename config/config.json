@@ -5,7 +5,7 @@
         "RestoreDirectory": "~/tmp/restore",
         "ReplicationDirectory": "~/tmp/replicate",
         "DPNStagingDirectory": "~/tmp/dpn_staging",
-        "MaxFileSize": 1000000,
+        "MaxFileSize": 10000000,
         "SkipAlreadyProcessed": false,
         "DeleteOnSuccess": false,
         "LogToStderr": true,
