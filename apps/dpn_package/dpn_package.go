@@ -18,7 +18,7 @@ func main() {
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
-	packager := dpn.NewPackager(procUtil, dpnConfig.DefaultMetadata)
+	packager := dpn.NewPackager(procUtil, dpnConfig)
 	consumer.AddHandler(packager)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
