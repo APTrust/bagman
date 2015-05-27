@@ -104,26 +104,20 @@ func (validator *Validator) UntarredDir() (string) {
 	return re.ReplaceAllString(validator.PathToFile, "")
 }
 
-// Get the instution domain from the file, or return a descriptive
-// error if the file doesn't include the institution name.
+// Get the instution name from the file/bag name, or returns a descriptive
+// error if the file doesn't include the institution name. There's a little
+// problem here that came along late in development. According to the docs at
+// https://sites.google.com/a/aptrust.org/aptrust-wiki/technical-documentation/processing-ingest/aptrust-bagit-profile#TOC-Bag-Names,
+// bag names are supposed to start with the institution identifier, minus
+// the ".edu" or ".org" extension. So "ncsu" instead of "ncsu.edu", or
+// "miami" insteady of "miami.edu". So this returns the institution identifier
+// without the TLD extension.
 func (validator *Validator) InstitutionDomain() (string, error) {
 	if validator.PathToFile == "" {
 		return "", fmt.Errorf("You must specify the tar file or directory to validate.")
 	}
 	base := filepath.Base(validator.PathToFile)
-	parts := strings.Split(base, ".")
-	if len(parts) < 3 || len(parts) == 3 && parts[2] == "tar" {
-		message := fmt.Sprintf(
-			"Bag name '%s' should start with your institution's " +
-				"domain name,\n followed by a period and the object name.\n" +
-				"For example, 'university.edu.my_archive.tar' " +
-				"for a tar file,\n" +
-				"or 'university.edu.my_archive' for a directory.",
-			base)
-		return "", fmt.Errorf(message)
-	}
-	instName := fmt.Sprintf("%s.%s", parts[0], parts[1])
-	return instName, nil
+	return GetInstitutionFromBagName(base)
 }
 
 // Returns true if the bag name looks like a multipart bag.

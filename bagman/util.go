@@ -416,3 +416,27 @@ func CalculateDigests(pathToFile string) (*FileDigest, error) {
 	}
 	return fileDigest, nil
 }
+
+// Returns the instution name from the bag name, or an error if
+// the bag name does not contain the institution name. For example,
+// "virginia.edu.bag_of_videos.tar" returns "virginia.edu" and no
+// errors. "virginia.edu.bag_of_videos" returns the same thing.
+// But "bag_of_videos.tar" or "virginia.bag_of_videos.tar" returns
+// an error because the institution identifier is missing from
+// the bag name.
+func GetInstitutionFromBagName(bagName string) (string, error) {
+	parts := strings.Split(bagName, ".")
+	if len(parts) < 3 {
+		message := fmt.Sprintf(
+			"Bag name '%s' should start with your institution ID,\n " +
+				"followed by a period and the object name.\n" +
+				"For example, 'miami.my_archive.tar' for a tar file,\n" +
+				"or 'miami.my_archive' for a directory.",
+			bagName)
+		return "", fmt.Errorf(message)
+	}
+	if len(parts) > 3 && (parts[1] == "edu" || parts[1] == "org") {
+		return fmt.Sprintf("%s.%s", parts[0], parts[1]), nil
+	}
+	return parts[0], nil
+}

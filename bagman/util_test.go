@@ -309,3 +309,25 @@ func TestCalculateDigests(t *testing.T) {
 		t.Errorf("Expected file size 7718, got %d", fileDigest.Size)
 	}
 }
+
+func TestGetInstitutionFromBagName(t *testing.T) {
+	inst, err := bagman.GetInstitutionFromBagName("chc0390_metadata")
+	if err == nil {
+		t.Error("GetInstitutionFromBagName accepted invalid bag name 'chc0390_metadata'")
+	}
+	inst, err = bagman.GetInstitutionFromBagName("chc0390_metadata.tar")
+	if err == nil {
+		t.Error("GetInstitutionFromBagName accepted invalid bag name 'chc0390_metadata.tar'")
+	}
+	inst, err = bagman.GetInstitutionFromBagName("miami.chc0390_metadata.tar")
+	if err != nil {
+		t.Error(err)
+	}
+	if inst != "miami" {
+		t.Error("GetInstitutionFromBagName return institution name '%s', expected 'miami'", inst)
+	}
+	inst, err = bagman.GetInstitutionFromBagName("miami.edu.chc0390_metadata.tar")
+	if err != nil {
+		t.Error("GetInstitutionFromBagName should have accepted bag name 'miami.edu.chc0390_metadata.tar'")
+	}
+}

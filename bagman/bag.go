@@ -49,6 +49,12 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 	}
 	tarResult.InputFile = absInputFile
 
+	_, err = GetInstitutionFromBagName(filepath.Base(absInputFile))
+	if err != nil {
+		tarResult.ErrorMessage = err.Error()
+		return tarResult
+	}
+
 	// Open the tar file for reading.
 	file, err := os.Open(tarFilePath)
 	if file != nil {
