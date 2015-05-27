@@ -428,7 +428,7 @@ func GetInstitutionFromBagName(bagName string) (string, error) {
 	parts := strings.Split(bagName, ".")
 	if len(parts) < 3 {
 		message := fmt.Sprintf(
-			"Bag name '%s' should start with your institution ID,\n " +
+			"Bag name '%s' should start with your institution ID,\n" +
 				"followed by a period and the object name.\n" +
 				"For example, 'miami.my_archive.tar' for a tar file,\n" +
 				"or 'miami.my_archive' for a directory.",

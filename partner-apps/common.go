@@ -5,7 +5,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 )
 
-var Version string = "1.01"
+var Version string = "1.02"
 
 var ConfigHelp string = `
 Your config file should include the following name-value pairs,
