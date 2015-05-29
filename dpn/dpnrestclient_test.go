@@ -118,9 +118,9 @@ func TestBuildUrl(t *testing.T) {
 	client := getClient(t)
 	relativeUrl := "/api-v1/popeye/olive/oyl/"
 	expectedUrl := config.RestClient.LocalServiceURL + relativeUrl
-	if client.BuildUrl(relativeUrl) != expectedUrl {
+	if client.BuildUrl(relativeUrl, nil) != expectedUrl {
 		t.Errorf("BuildUrl returned '%s', expected '%s'",
-			client.BuildUrl(relativeUrl), expectedUrl)
+			client.BuildUrl(relativeUrl, nil), expectedUrl)
 	}
 }
 
