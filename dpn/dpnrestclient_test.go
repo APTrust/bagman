@@ -6,6 +6,7 @@ import (
 	"github.com/APTrust/bagman/dpn"
 	"github.com/nu7hatch/gouuid"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -122,6 +123,15 @@ func TestBuildUrl(t *testing.T) {
 		t.Errorf("BuildUrl returned '%s', expected '%s'",
 			client.BuildUrl(relativeUrl, nil), expectedUrl)
 	}
+	params := url.Values{}
+	params.Set("color", "blue")
+	params.Set("material", "cotton")
+	params.Set("size", "extra medium")
+	actualUrl := client.BuildUrl(relativeUrl, &params)
+	expectedUrl = expectedUrl + "?color=blue&material=cotton&size=extra+medium"
+	if actualUrl != expectedUrl {
+		t.Errorf("Got URL '%s', expected '%s'", actualUrl, expectedUrl)
+	}
 }
 
 func TestDPNNodeGet(t *testing.T) {
@@ -216,6 +226,61 @@ func TestDPNBagGet(t *testing.T) {
 		t.Errorf("Fixities[0].Sha256: expected 'tums-for-digestion', got '%s'",
 			dpnBag.Fixities[0].Sha256)
 	}
+}
+
+func TestDPNBagListGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	bagList, err := client.DPNBagListGet(nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if bagList == nil {
+		t.Errorf("DPNBagListGet returned nil result")
+		return
+	}
+	unfilteredCount := bagList.Count
+	if unfilteredCount == 0 {
+		t.Errorf("DPNBagListGet returned zero results. Are there any bags in the registry?")
+		return
+	}
+	aptrustCount := 0
+	for i := range bagList.Results {
+		bag := bagList.Results[i]
+		if bag.IngestNode == "aptrust" {
+			aptrustCount++
+		}
+	}
+
+	// Test filters
+	// Get all bags updated after December 31, 1999
+	aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+	fmt.Println(aLongTimeAgo.Format(time.RFC3339Nano))
+	params := url.Values{}
+	params.Set("after", aLongTimeAgo.Format(time.RFC3339Nano))
+	bagList, err = client.DPNBagListGet(&params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if bagList.Count != unfilteredCount {
+		t.Errorf("Filter by 'after' returned %d results, expected %d", bagList.Count, unfilteredCount)
+	}
+
+	// Get all bags updated after 1 hour from now
+	params.Set("after", time.Now().Add(1 * time.Hour).Format(time.RFC3339Nano))
+	bagList, err = client.DPNBagListGet(&params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if bagList.Count != 0 {
+		t.Errorf("Filter by 'after' returned %d results, expected 0", bagList.Count)
+	}
+
 }
 
 func TestDPNBagCreate(t *testing.T) {

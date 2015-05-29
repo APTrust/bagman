@@ -27,6 +27,15 @@ type DPNRestClient struct {
 	institutions map[string]string
 }
 
+// BagListResult is what the REST service returns when
+// we ask for a list of bags.
+type BagListResult struct {
+	Count       int32     `json:count`
+	Next        string    `json:next`
+	Previous    string    `json:previous`
+	Results     []DPNBag  `json:results`
+}
+
 // Creates a new DPN REST client.
 func NewDPNRestClient(hostUrl, apiVersion, apiKey string, logger *logging.Logger) (*DPNRestClient, error) {
 	cookieJar, err := cookiejar.New(nil)
@@ -130,6 +139,35 @@ func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 	}
 	return obj, nil
 }
+
+func (client *DPNRestClient) DPNBagListGet(queryParams *url.Values) (*BagListResult, error) {
+	relativeUrl := fmt.Sprintf("/%s/bag/", client.apiVersion)
+	objUrl := client.BuildUrl(relativeUrl, queryParams)
+	client.logger.Debug("Requesting bag list from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("DPNBagListGet expected status 200 but got %d. URL: %s", response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	result := &BagListResult{}
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return result, nil
+}
+
 
 func (client *DPNRestClient) DPNBagCreate(bag *DPNBag) (*DPNBag, error) {
 	return client.dpnBagSave(bag, "POST")
