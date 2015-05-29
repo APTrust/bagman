@@ -258,7 +258,6 @@ func TestDPNBagListGet(t *testing.T) {
 	// Test filters
 	// Get all bags updated after December 31, 1999
 	aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
-	fmt.Println(aLongTimeAgo.Format(time.RFC3339Nano))
 	params := url.Values{}
 	params.Set("after", aLongTimeAgo.Format(time.RFC3339Nano))
 	bagList, err = client.DPNBagListGet(&params)
@@ -461,6 +460,27 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.Link != "rsync://are/sink" {
 		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
 	}
+}
+
+func TestDPNReplicationListGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	xferList, err := client.DPNReplicationListGet(nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xferList == nil {
+		t.Errorf("DPNReplicationListGet returned nil result")
+		return
+	}
+	if xferList.Count == 0 || len(xferList.Results) == 0 {
+		t.Errorf("DPNReplicationListGet returned zero results")
+		return
+	}
+	// START HERE - Test filters: bag_valid, fixity_accept, after, etc.
 }
 
 func TestReplicationTransferCreate(t *testing.T) {

@@ -30,11 +30,30 @@ type DPNRestClient struct {
 // BagListResult is what the REST service returns when
 // we ask for a list of bags.
 type BagListResult struct {
-	Count       int32     `json:count`
-	Next        string    `json:next`
-	Previous    string    `json:previous`
-	Results     []DPNBag  `json:results`
+	Count       int32                      `json:count`
+	Next        string                     `json:next`
+	Previous    string                     `json:previous`
+	Results     []DPNBag                   `json:results`
 }
+
+// ReplicationListResult is what the REST service returns when
+// we ask for a list of transfer requests.
+type ReplicationListResult struct {
+	Count       int32                     `json:count`
+	Next        string                    `json:next`
+	Previous    string                    `json:previous`
+	Results     []DPNReplicationTransfer  `json:results`
+}
+
+// RestoreListResult is what the REST service returns when
+// we ask for a list of restore requests.
+type RestoreListResult struct {
+	Count       int32                     `json:count`
+	Next        string                    `json:next`
+	Previous    string                    `json:previous`
+	Results     []DPNRestoreTransfer      `json:results`
+}
+
 
 // Creates a new DPN REST client.
 func NewDPNRestClient(hostUrl, apiVersion, apiKey string, logger *logging.Logger) (*DPNRestClient, error) {
@@ -247,6 +266,36 @@ func (client *DPNRestClient) ReplicationTransferGet(identifier string) (*DPNRepl
 	}
 	return obj, nil
 }
+
+func (client *DPNRestClient) DPNReplicationListGet(queryParams *url.Values) (*ReplicationListResult, error) {
+	relativeUrl := fmt.Sprintf("/%s/replicate/", client.apiVersion)
+	objUrl := client.BuildUrl(relativeUrl, queryParams)
+	client.logger.Debug("Requesting replication list from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("DPNReplicationListGet expected status 200 but got %d. URL: %s",
+			response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	result := &ReplicationListResult{}
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return result, nil
+}
+
 
 func (client *DPNRestClient) ReplicationTransferCreate(xfer *DPNReplicationTransfer) (*DPNReplicationTransfer, error) {
 	return client.replicationTransferSave(xfer, "POST")
