@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"regexp"
 	"strings"
 )
 
@@ -120,6 +121,9 @@ func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 		return nil, error
 	}
 
+	// HACK! Get rid of this when Golang fixes the JSON null date problem!
+	body = HackNullDates(body)
+
 	// Build and return the data structure
 	obj := &DPNNode{}
 	err = json.Unmarshal(body, obj)
@@ -136,7 +140,7 @@ func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 // LastPullDate attribute through this client. Use the web admin
 // interface to perform more substantive node updates.
 func (client *DPNRestClient) DPNNodeUpdate(node *DPNNode) (*DPNNode, error) {
-	relativeUrl := fmt.Sprintf("/%s/bag/%s/", client.apiVersion, node.Namespace)
+	relativeUrl := fmt.Sprintf("/%s/node/%s/", client.apiVersion, node.Namespace)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	expectedResponseCode := 200
 	client.logger.Debug("Updating Node %s to DPN REST service: %s", node.Namespace, objUrl)
@@ -158,6 +162,10 @@ func (client *DPNRestClient) DPNNodeUpdate(node *DPNNode) (*DPNNode, error) {
 		fmt.Println(string(body))
 		return nil, error
 	}
+
+	// HACK! Get rid of this when Golang fixes the JSON null date problem!
+	body = HackNullDates(body)
+
 	returnedNode := DPNNode{}
 	err = json.Unmarshal(body, &returnedNode)
 	if err != nil {
@@ -564,4 +572,27 @@ func (client *DPNRestClient) buildAndLogError(body []byte, formatString string, 
 func (client *DPNRestClient) formatJsonError(callerName string, body []byte, err error) (error) {
 	json := strings.Replace(string(body), "\n", " ", -1)
 	return fmt.Errorf("%s: Error parsing JSON response: %v -- JSON response: %s", err, json)
+}
+
+// This hack works around the JSON decoding bug in Golang's core
+// time and json libraries. The bug is described here:
+// https://go-review.googlesource.com/#/c/9376/
+// We could do a "proper" work-around by changing all our structs
+// to use pointers to time.Time instead of time.Time values, but then
+// we have to check for nil in many places. There's already a patch
+// in to fix this bug in the next release of Golang, so
+// I'd rather have this hack for now and remove it when the next
+// version of Golang comes out. That's better than changing to pointers,
+// checking for nil in a hundred places, and then reverting ALL THAT when
+// the bug is fixed. In practice the only null dates that should ever come
+// out of our REST services are Node.LastPullDate, and that should only
+// happen on the first day a new node is up and runnning. We just have
+// to set these back to a reasonably old timestamp so we can ask the
+// node for all items updated since that time. "Reasonably old" is
+// anything before about June 1, 2015.
+func HackNullDates(jsonBytes []byte)([]byte) {
+	// Problem fixed with regex == two problems
+	dummyDate := "\"last_pull_date\":\"1980-01-01T00:00:00Z\""
+	re := regexp.MustCompile("\"last_pull_date\":\\s*null")
+	return re.ReplaceAll(jsonBytes, []byte(dummyDate))
 }

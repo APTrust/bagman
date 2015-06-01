@@ -1,6 +1,7 @@
 package dpn_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
@@ -979,5 +980,27 @@ func TestGetRemoteClient(t *testing.T) {
 		if err != nil {
 			t.Errorf("Error creating remote client: %v", err)
 		}
+	}
+}
+
+func TestHackNullDates(t *testing.T) {
+	jsonString := `{ "id": 5, "last_pull_date": null }`
+	testHackNullDates(jsonString, t)
+	jsonString = `{"id":5,"last_pull_date":null}`
+	testHackNullDates(jsonString, t)
+	jsonString = `{
+                     "id": 5,
+                     "last_pull_date":    null
+                   }`
+	testHackNullDates(jsonString, t)
+}
+
+func testHackNullDates(jsonString string, t *testing.T) {
+	data := make(map[string]interface{})
+	jsonBytes := []byte(jsonString)
+	hackedBytes := dpn.HackNullDates(jsonBytes)
+	json.Unmarshal(hackedBytes, &data)
+	if data["last_pull_date"] != "1980-01-01T00:00:00Z" {
+		t.Errorf("Got unexpected last_pull_date %s", data["last_pull_date"])
 	}
 }
