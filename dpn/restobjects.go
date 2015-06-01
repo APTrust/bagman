@@ -26,6 +26,7 @@ type DPNNode struct {
 	FixityAlgorithms     []string     `json:"fixity_algorithms"`
 	CreatedAt            time.Time    `json:"created_at"`
 	UpdatedAt            time.Time    `json:"updated_at"`
+	LastPullDate         time.Time    `json:"last_pull_date"`
 	Storage              *DPNStorage  `json:"storage"`
 }
 
