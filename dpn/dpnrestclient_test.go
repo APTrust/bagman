@@ -480,7 +480,57 @@ func TestDPNReplicationListGet(t *testing.T) {
 		t.Errorf("DPNReplicationListGet returned zero results")
 		return
 	}
-	// START HERE - Test filters: bag_valid, fixity_accept, after, etc.
+
+	totalRecordCount := xferList.Count
+
+	params := &url.Values{}
+	params.Set("bag_valid", "true")
+	xferList, err = client.DPNReplicationListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Set("bag_valid", "false")
+	xferList, err = client.DPNReplicationListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Del("bag_valid")
+	params.Set("fixity_accept", "true")
+	xferList, err = client.DPNReplicationListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Set("fixity_accept", "false")
+	xferList, err = client.DPNReplicationListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Del("fixity_accept")
+
+	aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+	params.Set("after", aLongTimeAgo.Format(time.RFC3339Nano))
+	xferList, err = client.DPNReplicationListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xferList.Count != totalRecordCount {
+		t.Errorf("Expected %d records, got %d", totalRecordCount, xferList.Count)
+	}
+
+	params.Set("after", time.Now().Add(1 * time.Hour).Format(time.RFC3339Nano))
+	xferList, err = client.DPNReplicationListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xferList.Count != 0 {
+		t.Errorf("Expected 0 records, got %d", xferList.Count)
+	}
 }
 
 func TestReplicationTransferCreate(t *testing.T) {
