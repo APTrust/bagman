@@ -735,6 +735,77 @@ func TestRestoreTransferGet(t *testing.T) {
 	}
 }
 
+func TestDPNRestoreListGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	xferList, err := client.DPNRestoreListGet(nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xferList == nil {
+		t.Errorf("DPNRestoreListGet returned nil result")
+		return
+	}
+	if xferList.Count == 0 || len(xferList.Results) == 0 {
+		t.Errorf("DPNRestoreListGet returned zero results")
+		return
+	}
+
+	totalRecordCount := xferList.Count
+
+	params := &url.Values{}
+	params.Set("bag_valid", "true")
+	xferList, err = client.DPNRestoreListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Set("bag_valid", "false")
+	xferList, err = client.DPNRestoreListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Del("bag_valid")
+	params.Set("fixity_accept", "true")
+	xferList, err = client.DPNRestoreListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Set("fixity_accept", "false")
+	xferList, err = client.DPNRestoreListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	params.Del("fixity_accept")
+
+	aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+	params.Set("after", aLongTimeAgo.Format(time.RFC3339Nano))
+	xferList, err = client.DPNRestoreListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xferList.Count != totalRecordCount {
+		t.Errorf("Expected %d records, got %d", totalRecordCount, xferList.Count)
+	}
+
+	params.Set("after", time.Now().Add(1 * time.Hour).Format(time.RFC3339Nano))
+	xferList, err = client.DPNRestoreListGet(params)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if xferList.Count != 0 {
+		t.Errorf("Expected 0 records, got %d", xferList.Count)
+	}
+}
+
 func TestRestoreTransferCreate(t *testing.T) {
 	if runRestTests(t) == false {
 		return

@@ -376,6 +376,35 @@ func (client *DPNRestClient) RestoreTransferGet(identifier string) (*DPNRestoreT
 	return obj, nil
 }
 
+func (client *DPNRestClient) DPNRestoreListGet(queryParams *url.Values) (*RestoreListResult, error) {
+	relativeUrl := fmt.Sprintf("/%s/restore/", client.apiVersion)
+	objUrl := client.BuildUrl(relativeUrl, queryParams)
+	client.logger.Debug("Requesting restore list from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("DPNRestoreListGet expected status 200 but got %d. URL: %s",
+			response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	result := &RestoreListResult{}
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return result, nil
+}
+
 func (client *DPNRestClient) RestoreTransferCreate(xfer *DPNRestoreTransfer) (*DPNRestoreTransfer, error) {
 	return client.restoreTransferSave(xfer, "POST")
 }
