@@ -26,9 +26,9 @@ load that test data into your DPN instance.
 
 var configFile = "dpn/dpn_config.json"
 var skipRestMessagePrinted = false
-var aptrustBagIdentifier = "9998e960-fc6d-44f4-9d73-9a60a8eae609"
-var replicationIdentifier = "aptrust-999999"
-var restoreIdentifier = "aptrust-64"
+var aptrustBagIdentifier = "472218b3-95ce-4b8e-6c21-6e514cfbe43f"
+var replicationIdentifier = "aptrust-1"
+var restoreIdentifier = "aptrust-1"
 
 func runRestTests(t *testing.T) bool {
 	config := loadConfig(t, configFile)
@@ -155,6 +155,30 @@ func TestDPNNodeGet(t *testing.T) {
 	}
 }
 
+func TestDPNNodeUpdate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	dpnNode, err := client.DPNNodeGet("sdr")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	origPullDate := dpnNode.LastPullDate
+	newPullDate := time.Date(2015, time.June, 1, 12, 0, 0, 0, time.UTC)
+	if !origPullDate.IsZero() {
+		newPullDate = dpnNode.LastPullDate.Add(-24 * time.Hour)
+	}
+	dpnNode.LastPullDate = newPullDate
+	savedNode, err := client.DPNNodeUpdate(dpnNode)
+	if savedNode.LastPullDate != newPullDate {
+		t.Errorf("Expected last pull date %s, got %s",
+			newPullDate.Format(time.RFC3339Nano),
+			savedNode.LastPullDate.Format(time.RFC3339Nano))
+	}
+}
+
 func TestDPNBagGet(t *testing.T) {
 	if runRestTests(t) == false {
 		return
@@ -168,11 +192,11 @@ func TestDPNBagGet(t *testing.T) {
 	if dpnBag.UUID != aptrustBagIdentifier {
 		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, dpnBag.UUID)
 	}
-	if dpnBag.LocalId != "aptrust-12345" {
-		t.Errorf("LocalId: expected 'aptrust-12345', got '%s'", dpnBag.LocalId)
+	if dpnBag.LocalId != "test.edu/test.edu.bag6" {
+		t.Errorf("LocalId: expected 'test.edu/test.edu.bag6', got '%s'", dpnBag.LocalId)
 	}
-	if dpnBag.Size != 2526492640 {
-		t.Errorf("Size: expected 2526492640, got %d", dpnBag.Size)
+	if dpnBag.Size != 3974144 {
+		t.Errorf("Size: expected 3974144, got %d", dpnBag.Size)
 	}
 	if dpnBag.FirstVersionUUID != aptrustBagIdentifier {
 		t.Errorf("FirstVersionUUID: expected '%s', got '%s'",
@@ -190,40 +214,44 @@ func TestDPNBagGet(t *testing.T) {
 	if dpnBag.AdminNode != "aptrust" {
 		t.Errorf("AdminNode: expected 'aptrust', got '%s'", dpnBag.AdminNode)
 	}
-	if dpnBag.CreatedAt.Format(time.RFC3339) != "2015-02-25T16:24:02Z" {
-		t.Errorf("CreatedAt: expected '2015-02-25T16:24:02.475138Z', got '%s'",
+	if dpnBag.CreatedAt.Format(time.RFC3339) != "2015-05-22T19:08:48Z" {
+		t.Errorf("CreatedAt: expected '2015-05-22T19:08:48Z', got '%s'",
 			dpnBag.CreatedAt.Format(time.RFC3339))
 	}
-	if dpnBag.UpdatedAt.Format(time.RFC3339) != "2015-02-25T16:24:02Z" {
-		t.Errorf("UpdatedAt: expected '2015-02-25T16:24:02.475138Z', got '%s'",
+	if dpnBag.UpdatedAt.Format(time.RFC3339) != "2015-05-22T19:08:48Z" {
+		t.Errorf("UpdatedAt: expected '2015-05-22T19:08:48Z', got '%s'",
 			dpnBag.UpdatedAt.Format(time.RFC3339))
 	}
-	if len(dpnBag.Rights) != 1 {
-		t.Errorf("Rights: expected 1 item, got %d", len(dpnBag.Rights))
-	}
-	if dpnBag.Rights[0] != "ff297922-a5b2-4b66-9475-3ce98b074d37" {
-		t.Errorf("Rights[0]: expected 'ff297922-a5b2-4b66-9475-3ce98b074d37', got '%s'",
-			dpnBag.Rights[0])
-	}
-	if len(dpnBag.Interpretive) != 1 {
-		t.Errorf("Interpretive: expected 1 item, got %d", len(dpnBag.Interpretive))
-	}
-	if dpnBag.Interpretive[0] != "821decbb-4063-48b1-adef-1d3906bf7b87" {
-		t.Errorf("Interpretive[0]: expected '821decbb-4063-48b1-adef-1d3906bf7b87', got '%s'",
-			dpnBag.Interpretive[0])
-	}
+	//
+	// TODO - Add Rights/Interpretive to this test object and then uncomment the
+	//        following tests.
+	//
+	// if len(dpnBag.Rights) != 1 {
+	// 	t.Errorf("Rights: expected 1 item, got %d", len(dpnBag.Rights))
+	// }
+	// if dpnBag.Rights[0] != "ff297922-a5b2-4b66-9475-3ce98b074d37" {
+	// 	t.Errorf("Rights[0]: expected 'ff297922-a5b2-4b66-9475-3ce98b074d37', got '%s'",
+	// 		dpnBag.Rights[0])
+	// }
+	// if len(dpnBag.Interpretive) != 1 {
+	// 	t.Errorf("Interpretive: expected 1 item, got %d", len(dpnBag.Interpretive))
+	// }
+	// if dpnBag.Interpretive[0] != "821decbb-4063-48b1-adef-1d3906bf7b87" {
+	// 	t.Errorf("Interpretive[0]: expected '821decbb-4063-48b1-adef-1d3906bf7b87', got '%s'",
+	// 		dpnBag.Interpretive[0])
+	// }
 	if len(dpnBag.ReplicatingNodes) != 1 {
 		t.Errorf("ReplicatingNodes: expected 1 item, got %d", len(dpnBag.ReplicatingNodes))
 	}
-	if dpnBag.ReplicatingNodes[0] != "chron" {
-		t.Errorf("ReplicatingNodes[0]: expected 'chron', got '%s'",
+	if dpnBag.ReplicatingNodes[0] != "tdr" {
+		t.Errorf("ReplicatingNodes[0]: expected 'tdr', got '%s'",
 			dpnBag.ReplicatingNodes[0])
 	}
 	if len(dpnBag.Fixities) != 1 {
 		t.Errorf("Fixities: expected 1 item, got %d", len(dpnBag.Fixities))
 	}
-	if dpnBag.Fixities[0].Sha256 != "tums-for-digestion" {
-		t.Errorf("Fixities[0].Sha256: expected 'tums-for-digestion', got '%s'",
+	if dpnBag.Fixities[0].Sha256 != "5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3" {
+		t.Errorf("Fixities[0].Sha256: expected '5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3', got '%s'",
 			dpnBag.Fixities[0].Sha256)
 	}
 }
@@ -416,8 +444,8 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.FromNode != "aptrust" {
 		t.Errorf("FromNode: expected 'aptrust', got '%s'", xfer.FromNode)
 	}
-	if xfer.ToNode != "chron" {
-		t.Errorf("ToNode: expected 'chron', got '%s'", xfer.ToNode)
+	if xfer.ToNode != "tdr" {
+		t.Errorf("ToNode: expected 'tdr', got '%s'", xfer.ToNode)
 	}
 	if xfer.UUID != aptrustBagIdentifier {
 		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, xfer.UUID)
@@ -425,20 +453,20 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.ReplicationId != replicationIdentifier {
 		t.Errorf("ReplicationId: expected '%s', got '%s'", replicationIdentifier, xfer.ReplicationId)
 	}
-	if xfer.FixityNonce != "dunce" {
-		t.Errorf("FixityNonce: expected 'dunce', got '%s'", xfer.FixityNonce)
+	if xfer.FixityNonce != "" {
+		t.Errorf("FixityNonce: expected '', got '%s'", xfer.FixityNonce)
 	}
-	if xfer.FixityValue != "98765" {
-		t.Errorf("FixityValue: expected '98765', got '%s'", xfer.FixityValue)
+	if xfer.FixityValue != "5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3" {
+		t.Errorf("FixityValue: expected '5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3', got '%s'", xfer.FixityValue)
 	}
 	if xfer.FixityAlgorithm != "sha256" {
 		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
 	}
-	if *xfer.FixityAccept != true {
-		t.Errorf("FixityAccept: expected true, got %s", *xfer.FixityAccept)
+	if xfer.FixityAccept == nil || *xfer.FixityAccept != true {
+		t.Errorf("FixityAccept: expected nil, got %s", *xfer.FixityAccept)
 	}
-	if *xfer.BagValid != true {
-		t.Errorf("BagValid: expected true, got %s", *xfer.BagValid)
+	if xfer.BagValid != nil {
+		t.Errorf("BagValid: expected nil, got %s", *xfer.BagValid)
 	}
 	if xfer.Status != "Confirmed" {
 		t.Errorf("Status: expected 'Confirmed', got '%s'", xfer.Status)
@@ -446,19 +474,19 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.Protocol != "R" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
-	if xfer.Link != "rsync://are/sink" {
-		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
+	if xfer.Link != "dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar" {
+		t.Errorf("Link: expected 'dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar', got '%s'", xfer.Link)
 	}
-	if xfer.CreatedAt.Format(time.RFC3339) != "2015-05-01T12:19:44Z" {
-		t.Errorf("CreatedAt: expected '2015-05-01T12:19:44Z', got '%s'",
+	if xfer.CreatedAt.Format(time.RFC3339) != "2015-05-22T19:46:45Z" {
+		t.Errorf("CreatedAt: expected '2015-05-22T19:46:45Z', got '%s'",
 			xfer.CreatedAt.Format(time.RFC3339))
 	}
-	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-05-01T12:19:44Z" {
-		t.Errorf("UpdatedAt: expected '2015-05-01T12:19:44Z', got '%s'",
+	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-05-28T16:15:35Z" {
+		t.Errorf("UpdatedAt: expected '2015-05-28T16:15:35Z', got '%s'",
 			xfer.UpdatedAt.Format(time.RFC3339))
 	}
-	if xfer.Link != "rsync://are/sink" {
-		t.Errorf("Link: expected 'rsync://are/sink', got '%s'", xfer.Link)
+	if xfer.Link != "dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar" {
+		t.Errorf("Link: expected 'dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar', got '%s'", xfer.Link)
 	}
 }
 
@@ -709,8 +737,8 @@ func TestRestoreTransferGet(t *testing.T) {
 	if xfer.ToNode != "aptrust" {
 		t.Errorf("ToNode: expected 'aptrust', got '%s'", xfer.ToNode)
 	}
-	if xfer.UUID != "6078e948-d561-42b4-b13b-cf0404575cf7" {
-		t.Errorf("UUID: expected '6078e948-d561-42b4-b13b-cf0404575cf7', got '%s'",
+	if xfer.UUID != "41e5376c-cc13-4c3e-6af3-297cc2e005aa" {
+		t.Errorf("UUID: expected '41e5376c-cc13-4c3e-6af3-297cc2e005aa', got '%s'",
 			xfer.UUID)
 	}
 	if xfer.RestoreId != restoreIdentifier {
@@ -722,16 +750,16 @@ func TestRestoreTransferGet(t *testing.T) {
 	if xfer.Protocol != "R" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
-	if xfer.CreatedAt.Format(time.RFC3339) != "2015-02-25T15:27:40Z" {
-		t.Errorf("CreatedAt: expected '2015-02-25T15:27:40Z', got '%s'",
+	if xfer.CreatedAt.Format(time.RFC3339) != "2015-06-01T19:07:53Z" {
+		t.Errorf("CreatedAt: expected '2015-06-01T19:07:53Z', got '%s'",
 			xfer.CreatedAt.Format(time.RFC3339))
 	}
-	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-05-01T20:11:49Z" {
-		t.Errorf("UpdatedAt: expected '2015-05-01T20:11:49Z', got '%s'",
+	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-06-01T19:07:53Z" {
+		t.Errorf("UpdatedAt: expected '2015-06-01T19:07:53Z', got '%s'",
 			xfer.UpdatedAt.Format(time.RFC3339))
 	}
-	if xfer.Link != "rsync://path/to/file.tar" {
-		t.Errorf("Link: expected 'rsync://path/to/file.tar', got '%s'", xfer.Link)
+	if xfer.Link != "rsync://mnt/staging/41e5376c-cc13-4c3e-6af3-297cc2e005aa.tar" {
+		t.Errorf("Link: expected 'rsync://mnt/staging/41e5376c-cc13-4c3e-6af3-297cc2e005aa.tar', got '%s'", xfer.Link)
 	}
 }
 

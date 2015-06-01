@@ -129,6 +129,45 @@ func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 	return obj, nil
 }
 
+// DPNNodeUpdate updates a DPN Node record. You can update node
+// records only if you are the admin on the server where you're
+// updating the record. Though this method lets you update any
+// attributes related to the node, you should update only the
+// LastPullDate attribute through this client. Use the web admin
+// interface to perform more substantive node updates.
+func (client *DPNRestClient) DPNNodeUpdate(node *DPNNode) (*DPNNode, error) {
+	relativeUrl := fmt.Sprintf("/%s/bag/%s/", client.apiVersion, node.Namespace)
+	objUrl := client.BuildUrl(relativeUrl, nil)
+	expectedResponseCode := 200
+	client.logger.Debug("Updating Node %s to DPN REST service: %s", node.Namespace, objUrl)
+	postData, err := json.Marshal(node)
+	if err != nil {
+		return nil, err
+	}
+	req, err := client.NewJsonRequest("PUT", objUrl, bytes.NewBuffer(postData))
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != expectedResponseCode {
+		error := fmt.Errorf("PUT to %s returned status code %d", objUrl, response.StatusCode)
+		client.buildAndLogError(body, error.Error())
+		fmt.Println(string(body))
+		return nil, error
+	}
+	returnedNode := DPNNode{}
+	err = json.Unmarshal(body, &returnedNode)
+	if err != nil {
+		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+	return &returnedNode, nil
+}
+
 
 func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 	relativeUrl := fmt.Sprintf("/%s/bag/%s/", client.apiVersion, identifier)
