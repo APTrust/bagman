@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
+	"github.com/op/go-logging"
 	"os"
 	"strings"
 	"time"
@@ -173,6 +174,13 @@ type DPNConfig struct {
 	// LocalNode is the namespace of the node this code is running on.
 	// E.g. "aptrust", "chron", "hathi", "tdr", "sdr"
 	LocalNode             string
+	// Where should DPN service logs go?
+	LogDirectory          string
+	// Log level (4 = debug)
+	LogLevel              logging.Level
+	// Should we log to Stderr in addition to writing to
+	// the log file?
+	LogToStderr           bool
 	// Default metadata that goes into bags produced at our node.
 	DefaultMetadata       *DefaultMetadata
 	// Settings for connecting to our own REST service
@@ -206,7 +214,6 @@ func LoadConfig(pathToFile string) (*DPNConfig, error) {
 	}
     return &config, nil
 }
-
 
 // BagBuilder builds a DPN bag from an APTrust intellectual object.
 type BagBuilder struct {

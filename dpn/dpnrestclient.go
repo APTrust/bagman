@@ -1,4 +1,3 @@
-// Package client provides a client for the DPN REST API.
 package dpn
 
 import (
@@ -18,6 +17,7 @@ import (
 // Don't log error messages longer than this
 const MAX_ERR_MSG_SIZE = 2048
 
+// DPNRestClient is a client for the DPN REST API.
 type DPNRestClient struct {
 	hostUrl      string
 	apiVersion   string
