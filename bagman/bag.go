@@ -133,7 +133,7 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 		// Copy the file, if it's an actual file. Otherwise, ignore it and record
 		// a warning. The bag library does not deal with items like symlinks.
 		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
-			if strings.Contains(header.Name, "data/") {
+			if strings.Contains(header.Name, "/data/") {
 				var dataFile *File = nil
 				dataFile = buildFile(tarReader, filepath.Dir(absInputFile), header.Name,
 					header.Size, header.ModTime, buildIngestData)
