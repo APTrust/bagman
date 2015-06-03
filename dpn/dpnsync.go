@@ -6,11 +6,6 @@ import (
 	"github.com/op/go-logging"
 )
 
-// Local Client
-// Remote Client for each other node
-// Logger
-// DPNConfig
-
 type DPNSync struct {
 	LocalClient    *DPNRestClient
 	RemoteClients  map[string]*DPNRestClient

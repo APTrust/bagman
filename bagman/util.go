@@ -18,7 +18,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 )
 
 // Returns the domain name of the institution that owns the specified bucket.
@@ -324,11 +323,12 @@ func AddToArchive(tarWriter *tar.Writer, filePath, pathWithinArchive string) (er
 		Mode: int64(finfo.Mode().Perm()),
 		ModTime: finfo.ModTime(),
 	}
-	systat := finfo.Sys().(*syscall.Stat_t)
-	if systat != nil {
-		header.Uid = int(systat.Uid)
-		header.Gid = int(systat.Gid)
-	}
+
+	// This call adds the owner and group info to the tar file header.
+	// When running on *nix systems that support this call, we use
+	// the definition in nix.go. On Windows, which does not support
+	// the call, we use the no-op definition in windows.go.
+	GetOwnerAndGroup(finfo, header)
 
 	// Write the header entry
 	if err := tarWriter.WriteHeader(header); err != nil {
