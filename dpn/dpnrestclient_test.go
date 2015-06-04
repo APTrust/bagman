@@ -156,6 +156,24 @@ func TestDPNNodeGet(t *testing.T) {
 	}
 }
 
+func TestDPNNodeListGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	nodeList, err := client.DPNNodeListGet(nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if nodeList.Count != 5 {
+		t.Errorf("Expected 5 nodes, got %d", nodeList.Count)
+	}
+	if len(nodeList.Results) != 5 {
+		t.Errorf("Expected 5 nodes, got %d", len(nodeList.Results))
+	}
+}
+
 func TestDPNNodeUpdate(t *testing.T) {
 	if runRestTests(t) == false {
 		return

@@ -28,6 +28,13 @@ type DPNRestClient struct {
 	institutions map[string]string
 }
 
+type NodeListResult struct {
+	Count       int32                      `json:count`
+	Next        string                     `json:next`
+	Previous    string                     `json:previous`
+	Results     []DPNNode                  `json:results`
+}
+
 // BagListResult is what the REST service returns when
 // we ask for a list of bags.
 type BagListResult struct {
@@ -132,6 +139,38 @@ func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 	}
 	return obj, nil
 }
+
+func (client *DPNRestClient) DPNNodeListGet(queryParams *url.Values) (*NodeListResult, error) {
+	relativeUrl := fmt.Sprintf("/%s/node/", client.apiVersion)
+	objUrl := client.BuildUrl(relativeUrl, queryParams)
+	client.logger.Debug("Requesting node list from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("DPNNodeListGet expected status 200 but got %d. URL: %s", response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// HACK! Get rid of this when Golang fixes the JSON null date problem!
+	body = HackNullDates(body)
+
+	// Build and return the data structure
+	result := &NodeListResult{}
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return result, nil
+}
+
 
 // DPNNodeUpdate updates a DPN Node record. You can update node
 // records only if you are the admin on the server where you're
