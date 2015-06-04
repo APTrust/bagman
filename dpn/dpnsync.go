@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/op/go-logging"
+	"net/url"
+	"time"
 )
 
 type DPNSync struct {
@@ -61,12 +63,88 @@ func initRemoteClients(localClient *DPNRestClient, config *DPNConfig, logger *lo
 	return remoteClients, nil
 }
 
+// Returns a list of all the nodes that our node knows about.
 func (dpnSync *DPNSync) GetAllNodes()([]DPNNode, error) {
 	result, err := dpnSync.LocalClient.DPNNodeListGet(nil)
 	if err != nil {
 		return nil, err
 	}
 	return result.Results, nil
+}
+
+func (dpnSync *DPNSync) UpdateLastPullDate(node *DPNNode, lastPullDate time.Time) (*DPNNode, error) {
+	dpnSync.Logger.Debug("Setting last pull date on %s to %s", node.Namespace, lastPullDate)
+	node.LastPullDate = lastPullDate  // Don't set this until you're ready to send!
+	return dpnSync.LocalClient.DPNNodeUpdate(node)
+}
+
+// Syncs bags from the specified node to our own local DPN registry
+// if the bags match these critieria:
+//
+// 1. The node we are querying is the admin node for the bag.
+// 2. The bag was updated since the last time we queried the node.
+//
+// Returns a list of the bags that were successfully updated.
+// Even on error, this may still return a list with whatever bags
+// were updated before the error occurred.
+func (dpnSync *DPNSync) SyncBags(nodeNamespace string) ([]*DPNBag, error) {
+	remoteNode, err := dpnSync.LocalClient.DPNNodeGet(nodeNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if remoteNode == nil {
+		return nil, fmt.Errorf("No record for remote node %s", nodeNamespace)
+	}
+	nextTimeStamp := time.Now().UTC()
+	pageNumber := 1
+	bagsUpdated := make([]*DPNBag, 0)
+	defer dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
+
+	remoteClient := dpnSync.RemoteClients[nodeNamespace]
+	for {
+		dpnSync.Logger.Debug("Getting page %d of bags from %s", pageNumber, remoteNode.Namespace)
+		result, err := dpnSync.getBags(remoteClient, remoteNode, pageNumber)
+		if err != nil {
+			return bagsUpdated, err
+		}
+		dpnSync.Logger.Debug("Got %d bags from %s", result.Count, remoteNode.Namespace)
+		updated, err := dpnSync.syncBags(result.Results)
+		if err != nil {
+			return bagsUpdated, err
+		}
+		bagsUpdated = append(bagsUpdated, updated...)
+		if result.Next == "" {
+			dpnSync.Logger.Debug("No more bags to get from %s", remoteNode.Namespace)
+			break
+		}
+		pageNumber += 1
+	}
+	dpnSync.Logger.Debug("Updated %d bags in local registry", len(bagsUpdated))
+	return bagsUpdated, nil
+}
+
+func (dpnSync *DPNSync) syncBags(bags []DPNBag) ([]*DPNBag, error) {
+	bagsUpdated := make([]*DPNBag, 0)
+	for _, bag := range(bags) {
+		dpnSync.Logger.Debug("Updating bag %s in local registry", bag.UUID)
+		updatedBag, err := dpnSync.LocalClient.DPNBagUpdate(&bag)
+		if err != nil {
+			dpnSync.Logger.Debug("Oops! Bag %s: %v", bag.UUID, err)
+			return bagsUpdated, err
+		}
+		bagsUpdated = append(bagsUpdated, updatedBag)
+	}
+	return bagsUpdated, nil
+}
+
+func (dpnSync *DPNSync) getBags(remoteClient *DPNRestClient, remoteNode *DPNNode, pageNumber int) (*BagListResult, error) {
+	// We want to get all bags updated since the last time we pulled
+	// from this node, and only those bags for which the node we're
+	// querying is the admin node.
+	params := url.Values{}
+	params.Set("after", remoteNode.LastPullDate.Format(time.RFC3339Nano))
+	params.Set("admin_node", remoteNode.Namespace)
+	return remoteClient.DPNBagListGet(&params)
 }
 
 //

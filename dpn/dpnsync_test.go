@@ -5,6 +5,7 @@ import (
 	"github.com/APTrust/bagman/dpn"
 	"net/http"
 	"testing"
+	"time"
 )
 
 var TEST_NODE_URLS = map[string]string {
@@ -13,13 +14,6 @@ var TEST_NODE_URLS = map[string]string {
 	"sdr":   "http://127.0.0.1:8003",
 	"tdr":   "http://127.0.0.1:8004",
 }
-// APTrust user token for test nodes
-// var TEST_NODES_TOKENS = map[string]string {
-// 	"chron": "",
-// 	"hathi": "",
-// 	"sdr":   "",
-// 	"tdr":   "",
-// }
 
 var skipSyncMessagePrinted = false
 
@@ -80,6 +74,9 @@ func setTestNodeUrls(dpnSync *dpn.DPNSync) {
 }
 
 func TestNewDPNSync(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
 	dpnSync := newDPNSync(t)
 	if dpnSync == nil {
 		return
@@ -100,5 +97,37 @@ func TestGetAllNodes(t *testing.T) {
 	}
 	if len(nodes) != 5 {
 		t.Errorf("Expected 5 nodes, got %d", len(nodes))
+	}
+}
+
+func TestUpdateLastPullDate(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
+	dpnSync := newDPNSync(t)
+	if dpnSync == nil {
+		return
+	}
+	nodes, err := dpnSync.GetAllNodes()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if len(nodes) != 5 {
+		t.Errorf("Expected 5 nodes, got %d", len(nodes))
+		return
+	}
+	someNode := nodes[2]
+	origLastPullDate := someNode.LastPullDate
+	newLastPullDate := origLastPullDate.Add(-12 * time.Hour)
+
+	updatedNode, err := dpnSync.UpdateLastPullDate(&someNode, newLastPullDate)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if updatedNode.LastPullDate != newLastPullDate {
+		t.Errorf("Expected LastPullDate %s, got %s",
+			newLastPullDate, updatedNode.LastPullDate)
 	}
 }
