@@ -19,9 +19,9 @@ const MAX_ERR_MSG_SIZE = 2048
 
 // DPNRestClient is a client for the DPN REST API.
 type DPNRestClient struct {
-	hostUrl      string
-	apiVersion   string
-	apiKey       string
+	HostUrl      string
+	APIVersion   string
+	APIKey       string
 	httpClient   *http.Client
 	transport    *http.Transport
 	logger       *logging.Logger
@@ -82,12 +82,12 @@ func NewDPNRestClient(hostUrl, apiVersion, apiKey string, logger *logging.Logger
 }
 
 
-// BuildUrl combines the host and protocol in client.hostUrl with
-// relativeUrl to create an absolute URL. For example, if client.hostUrl
+// BuildUrl combines the host and protocol in client.HostUrl with
+// relativeUrl to create an absolute URL. For example, if client.HostUrl
 // is "http://localhost:3456", then client.BuildUrl("/path/to/action.json")
 // would return "http://localhost:3456/path/to/action.json".
 func (client *DPNRestClient) BuildUrl(relativeUrl string, queryParams *url.Values) string {
-	fullUrl := client.hostUrl + relativeUrl
+	fullUrl := client.HostUrl + relativeUrl
 	if queryParams != nil {
 		fullUrl = fmt.Sprintf("%s?%s", fullUrl, queryParams.Encode())
 	}
@@ -103,13 +103,13 @@ func (client *DPNRestClient) NewJsonRequest(method, targetUrl string, body io.Re
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("token %s", client.apiKey))
+	req.Header.Add("Authorization", fmt.Sprintf("token %s", client.APIKey))
 	req.Header.Add("Connection", "Keep-Alive")
 	return req, nil
 }
 
 func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
-	relativeUrl := fmt.Sprintf("/%s/node/%s/", client.apiVersion, identifier)
+	relativeUrl := fmt.Sprintf("/%s/node/%s/", client.APIVersion, identifier)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	client.logger.Debug("Requesting node from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -141,7 +141,7 @@ func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 }
 
 func (client *DPNRestClient) DPNNodeListGet(queryParams *url.Values) (*NodeListResult, error) {
-	relativeUrl := fmt.Sprintf("/%s/node/", client.apiVersion)
+	relativeUrl := fmt.Sprintf("/%s/node/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, queryParams)
 	client.logger.Debug("Requesting node list from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -179,7 +179,7 @@ func (client *DPNRestClient) DPNNodeListGet(queryParams *url.Values) (*NodeListR
 // LastPullDate attribute through this client. Use the web admin
 // interface to perform more substantive node updates.
 func (client *DPNRestClient) DPNNodeUpdate(node *DPNNode) (*DPNNode, error) {
-	relativeUrl := fmt.Sprintf("/%s/node/%s/", client.apiVersion, node.Namespace)
+	relativeUrl := fmt.Sprintf("/%s/node/%s/", client.APIVersion, node.Namespace)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	expectedResponseCode := 200
 	client.logger.Debug("Updating Node %s to DPN REST service: %s", node.Namespace, objUrl)
@@ -217,7 +217,7 @@ func (client *DPNRestClient) DPNNodeUpdate(node *DPNNode) (*DPNNode, error) {
 
 
 func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
-	relativeUrl := fmt.Sprintf("/%s/bag/%s/", client.apiVersion, identifier)
+	relativeUrl := fmt.Sprintf("/%s/bag/%s/", client.APIVersion, identifier)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	client.logger.Debug("Requesting bag from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -246,7 +246,7 @@ func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 }
 
 func (client *DPNRestClient) DPNBagListGet(queryParams *url.Values) (*BagListResult, error) {
-	relativeUrl := fmt.Sprintf("/%s/bag/", client.apiVersion)
+	relativeUrl := fmt.Sprintf("/%s/bag/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, queryParams)
 	client.logger.Debug("Requesting bag list from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -284,12 +284,12 @@ func (client *DPNRestClient) DPNBagUpdate(bag *DPNBag) (*DPNBag, error) {
 
 func (client *DPNRestClient) dpnBagSave(bag *DPNBag, method string) (*DPNBag, error) {
 	// POST/Create
-	relativeUrl := fmt.Sprintf("/%s/bag/", client.apiVersion)
+	relativeUrl := fmt.Sprintf("/%s/bag/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	expectedResponseCode := 201
 	if method == "PUT" {
 		// PUT/Update
-		relativeUrl = fmt.Sprintf("/%s/bag/%s/", client.apiVersion, bag.UUID)
+		relativeUrl = fmt.Sprintf("/%s/bag/%s/", client.APIVersion, bag.UUID)
 		objUrl = client.BuildUrl(relativeUrl, nil)
 		expectedResponseCode = 200
 	}
@@ -324,7 +324,7 @@ func (client *DPNRestClient) dpnBagSave(bag *DPNBag, method string) (*DPNBag, er
 
 func (client *DPNRestClient) ReplicationTransferGet(identifier string) (*DPNReplicationTransfer, error) {
 	// /api-v1/replicate/aptrust-999999/
-	relativeUrl := fmt.Sprintf("/%s/replicate/%s/", client.apiVersion, identifier)
+	relativeUrl := fmt.Sprintf("/%s/replicate/%s/", client.APIVersion, identifier)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	client.logger.Debug("Requesting replication xfer record from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -354,7 +354,7 @@ func (client *DPNRestClient) ReplicationTransferGet(identifier string) (*DPNRepl
 }
 
 func (client *DPNRestClient) DPNReplicationListGet(queryParams *url.Values) (*ReplicationListResult, error) {
-	relativeUrl := fmt.Sprintf("/%s/replicate/", client.apiVersion)
+	relativeUrl := fmt.Sprintf("/%s/replicate/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, queryParams)
 	client.logger.Debug("Requesting replication list from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -393,12 +393,12 @@ func (client *DPNRestClient) ReplicationTransferUpdate(xfer *DPNReplicationTrans
 
 func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfer, method string) (*DPNReplicationTransfer, error) {
 	// POST/Create
-	relativeUrl := fmt.Sprintf("/%s/replicate/", client.apiVersion)
+	relativeUrl := fmt.Sprintf("/%s/replicate/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	expectedResponseCode := 201
 	if method == "PUT" {
 		// PUT/Update
-		relativeUrl = fmt.Sprintf("/%s/replicate/%s/", client.apiVersion, xfer.ReplicationId)
+		relativeUrl = fmt.Sprintf("/%s/replicate/%s/", client.APIVersion, xfer.ReplicationId)
 		objUrl = client.BuildUrl(relativeUrl, nil)
 		expectedResponseCode = 200
 	}
@@ -433,7 +433,7 @@ func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfe
 
 func (client *DPNRestClient) RestoreTransferGet(identifier string) (*DPNRestoreTransfer, error) {
 	// /api-v1/restore/aptrust-64/
-	relativeUrl := fmt.Sprintf("/%s/restore/%s/", client.apiVersion, identifier)
+	relativeUrl := fmt.Sprintf("/%s/restore/%s/", client.APIVersion, identifier)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	client.logger.Debug("Requesting restore xfer record from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -463,7 +463,7 @@ func (client *DPNRestClient) RestoreTransferGet(identifier string) (*DPNRestoreT
 }
 
 func (client *DPNRestClient) DPNRestoreListGet(queryParams *url.Values) (*RestoreListResult, error) {
-	relativeUrl := fmt.Sprintf("/%s/restore/", client.apiVersion)
+	relativeUrl := fmt.Sprintf("/%s/restore/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, queryParams)
 	client.logger.Debug("Requesting restore list from DPN REST service: %s", objUrl)
 	request, err := client.NewJsonRequest("GET", objUrl, nil)
@@ -501,12 +501,12 @@ func (client *DPNRestClient) RestoreTransferUpdate(xfer *DPNRestoreTransfer) (*D
 
 func (client *DPNRestClient) restoreTransferSave(xfer *DPNRestoreTransfer, method string) (*DPNRestoreTransfer, error) {
 	// POST/Create
-	relativeUrl := fmt.Sprintf("/%s/restore/", client.apiVersion)
+	relativeUrl := fmt.Sprintf("/%s/restore/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, nil)
 	expectedResponseCode := 201
 	if method == "PUT" {
 		// PUT/Update
-		relativeUrl = fmt.Sprintf("/%s/restore/%s/", client.apiVersion, xfer.RestoreId)
+		relativeUrl = fmt.Sprintf("/%s/restore/%s/", client.APIVersion, xfer.RestoreId)
 		objUrl = client.BuildUrl(relativeUrl, nil)
 		expectedResponseCode = 200
 	}

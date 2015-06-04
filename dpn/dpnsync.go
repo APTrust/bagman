@@ -61,6 +61,14 @@ func initRemoteClients(localClient *DPNRestClient, config *DPNConfig, logger *lo
 	return remoteClients, nil
 }
 
+func (dpnSync *DPNSync) GetAllNodes()([]DPNNode, error) {
+	result, err := dpnSync.LocalClient.DPNNodeListGet(nil)
+	if err != nil {
+		return nil, err
+	}
+	return result.Results, nil
+}
+
 //
 // Get all nodes
 // Get bags
