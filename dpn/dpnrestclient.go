@@ -32,7 +32,7 @@ type NodeListResult struct {
 	Count       int32                      `json:count`
 	Next        string                     `json:next`
 	Previous    string                     `json:previous`
-	Results     []DPNNode                  `json:results`
+	Results     []*DPNNode                 `json:results`
 }
 
 // BagListResult is what the REST service returns when
@@ -41,7 +41,7 @@ type BagListResult struct {
 	Count       int32                      `json:count`
 	Next        string                     `json:next`
 	Previous    string                     `json:previous`
-	Results     []DPNBag                   `json:results`
+	Results     []*DPNBag                  `json:results`
 }
 
 // ReplicationListResult is what the REST service returns when
@@ -50,7 +50,7 @@ type ReplicationListResult struct {
 	Count       int32                     `json:count`
 	Next        string                    `json:next`
 	Previous    string                    `json:previous`
-	Results     []DPNReplicationTransfer  `json:results`
+	Results     []*DPNReplicationTransfer `json:results`
 }
 
 // RestoreListResult is what the REST service returns when
@@ -59,7 +59,7 @@ type RestoreListResult struct {
 	Count       int32                     `json:count`
 	Next        string                    `json:next`
 	Previous    string                    `json:previous`
-	Results     []DPNRestoreTransfer      `json:results`
+	Results     []*DPNRestoreTransfer     `json:results`
 }
 
 

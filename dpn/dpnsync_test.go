@@ -121,7 +121,7 @@ func TestUpdateLastPullDate(t *testing.T) {
 	origLastPullDate := someNode.LastPullDate
 	newLastPullDate := origLastPullDate.Add(-12 * time.Hour)
 
-	updatedNode, err := dpnSync.UpdateLastPullDate(&someNode, newLastPullDate)
+	updatedNode, err := dpnSync.UpdateLastPullDate(someNode, newLastPullDate)
 	if err != nil {
 		t.Error(err)
 		return
@@ -129,5 +129,37 @@ func TestUpdateLastPullDate(t *testing.T) {
 	if updatedNode.LastPullDate != newLastPullDate {
 		t.Errorf("Expected LastPullDate %s, got %s",
 			newLastPullDate, updatedNode.LastPullDate)
+	}
+}
+
+func TestSyncBags(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
+	dpnSync := newDPNSync(t)
+	if dpnSync == nil {
+		return
+	}
+	nodes, err := dpnSync.GetAllNodes()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, node := range nodes {
+		origLastPull := node.LastPullDate
+		bagsSynched, err := dpnSync.SyncBags(node)
+		if err != nil {
+			t.Errorf("Error synching node %s: %v", node.Namespace, err)
+		}
+		if len(bagsSynched) != 8 {
+			t.Errorf("Synched %d bags. Expected %d.", len(bagsSynched), 8)
+		}
+		updatedNode, err := dpnSync.LocalClient.DPNNodeGet(node.Namespace)
+		if err != nil {
+			t.Errorf("Can't check timestamp. Error getting node: %v", err)
+		}
+		if updatedNode.LastPullDate == origLastPull {
+			t.Errorf("LastPullDate was not updated for %s", node.Namespace)
+		}
 	}
 }

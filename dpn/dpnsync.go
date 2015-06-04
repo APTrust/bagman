@@ -64,7 +64,7 @@ func initRemoteClients(localClient *DPNRestClient, config *DPNConfig, logger *lo
 }
 
 // Returns a list of all the nodes that our node knows about.
-func (dpnSync *DPNSync) GetAllNodes()([]DPNNode, error) {
+func (dpnSync *DPNSync) GetAllNodes()([]*DPNNode, error) {
 	result, err := dpnSync.LocalClient.DPNNodeListGet(nil)
 	if err != nil {
 		return nil, err
@@ -87,20 +87,13 @@ func (dpnSync *DPNSync) UpdateLastPullDate(node *DPNNode, lastPullDate time.Time
 // Returns a list of the bags that were successfully updated.
 // Even on error, this may still return a list with whatever bags
 // were updated before the error occurred.
-func (dpnSync *DPNSync) SyncBags(nodeNamespace string) ([]*DPNBag, error) {
-	remoteNode, err := dpnSync.LocalClient.DPNNodeGet(nodeNamespace)
-	if err != nil {
-		return nil, err
-	}
-	if remoteNode == nil {
-		return nil, fmt.Errorf("No record for remote node %s", nodeNamespace)
-	}
+func (dpnSync *DPNSync) SyncBags(remoteNode *DPNNode) ([]*DPNBag, error) {
 	nextTimeStamp := time.Now().UTC()
 	pageNumber := 1
 	bagsUpdated := make([]*DPNBag, 0)
 	defer dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
 
-	remoteClient := dpnSync.RemoteClients[nodeNamespace]
+	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
 	for {
 		dpnSync.Logger.Debug("Getting page %d of bags from %s", pageNumber, remoteNode.Namespace)
 		result, err := dpnSync.getBags(remoteClient, remoteNode, pageNumber)
@@ -123,11 +116,11 @@ func (dpnSync *DPNSync) SyncBags(nodeNamespace string) ([]*DPNBag, error) {
 	return bagsUpdated, nil
 }
 
-func (dpnSync *DPNSync) syncBags(bags []DPNBag) ([]*DPNBag, error) {
+func (dpnSync *DPNSync) syncBags(bags []*DPNBag) ([]*DPNBag, error) {
 	bagsUpdated := make([]*DPNBag, 0)
 	for _, bag := range(bags) {
 		dpnSync.Logger.Debug("Updating bag %s in local registry", bag.UUID)
-		updatedBag, err := dpnSync.LocalClient.DPNBagUpdate(&bag)
+		updatedBag, err := dpnSync.LocalClient.DPNBagUpdate(bag)
 		if err != nil {
 			dpnSync.Logger.Debug("Oops! Bag %s: %v", bag.UUID, err)
 			return bagsUpdated, err
