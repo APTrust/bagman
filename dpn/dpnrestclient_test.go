@@ -603,6 +603,7 @@ func TestReplicationTransferCreate(t *testing.T) {
 	}
 	if newXfer == nil {
 		t.Errorf("ReplicationTransferCreate did not return an object")
+		return
 	}
 
 	// Make sure the fields were set correctly.

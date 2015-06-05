@@ -168,10 +168,10 @@ func TestSyncBags(t *testing.T) {
 		}
 		bagsSynched, err := dpnSync.SyncBags(node)
 		if err != nil {
-			t.Errorf("Error synching node %s: %v", node.Namespace, err)
+			t.Errorf("Error synching bags for node %s: %v", node.Namespace, err)
 		}
 		if len(bagsSynched) != 8 {
-			t.Errorf("Synched %d bags. Expected %d.", len(bagsSynched), 8)
+			t.Errorf("Synched %d bags for node %s. Expected %d.", len(bagsSynched), node.Namespace, 8)
 		}
 		updatedNode, err := dpnSync.LocalClient.DPNNodeGet(node.Namespace)
 		if err != nil {
@@ -179,6 +179,60 @@ func TestSyncBags(t *testing.T) {
 		}
 		if updatedNode.LastPullDate == aLongTimeAgo {
 			t.Errorf("LastPullDate was not updated for %s", node.Namespace)
+		}
+		for _, remoteBag := range(bagsSynched) {
+			localBag, _ := dpnSync.LocalClient.DPNBagGet(remoteBag.UUID)
+			if localBag == nil {
+				t.Errorf("Bag %s didn't make into local registry", remoteBag.UUID)
+			}
+			if localBag.UpdatedAt != remoteBag.UpdatedAt {
+				t.Errorf("Bag %s isn't up to date in local registry", remoteBag.UUID)
+			}
+		}
+	}
+}
+
+func TestSyncReplicationRequests(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
+	dpnSync := newDPNSync(t)
+	if dpnSync == nil {
+		return
+	}
+	nodes, err := dpnSync.GetAllNodes()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, node := range nodes {
+		if node.Namespace == "aptrust" {
+			continue
+		}
+		aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+		node.LastPullDate = aLongTimeAgo
+		_, err := dpnSync.LocalClient.DPNNodeUpdate(node)
+		if err != nil {
+			t.Errorf("Error setting last pull date to 1999: %v", err)
+			return
+		}
+		xfersSynched, err := dpnSync.SyncReplicationRequests(node)
+		if err != nil {
+			t.Errorf("Error synching replication requests for node %s: %v",
+				node.Namespace, err)
+		}
+		if len(xfersSynched) != 24 {
+			t.Errorf("Synched %d replication requests for %s. Expected %d.",
+				len(xfersSynched), node.Namespace, 8)
+		}
+		for _, xfer := range(xfersSynched) {
+			localCopy, _ := dpnSync.LocalClient.ReplicationTransferGet(xfer.ReplicationId)
+			if localCopy == nil {
+				t.Errorf("Xfer %s didn't make into local registry", xfer.ReplicationId)
+			}
+			if xfer.UpdatedAt != localCopy.UpdatedAt {
+				t.Errorf("Xfer %s isn't up to date in local registry", xfer.ReplicationId)
+			}
 		}
 	}
 }

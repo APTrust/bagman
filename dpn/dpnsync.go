@@ -91,6 +91,9 @@ func (dpnSync *DPNSync) SyncBags(remoteNode *DPNNode) ([]*DPNBag, error) {
 	nextTimeStamp := time.Now().UTC()
 	pageNumber := 1
 	bagsUpdated := make([]*DPNBag, 0)
+
+	// TODO: Move this. Only update the timestamp after all bags,
+	// replication requests and restore requests have been updated.
 	defer dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
 
 	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
@@ -100,7 +103,7 @@ func (dpnSync *DPNSync) SyncBags(remoteNode *DPNNode) ([]*DPNBag, error) {
 		if err != nil {
 			return bagsUpdated, err
 		}
-		dpnSync.Logger.Debug("Got %d bags from %s", result.Count, remoteNode.Namespace)
+		dpnSync.Logger.Debug("Got %d bags from %s", len(result.Results), remoteNode.Namespace)
 		updated, err := dpnSync.syncBags(result.Results)
 		if err != nil {
 			return bagsUpdated, err
@@ -146,7 +149,67 @@ func (dpnSync *DPNSync) getBags(remoteClient *DPNRestClient, remoteNode *DPNNode
 	params := url.Values{}
 	params.Set("after", remoteNode.LastPullDate.Format(time.RFC3339Nano))
 	params.Set("admin_node", remoteNode.Namespace)
+	params.Set("page", fmt.Sprintf("%d", pageNumber))
 	return remoteClient.DPNBagListGet(&params)
+}
+
+func (dpnSync *DPNSync) SyncReplicationRequests(remoteNode *DPNNode) ([]*DPNReplicationTransfer, error) {
+	xfersUpdated := make([]*DPNReplicationTransfer, 0)
+	pageNumber := 1
+	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
+	for {
+		dpnSync.Logger.Debug("Getting page %d of replication requests from %s", pageNumber, remoteNode.Namespace)
+		result, err := dpnSync.getReplicationRequests(remoteClient, remoteNode, pageNumber)
+		if err != nil {
+			return xfersUpdated, err
+		}
+		dpnSync.Logger.Debug("Got %d replication requests from %s", len(result.Results), remoteNode.Namespace)
+		updated, err := dpnSync.syncReplicationRequests(result.Results)
+		if err != nil {
+			return xfersUpdated, err
+		}
+		xfersUpdated = append(xfersUpdated, updated...)
+		if result.Next == "" {
+			dpnSync.Logger.Debug("No more replication requests to get from %s", remoteNode.Namespace)
+			break
+		}
+		pageNumber += 1
+	}
+	dpnSync.Logger.Debug("Updated %d replication requests in local registry", len(xfersUpdated))
+	return xfersUpdated, nil
+}
+
+func (dpnSync *DPNSync) syncReplicationRequests(xfers []*DPNReplicationTransfer) ([]*DPNReplicationTransfer, error) {
+	xfersUpdated := make([]*DPNReplicationTransfer, 0)
+	for _, xfer := range(xfers) {
+		dpnSync.Logger.Debug("Updating transfer %s in local registry", xfer.ReplicationId)
+		existingXfer, _ := dpnSync.LocalClient.ReplicationTransferGet(xfer.ReplicationId)
+		var err error
+		var updatedXfer *DPNReplicationTransfer
+		if existingXfer != nil {
+			dpnSync.Logger.Debug("Replication request %s exists... updating", xfer.ReplicationId)
+			updatedXfer, err = dpnSync.LocalClient.ReplicationTransferUpdate(xfer)
+		} else {
+			dpnSync.Logger.Debug("Replication request %s not in local registry... creating", xfer.ReplicationId)
+			updatedXfer, err = dpnSync.LocalClient.ReplicationTransferCreate(xfer)
+		}
+		if err != nil {
+			dpnSync.Logger.Debug("Oops! Replication request %s: %v", xfer.ReplicationId, err)
+			return xfersUpdated, err
+		}
+		xfersUpdated = append(xfersUpdated, updatedXfer)
+	}
+	return xfersUpdated, nil
+}
+
+func (dpnSync *DPNSync) getReplicationRequests(remoteClient *DPNRestClient, remoteNode *DPNNode, pageNumber int) (*ReplicationListResult, error) {
+	// Get requests updated since the last time we pulled
+	// from this node, where this node is the from_node.
+	params := url.Values{}
+	params.Set("after", remoteNode.LastPullDate.Format(time.RFC3339Nano))
+	params.Set("from_node", remoteNode.Namespace)
+	params.Set("page", fmt.Sprintf("%d", pageNumber))
+	return remoteClient.DPNReplicationListGet(&params)
 }
 
 //
