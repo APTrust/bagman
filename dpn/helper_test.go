@@ -27,5 +27,10 @@ func loadConfig(t *testing.T, configPath string) (*dpn.DPNConfig) {
 		t.Errorf("Error loading %s: %v\n", configPath, err)
 		return nil
 	}
+
+	// Turn this off to suppress tons of debug messages.
+	dpnConfig.LogLevel = 0
+	dpnConfig.LogToStderr = false
+
 	return dpnConfig
 }
