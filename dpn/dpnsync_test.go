@@ -15,6 +15,7 @@ var TEST_NODE_URLS = map[string]string {
 	"tdr":   "http://127.0.0.1:8004",
 }
 
+
 var skipSyncMessagePrinted = false
 
 func runSyncTests(t *testing.T) bool {
@@ -49,11 +50,20 @@ func canRunSyncTests(nodeNamespace string, url string, err error) (bool) {
 func newDPNSync(t *testing.T) (*dpn.DPNSync) {
 	// loadConfig and configFile are defined in dpnrestclient_test.go
 	config := loadConfig(t, configFile)
+
+	// Hack in our API token. On the local test cluster, APTrust uses
+	// the same token for all nodes.
+	config.RemoteNodeTokens["chron"] = config.RestClient.LocalAuthToken
+	config.RemoteNodeTokens["hathi"] = config.RestClient.LocalAuthToken
+	config.RemoteNodeTokens["sdr"] = config.RestClient.LocalAuthToken
+	config.RemoteNodeTokens["tdr"] = config.RestClient.LocalAuthToken
+
 	dpnSync, err := dpn.NewDPNSync(config)
 	if err != nil {
 		t.Error(err)
 		return nil
 	}
+
 	for namespace, _ := range config.RemoteNodeTokens {
 		if dpnSync.RemoteClients[namespace] == nil {
 			t.Errorf("Remote client for node '%s' is missing", namespace)
@@ -146,7 +156,16 @@ func TestSyncBags(t *testing.T) {
 		return
 	}
 	for _, node := range nodes {
-		origLastPull := node.LastPullDate
+		if node.Namespace == "aptrust" {
+			continue
+		}
+		aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+		node.LastPullDate = aLongTimeAgo
+		_, err := dpnSync.LocalClient.DPNNodeUpdate(node)
+		if err != nil {
+			t.Errorf("Error setting last pull date to 1999: %v", err)
+			return
+		}
 		bagsSynched, err := dpnSync.SyncBags(node)
 		if err != nil {
 			t.Errorf("Error synching node %s: %v", node.Namespace, err)
@@ -158,7 +177,7 @@ func TestSyncBags(t *testing.T) {
 		if err != nil {
 			t.Errorf("Can't check timestamp. Error getting node: %v", err)
 		}
-		if updatedNode.LastPullDate == origLastPull {
+		if updatedNode.LastPullDate == aLongTimeAgo {
 			t.Errorf("LastPullDate was not updated for %s", node.Namespace)
 		}
 	}

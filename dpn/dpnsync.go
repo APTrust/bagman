@@ -120,7 +120,16 @@ func (dpnSync *DPNSync) syncBags(bags []*DPNBag) ([]*DPNBag, error) {
 	bagsUpdated := make([]*DPNBag, 0)
 	for _, bag := range(bags) {
 		dpnSync.Logger.Debug("Updating bag %s in local registry", bag.UUID)
-		updatedBag, err := dpnSync.LocalClient.DPNBagUpdate(bag)
+		existingBag, _ := dpnSync.LocalClient.DPNBagGet(bag.UUID)
+		var err error
+		var updatedBag *DPNBag
+		if existingBag != nil {
+			dpnSync.Logger.Debug("Bag %s exists... updating", bag.UUID)
+			updatedBag, err = dpnSync.LocalClient.DPNBagUpdate(bag)
+		} else {
+			dpnSync.Logger.Debug("Bag %s not in local registry... creating", bag.UUID)
+			updatedBag, err = dpnSync.LocalClient.DPNBagCreate(bag)
+		}
 		if err != nil {
 			dpnSync.Logger.Debug("Oops! Bag %s: %v", bag.UUID, err)
 			return bagsUpdated, err
