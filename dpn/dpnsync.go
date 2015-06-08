@@ -212,12 +212,63 @@ func (dpnSync *DPNSync) getReplicationRequests(remoteClient *DPNRestClient, remo
 	return remoteClient.DPNReplicationListGet(&params)
 }
 
-//
-// Get all nodes
-// Get bags
-// Sync bags to local
-// Get replication transfers
-// Sync replication to local
-// Get restore transfers
-// Sync restore to local
-// Update last sync time for each node
+
+func (dpnSync *DPNSync) SyncRestoreRequests(remoteNode *DPNNode) ([]*DPNRestoreTransfer, error) {
+	xfersUpdated := make([]*DPNRestoreTransfer, 0)
+	pageNumber := 1
+	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
+	for {
+		dpnSync.Logger.Debug("Getting page %d of restore requests from %s", pageNumber, remoteNode.Namespace)
+		result, err := dpnSync.getRestoreRequests(remoteClient, remoteNode, pageNumber)
+		if err != nil {
+			return xfersUpdated, err
+		}
+		dpnSync.Logger.Debug("Got %d restore requests from %s", len(result.Results), remoteNode.Namespace)
+		updated, err := dpnSync.syncRestoreRequests(result.Results)
+		if err != nil {
+			return xfersUpdated, err
+		}
+		xfersUpdated = append(xfersUpdated, updated...)
+		if result.Next == "" {
+			dpnSync.Logger.Debug("No more restore requests to get from %s", remoteNode.Namespace)
+			break
+		}
+		pageNumber += 1
+	}
+	dpnSync.Logger.Debug("Updated %d restore requests in local registry", len(xfersUpdated))
+	return xfersUpdated, nil
+}
+
+func (dpnSync *DPNSync) syncRestoreRequests(xfers []*DPNRestoreTransfer) ([]*DPNRestoreTransfer, error) {
+	xfersUpdated := make([]*DPNRestoreTransfer, 0)
+	for _, xfer := range(xfers) {
+		dpnSync.Logger.Debug("Updating transfer %s in local registry", xfer.RestoreId)
+		existingXfer, _ := dpnSync.LocalClient.RestoreTransferGet(xfer.RestoreId)
+		var err error
+		var updatedXfer *DPNRestoreTransfer
+		if existingXfer != nil {
+			dpnSync.Logger.Debug("Restore request %s exists... updating", xfer.RestoreId)
+			updatedXfer, err = dpnSync.LocalClient.RestoreTransferUpdate(xfer)
+		} else {
+			dpnSync.Logger.Debug("Restore request %s not in local registry... creating", xfer.RestoreId)
+			updatedXfer, err = dpnSync.LocalClient.RestoreTransferCreate(xfer)
+		}
+		if err != nil {
+			dpnSync.Logger.Debug("Oops! Restore request %s: %v", xfer.RestoreId, err)
+			return xfersUpdated, err
+		}
+		xfersUpdated = append(xfersUpdated, updatedXfer)
+	}
+	return xfersUpdated, nil
+}
+
+func (dpnSync *DPNSync) getRestoreRequests(remoteClient *DPNRestClient, remoteNode *DPNNode, pageNumber int) (*RestoreListResult, error) {
+	// Get requests updated since the last time we pulled
+	// from this node, where this node is the to_node.
+	// E.g. We ask TDR for restore requests going TO TDR.
+	params := url.Values{}
+	params.Set("after", remoteNode.LastPullDate.Format(time.RFC3339Nano))
+	params.Set("to_node", remoteNode.Namespace)
+	params.Set("page", fmt.Sprintf("%d", pageNumber))
+	return remoteClient.DPNRestoreListGet(&params)
+}

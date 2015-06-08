@@ -223,7 +223,7 @@ func TestSyncReplicationRequests(t *testing.T) {
 		}
 		if len(xfersSynched) != 24 {
 			t.Errorf("Synched %d replication requests for %s. Expected %d.",
-				len(xfersSynched), node.Namespace, 8)
+				len(xfersSynched), node.Namespace, 24)
 		}
 		for _, xfer := range(xfersSynched) {
 			localCopy, _ := dpnSync.LocalClient.ReplicationTransferGet(xfer.ReplicationId)
@@ -232,6 +232,51 @@ func TestSyncReplicationRequests(t *testing.T) {
 			}
 			if xfer.UpdatedAt != localCopy.UpdatedAt {
 				t.Errorf("Xfer %s isn't up to date in local registry", xfer.ReplicationId)
+			}
+		}
+	}
+}
+
+func TestSyncRestoreRequests(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
+	dpnSync := newDPNSync(t)
+	if dpnSync == nil {
+		return
+	}
+	nodes, err := dpnSync.GetAllNodes()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, node := range nodes {
+		if node.Namespace == "aptrust" {
+			continue
+		}
+		aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+		node.LastPullDate = aLongTimeAgo
+		_, err := dpnSync.LocalClient.DPNNodeUpdate(node)
+		if err != nil {
+			t.Errorf("Error setting last pull date to 1999: %v", err)
+			return
+		}
+		xfersSynched, err := dpnSync.SyncRestoreRequests(node)
+		if err != nil {
+			t.Errorf("Error synching restore requests for node %s: %v",
+				node.Namespace, err)
+		}
+		if len(xfersSynched) != 4 {
+			t.Errorf("Synched %d restore requests for %s. Expected %d.",
+				len(xfersSynched), node.Namespace, 4)
+		}
+		for _, xfer := range(xfersSynched) {
+			localCopy, _ := dpnSync.LocalClient.RestoreTransferGet(xfer.RestoreId)
+			if localCopy == nil {
+				t.Errorf("Xfer %s didn't make into local registry", xfer.RestoreId)
+			}
+			if xfer.UpdatedAt != localCopy.UpdatedAt {
+				t.Errorf("Xfer %s isn't up to date in local registry", xfer.RestoreId)
 			}
 		}
 	}
