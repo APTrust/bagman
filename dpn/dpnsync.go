@@ -15,6 +15,36 @@ type DPNSync struct {
 	Config         *DPNConfig
 }
 
+// SyncResult describes the result of an operation where we pull
+// info about all updated bags, replication requests and restore
+// requests from a remote node and copy that data into our own
+// local DPN registry.
+type SyncResult struct {
+	// Node is the node we are pulling information from.
+	RemoteNode            *DPNNode
+	// Bags is a list of bags successfully synched.
+	Bags                  []*DPNBag
+	// ReplicationTransfers successfully synched.
+	ReplicationTransfers  []*DPNReplicationTransfer
+	// RestoreTransfers successfully synched.
+	RestoreTransfers      []*DPNRestoreTransfer
+	// BagSyncError contains the error (if any) that occurred
+	// during the bag sync process. The first error will stop
+	// the synching of all subsquent bags.
+	BagSyncError          error
+	// ReplicationSyncError contains the error (if any) that occurred
+	// during the synching of Replication Transfers. The first error
+	// will stop the synching of all subsquent replication requests.
+	ReplicationSyncError  error
+	// RestoreSyncError contains the error (if any) that occurred
+	// during the synching of Restore Transfers. The first error
+	// will stop the synching of all subsquent restore requests.
+	RestoreSyncError      error
+	// TimestampError contains the error (if any) that occurred when
+	// trying to update the LastPullDate timestamp for the node.
+	TimestampError        error
+}
+
 func NewDPNSync(config *DPNConfig) (*DPNSync, error) {
 	logger := initLogger(config)
 	localClient, err := NewDPNRestClient(
@@ -78,6 +108,35 @@ func (dpnSync *DPNSync) UpdateLastPullDate(node *DPNNode, lastPullDate time.Time
 	return dpnSync.LocalClient.DPNNodeUpdate(node)
 }
 
+// Sync all bags, replication requests and restore requests from
+// the specified remote node. Note that this is a pull-only sync.
+// We are not writing any data to other nodes, just reading what
+// they have and updating our own registry with their info.
+func (dpnSync *DPNSync) SyncEverythingFromNode(remoteNode *DPNNode) (*SyncResult) {
+	nextTimeStamp := time.Now().UTC()
+	syncResult := &SyncResult {
+		RemoteNode: remoteNode,
+	}
+
+	bags, err := dpnSync.SyncBags(remoteNode)
+	syncResult.Bags = bags
+	syncResult.BagSyncError = err
+
+	replXfers, err := dpnSync.SyncReplicationRequests(remoteNode)
+	syncResult.ReplicationTransfers = replXfers
+	syncResult.ReplicationSyncError = err
+
+	restoreXfers, err := dpnSync.SyncRestoreRequests(remoteNode)
+	syncResult.RestoreTransfers = restoreXfers
+	syncResult.RestoreSyncError = err
+
+	updatedNode, err := dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
+	syncResult.RemoteNode = updatedNode
+	syncResult.TimestampError = err
+
+	return syncResult
+}
+
 // Syncs bags from the specified node to our own local DPN registry
 // if the bags match these critieria:
 //
@@ -88,14 +147,8 @@ func (dpnSync *DPNSync) UpdateLastPullDate(node *DPNNode, lastPullDate time.Time
 // Even on error, this may still return a list with whatever bags
 // were updated before the error occurred.
 func (dpnSync *DPNSync) SyncBags(remoteNode *DPNNode) ([]*DPNBag, error) {
-	nextTimeStamp := time.Now().UTC()
 	pageNumber := 1
 	bagsUpdated := make([]*DPNBag, 0)
-
-	// TODO: Move this. Only update the timestamp after all bags,
-	// replication requests and restore requests have been updated.
-	defer dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
-
 	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
 	for {
 		dpnSync.Logger.Debug("Getting page %d of bags from %s", pageNumber, remoteNode.Namespace)

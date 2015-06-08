@@ -18,6 +18,12 @@ var TEST_NODE_URLS = map[string]string {
 
 var skipSyncMessagePrinted = false
 
+const (
+	BAG_COUNT     = 8
+	REPL_COUNT    = 24
+	RESTORE_COUNT = 4
+)
+
 func runSyncTests(t *testing.T) bool {
 	config := loadConfig(t, configFile)
 	_, err := http.Get(config.RestClient.LocalServiceURL)
@@ -170,15 +176,9 @@ func TestSyncBags(t *testing.T) {
 		if err != nil {
 			t.Errorf("Error synching bags for node %s: %v", node.Namespace, err)
 		}
-		if len(bagsSynched) != 8 {
-			t.Errorf("Synched %d bags for node %s. Expected %d.", len(bagsSynched), node.Namespace, 8)
-		}
-		updatedNode, err := dpnSync.LocalClient.DPNNodeGet(node.Namespace)
-		if err != nil {
-			t.Errorf("Can't check timestamp. Error getting node: %v", err)
-		}
-		if updatedNode.LastPullDate == aLongTimeAgo {
-			t.Errorf("LastPullDate was not updated for %s", node.Namespace)
+		if len(bagsSynched) != BAG_COUNT {
+			t.Errorf("Synched %d bags for node %s. Expected %d.",
+				len(bagsSynched), node.Namespace, BAG_COUNT)
 		}
 		for _, remoteBag := range(bagsSynched) {
 			localBag, _ := dpnSync.LocalClient.DPNBagGet(remoteBag.UUID)
@@ -221,9 +221,9 @@ func TestSyncReplicationRequests(t *testing.T) {
 			t.Errorf("Error synching replication requests for node %s: %v",
 				node.Namespace, err)
 		}
-		if len(xfersSynched) != 24 {
+		if len(xfersSynched) != REPL_COUNT {
 			t.Errorf("Synched %d replication requests for %s. Expected %d.",
-				len(xfersSynched), node.Namespace, 24)
+				len(xfersSynched), node.Namespace, REPL_COUNT)
 		}
 		for _, xfer := range(xfersSynched) {
 			localCopy, _ := dpnSync.LocalClient.ReplicationTransferGet(xfer.ReplicationId)
@@ -266,9 +266,9 @@ func TestSyncRestoreRequests(t *testing.T) {
 			t.Errorf("Error synching restore requests for node %s: %v",
 				node.Namespace, err)
 		}
-		if len(xfersSynched) != 4 {
+		if len(xfersSynched) != RESTORE_COUNT {
 			t.Errorf("Synched %d restore requests for %s. Expected %d.",
-				len(xfersSynched), node.Namespace, 4)
+				len(xfersSynched), node.Namespace, RESTORE_COUNT)
 		}
 		for _, xfer := range(xfersSynched) {
 			localCopy, _ := dpnSync.LocalClient.RestoreTransferGet(xfer.RestoreId)
@@ -280,4 +280,72 @@ func TestSyncRestoreRequests(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestSyncEverythingFromNode(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
+	dpnSync := newDPNSync(t)
+	if dpnSync == nil {
+		return
+	}
+	nodes, err := dpnSync.GetAllNodes()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	for _, node := range nodes {
+		if node.Namespace == "aptrust" {
+			continue
+		}
+		aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+		node.LastPullDate = aLongTimeAgo
+		_, err := dpnSync.LocalClient.DPNNodeUpdate(node)
+		if err != nil {
+			t.Errorf("Error setting last pull date to 1999: %v", err)
+			return
+		}
+		syncResult := dpnSync.SyncEverythingFromNode(node)
+
+		// Bags
+		if syncResult.BagSyncError != nil {
+			t.Errorf("Got unexpected bag-sync error from node %s: %v",
+				node.Namespace, syncResult.BagSyncError)
+		}
+		if len(syncResult.Bags) != BAG_COUNT {
+			t.Errorf("Expected %s bags from %s, got %d",
+				BAG_COUNT, node.Namespace, len(syncResult.Bags))
+		}
+
+		// Replication Transfers
+		if syncResult.ReplicationSyncError != nil {
+			t.Errorf("Got unexpected replication transfer-sync error from node %s: %v",
+				node.Namespace, syncResult.ReplicationSyncError)
+		}
+		if len(syncResult.ReplicationTransfers) != REPL_COUNT {
+			t.Errorf("Expected %s replication transfers from %s, got %d",
+				REPL_COUNT, node.Namespace, len(syncResult.ReplicationTransfers))
+		}
+
+		// Bags
+		if syncResult.RestoreSyncError != nil {
+			t.Errorf("Got unexpected restore transfer-sync error from node %s: %v",
+				node.Namespace, syncResult.RestoreSyncError)
+		}
+		if len(syncResult.RestoreTransfers) != RESTORE_COUNT {
+			t.Errorf("Expected %s restore transfers from %s, got %d",
+				RESTORE_COUNT, node.Namespace, len(syncResult.RestoreTransfers))
+		}
+
+		// Timestamp update
+		updatedNode, err := dpnSync.LocalClient.DPNNodeGet(node.Namespace)
+		if err != nil {
+			t.Errorf("Can't check timestamp. Error getting node: %v", err)
+		}
+		if updatedNode.LastPullDate == aLongTimeAgo {
+			t.Errorf("LastPullDate was not updated for %s", node.Namespace)
+		}
+	}
+
 }
