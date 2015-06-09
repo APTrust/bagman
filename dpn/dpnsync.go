@@ -45,6 +45,12 @@ type SyncResult struct {
 	TimestampError        error
 }
 
+func (syncResult *SyncResult) HasSyncErrors() (bool) {
+	return (syncResult.BagSyncError != nil ||
+		syncResult.ReplicationSyncError != nil ||
+		syncResult.RestoreSyncError != nil)
+}
+
 func NewDPNSync(config *DPNConfig) (*DPNSync, error) {
 	logger := initLogger(config)
 	localClient, err := NewDPNRestClient(
@@ -130,9 +136,15 @@ func (dpnSync *DPNSync) SyncEverythingFromNode(remoteNode *DPNNode) (*SyncResult
 	syncResult.RestoreTransfers = restoreXfers
 	syncResult.RestoreSyncError = err
 
-	updatedNode, err := dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
-	syncResult.RemoteNode = updatedNode
-	syncResult.TimestampError = err
+
+	if !syncResult.HasSyncErrors() {
+		updatedNode, err := dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
+		syncResult.RemoteNode = updatedNode
+		syncResult.TimestampError = err
+	} else {
+		syncResult.TimestampError = fmt.Errorf(
+			"LastPullDate was not updated because of errors during the synchronization process.")
+	}
 
 	return syncResult
 }

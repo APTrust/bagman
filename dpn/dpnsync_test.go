@@ -347,5 +347,75 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("LastPullDate was not updated for %s", node.Namespace)
 		}
 	}
+}
 
+func TestSyncWithError(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
+	dpnSync := newDPNSync(t)
+	if dpnSync == nil {
+		return
+	}
+	nodes, err := dpnSync.GetAllNodes()
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Pick one node to sync with, and set the API key for that node
+	// to a value we know is invalid. This will cause the sync to fail.
+	node := nodes[len(nodes) - 1]
+	dpnSync.RemoteClients[node.Namespace].APIKey = "0000000000000000"
+
+	aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
+	node.LastPullDate = aLongTimeAgo
+	_, err = dpnSync.LocalClient.DPNNodeUpdate(node)
+	if err != nil {
+		t.Errorf("Error setting last pull date to 1999: %v", err)
+		return
+	}
+
+	syncResult := dpnSync.SyncEverythingFromNode(node)
+	if syncResult.BagSyncError == nil {
+		t.Errorf("BagSyncError should not be nil")
+	}
+	if syncResult.ReplicationSyncError == nil {
+		t.Errorf("ReplicationSyncError should not be nil")
+	}
+	if syncResult.RestoreSyncError == nil {
+		t.Errorf("RestoreSyncError should not be nil")
+	}
+
+	// Because the sync failed (due to the bad API Key), the LastPullDate
+	// on the node we tried to pull from should NOT be updated.
+	updatedNode, err := dpnSync.LocalClient.DPNNodeGet(node.Namespace)
+	if err != nil {
+		t.Errorf("Can't check timestamp. Error getting node: %v", err)
+	}
+	if updatedNode.LastPullDate != aLongTimeAgo {
+		t.Errorf("LastPullDate was updated when it should not have been")
+	}
+}
+
+
+func TestHasSyncErrors(t *testing.T) {
+	syncResult := &dpn.SyncResult{}
+	if syncResult.HasSyncErrors() == true {
+		t.Errorf("HasSyncErrors() returned true. Expected false.")
+	}
+	syncResult.BagSyncError = fmt.Errorf("Oops.")
+	if syncResult.HasSyncErrors() == false {
+		t.Errorf("HasSyncErrors() returned false. Expected true.")
+	}
+	syncResult.BagSyncError = nil
+	syncResult.ReplicationSyncError = fmt.Errorf("Oops.")
+	if syncResult.HasSyncErrors() == false {
+		t.Errorf("HasSyncErrors() returned false. Expected true.")
+	}
+	syncResult.ReplicationSyncError = nil
+	syncResult.RestoreSyncError = fmt.Errorf("Oops.")
+	if syncResult.HasSyncErrors() == false {
+		t.Errorf("HasSyncErrors() returned false. Expected true.")
+	}
 }
