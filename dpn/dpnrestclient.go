@@ -7,11 +7,13 @@ import (
 	"github.com/op/go-logging"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"regexp"
 	"strings"
+	"time"
 )
 
 // Don't log error messages longer than this
@@ -72,6 +74,12 @@ func NewDPNRestClient(hostUrl, apiVersion, apiKey string, logger *logging.Logger
 	transport := &http.Transport{
 		MaxIdleConnsPerHost: 8,
 		DisableKeepAlives:   false,
+		Dial: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		ResponseHeaderTimeout: 10 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
 	}
 	httpClient := &http.Client{Jar: cookieJar, Transport: transport}
 	// Trim trailing slashes from host url
