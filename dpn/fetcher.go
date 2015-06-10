@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+// fetcher.go fetches APTrust files from S3 so we can put them into
+// a DPN bag. This is used for DPN bags that we create at APTrust.
+// For copying bags from remote DPN nodes, see copier.go, which copies
+// files to our local staging area so we can replicate them.
 
 type DPNFetchResult struct {
 	FetchResult *bagman.FetchResult

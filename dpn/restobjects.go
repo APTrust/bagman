@@ -66,7 +66,7 @@ type DPNBag struct {
 	Version            uint32               `json:"version"`
 
 	// IngestNode is the node that first ingested or produced the bag.
-	IngestNode       string                 `json:"ingest_node"`
+	IngestNode         string               `json:"ingest_node"`
 
 	// AdminNode is the authoritative node for this bag. If various nodes
 	// have conflicting registry info for this bag, the admin node wins.

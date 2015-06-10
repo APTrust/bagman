@@ -80,7 +80,7 @@ type ValidationResult struct {
 	// outside of production. In production, we need to touch the
 	// message periodically to keep it from timing out, especially
 	// on very large bags.
-	NsqMessage           *nsq.Message
+	NsqMessage           *nsq.Message    `json:"-"`
 
 	// TagManifestChecksum is the sha256 digest (calculated with a nonce)
 	// that we need to send back to the originating node as a receipt

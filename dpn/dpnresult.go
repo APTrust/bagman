@@ -12,6 +12,8 @@ import (
 )
 
 const (
+	STAGE_PRE_COPY  = "Pre Copy"
+	STAGE_COPY      = "Copying from ingest node"
 	STAGE_PACKAGE   = "Packaging"
 	STAGE_RECEIVE   = "Receiving"
 	STAGE_VALIDATE  = "Validation"
@@ -68,9 +70,19 @@ type DPNResult struct {
 	// bag. We only package APTrust bags that we ingested and that
 	// the depositor has indicated should go to DPN. Bags we
 	// replicate from other nodes will already have been packaged
-	// by the ingesting node, so  the PackageResult for those will
-	// be empty.
+	// by the ingesting node, so the PackageResult for those will
+	// be nil. On successful copy, check DPNResult.LocalPath to
+	// find where we stored the file.
 	PackageResult    *PackageResult
+
+	// The result of the attempt to copy the bag from its admin
+	// or ingest node (typically ingest node). When a remote
+	// node asks us to replicate a bag, we have to copy it from the
+	// remote node to our staging area, usually via rsync. This
+	// structure records the result of that copy. For bags that we
+	// created at APTrust, this will be nil because we don't have
+	// to copy from ourselves.
+	CopyResult       *CopyResult
 
 	// The result of the attempt to store the bag in the long-term
 	// storage bucket for DPN.

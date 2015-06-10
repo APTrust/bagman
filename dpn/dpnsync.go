@@ -61,7 +61,7 @@ func NewDPNSync(config *DPNConfig) (*DPNSync, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error creating local DPN REST client: %v", err)
 	}
-	remoteClients, err := initRemoteClients(localClient, config, logger)
+	remoteClients, err := GetRemoteClients(localClient, config, logger)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating remote DPN REST client: %v", err)
 	}
@@ -85,18 +85,6 @@ func initLogger(config *DPNConfig) (*logging.Logger) {
 		LogToStderr: config.LogToStderr,
 	}
 	return bagman.InitLogger(bagmanConfig)
-}
-
-func initRemoteClients(localClient *DPNRestClient, config *DPNConfig, logger *logging.Logger) (map[string]*DPNRestClient, error) {
-	remoteClients := make(map[string]*DPNRestClient)
-	for namespace, _ := range config.RemoteNodeTokens {
-		remoteClient, err := localClient.GetRemoteClient(namespace, config, logger)
-		if err != nil {
-			return nil, fmt.Errorf("Error creating remote client for node %s: %v", namespace, err)
-		}
-		remoteClients[namespace] = remoteClient
-	}
-	return remoteClients, nil
 }
 
 // Returns a list of all the nodes that our node knows about.
