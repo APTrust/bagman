@@ -142,6 +142,21 @@ func TestGetRsyncCommand(t *testing.T) {
 	if !strings.HasSuffix(command.Path, "rsync") {
 		t.Errorf("Expected Path ending in 'rsync', got '%s'", command.Path)
 	}
+	if len(command.Args) < 6 {
+		t.Errorf("rsync command has %d args, expected 5", len(command.Args))
+		return
+	}
+	if command.Args[3] != "ssh" {
+		t.Errorf("rsync command should be using ssh, but it's not")
+	}
+	if command.Args[4] != copyFrom {
+		t.Errorf("rsync command is copying from '%s', expected '%s'",
+			command.Args[4], copyFrom)
+	}
+	if command.Args[5] != copyTo {
+		t.Errorf("rsync command is copying to '%s', expected '%s'",
+			command.Args[5], copyTo)
+	}
 }
 
 func TestCopier(t *testing.T) {
