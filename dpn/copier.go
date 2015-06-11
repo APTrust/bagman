@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
@@ -27,8 +28,6 @@ type Copier struct {
 }
 
 type CopyResult struct {
-	NSQMessage      *nsq.Message  `json:"-"`
-	Link            string
 	LocalPath       string
 	ErrorMessage    string
 	RsyncStdout     string
@@ -85,10 +84,9 @@ func (copier *Copier) HandleMessage(message *nsq.Message) error {
 
 	// Set up the copy result
 	dpnResult.CopyResult = &CopyResult{
-		NSQMessage: message,
-		Link: dpnResult.TransferRequest.Link,
 		BagWasCopied: false,
 	}
+	dpnResult.NsqMessage = message
 
 	// Start processing.
 	dpnResult.Stage = STAGE_COPY
@@ -123,6 +121,7 @@ func (copier *Copier) doLookup() {
 				xfer.Status)
 			copier.ProcUtil.MessageLog.Info(message)
 			result.CopyResult.InfoMessage = message
+			result.Retry = false
 			result.TransferRequest = xfer
 			copier.PostProcessChannel <- result
 			continue
@@ -139,15 +138,20 @@ func (copier *Copier) doCopy() {
 		localPath := filepath.Join(
 			copier.ProcUtil.Config.DPNStagingDirectory,
 			fmt.Sprintf("%s.tar", result.TransferRequest.UUID))
+
+		if !bagman.FileExists(copier.ProcUtil.Config.DPNStagingDirectory) {
+			os.MkdirAll(copier.ProcUtil.Config.DPNStagingDirectory, 0755)
+		}
+
 		rsyncCommand := GetRsyncCommand(result.TransferRequest.Link, localPath)
 
 		// Touch message on both sides of rsync, so NSQ doesn't time out.
-		if result.CopyResult.NSQMessage != nil {
-			result.CopyResult.NSQMessage.Touch()
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
 		}
 		output, err := rsyncCommand.CombinedOutput()
-		if result.CopyResult.NSQMessage != nil {
-			result.CopyResult.NSQMessage.Touch()
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
 		}
 		if err != nil {
 			result.CopyResult.ErrorMessage = fmt.Sprintf("%s: %s",
@@ -157,12 +161,12 @@ func (copier *Copier) doCopy() {
 			result.CopyResult.BagWasCopied = true
 
 			// Touch message on both sides of digest, so NSQ doesn't time out.
-			if result.CopyResult.NSQMessage != nil {
-				result.CopyResult.NSQMessage.Touch()
+			if result.NsqMessage != nil {
+				result.NsqMessage.Touch()
 			}
 			sha256Digest, err := CalculateSha256Digest(localPath)
-			if result.CopyResult.NSQMessage != nil {
-				result.CopyResult.NSQMessage.Touch()
+			if result.NsqMessage != nil {
+				result.NsqMessage.Touch()
 			}
 
 			if err != nil {
@@ -178,19 +182,53 @@ func (copier *Copier) doCopy() {
 func (copier *Copier) postProcess() {
 	// On success, send to validation queue.
 	// Otherwise, send to trouble queue.
-	// for result := range copier.PostProcessChannel {
+	for result := range copier.PostProcessChannel {
+		if result.NsqMessage != nil {
+			result.NsqMessage.Touch()
+		}
+		result.ErrorMessage = result.CopyResult.ErrorMessage
 
-	// }
+		// On error, log and send to trouble queue
+		if result.ErrorMessage != "" {
+			copier.ProcUtil.MessageLog.Error(result.ErrorMessage)
+			copier.ProcUtil.IncrementFailed()
+			SendToTroubleQueue(result, copier.ProcUtil)
+			if bagman.FileExists(result.CopyResult.LocalPath) {
+				os.Remove(result.CopyResult.LocalPath)
+				copier.ProcUtil.MessageLog.Debug(
+					"Deleting bag file %s", result.CopyResult.LocalPath)
+			}
+		} else if result.CopyResult.BagWasCopied == false {
+			// We didn't copy the bag, but there was no error.
+			// This happens when the transfer request is marked
+			// as completed or cancelled on the remote node.
+			// Count this as success, because we did what we're
+			// supposed to do in this case, which is nothing.
+			copier.ProcUtil.IncrementSucceeded()
+		} else {
+			// We successfully copied the bag. Send it on to
+			// the validation queue.
+			copier.ProcUtil.IncrementSucceeded()
+			SendToValidationQueue(result, copier.ProcUtil)
+		}
+
+		if result.NsqMessage == nil {
+			// This is a test message, running outside production.
+			copier.WaitGroup.Done()
+		} else {
+			result.NsqMessage.Finish()
+		}
+		copier.ProcUtil.LogStats()
+
+	}
 }
 
-func (copier *Copier) RunTest(bagIdentifier string) (*DPNResult) {
-	dpnResult := NewDPNResult(bagIdentifier)
+func (copier *Copier) RunTest(dpnResult *DPNResult) {
 	copier.WaitGroup.Add(1)
 	copier.ProcUtil.MessageLog.Info("Putting %s into lookup channel",
 		dpnResult.BagIdentifier)
 	copier.CopyChannel <- dpnResult
 	copier.WaitGroup.Wait()
-	return dpnResult
 }
 
 // Returns a command object for copying from the remote location to

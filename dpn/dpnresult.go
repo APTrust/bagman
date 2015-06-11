@@ -108,6 +108,7 @@ func NewDPNResult(bagIdentifier string) (*DPNResult) {
 		Stage: STAGE_PACKAGE,
 		PackageResult: &PackageResult{},
 		StorageResult: &StorageResult{},
+		CopyResult: &CopyResult{},
 		Retry: true,
 	}
 }

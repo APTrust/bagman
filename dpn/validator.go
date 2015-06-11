@@ -185,7 +185,7 @@ func (validator *Validator) postProcess() {
 				os.RemoveAll(result.ValidationResult.UntarredPath)
 			}
 		} else {
-			validator.ProcUtil.Succeeded()
+			validator.ProcUtil.IncrementSucceeded()
 			SendToStorageQueue(result, validator.ProcUtil)
 		}
 

@@ -2,6 +2,7 @@ package dpn
 
 import (
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/op/go-logging"
 	"io"
@@ -34,6 +35,6 @@ func CalculateSha256Digest(filePath string) (string, error) {
 			filePath, err)
 		return "", detailedError
 	}
-	return string(shaHash.Sum(nil)), nil
+	return hex.EncodeToString(shaHash.Sum(nil)), nil
 
 }

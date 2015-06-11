@@ -94,6 +94,11 @@ type Config struct {
 	// bucket after successfully processing this bag?
 	DeleteOnSuccess         bool
 
+	// DPNCopyWorker copies tarred bags from other nodes into our
+	// DPN staging area, so we can replication them. Currently,
+	// copying is done by rsync over ssh.
+	DPNCopyWorker           WorkerConfig
+
 	// DPNPackageWorker records details about fixity checks
 	// that could not be completed.
 	DPNPackageWorker        WorkerConfig
@@ -116,6 +121,9 @@ type Config struct {
 	// DPNTroubleWorker records failed DPN tasks in the DPN
 	// trouble queue.
 	DPNTroubleWorker      WorkerConfig
+
+	// DPNValidationWorker validates DPN bags.
+	DPNValidationWorker      WorkerConfig
 
 	// FailedFixityWorker records details about fixity checks
 	// that could not be completed.
