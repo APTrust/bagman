@@ -18,6 +18,8 @@ const (
 	STAGE_RECEIVE   = "Receiving"
 	STAGE_VALIDATE  = "Validation"
 	STAGE_STORE     = "Storage"
+	STAGE_RECORD    = "Record"
+	STAGE_COMPLETE  = "Complete"
 	STAGE_CANCELLED = "Cancelled"
 )
 
@@ -87,6 +89,10 @@ type DPNResult struct {
 	// The result of the attempt to store the bag in the long-term
 	// storage bucket for DPN.
 	StorageResult    *StorageResult
+
+	// The result of the attempt to record information about the bag
+	// in DPN and in APTrust. This object is defined in recorder.go.
+	RecordResult    *RecordResult
 
 	// The result of the attempt to validate the bag. This includes
 	// information about whether the bag's structure is valid, whether
