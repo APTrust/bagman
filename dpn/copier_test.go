@@ -205,10 +205,5 @@ func TestCopier(t *testing.T) {
 				"but that file does not exist", uuid,
 				dpnResult.CopyResult.LocalPath)
 		}
-		if dpnResult.DPNBag.Fixities[0].Sha256 != dpnResult.CopyResult.Sha256Digest {
-			t.Errorf("Fixity did not match for bag %s. Expected %s, " +
-				"got %s", uuid, dpnResult.DPNBag.Fixities[0].Sha256,
-				dpnResult.CopyResult.Sha256Digest)
-		}
 	}
 }

@@ -32,7 +32,6 @@ type CopyResult struct {
 	ErrorMessage    string
 	RsyncStdout     string
 	RsyncStderr     string
-	Sha256Digest    string
 	InfoMessage     string
 	BagWasCopied    bool
 }
@@ -131,8 +130,8 @@ func (copier *Copier) doLookup() {
 	}
 }
 
-// Copy the file from the remote node to our local staging area
-// and calculate the Sha256 digest.
+// Copy the file from the remote node to our local staging area.
+// We'll do validation and sha256 digest check later, in validator.go.
 func (copier *Copier) doCopy() {
 	for result := range copier.CopyChannel {
 		localPath := filepath.Join(
@@ -159,21 +158,6 @@ func (copier *Copier) doCopy() {
 		} else {
 			result.CopyResult.LocalPath = localPath
 			result.CopyResult.BagWasCopied = true
-
-			// Touch message on both sides of digest, so NSQ doesn't time out.
-			if result.NsqMessage != nil {
-				result.NsqMessage.Touch()
-			}
-			sha256Digest, err := CalculateSha256Digest(localPath)
-			if result.NsqMessage != nil {
-				result.NsqMessage.Touch()
-			}
-
-			if err != nil {
-				result.CopyResult.ErrorMessage = err.Error()
-			} else {
-				result.CopyResult.Sha256Digest = sha256Digest
-			}
 		}
 		copier.PostProcessChannel <- result
 	}
