@@ -154,7 +154,7 @@ func (storer *Storer) store() {
 		}
 
 		// Record where we stored the file
-		result.StorageResult.StorageURL = url
+		result.StorageURL = url
 
 		// Update the transfer request, if there is one.
 		if result.TransferRequest != nil {
@@ -241,7 +241,7 @@ func (storer *Storer) createBagRecord() {
 		// to determine if bag was made here. That will be non-nil
 		// for bags we built, nil for bags built elsewhere.
 		bagWasCreatedHere := result.BagIdentifier != ""
-		bagStoredSuccessfully := (result.ErrorMessage == "" && result.StorageResult.StorageURL != "")
+		bagStoredSuccessfully := (result.ErrorMessage == "" && result.StorageURL != "")
 		if bagWasCreatedHere && bagStoredSuccessfully {
 			storer.ProcUtil.MessageLog.Debug("Creating bag record for %s with md5 %s and sha256 %s",
 				result.BagIdentifier, result.BagMd5Digest, result.BagSha256Digest)
@@ -293,7 +293,7 @@ func (storer *Storer) createBagRecord() {
 func (storer *Storer) cleanup() {
 	for result := range storer.CleanupChannel {
 		thisIsNotATest := (result.NsqMessage != nil)
-		storageSucceeded := (result.ErrorMessage == "" && result.StorageResult.StorageURL != "")
+		storageSucceeded := (result.ErrorMessage == "" && result.StorageURL != "")
 		if storageSucceeded && thisIsNotATest {
 			err := os.Remove(result.PackageResult.TarFilePath)
 			if err != nil {
@@ -316,10 +316,10 @@ func (storer *Storer) postProcess() {
 		if bagIdentifier == "" {
 			bagIdentifier = result.PackageResult.BagBuilder.UUID
 		}
-		if result.ErrorMessage == "" && result.StorageResult.StorageURL != "" {
+		if result.ErrorMessage == "" && result.StorageURL != "" {
 			// SUCCESS :)
 			storer.ProcUtil.MessageLog.Info("Bag %s successfully stored at %s",
-				bagIdentifier, result.StorageResult.StorageURL)
+				bagIdentifier, result.StorageURL)
 			storer.ProcUtil.IncrementSucceeded()
 			// Send to queue for recording in Fluctus and/or DPN REST
 			if result.NsqMessage != nil {

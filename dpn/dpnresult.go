@@ -54,7 +54,7 @@ type DPNResult struct {
 
 	// A general error message describing what went wrong with
 	// processing. More specific errors will appear in the
-	// PackageResult, StorageResult or ValidationResult, depending
+	// PackageResult or ValidationResult, depending
 	// on the stage where processing failed. If this is empty,
 	// there was no error.
 	ErrorMessage     string
@@ -87,13 +87,14 @@ type DPNResult struct {
 	// to copy from ourselves.
 	CopyResult       *CopyResult
 
-	// The result of the attempt to store the bag in the long-term
-	// storage bucket for DPN.
-	StorageResult    *StorageResult
+	// The URL of this item in long-term storage. This will be an
+	// AWS S3 or Glacier URL. An empty string indicates the bag
+	// has not yet been copied to storage.
+	StorageURL       string
 
 	// The result of the attempt to record information about the bag
 	// in DPN and in APTrust. This object is defined in recorder.go.
-	RecordResult    *RecordResult
+	RecordResult     *RecordResult
 
 	// The result of the attempt to validate the bag. This includes
 	// information about whether the bag's structure is valid, whether
@@ -114,8 +115,8 @@ func NewDPNResult(bagIdentifier string) (*DPNResult) {
 		BagIdentifier: bagIdentifier,
 		Stage: STAGE_PACKAGE,
 		PackageResult: &PackageResult{},
-		StorageResult: &StorageResult{},
 		CopyResult: &CopyResult{},
+		RecordResult: NewRecordResult(),
 		Retry: true,
 	}
 }
@@ -162,13 +163,6 @@ func (result *PackageResult) Succeeded() (bool) {
 	return result.TarFilePath != "" && len(result.Errors()) == 0
 }
 
-// StorageResult maintains information about the state of
-// an attempt to store a DPN bag in AWS Glacier.
-type StorageResult struct {
-	// The URL of this file in Glacier. This will be empty until
-	// we actually manage to store the file.
-	StorageURL      string
-}
 
 // DefaultMetadata includes mostly static information about bags
 // that APTrust packages for DPN. You can specify this information
@@ -201,6 +195,8 @@ type DPNConfig struct {
 	// Should we log to Stderr in addition to writing to
 	// the log file?
 	LogToStderr           bool
+	// Number of nodes we should replicate bags to.
+	ReplicateToNumNodes   int
 	// Default metadata that goes into bags produced at our node.
 	DefaultMetadata       *DefaultMetadata
 	// Settings for connecting to our own REST service

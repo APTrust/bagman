@@ -3,7 +3,7 @@
     "LogDirectory": "~/tmp/logs",
     "LogLevel": 4,
     "LogToStderr": true,
-    "": "",
+    "ReplicateToNumNodes": 2,
     "RestClient": {
         "Comment": "Settings for our local DPN REST API server. LocalAuthToken should be loaded from environment.",
         "LocalServiceURL": "http://localhost:8000",

@@ -324,7 +324,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 				node.Namespace, syncResult.ReplicationSyncError)
 		}
 		if len(syncResult.ReplicationTransfers) != REPL_COUNT {
-			t.Errorf("Expected %s replication transfers from %s, got %d",
+			t.Errorf("Expected %d replication transfers from %s, got %d",
 				REPL_COUNT, node.Namespace, len(syncResult.ReplicationTransfers))
 		}
 
@@ -334,7 +334,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 				node.Namespace, syncResult.RestoreSyncError)
 		}
 		if len(syncResult.RestoreTransfers) != RESTORE_COUNT {
-			t.Errorf("Expected %s restore transfers from %s, got %d",
+			t.Errorf("Expected %d restore transfers from %s, got %d",
 				RESTORE_COUNT, node.Namespace, len(syncResult.RestoreTransfers))
 		}
 

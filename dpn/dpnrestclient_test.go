@@ -475,20 +475,20 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.FixityNonce != "" {
 		t.Errorf("FixityNonce: expected '', got '%s'", xfer.FixityNonce)
 	}
-	if xfer.FixityValue != "5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3" {
-		t.Errorf("FixityValue: expected '5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3', got '%s'", xfer.FixityValue)
+	if xfer.FixityValue != "" {
+		t.Errorf("FixityValue: expected empty, got '%s'", xfer.FixityValue)
 	}
 	if xfer.FixityAlgorithm != "sha256" {
 		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
 	}
-	if xfer.FixityAccept == nil || *xfer.FixityAccept != true {
+	if xfer.FixityAccept != nil {
 		t.Errorf("FixityAccept: expected nil, got %s", *xfer.FixityAccept)
 	}
 	if xfer.BagValid != nil {
 		t.Errorf("BagValid: expected nil, got %s", *xfer.BagValid)
 	}
-	if xfer.Status != "Confirmed" {
-		t.Errorf("Status: expected 'Confirmed', got '%s'", xfer.Status)
+	if xfer.Status != "Requested" {
+		t.Errorf("Status: expected 'Requested', got '%s'", xfer.Status)
 	}
 	if xfer.Protocol != "R" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
