@@ -10,6 +10,7 @@ https://github.com/dpn-admin/DPN-REST
 */
 
 import (
+	"math/rand"
 	"time"
 )
 
@@ -28,6 +29,36 @@ type DPNNode struct {
 	UpdatedAt            time.Time    `json:"updated_at"`
 	LastPullDate         time.Time    `json:"last_pull_date"`
 	Storage              *DPNStorage  `json:"storage"`
+}
+
+// This randomly chooses nodes for replication, returning
+// a slice of strings. Each string is the namespace of a node
+// we should replicate to. This may return fewer nodes than
+// you specified in the howMany param if this node replicates
+// to fewer nodes.
+//
+// We may have to revisit this in the future, if DPN specifies
+// logic for how to choose remote nodes. For now, we can choose
+// any node, because they are all geographically diverse and
+// all use different storage backends.
+func (node *DPNNode) ChooseNodesForReplication(howMany int) ([]string) {
+	selectedNodes := make([]string, 0)
+	if howMany >= len(node.ReplicateTo) {
+		for _, namespace := range node.ReplicateTo {
+			selectedNodes = append(selectedNodes, namespace)
+		}
+	} else {
+		nodeMap := make(map[string]int)
+		for len(selectedNodes) < howMany {
+			randInt := rand.Intn(len(node.ReplicateTo))
+			namespace := node.ReplicateTo[randInt]
+			if _, alreadyAdded := nodeMap[namespace]; !alreadyAdded {
+				selectedNodes = append(selectedNodes, namespace)
+				nodeMap[namespace] = randInt
+			}
+		}
+	}
+	return selectedNodes
 }
 
 type DPNStorage struct {
