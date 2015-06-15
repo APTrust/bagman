@@ -131,7 +131,7 @@ func (copier *Copier) doLookup() {
 }
 
 // Copy the file from the remote node to our local staging area.
-// We'll do validation and sha256 digest check later, in validator.go.
+// Calculate checksums.
 func (copier *Copier) doCopy() {
 	for result := range copier.CopyChannel {
 		localPath := filepath.Join(
@@ -158,6 +158,19 @@ func (copier *Copier) doCopy() {
 		} else {
 			result.CopyResult.LocalPath = localPath
 			result.CopyResult.BagWasCopied = true
+			fileDigest, err := bagman.CalculateDigests(localPath)
+			if result.NsqMessage != nil {
+				result.NsqMessage.Touch()
+			}
+			if err != nil {
+				result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
+					result.PackageResult.TarFilePath, err)
+				copier.PostProcessChannel <- result
+				continue
+			}
+			result.BagMd5Digest = fileDigest.Md5Digest
+			result.BagSha256Digest = fileDigest.Sha256Digest
+			result.BagSize = fileDigest.Size
 		}
 		copier.PostProcessChannel <- result
 	}

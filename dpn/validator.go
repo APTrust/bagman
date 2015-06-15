@@ -140,16 +140,6 @@ func (validator *Validator) validate() {
 		if result.NsqMessage != nil {
 			result.NsqMessage.Touch()
 		}
-		fileDigest, err := bagman.CalculateDigests(result.PackageResult.TarFilePath)
-		if err != nil {
-			result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
-				result.PackageResult.TarFilePath, err)
-			validator.PostProcessChannel <- result
-			continue
-		}
-		result.BagMd5Digest = fileDigest.Md5Digest
-		result.BagSha256Digest = fileDigest.Sha256Digest
-		result.BagSize = fileDigest.Size
 
 		// If this is a transfer request, tell the remote node
 		// whether the bag was valid, and what checksum we calculated

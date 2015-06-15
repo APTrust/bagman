@@ -38,10 +38,11 @@ type DPNResult struct {
 	// The bag's md5 digest. We need this to copy to Amazon S3/Glacier.
 	BagMd5Digest     string
 
-	// Digest to be recorded in DPN.
+	// Digest to be recorded in DPN and to be sent as part of receipt
+	// when replicating bags from other nodes.
 	BagSha256Digest  string
 
-	// The size of the bag
+	// The size of the bag. Used when copying to S3/Glacier.
 	BagSize          int64
 
 	// The NSQ message being processed. May be nil if we're
