@@ -141,13 +141,6 @@ func (validator *Validator) validate() {
 			result.NsqMessage.Touch()
 		}
 
-		// If this is a transfer request, tell the remote node
-		// whether the bag was valid, and what checksum we calculated
-		// on the tag manifest.
-		if result.TransferRequest != nil {
-			validator.updateRemoteNode(result)
-		}
-
 		// Now everything goes into the post-process channel.
 		validator.PostProcessChannel <- result
 	}
@@ -189,79 +182,6 @@ func (validator *Validator) postProcess() {
 	}
 }
 
-// We update the remote node for transfer requests only. We don't
-// to this for bags we packaged locally.
-//
-// When we receive a valid bag, tell the remote node that we
-// got the bag and it looks OK. Send the tag manifest checksum.
-// If the remote node accepts the checksum, we'll send the bag
-// off to storage. There could be one of two problems here:
-//
-// 1. We determined that the bag was not valid. (Bad checksum,
-//    missing files, or some similar issue.)
-// 2. The remote node did not accept the checksum we calculated
-//    on the tag manifest.
-//
-// In either case, the remote node will set the status of the
-// transfer request to 'Cancelled'. If that happens, we'll set
-// the error message on the result and we will delete the bag
-// without sending it to storage.
-//
-// If the bag is valid and the remote node accepts our tag
-// manifest checksum, this bag will go into the storage queue.
-func (validator *Validator) updateRemoteNode(result *DPNResult) {
-	if result.TransferRequest == nil {
-		result.ErrorMessage = "Cannot update remote node because transfer request is missing."
-		return
-	}
-
-	// Get a DPN REST client that can talk to the node that
-	// this transfer originated from.
-	remoteRESTClient, err := validator.LocalRESTClient.GetRemoteClient(
-		result.TransferRequest.FromNode,
-		validator.DPNConfig,
-		validator.ProcUtil.MessageLog)
-	if err != nil {
-		result.ErrorMessage = err.Error()
-		return
-	}
-
-	// Update the transfer request and send it back to the remote node.
-	// We'll get an updated transfer request back from that node.
-	bagValid := result.ValidationResult.IsValid()
-	result.TransferRequest.Status = "Received"
-	result.TransferRequest.BagValid = &bagValid
-	result.TransferRequest.FixityValue = result.BagSha256Digest
-
-	validator.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
-		"Setting status to 'Received', BagValid to %t, and checksum to %s",
-		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
-		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
-		result.TransferRequest.FixityValue)
-	xfer, err := remoteRESTClient.ReplicationTransferUpdate(result.TransferRequest)
-	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Error updating transfer request on remote node: %v", err)
-		return
-	}
-	if *xfer.FixityAccept == false {
-		validator.ProcUtil.MessageLog.Debug(
-			"Remote node rejected fixity value for xfer request %s (bag %s)",
-			result.TransferRequest.ReplicationId, result.TransferRequest.UUID)
-		result.ErrorMessage = "Remote node did not accept the fixity value we sent for this bag. " +
-			"This cancels the transfer request, and we will not store the bag."
-		return
-	}
-	if xfer.Status == "Cancelled" {
-		validator.ProcUtil.MessageLog.Debug(
-			"Remote node says status is 'Cancelled' for xfer request %s (bag %s)",
-			result.TransferRequest.ReplicationId, result.TransferRequest.UUID)
-		result.ErrorMessage = "This transfer request has been marked as cancelled on the remote node. " +
-			"This bag will not be copied to storage."
-		return
-	}
-	validator.ProcUtil.MessageLog.Debug("Remote node updated xfer request %s (bag %s), " +
-		"and set status to %s", xfer.ReplicationId, xfer.UUID, xfer.Status)
-}
 
 func (validator *Validator) RunTest(result *DPNResult) {
 	validator.WaitGroup.Add(1)
