@@ -173,6 +173,9 @@ func (recorder *Recorder) postProcess() {
 		}
 		// If no errors, we're at the end of the line here.
 		// All processing is done.
+		if result.NsqMessage == nil {
+			recorder.WaitGroup.Done()
+		}
 	}
 }
 
