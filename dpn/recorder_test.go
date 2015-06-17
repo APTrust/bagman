@@ -133,9 +133,30 @@ func TestLocalBag(t *testing.T) {
 	}
 	defer os.Remove(filePath)
 
+	// Run the test
 	recorder.RunTest(dpnResult)
 	if dpnResult.ErrorMessage != "" {
 		t.Errorf(dpnResult.ErrorMessage)
+	}
+
+	if dpnResult.RecordResult.DPNBagCreatedAt.IsZero() {
+		t.Errorf("DPNBagCreatedAt was not set")
+	}
+	// Note that this test will fail if the DPN REST service
+	// is configured so that APTrust replicates to fewer than
+	// two nodes. This shouldn't happen, since the whole point
+	// of DPN is to replicate to at least two other nodes. But
+	// if you get a failure here, check the ReplicateTo property
+	// of the node entry for APTrust on the local REST service.
+	if len(dpnResult.RecordResult.DPNReplicationRequests) < recorder.DPNConfig.ReplicateToNumNodes {
+		t.Errorf("Replication requests generated for %d nodes, expected %d",
+			dpnResult.RecordResult.DPNReplicationRequests,  recorder.DPNConfig.ReplicateToNumNodes)
+	}
+	if dpnResult.RecordResult.PremisIngestEventId == "" {
+		t.Errorf("PremisIngestEventId was not set")
+	}
+	if dpnResult.RecordResult.PremisIdentifierEventId == "" {
+		t.Errorf("PremisIdentifierEventId was not set")
 	}
 }
 
@@ -157,16 +178,33 @@ func TestReplicatedBag(t *testing.T) {
 		TarFilePath: filePath,
 	}
 
+	// Run the test...
 	recorder.RunTest(dpnResult)
 	if dpnResult.ErrorMessage != "" {
 		t.Errorf(dpnResult.ErrorMessage)
 	}
+
+	// Make sure RecordResult items were set correctly.
+	if dpnResult.RecordResult.CopyReceiptSentAt.IsZero() {
+		t.Errorf("CopyReceiptSentAt was not set")
+	}
+	if !dpnResult.RecordResult.StorageResultSentAt.IsZero() {
+		t.Errorf("StorageResultSentAt was set when it should not have been")
+	}
+
 
 	// Test a bag that was stored
 	dpnResult.StorageURL = "https://www.yahoo.com"
 
+	// Run the test again
 	recorder.RunTest(dpnResult)
 	if dpnResult.ErrorMessage != "" {
 		t.Errorf(dpnResult.ErrorMessage)
 	}
+
+	// Check status...
+	if dpnResult.RecordResult.StorageResultSentAt.IsZero() {
+		t.Errorf("StorageResultSentAt was not set")
+	}
+
 }

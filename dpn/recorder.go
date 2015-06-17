@@ -217,6 +217,7 @@ func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
 		return
 	}
 	result.DPNBag = dpnBag
+	result.RecordResult.DPNBagCreatedAt = dpnBag.CreatedAt
 }
 
 // Record PREMIS events in Fluctus. We do this only for DPN bags that
