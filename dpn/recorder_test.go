@@ -1,16 +1,11 @@
 package dpn_test
 
 import (
-//	"bufio"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
-//	"io"
-//	"net/url"
 	"os"
-//	"os/user"
 	"path/filepath"
-//	"strings"
 	"testing"
 )
 
@@ -206,5 +201,4 @@ func TestReplicatedBag(t *testing.T) {
 	if dpnResult.RecordResult.StorageResultSentAt.IsZero() {
 		t.Errorf("StorageResultSentAt was not set")
 	}
-
 }

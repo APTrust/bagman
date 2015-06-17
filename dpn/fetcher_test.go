@@ -26,7 +26,7 @@ func canRunTests() bool {
 		return false
 	}
 	if awsEnvAvailable() == false {
-		fmt.Println("Skipping fetcher tests because environment variables "+
+		fmt.Println("**** Skipping fetcher tests because environment variables "+
 			"AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY are not set.")
 		skipMessagePrinted = true
 		return false
@@ -35,7 +35,7 @@ func canRunTests() bool {
 	if err != nil {
 		if skipMessagePrinted == false {
 			skipMessagePrinted = true
-			fmt.Printf("Skipping fetcher tests: "+
+			fmt.Printf("**** Skipping fetcher tests: "+
 				"Fluctus server is not running at %s\n", fluctusUrl)
 		}
 		return false

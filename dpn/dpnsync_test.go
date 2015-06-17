@@ -43,9 +43,9 @@ func canRunSyncTests(nodeNamespace string, url string, err error) (bool) {
 	if err != nil {
 		if skipSyncMessagePrinted == false {
 			skipSyncMessagePrinted = true
-			fmt.Printf("Skipping DPN sync integration tests: "+
+			fmt.Printf("**** Skipping DPN sync integration tests: "+
 				"%s server is not running at %s\n", nodeNamespace, url)
-			fmt.Printf("Run the run_cluster.sh script in " +
+			fmt.Println("     Run the run_cluster.sh script in " +
 				"DPN-REST/dpnode to get a local cluster running.")
 		}
 		return false

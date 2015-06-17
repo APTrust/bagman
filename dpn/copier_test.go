@@ -65,11 +65,12 @@ func hasSSHConfigEntry() (bool) {
 // Return true/false indicating whether we should try to run
 // copy tests. Print a message if we can't run the tests.
 func canRunCopyTests(t *testing.T) (bool) {
-	ok := hasSSHConfigEntry()
+	ok := hasSSHConfigEntry() && runRestTests(t)
 	if ok == false && skipCopyMessagePrinted == false {
 		skipCopyMessagePrinted = true
-		fmt.Println("Skipping DPN copy integration tests: "+
-			"No dpn-test entry in ~/.ssh/config")
+		fmt.Println("**** Skipping DPN copy integration tests: "+
+			"No dpn-test entry in ~/.ssh/config and/or local " +
+			"DPN REST server is not running")
 	}
 	return ok
 }
