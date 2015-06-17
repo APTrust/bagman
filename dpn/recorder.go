@@ -120,15 +120,19 @@ func (recorder *Recorder) HandleMessage(message *nsq.Message) error {
 
 func (recorder *Recorder) record() {
 	for result := range recorder.RecordChannel {
-		if result.DPNBag.AdminNode == "aptrust" {
+		if result.TransferRequest == nil {
 			// This bag was ingested through APTrust.
 			// Do we want to try this multiple times?
 			// Do we want to requeu on failure?
 			// How to distinguish between transient and permanent failure?
+			recorder.ProcUtil.MessageLog.Debug("Bag %s (%s) was ingested at APTrust",
+				result.DPNBag.UUID, result.BagIdentifier)
 			recorder.RecordAPTrustDPNData(result)
 		} else {
 			// This bag was replicated from another node.
 			// Here are a few vars to make our logic a little more clear.
+			recorder.ProcUtil.MessageLog.Debug("Bag %s is being replicated from %s",
+				result.DPNBag.UUID, result.TransferRequest.FromNode)
 			bagWasCopied := (result.CopyResult != nil && result.CopyResult.LocalPath != "")
 			bagWasValidated := (result.ValidationResult != nil && result.ValidationResult.TarFilePath != "")
 			bagWasStored := result.StorageURL != ""
@@ -140,14 +144,20 @@ func (recorder *Recorder) record() {
 			} else if bagWasCopied && bagWasValidated && !copyReceiptSent {
 				recorder.RecordCopyReceipt(result)
 			} else {
-				jsonData, jsonErr := json.Marshal(result)
+				jsonData, jsonErr := json.MarshalIndent(result, "", "  ")
 				jsonString := "JSON data not available"
 				if jsonErr == nil {
 					jsonString = string(jsonData)
 				}
-				fatalErr := fmt.Errorf("Don't know what to record about bag %s. JSON dump: %s",
-					result.DPNBag.UUID, jsonString)
-				panic(fatalErr)
+				fatalErr := fmt.Errorf("Don't know what to record about bag %s. " +
+					"bagWasCopied = %t, bagWasValidated = %t, " +
+					"bagWasStored = %t, storageResultSent = %t, " +
+					"copyReceiptSent = %t ... JSON dump ---> %t",
+					result.DPNBag.UUID, bagWasCopied, bagWasValidated,
+					bagWasStored, storageResultSent, copyReceiptSent,
+					jsonString)
+				fmt.Println(fatalErr.Error())
+				recorder.ProcUtil.MessageLog.Fatal(fatalErr)
 			}
 		}
 		recorder.PostProcessChannel <- result
@@ -313,14 +323,14 @@ func (recorder *Recorder) createReplicationRequests(result *DPNResult) {
 func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (string, error) {
 	absPath := filepath.Join(recorder.ProcUtil.Config.DPNStagingDirectory,
 		result.DPNBag.UUID + ".tar")
-	symLink := fmt.Sprintf("/home/dpn.%s/outbound/%s.tar", toNode, result.DPNBag.UUID)
-
+	symLink := fmt.Sprintf("%s/dpn.%s/outbound/%s.tar",
+		recorder.ProcUtil.Config.DPNHomeDirectory, toNode, result.DPNBag.UUID)
 	recorder.ProcUtil.MessageLog.Debug("Creating symlink from '%s' to '%s'",
 		symLink, absPath)
 
 	err := os.Symlink(absPath, symLink)
 	if err != nil {
-		detailedError := fmt.Errorf("Error creating symlink from '%s' to '%s': %v",
+		detailedError := fmt.Errorf("Error creating symlink at '%s' pointing to '%s': %v",
 			symLink, absPath, err)
 		return "", detailedError
 	}
@@ -389,14 +399,15 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	result.TransferRequest.BagValid = &bagValid
 	result.TransferRequest.FixityValue = result.BagSha256Digest
 
-	recorder.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
+	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s on remote node %s. " +
 		"Setting status to 'Received', BagValid to %t, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		result.TransferRequest.FixityValue)
+	recorder.ProcUtil.MessageLog.Debug("Updating ", detailedMessage)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)
 	if err != nil {
-		result.ErrorMessage = fmt.Sprintf("Error updating transfer request on remote node: %v", err)
+		result.ErrorMessage = fmt.Sprintf("Error updating %s: %v", detailedMessage, err)
 		return
 	}
 
@@ -404,7 +415,7 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	result.TransferRequest = xfer
 	result.RecordResult.CopyReceiptSentAt = time.Now()
 
-	if *xfer.FixityAccept == false {
+	if xfer.FixityAccept == nil || *xfer.FixityAccept == false {
 		recorder.ProcUtil.MessageLog.Debug(
 			"Remote node rejected fixity value for xfer request %s (bag %s)",
 			result.TransferRequest.ReplicationId, result.TransferRequest.UUID)
@@ -470,11 +481,8 @@ func (recorder *Recorder) RunTest(result *DPNResult) {
 	recorder.WaitGroup.Wait()
 	if result.ErrorMessage != "" {
 		recorder.ProcUtil.MessageLog.Error("Failed :( %s", result.ErrorMessage)
-		return
-	}
-	if result.ValidationResult.IsValid() {
-		recorder.ProcUtil.MessageLog.Info("--- Record Succeeded! ---")
-	} else {
 		recorder.ProcUtil.MessageLog.Error("Record failed.")
+	} else {
+		recorder.ProcUtil.MessageLog.Info("--- Record Succeeded! ---")
 	}
 }

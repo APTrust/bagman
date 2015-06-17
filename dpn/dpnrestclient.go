@@ -3,6 +3,7 @@ package dpn
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/op/go-logging"
 	"io"
@@ -267,7 +268,8 @@ func (client *DPNRestClient) DPNBagListGet(queryParams *url.Values) (*BagListRes
 	}
 
 	if response.StatusCode != 200 {
-		error := fmt.Errorf("DPNBagListGet expected status 200 but got %d. URL: %s", response.StatusCode, objUrl)
+		error := fmt.Errorf("DPNBagListGet expected status 200 but got %d. URL: %s",
+			response.StatusCode, objUrl)
 		client.buildAndLogError(body, error.Error())
 		return nil, error
 	}
@@ -606,13 +608,12 @@ func (client *DPNRestClient) doRequest(request *http.Request) (data []byte, resp
 	return data, response, err
 }
 
-func (client *DPNRestClient) buildAndLogError(body []byte, formatString string, args ...interface{}) (err error) {
+func (client *DPNRestClient) buildAndLogError(body []byte, errStr string) (err error) {
 	if len(body) < MAX_ERR_MSG_SIZE {
-		formatString += " Response body: %s"
-		args = append(args, string(body))
+		errStr += fmt.Sprintf(" Response body: %s", string(body))
 	}
-	err = fmt.Errorf(formatString, args...)
-	client.logger.Error(err.Error())
+	err = errors.New(errStr)
+	client.logger.Error(strings.Replace(err.Error(), "%", "%%", -1))
 	return err
 }
 

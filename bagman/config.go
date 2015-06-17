@@ -99,6 +99,14 @@ type Config struct {
 	// copying is done by rsync over ssh.
 	DPNCopyWorker           WorkerConfig
 
+	// DPNHomeDirectory is the prefix to the home directory
+	// for all DPN users. On demo and production, this should
+	// be "/home". The full home directory for a user like tdr
+	// would be "/home/dpn.tdr". On a local dev or test machine,
+	// DPNHomeDirectory can be any path the user has full read/write
+	// access to.
+	DPNHomeDirectory        string
+
 	// DPNPackageWorker records details about fixity checks
 	// that could not be completed.
 	DPNPackageWorker        WorkerConfig
@@ -108,7 +116,7 @@ type Config struct {
 
 	// DPNRecordWorker records DPN storage events in Fluctus
 	// and through the DPN REST API.
-	DPNRecordWorker      WorkerConfig
+	DPNRecordWorker         WorkerConfig
 
 	// The local directory for DPN staging. We store DPN bags
 	// here while they await transfer to the DPN preservation
@@ -116,14 +124,14 @@ type Config struct {
 	DPNStagingDirectory     string
 
 	// DPNStoreWorker copies DPN bags to AWS Glacier.
-	DPNStoreWorker      WorkerConfig
+	DPNStoreWorker          WorkerConfig
 
 	// DPNTroubleWorker records failed DPN tasks in the DPN
 	// trouble queue.
-	DPNTroubleWorker      WorkerConfig
+	DPNTroubleWorker        WorkerConfig
 
 	// DPNValidationWorker validates DPN bags.
-	DPNValidationWorker      WorkerConfig
+	DPNValidationWorker     WorkerConfig
 
 	// FailedFixityWorker records details about fixity checks
 	// that could not be completed.
@@ -132,14 +140,14 @@ type Config struct {
 	// FailedReplicationWorker records details about failed
 	// attempts to copy generic files to the S3 replication
 	// bucket in Oregon.
-	FailedReplicationWorker      WorkerConfig
+	FailedReplicationWorker WorkerConfig
 
 	// Configuration options for apt_file_delete
 	FileDeleteWorker        WorkerConfig
 
 	// Configuration options for apt_fixity, which
 	// handles ongoing fixity checks.
-	FixityWorker           WorkerConfig
+	FixityWorker            WorkerConfig
 
 	// The version of the Fluctus API we're using. This should
 	// start with a v, like v1, v2.2, etc.
@@ -161,12 +169,12 @@ type Config struct {
 	// 4 - NOTICE
 	// 5 - INFO
 	// 6 - DEBUG
-	LogLevel logging.Level
+	LogLevel                logging.Level
 
 	// If true, processes will log to STDERR in addition
 	// to their standard log files. You really only want
 	// to do this in development.
-	LogToStderr bool
+	LogToStderr             bool
 
 	// Maximum number of days allowed between scheduled
 	// fixity checks. The fixity_reader periodically
@@ -351,6 +359,10 @@ func (config *Config) ExpandFilePaths() {
 	expanded, err = ExpandTilde(config.DPNStagingDirectory)
 	if err == nil {
 		config.DPNStagingDirectory = expanded
+	}
+	expanded, err = ExpandTilde(config.DPNHomeDirectory)
+	if err == nil {
+		config.DPNHomeDirectory = expanded
 	}
 }
 

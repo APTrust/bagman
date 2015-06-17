@@ -7,15 +7,34 @@ import (
 	"github.com/APTrust/bagman/dpn"
 //	"io"
 //	"net/url"
-//	"os"
+	"os"
 //	"os/user"
-//	"path/filepath"
+	"path/filepath"
 //	"strings"
 	"testing"
 )
 
 // Many of the variables and functions used in this file
 // come from dpnrestclient_test.go.
+
+// Make sure that the DPNHome and DPNStaging directories exist,
+// and that the files that we expect to be present in testing
+// are there.
+func recorderTestEnsureFiles(t *testing.T, procUtil *bagman.ProcessUtil) {
+	dirs := []string {
+		procUtil.Config.DPNStagingDirectory,
+		filepath.Join(procUtil.Config.DPNHomeDirectory, "dpn.aptrust", "outbound"),
+		filepath.Join(procUtil.Config.DPNHomeDirectory, "dpn.chron", "outbound"),
+		filepath.Join(procUtil.Config.DPNHomeDirectory, "dpn.hathi", "outbound"),
+		filepath.Join(procUtil.Config.DPNHomeDirectory, "dpn.sdr", "outbound"),
+		filepath.Join(procUtil.Config.DPNHomeDirectory, "dpn.tdr", "outbound"),
+	}
+	for _, dir := range dirs {
+		if !bagman.FileExists(dir) {
+			os.MkdirAll(dir, 0755)
+		}
+	}
+}
 
 func getRecorder(t *testing.T) (*dpn.Recorder) {
 	procUtil := bagman.NewProcessUtil(&testConfig)
@@ -51,7 +70,11 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 		t.Error(err)
 		return nil
 	}
-	xfer, err := recorder.LocalRESTClient.ReplicationTransferGet(replicationIdentifier)
+	// In our test data fixtures for the local DPN REST cluster,
+	// the transfers with id <namespace>-13 to <namespace>-18 are
+	// transfers to APTrust. So tdr-18, sdr-18, chron-18, etc. are
+	// all bound for APTrust.
+	xfer, err := recorder.RemoteClients["hathi"].ReplicationTransferGet("hathi-18")
 	if err != nil {
 		t.Error(err)
 		return nil
@@ -84,6 +107,21 @@ func TestLocalBag(t *testing.T) {
 	}
 	recorder := getRecorder(t)
 	dpnResult := buildLocalResult(t, recorder)
+	recorderTestEnsureFiles(t, recorder.ProcUtil)
+
+	// Make a dummy file so the symlink operation in
+	// recorder.go doesn't fail.
+	filePath := filepath.Join(
+		recorder.ProcUtil.Config.DPNStagingDirectory,
+		dpnResult.DPNBag.UUID + ".tar")
+	_, err := os.Create(filePath)
+	if err != nil {
+		t.Errorf("Error creating empty file %s: %v",
+			filePath, err)
+		return
+	}
+	defer os.Remove(filePath)
+
 	recorder.RunTest(dpnResult)
 	if dpnResult.ErrorMessage != "" {
 		t.Errorf(dpnResult.ErrorMessage)
@@ -96,6 +134,26 @@ func TestReplicatedBag(t *testing.T) {
 	}
 	recorder := getRecorder(t)
 	dpnResult := buildResultWithTransfer(t, recorder)
+	recorderTestEnsureFiles(t, recorder.ProcUtil)
+
+	// Test a bag that was copied and validated
+	// but not stored.
+	filePath := filepath.Join(
+		recorder.ProcUtil.Config.DPNStagingDirectory,
+		dpnResult.DPNBag.UUID + ".tar")
+	dpnResult.CopyResult.LocalPath = filePath
+	dpnResult.ValidationResult = &dpn.ValidationResult{
+		TarFilePath: filePath,
+	}
+
+	recorder.RunTest(dpnResult)
+	if dpnResult.ErrorMessage != "" {
+		t.Errorf(dpnResult.ErrorMessage)
+	}
+
+	// Test a bag that was stored
+	dpnResult.StorageURL = "https://www.yahoo.com"
+
 	recorder.RunTest(dpnResult)
 	if dpnResult.ErrorMessage != "" {
 		t.Errorf(dpnResult.ErrorMessage)
