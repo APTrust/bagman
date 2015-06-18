@@ -100,6 +100,10 @@ echo "building dpn_package"
 cd "${BAGMAN_HOME}/apps/dpn_package"
 go build -o ${BAGMAN_BIN}/dpn_package dpn_package.go
 
+echo "building dpn_record"
+cd "${BAGMAN_HOME}/apps/dpn_record"
+go build -o ${BAGMAN_BIN}/dpn_record dpn_record.go
+
 echo "building dpn_sync"
 cd "${BAGMAN_HOME}/apps/dpn_sync"
 go build -o ${BAGMAN_BIN}/dpn_sync dpn_sync.go
