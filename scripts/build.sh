@@ -92,6 +92,10 @@ echo "building apt_failed_replication"
 cd "${BAGMAN_HOME}/apps/apt_failed_replication"
 go build -o ${BAGMAN_BIN}/apt_failed_replication apt_failed_replication.go
 
+echo "building dpn_check_requests"
+cd "${BAGMAN_HOME}/apps/dpn_check_requests"
+go build -o ${BAGMAN_BIN}/dpn_check_requests dpn_check_requests.go
+
 echo "building dpn_copy"
 cd "${BAGMAN_HOME}/apps/dpn_copy"
 go build -o ${BAGMAN_BIN}/dpn_copy dpn_copy.go
