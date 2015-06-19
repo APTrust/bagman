@@ -260,7 +260,7 @@
         "MaxFileSize": 0,
         "SkipAlreadyProcessed": true,
         "DeleteOnSuccess": false,
-        "LogToStderr": false,
+        "LogToStderr": true,
         "LogLevel": 4,
 
         "FluctusURL": "http://localhost:3000",

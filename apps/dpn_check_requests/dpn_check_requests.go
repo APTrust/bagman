@@ -1,13 +1,22 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
+	"io"
+	"io/ioutil"
 	"net/url"
 	"os"
+	"path/filepath"
+	"strings"
+	"time"
 )
+
+var timestampFile, _ = bagman.RelativeToAbsPath(filepath.Join("bin", "dpnLastRequestCheck.txt"))
+var dummyTime, _ = time.Parse(time.RFC3339, "1999-12-31T23:59:59Z")
 
 // dpn_check_requests checks our local DPN node for outstanding
 // replication requests and adds them into NSQ.
@@ -42,6 +51,7 @@ func main() {
 }
 
 func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.ProcessUtil) (error) {
+	lastCheck := readLastTimestampFile(procUtil)
 	nsqUrl := fmt.Sprintf("%s/mput?topic=%s",
 		procUtil.Config.NsqdHttpAddress,
 		procUtil.Config.DPNCopyWorker.NsqTopic)
@@ -49,8 +59,13 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 	params := url.Values{}
 	params.Set("to_node", "aptrust")
 	params.Set("status", "Requested")
+	params.Set("after", lastCheck.Format(time.RFC3339))
 	params.Set("page", fmt.Sprintf("%d", pageNum))
 	for {
+		procUtil.MessageLog.Info("Getting replication requests with the following params: " +
+			"to_node=%s, status=%s, after=%s, page=%s",
+			params.Get("to_node"), params.Get("status"),
+			params.Get("after"), params.Get("page"))
 		xferList, err := client.DPNReplicationListGet(&params)
 		if err != nil {
 			return err
@@ -78,20 +93,30 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			return err
 		}
 		for _, xfer := range xferList.Results {
-			message := fmt.Sprintf("Added %s - %s to NSQ", xfer.ReplicationId, xfer.UUID)
+			message := fmt.Sprintf("Queued %s - %s", xfer.ReplicationId, xfer.UUID)
 			procUtil.MessageLog.Info(message)
+			if xfer.UpdatedAt.After(lastCheck) {
+				lastCheck = xfer.UpdatedAt
+			}
 			//fmt.Println(message)
 		}
 		if xferList.Next == "" {
 			message := fmt.Sprintf("No more results after page %d", pageNum)
 			procUtil.MessageLog.Info(message)
 			//fmt.Println(message)
-			return nil
+			break
 		} else {
 			nextPageNum := pageNum + 1
 			params.Set("page", fmt.Sprintf("%d", nextPageNum))
 		}
 
+	}
+	procUtil.MessageLog.Info("Attempting to write last check timestamp %s to file '%s'",
+		lastCheck, timestampFile)
+	err := writeLastTimestampFile(lastCheck)
+	if err != nil {
+		procUtil.MessageLog.Warning("Could not write last check timestamp to '%s': %v",
+			timestampFile, err)
 	}
 	return nil
 }
@@ -110,4 +135,58 @@ func parseCommandLine() (string) {
 func printUsage() {
 	fmt.Println("Usage: dpn_check_requests -config=pathToDPNConfigFile")
 	fmt.Println("Checks the local DPN node for replication requests and adds them to NSQ.")
+}
+
+func readLastTimestampFile(procUtil *bagman.ProcessUtil) (time.Time) {
+	lastTime := dummyTime
+	var f *os.File
+	var err error
+	if bagman.FileExists(timestampFile) {
+		f, err = os.Open(timestampFile)
+		if err != nil {
+			procUtil.MessageLog.Warning("Cannot read timestamp file '%s'. " +
+				"Will load all entries since %s. Error was %v",
+				timestampFile, dummyTime, err)
+			return dummyTime
+		}
+	} else {
+		procUtil.MessageLog.Info("Timestamp file '%s' does not exist. " +
+			"Will load all entries since %s. Error was %v",
+			timestampFile, dummyTime, err)
+		return dummyTime
+	}
+	defer f.Close()
+	reader := bufio.NewReader(f)
+	for {
+		line, err := reader.ReadString('\n')
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			procUtil.MessageLog.Warning("Error while reading timestamp file '%s'. " +
+				"Will load all entries since %s. Error was %v",
+				timestampFile, dummyTime, err)
+			return dummyTime
+		}
+		cleanLine := strings.TrimSpace(line)
+		if !strings.HasPrefix(cleanLine, "#") {
+			lastCheck, err := time.Parse(time.RFC3339, cleanLine)
+			if err != nil {
+				procUtil.MessageLog.Warning("Error parsing timestamp in file '%s'. " +
+					"Will load all entries since %s. Timestamp was '%s'. Error was %v",
+					timestampFile, cleanLine, err)
+				return dummyTime
+			} else {
+				lastTime = lastCheck
+				break
+			}
+		}
+	}
+	return lastTime
+}
+
+func writeLastTimestampFile(lastCheck time.Time) (error) {
+	fileText := "# Timestamp of last check for outstanding replication requests.\n"
+	fileText += "# Used by dpn_check_requests cron job.\n"
+	fileText += lastCheck.Format(time.RFC3339) + "\n"
+	return ioutil.WriteFile(timestampFile, []byte(fileText), 0644)
 }
