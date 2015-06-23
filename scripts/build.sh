@@ -108,6 +108,10 @@ echo "building dpn_record"
 cd "${BAGMAN_HOME}/apps/dpn_record"
 go build -o ${BAGMAN_BIN}/dpn_record dpn_record.go
 
+echo "building dpn_store"
+cd "${BAGMAN_HOME}/apps/dpn_store"
+go build -o ${BAGMAN_BIN}/dpn_store dpn_store.go
+
 echo "building dpn_sync"
 cd "${BAGMAN_HOME}/apps/dpn_sync"
 go build -o ${BAGMAN_BIN}/dpn_sync dpn_sync.go
@@ -115,6 +119,10 @@ go build -o ${BAGMAN_BIN}/dpn_sync dpn_sync.go
 echo "building dpn_trouble"
 cd "${BAGMAN_HOME}/apps/dpn_trouble"
 go build -o ${BAGMAN_BIN}/dpn_trouble dpn_trouble.go
+
+echo "building dpn_validate"
+cd "${BAGMAN_HOME}/apps/dpn_validate"
+go build -o ${BAGMAN_BIN}/dpn_validate dpn_validate.go
 
 echo "building dpn_ingest_devtest"
 cd "${BAGMAN_HOME}/apps/dpn_ingest_devtest"
