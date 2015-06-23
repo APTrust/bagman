@@ -22,8 +22,6 @@ var testBagSize = uint64(268800)
 var testBagDigest = "f9f39a1602cde405042dd8b4859c6a3e2c04092a76eaab858ae28e48403ccba4"
 var adminTestToken = "0000000000000000000000000000000000000000"
 
-// TODO: Remote admin clients with all-zero tokens
-
 func main() {
 	testUtil := NewTestUtil()
 	err := testUtil.MakeTestData()
@@ -33,10 +31,11 @@ func main() {
 }
 
 type TestUtil struct {
-	ProcUtil        *bagman.ProcessUtil
-	DPNConfig       *dpn.DPNConfig
-	LocalRestClient *dpn.DPNRestClient
-	RemoteClients   map[string]*dpn.DPNRestClient
+	ProcUtil             *bagman.ProcessUtil
+	DPNConfig            *dpn.DPNConfig
+	LocalRestClient      *dpn.DPNRestClient
+	RemoteClients        map[string]*dpn.DPNRestClient
+	RemoteAdminClients   map[string]*dpn.DPNRestClient
 }
 
 func NewTestUtil() (*TestUtil) {
@@ -47,6 +46,7 @@ func NewTestUtil() (*TestUtil) {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
 
+	// Create a local REST client to talk to our local APTrust DPN REST server
 	localClient, err := dpn.NewDPNRestClient(
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,
@@ -55,8 +55,22 @@ func NewTestUtil() (*TestUtil) {
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
+
+	// Create clients to talk to remote DPN REST servers.
+	// Actually, these are servers in the local cluster that
+	// impersonate remote nodes. All of these admin clients
+	// need to use the admin API token. We need these admin
+	// clients to do admin-only work, such as creating bags
+	// and transfer requests.
 	remoteClients, err := dpn.GetRemoteClients(localClient, dpnConfig,
 		procUtil.MessageLog)
+	adminConfig := *dpnConfig
+	adminConfig.RemoteNodeTokens["chron"] = adminTestToken
+	adminConfig.RemoteNodeTokens["hathi"] = adminTestToken
+	adminConfig.RemoteNodeTokens["sdr"] = adminTestToken
+	adminConfig.RemoteNodeTokens["tdr"] = adminTestToken
+	remoteAdminClients, err := dpn.GetRemoteClients(localClient,
+		&adminConfig, procUtil.MessageLog)
 
 	// Point the remote clients toward our own local DPN test cluster.
 	// This means you have to run the run_cluster.sh script in the
@@ -64,6 +78,8 @@ func NewTestUtil() (*TestUtil) {
 	for nodeNamespace := range remoteClients {
 		remoteClient := remoteClients[nodeNamespace]
 		remoteClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
+		remoteAdminClient := remoteAdminClients[nodeNamespace]
+		remoteAdminClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
 	}
 
 	return &TestUtil{
@@ -71,6 +87,7 @@ func NewTestUtil() (*TestUtil) {
 		DPNConfig: dpnConfig,
 		LocalRestClient: localClient,
 		RemoteClients: remoteClients,
+		RemoteAdminClients: remoteAdminClients,
 	}
 }
 
@@ -125,7 +142,7 @@ func (testUtil *TestUtil) CreateSymLink(bagUuid string) (string, error) {
 	}
 	linkPath := filepath.Join(testUtil.ProcUtil.Config.DPNHomeDirectory,
 		"integration_test", bagUuid + ".tar")
-	if bagman.FileExists(sourceFile) {
+	if bagman.FileExists(linkPath) {
 		return linkPath, nil
 	}
 	err = os.Symlink(sourceFile, linkPath)
@@ -159,7 +176,8 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 			},
 		},
 	}
-	return testUtil.RemoteClients[node].DPNBagCreate(bag)
+	// You have to be node admin to create a bag, so use the admin client.
+	return testUtil.RemoteAdminClients[node].DPNBagCreate(bag)
 }
 
 func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath string) (*dpn.DPNReplicationTransfer, error) {
@@ -174,5 +192,7 @@ func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath str
 		Protocol: "R",
 		Link: linkPath,
 	}
-	return testUtil.RemoteClients[bag.AdminNode].ReplicationTransferCreate(xfer)
+	// You have to be node admin to create the transfer request,
+	// so use the admin client.
+	return testUtil.RemoteAdminClients[bag.AdminNode].ReplicationTransferCreate(xfer)
 }
