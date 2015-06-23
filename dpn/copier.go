@@ -70,12 +70,11 @@ func NewCopier(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Copier, err
 
 func (copier *Copier) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
-
-	var dpnResult *DPNResult
+	dpnResult := &DPNResult{}
 	err := json.Unmarshal(message.Body, dpnResult)
 	if err != nil {
-		detailedError := fmt.Errorf("Could not unmarshal JSON data from nsq:",
-			string(message.Body))
+		detailedError := fmt.Errorf("Could not unmarshal JSON data from nsq. " +
+			"Error is: %v    JSON is: %s", err.Error(), string(message.Body))
 		copier.ProcUtil.MessageLog.Error(detailedError.Error())
 		message.Finish()
 		return detailedError
@@ -90,8 +89,8 @@ func (copier *Copier) HandleMessage(message *nsq.Message) error {
 	// Start processing.
 	dpnResult.Stage = STAGE_COPY
 	copier.LookupChannel <- dpnResult
-	copier.ProcUtil.MessageLog.Info("Put %s into copy channel",
-		dpnResult.BagIdentifier)
+	copier.ProcUtil.MessageLog.Info("Put %s from %s into copy channel",
+		dpnResult.DPNBag.UUID, dpnResult.DPNBag.AdminNode)
 	return nil
 }
 
@@ -156,6 +155,7 @@ func (copier *Copier) doCopy() {
 			result.CopyResult.ErrorMessage = fmt.Sprintf("%s: %s",
 				err.Error(), string(output))
 		} else {
+			result.LocalPath = localPath
 			result.CopyResult.LocalPath = localPath
 			result.CopyResult.BagWasCopied = true
 			fileDigest, err := bagman.CalculateDigests(localPath)

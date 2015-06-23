@@ -48,7 +48,7 @@ func NewValidator(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Validato
 
 func (validator *Validator) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
-	var dpnResult *DPNResult
+	dpnResult := &DPNResult{}
 	err := json.Unmarshal(message.Body, dpnResult)
 	if err != nil {
 		detailedError := fmt.Errorf("Could not unmarshal JSON data from nsq:",
@@ -58,6 +58,7 @@ func (validator *Validator) HandleMessage(message *nsq.Message) error {
 		return detailedError
 	}
 	dpnResult.Stage = STAGE_VALIDATE
+	dpnResult.NsqMessage = message
 	validator.ValidationChannel <- dpnResult
 	// identifier or dpn identifier
 	validator.ProcUtil.MessageLog.Info("Put %s into validation channel",
@@ -109,7 +110,7 @@ func (validator *Validator) validate() {
 		// have to sign the checksum with that to get the fixity value
 		// that the originating node will accept.
 		nonce := ""
-		if result.TransferRequest != nil {
+		if result.TransferRequest != nil && result.TransferRequest.FixityNonce != "" {
 			nonce = result.TransferRequest.FixityNonce
 			validator.ProcUtil.MessageLog.Info("FixityNonce for bag %s is %s",
 				result.DPNBag.UUID, nonce)

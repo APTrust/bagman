@@ -45,7 +45,7 @@ go run dpn_test_setup.go -config test
 if [ $? != 0 ]
 then
     echo "Test data setup failed"
-    exit
+    exit 1
 fi
 
 # Start NSQ, because we'll need to put some data into
@@ -55,18 +55,6 @@ cd ~/go/src/github.com/APTrust/bagman/nsq
 go run service.go -config ~/go/src/github.com/APTrust/bagman/nsq/nsqd.dev.config &>/dev/null &
 NSQ_PID=$!
 sleep 3
-
-
-# Copy bags and transfer requests from other nodes to our local DPN node.
-echo "Synching replication requests from remote nodes to local"
-cd ~/go/src/github.com/APTrust/bagman/apps/dpn_sync
-go run dpn_sync.go -config dpn/dpn_config.json
-if [ $? != 0 ]
-then
-    echo "DPN sync failed"
-    exit
-fi
-
 
 # Check for replication requests from other nodes, and
 # put them into NSQ for processing. This should find
@@ -78,12 +66,74 @@ go run dpn_check_requests.go -config dpn/dpn_config.json
 if [ $? != 0 ]
 then
     echo "Check requests failed"
-    exit
+    kill_all
+    exit 1
 fi
+
+# Copy bags and transfer requests from other nodes to our local DPN node.
+echo "Synching replication requests from remote nodes to local"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_sync
+go run dpn_sync.go -config dpn/dpn_config.json
+if [ $? != 0 ]
+then
+    echo "DPN sync failed"
+    kill -s SIGINT $NSQ_PID
+    exit 1
+fi
+
+# Copy processor copies bags from other nodes via rsync, so
+# we can replicate them.
+echo "Starting the DPN copy processor"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_copy
+go run dpn_copy.go -config test &
+COPY_PID=$!
+
+# Start the validation worker, which validates bags we're
+# replicating from other nodes.
+echo "Starting the DPN validation processor"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_validate
+go run dpn_validate.go -config test &
+VALIDATION_PID=$!
+
+# Start the storage worker, which copies DPN bags to long-term
+# storage in AWS S3.
+echo "Starting the DPN store worker"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_store
+go run dpn_store.go -config test &
+STORE_PID=$!
+
+# Start the record worker, which records the results of bag processing
+# in both Fluctus and DPN
+echo "Starting the DPN record processor"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_record
+go run dpn_record.go -config test &
+RECORD_PID=$!
+
+# Start the trouble queue processor. If any bags run into problems,
+# our services will dump detailed JSON info into the trouble queue.
+echo "Starting the trouble queue processor"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_trouble
+go run dpn_trouble.go -config test &
+TROUBLE_PID=$!
 
 
 kill_all()
 {
+    echo "Shutting down the copy worker"
+    kill -s SIGINT $COPY_PID
+
+    echo "Shutting down the validation worker"
+    kill -s SIGINT $VALIDATION_PID
+
+    echo "Shutting down the storage worker"
+    kill -s SIGINT $STORE_PID
+
+    echo "Shutting down the record worker"
+    kill -s SIGINT $RECORD_PID
+
+    echo "Shutting down the trouble worker"
+    kill -s SIGINT $TROUBLE_PID
+
     echo "Shutting down NSQ"
     kill -s SIGINT $NSQ_PID
 }

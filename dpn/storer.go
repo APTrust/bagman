@@ -57,7 +57,7 @@ func NewStorer(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Storer, err
 
 func (storer *Storer) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
-	var result *DPNResult
+	result := &DPNResult{}
 	err := json.Unmarshal(message.Body, result)
 	if err != nil {
 		storer.ProcUtil.MessageLog.Error("Could not unmarshal JSON data from nsq:",
@@ -214,6 +214,9 @@ func (storer *Storer) makeReplicationRequest(result *DPNResult, whatKind string)
 
 	var xferRequest *DPNReplicationTransfer
 	if whatKind == "GET" {
+		storer.ProcUtil.MessageLog.Debug("Replication request id: %s, " +
+			"FromNode: %s, ToNode: %s", result.TransferRequest.ReplicationId,
+			result.TransferRequest.FromNode, result.TransferRequest.ToNode)
 		xferRequest, err = remoteClient.ReplicationTransferGet(result.TransferRequest.ReplicationId)
 	} else if whatKind == "POST" {
 		xferRequest, err = remoteClient.ReplicationTransferUpdate(result.TransferRequest)
@@ -314,7 +317,7 @@ func (storer *Storer) postProcess() {
 	for result := range storer.PostProcessChannel {
 		bagIdentifier := result.BagIdentifier
 		if bagIdentifier == "" {
-			bagIdentifier = result.PackageResult.BagBuilder.UUID
+			bagIdentifier = result.DPNBag.UUID
 		}
 		if result.ErrorMessage == "" && result.StorageURL != "" {
 			// SUCCESS :)
