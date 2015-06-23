@@ -36,12 +36,25 @@
 echo "Getting rid of old logs and data files"
 rm -r ~/tmp/*
 
+# Load some test data into the local DPN cluster.
+# Let this one run to completion, which should take
+# just a few seconds.
+echo "Setting up test bags for transfer"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_test_setup
+go run dpn_test_setup.go -config test
+if [ $? != 0 ]
+then
+    echo "Test data setup failed"
+    exit
+fi
+
+# Start NSQ, because we'll need to put some data into
+# the work queues.
 echo "Starting NSQ"
 cd ~/go/src/github.com/APTrust/bagman/nsq
 go run service.go -config ~/go/src/github.com/APTrust/bagman/nsq/nsqd.dev.config &>/dev/null &
 NSQ_PID=$!
 sleep 3
-
 
 
 kill_all()

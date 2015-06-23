@@ -31,7 +31,11 @@ var adminTestToken = "0000000000000000000000000000000000000000"
 // This app runs as part of bagman/scripts/dpn_local_test.sh.
 func main() {
 	testUtil := NewTestUtil()
-	err := testUtil.MakeTestData()
+	err := testUtil.MakeTestDirs()
+	if err != nil {
+		testUtil.ProcUtil.MessageLog.Fatal(err)
+	}
+	err = testUtil.MakeTestData()
 	if err != nil {
 		testUtil.ProcUtil.MessageLog.Fatal(err)
 	}
@@ -96,6 +100,17 @@ func NewTestUtil() (*TestUtil) {
 		RemoteClients: remoteClients,
 		RemoteAdminClients: remoteAdminClients,
 	}
+}
+
+func (testUtil *TestUtil) MakeTestDirs() (error) {
+	err := os.MkdirAll(testUtil.ProcUtil.Config.DPNStagingDirectory, 0755)
+	if err != nil {
+		return err
+	}
+	testUserDir := filepath.Join(testUtil.ProcUtil.Config.DPNHomeDirectory,
+		"integration_test")
+	err = os.MkdirAll(testUserDir, 0755)
+	return err
 }
 
 func (testUtil *TestUtil) MakeTestData() (error) {
