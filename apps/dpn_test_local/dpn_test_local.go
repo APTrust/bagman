@@ -20,6 +20,9 @@ var testBagUuid = "00000000-0000-0000-0000-000000000001"
 var goodBagPath = fmt.Sprintf("dpn/testdata/%s.tar", testBagUuid)
 var testBagSize = uint64(268800)
 var testBagDigest = "f9f39a1602cde405042dd8b4859c6a3e2c04092a76eaab858ae28e48403ccba4"
+var adminTestToken = "0000000000000000000000000000000000000000"
+
+// TODO: Remote admin clients with all-zero tokens
 
 func main() {
 	testUtil := NewTestUtil()
@@ -43,13 +46,6 @@ func NewTestUtil() (*TestUtil) {
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
-
-	// Hack in our API token. On the local test cluster, APTrust uses
-	// the same token for all nodes.
-	dpnConfig.RemoteNodeTokens["chron"] = dpnConfig.RestClient.LocalAuthToken
-	dpnConfig.RemoteNodeTokens["hathi"] = dpnConfig.RestClient.LocalAuthToken
-	dpnConfig.RemoteNodeTokens["sdr"] = dpnConfig.RestClient.LocalAuthToken
-	dpnConfig.RemoteNodeTokens["tdr"] = dpnConfig.RestClient.LocalAuthToken
 
 	localClient, err := dpn.NewDPNRestClient(
 		dpnConfig.RestClient.LocalServiceURL,

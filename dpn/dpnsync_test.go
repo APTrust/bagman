@@ -57,13 +57,6 @@ func newDPNSync(t *testing.T) (*dpn.DPNSync) {
 	// loadConfig and configFile are defined in dpnrestclient_test.go
 	config := loadConfig(t, configFile)
 
-	// Hack in our API token. On the local test cluster, APTrust uses
-	// the same token for all nodes.
-	config.RemoteNodeTokens["chron"] = config.RestClient.LocalAuthToken
-	config.RemoteNodeTokens["hathi"] = config.RestClient.LocalAuthToken
-	config.RemoteNodeTokens["sdr"] = config.RestClient.LocalAuthToken
-	config.RemoteNodeTokens["tdr"] = config.RestClient.LocalAuthToken
-
 	dpnSync, err := dpn.NewDPNSync(config)
 	if err != nil {
 		t.Error(err)

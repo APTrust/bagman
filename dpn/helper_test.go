@@ -29,7 +29,7 @@ func loadConfig(t *testing.T, configPath string) (*dpn.DPNConfig) {
 	}
 
 	// Turn this off to suppress tons of debug messages.
-	// dpnConfig.LogToStderr = false
+	dpnConfig.LogToStderr = false
 
 	return dpnConfig
 }

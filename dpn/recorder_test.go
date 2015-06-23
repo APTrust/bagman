@@ -35,13 +35,6 @@ func getRecorder(t *testing.T) (*dpn.Recorder) {
 	procUtil := bagman.NewProcessUtil(&testConfig)
 	dpnConfig := loadConfig(t, configFile)
 
-	// Hack in our API token. On the local test cluster, APTrust uses
-	// the same token for all nodes.
-	dpnConfig.RemoteNodeTokens["chron"] = dpnConfig.RestClient.LocalAuthToken
-	dpnConfig.RemoteNodeTokens["hathi"] = dpnConfig.RestClient.LocalAuthToken
-	dpnConfig.RemoteNodeTokens["sdr"] = dpnConfig.RestClient.LocalAuthToken
-	dpnConfig.RemoteNodeTokens["tdr"] = dpnConfig.RestClient.LocalAuthToken
-
 	recorder, err := dpn.NewRecorder(procUtil, dpnConfig)
 	if err != nil {
 		t.Error(err)
