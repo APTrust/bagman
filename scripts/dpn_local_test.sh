@@ -57,6 +57,31 @@ NSQ_PID=$!
 sleep 3
 
 
+# Copy bags and transfer requests from other nodes to our local DPN node.
+echo "Synching replication requests from remote nodes to local"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_sync
+go run dpn_sync.go -config dpn/dpn_config.json
+if [ $? != 0 ]
+then
+    echo "DPN sync failed"
+    exit
+fi
+
+
+# Check for replication requests from other nodes, and
+# put them into NSQ for processing. This should find
+# the transfer requests created by dpn_test_setup.go
+# Let this run to completion. It should take a few seconds.
+echo "Checking for replication requests"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_check_requests
+go run dpn_check_requests.go -config dpn/dpn_config.json
+if [ $? != 0 ]
+then
+    echo "Check requests failed"
+    exit
+fi
+
+
 kill_all()
 {
     echo "Shutting down NSQ"

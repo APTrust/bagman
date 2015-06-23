@@ -571,9 +571,18 @@ func (client *DPNRestClient) GetRemoteClient(remoteNodeNamespace string, dpnConf
 		detailedError := fmt.Errorf("Cannot get auth token for node %s", remoteNode.Namespace)
 		return nil, detailedError
 	}
+	apiRoot := remoteNode.APIRoot
+	if dpnConfig.RemoteNodeURLs != nil && dpnConfig.RemoteNodeURLs[remoteNodeNamespace] != "" {
+		logger.Debug("Overriding DPN REST client URL for node %s " +
+			"because DPNConfig.RemoteNodeURLs " +
+			"says the URL for that node should be %s",
+			remoteNodeNamespace,
+			dpnConfig.RemoteNodeURLs[remoteNodeNamespace])
+		apiRoot = dpnConfig.RemoteNodeURLs[remoteNodeNamespace]
+	}
 	remoteRESTClient, err := NewDPNRestClient(
-		remoteNode.APIRoot,
-		dpnConfig.RestClient.LocalAPIRoot, // All nodes should be on same version as local
+		apiRoot,
+		dpnConfig.RestClient.LocalAPIRoot, // All nodes should be on same version
 		authToken,
 		logger)
 	if err != nil {

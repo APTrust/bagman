@@ -8,14 +8,6 @@ import (
 	"time"
 )
 
-var TEST_NODE_URLS = map[string]string {
-	"chron": "http://127.0.0.1:8001",
-	"hathi": "http://127.0.0.1:8002",
-	"sdr":   "http://127.0.0.1:8003",
-	"tdr":   "http://127.0.0.1:8004",
-}
-
-
 var skipSyncMessagePrinted = false
 
 const (
@@ -30,7 +22,10 @@ func runSyncTests(t *testing.T) bool {
 	if !canRunSyncTests("aptrust", config.RestClient.LocalServiceURL, err) {
 		return false
 	}
-	for nodeNamespace, url := range TEST_NODE_URLS {
+	for nodeNamespace, url := range config.RemoteNodeURLs {
+		if url == "" {
+			continue
+		}
 		_, err := http.Get(url)
 		if !canRunSyncTests(nodeNamespace, url, err) {
 			return false
@@ -69,17 +64,7 @@ func newDPNSync(t *testing.T) (*dpn.DPNSync) {
 			return nil
 		}
 	}
-	setTestNodeUrls(dpnSync)
 	return dpnSync
-}
-
-// Point our test node clients toward our local cluster instead of
-// the actual URLs of the remote nodes.
-func setTestNodeUrls(dpnSync *dpn.DPNSync) {
-	for nodeNamespace := range dpnSync.RemoteClients {
-		remoteClient := dpnSync.RemoteClients[nodeNamespace]
-		remoteClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
-	}
 }
 
 func TestNewDPNSync(t *testing.T) {

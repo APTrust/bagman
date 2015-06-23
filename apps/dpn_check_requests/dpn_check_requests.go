@@ -62,7 +62,8 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 	params.Set("after", lastCheck.Format(time.RFC3339))
 	params.Set("page", fmt.Sprintf("%d", pageNum))
 	for {
-		procUtil.MessageLog.Info("Getting replication requests with the following params: " +
+		procUtil.MessageLog.Info("Getting replication requests with " +
+			"the following params: " +
 			"to_node=%s, status=%s, after=%s, page=%s",
 			params.Get("to_node"), params.Get("status"),
 			params.Get("after"), params.Get("page"))
@@ -71,7 +72,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			return err
 		}
 		if len(xferList.Results) == 0 {
-			//fmt.Println("No replication requests for aptrust")
+			procUtil.MessageLog.Info("No replication requests for aptrust")
 			return nil
 		}
 		procUtil.MessageLog.Info("Queuing batch of %d items", len(xferList.Results))

@@ -993,7 +993,7 @@ func TestGetRemoteClient(t *testing.T) {
 	config := loadConfig(t, configFile)
 	logger := bagman.DiscardLogger("dpnrestclient_test")
 	client := getClient(t)
-	nodes := []string { "aptrust", "chron", "tdr" }
+	nodes := []string { "chron", "hathi", "sdr", "tdr" }
 	for _, node := range nodes {
 		_, err := client.GetRemoteClient(node, config, logger)
 		if err != nil {

@@ -40,15 +40,6 @@ func getRecorder(t *testing.T) (*dpn.Recorder) {
 		t.Error(err)
 		return nil
 	}
-
-	// Point the remote clients toward our own local DPN test cluster.
-	// This means you have to run the run_cluster.sh script in the
-	// DPN REST project to run these tests.
-	for nodeNamespace := range recorder.RemoteClients {
-		remoteClient := recorder.RemoteClients[nodeNamespace]
-		remoteClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
-	}
-
 	return recorder
 }
 
