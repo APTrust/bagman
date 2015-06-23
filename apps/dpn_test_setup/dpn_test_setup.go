@@ -22,6 +22,13 @@ var testBagSize = uint64(268800)
 var testBagDigest = "f9f39a1602cde405042dd8b4859c6a3e2c04092a76eaab858ae28e48403ccba4"
 var adminTestToken = "0000000000000000000000000000000000000000"
 
+// dpn_test_setup.go sets up some test data on our local DPN REST cluster
+// so that we can run some end-to-end replication tests. Make sure you're
+// running the local DPN cluster before you run this. You can run the cluster
+// by running DPN-REST/dpnode/run_cluster.sh. This app will set up some bags
+// and replication requests in the local cluster, and will make sure that
+// the bag files exist in a location we can copy from using rsync.
+// This app runs as part of bagman/scripts/dpn_local_test.sh.
 func main() {
 	testUtil := NewTestUtil()
 	err := testUtil.MakeTestData()
