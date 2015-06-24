@@ -95,19 +95,19 @@ cd ~/go/src/github.com/APTrust/bagman/apps/dpn_validate
 go run dpn_validate.go -config test &
 VALIDATION_PID=$!
 
-# Start the storage worker, which copies DPN bags to long-term
-# storage in AWS S3.
-echo "Starting the DPN store worker"
-cd ~/go/src/github.com/APTrust/bagman/apps/dpn_store
-go run dpn_store.go -config test &
-STORE_PID=$!
-
 # Start the record worker, which records the results of bag processing
 # in both Fluctus and DPN
 echo "Starting the DPN record processor"
 cd ~/go/src/github.com/APTrust/bagman/apps/dpn_record
 go run dpn_record.go -config test &
 RECORD_PID=$!
+
+# Start the storage worker, which copies DPN bags to long-term
+# storage in AWS S3.
+echo "Starting the DPN store worker"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_store
+go run dpn_store.go -config test &
+STORE_PID=$!
 
 # Start the trouble queue processor. If any bags run into problems,
 # our services will dump detailed JSON info into the trouble queue.

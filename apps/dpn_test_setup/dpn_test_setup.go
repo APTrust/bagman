@@ -5,7 +5,6 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
 	"github.com/APTrust/bagman/workers"
-	"math/rand"
 	"os"
 	"path/filepath"
 )
@@ -196,12 +195,10 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 }
 
 func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath string) (*dpn.DPNReplicationTransfer, error) {
-	replicationId := fmt.Sprintf("%s-%d", bag.AdminNode, rand.Intn(200000000))
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: bag.AdminNode,
 		ToNode: testUtil.DPNConfig.LocalNode,
 		UUID: bag.UUID,
-		ReplicationId: replicationId,
 		FixityAlgorithm: "sha256",
 		Status: "Requested",
 		Protocol: "R",

@@ -80,7 +80,7 @@ func (storer *Storer) HandleMessage(message *nsq.Message) error {
 		bagIdentifier = "DPN Replication Bag"
 	}
 	storer.ProcUtil.MessageLog.Info("Putting %s into the storage queue (%s)",
-		result.PackageResult.TarFilePath, bagIdentifier)
+		result.TarFilePath(), bagIdentifier)
 	storer.StorageChannel <- result
 	return nil
 }
@@ -112,10 +112,10 @@ func (storer *Storer) store() {
 
 		// Now we'll open a file reader and stream the tar file
 		// up to S3.
-		reader, err := os.Open(result.PackageResult.TarFilePath)
+		reader, err := os.Open(result.TarFilePath())
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Error opening file '%s': %v",
-				result.PackageResult.TarFilePath, err)
+				result.TarFilePath(), err)
 			reader.Close()
 			storer.PostProcessChannel <- result
 			continue
@@ -123,7 +123,7 @@ func (storer *Storer) store() {
 		fileInfo, err := reader.Stat()
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Cannot stat file '%s': %v",
-				result.PackageResult.TarFilePath, err)
+				result.TarFilePath(), err)
 			reader.Close()
 			storer.PostProcessChannel <- result
 			continue
@@ -136,7 +136,7 @@ func (storer *Storer) store() {
 			continue
 		}
 
-		fileName := fmt.Sprintf("%s.tar", result.PackageResult.BagBuilder.UUID)
+		fileName := fmt.Sprintf("%s.tar", result.DPNBag.UUID)
 		url, err := storer.ProcUtil.S3Client.SaveToS3(
 			storer.ProcUtil.Config.DPNPreservationBucket,
 			fileName,
@@ -251,10 +251,10 @@ func (storer *Storer) createBagRecord() {
 			fixity := &DPNFixity{
 				Sha256: result.BagSha256Digest,
 			}
-			fileInfo, err := os.Stat(result.PackageResult.TarFilePath)
+			fileInfo, err := os.Stat(result.TarFilePath())
 			if err != nil {
 				result.ErrorMessage = fmt.Sprintf("Cannot stat %s to get file size: %v",
-					result.PackageResult.TarFilePath, err)
+					result.TarFilePath(), err)
 				storer.CleanupChannel <- result
 				continue
 			}
@@ -298,14 +298,14 @@ func (storer *Storer) cleanup() {
 		thisIsNotATest := (result.NsqMessage != nil)
 		storageSucceeded := (result.ErrorMessage == "" && result.StorageURL != "")
 		if storageSucceeded && thisIsNotATest {
-			err := os.Remove(result.PackageResult.TarFilePath)
+			err := os.Remove(result.TarFilePath())
 			if err != nil {
 				storer.ProcUtil.MessageLog.Warning("Error cleaning up %s: %v",
-					result.PackageResult.TarFilePath, err)
+					result.TarFilePath(), err)
 			} else {
 				storer.ProcUtil.MessageLog.Info(
 					"After successful upload, deleted local DPN bag at %s",
-					result.PackageResult.TarFilePath)
+					result.TarFilePath())
 			}
 		}
 		storer.PostProcessChannel <- result
@@ -342,7 +342,7 @@ func (storer *Storer) postProcess() {
 					SendToTroubleQueue(result, storer.ProcUtil)
 				} else {
 					storer.ProcUtil.MessageLog.Info("Requeuing %s (%s)",
-						bagIdentifier, result.PackageResult.TarFilePath)
+						bagIdentifier, result.TarFilePath())
 					result.NsqMessage.Requeue(1 * time.Minute)
 				}
 			}

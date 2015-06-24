@@ -170,7 +170,7 @@ func (validator *Validator) postProcess() {
 			}
 		} else {
 			validator.ProcUtil.IncrementSucceeded()
-			SendToStorageQueue(result, validator.ProcUtil)
+			SendToRecordQueue(result, validator.ProcUtil)
 		}
 
 		if result.NsqMessage == nil {

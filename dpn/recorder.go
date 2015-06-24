@@ -100,7 +100,7 @@ func NewRecorder(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Recorder,
 
 func (recorder *Recorder) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
-	var result *DPNResult
+	result := &DPNResult{}
 	err := json.Unmarshal(message.Body, result)
 	if err != nil {
 		recorder.ProcUtil.MessageLog.Error("Could not unmarshal JSON data from nsq:",
@@ -167,6 +167,7 @@ func (recorder *Recorder) record() {
 func (recorder *Recorder) postProcess() {
 	for result := range recorder.PostProcessChannel {
 		if result.ErrorMessage != "" {
+			// Something went wrong
 			if result.Retry == false {
 				recorder.ProcUtil.MessageLog.Error(
 					"Record failure for bag %s; no more retries. ErrorMessage: %s",
@@ -177,14 +178,40 @@ func (recorder *Recorder) postProcess() {
 					"Record failure for bag %s; will requeue. ErrorMessage: %s",
 					result.DPNBag.UUID, result.ErrorMessage)
 				if result.NsqMessage != nil {
-					result.NsqMessage.Requeue(5 * time.Minute)
+					result.NsqMessage.Requeue(1 * time.Minute)
+					continue
 				}
 			}
+		} else {
+			// Nothing went wrong
+			storageResultSent := !result.RecordResult.StorageResultSentAt.IsZero()
+			copyReceiptSent := !result.RecordResult.CopyReceiptSentAt.IsZero()
+			if copyReceiptSent && !storageResultSent {
+				// Bag was copied from remote node to local staging
+				// area but has not been copied into long-term storage.
+				SendToStorageQueue(result, recorder.ProcUtil)
+			}
 		}
-		// If no errors, we're at the end of the line here.
+
+		// If no errors, and the storage result was sent,
+		// we're at the end of the line here.
 		// All processing is done.
 		if result.NsqMessage == nil {
 			recorder.WaitGroup.Done()
+		} else {
+			if result.TransferRequest == nil {
+				// Local bag
+				recorder.ProcUtil.MessageLog.Info(
+					"Ingest complete for bag %s from %s",
+					result.DPNBag.UUID, result.DPNBag.AdminNode)
+			} else
+			{
+				// Replicated bag
+				recorder.ProcUtil.MessageLog.Info(
+					"Replication complete for bag %s from %s",
+					result.TransferRequest.UUID, result.TransferRequest.FromNode)
+			}
+			result.NsqMessage.Finish()
 		}
 	}
 }
@@ -400,12 +427,13 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	result.TransferRequest.BagValid = &bagValid
 	result.TransferRequest.FixityValue = result.BagSha256Digest
 
-	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s on remote node %s. " +
+	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s " +
+		"from remote node %s. " +
 		"Setting status to 'Received', BagValid to %t, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		result.TransferRequest.FixityValue)
-	recorder.ProcUtil.MessageLog.Debug("Updating ", detailedMessage)
+	recorder.ProcUtil.MessageLog.Debug("Updating %s", detailedMessage)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error updating %s: %v", detailedMessage, err)
