@@ -105,6 +105,13 @@ func (copier *Copier) doLookup() {
 		// Get a client to talk to the FromNode
 		remoteClient := copier.RemoteClients[result.TransferRequest.FromNode]
 
+		copier.ProcUtil.MessageLog.Debug(
+			"Looking up ReplicationId %s, bag %s, on node %s ",
+				result.TransferRequest.ReplicationId,
+				result.TransferRequest.UUID,
+				result.TransferRequest.FromNode)
+
+
 		// If we can find out for sure that this replication request should
 		// not be processed, then don't process it...
 		xfer, _ := remoteClient.ReplicationTransferGet(

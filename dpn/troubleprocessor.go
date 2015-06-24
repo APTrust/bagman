@@ -31,7 +31,7 @@ func NewTroubleProcessor(procUtil *bagman.ProcessUtil) (*TroubleProcessor) {
 }
 
 func (troubleProcessor *TroubleProcessor) HandleMessage(message *nsq.Message) error {
-	var result DPNResult
+	result := &DPNResult{}
 	err := json.Unmarshal(message.Body, &result)
 	if err != nil {
 		detailedError := fmt.Errorf(
@@ -42,7 +42,7 @@ func (troubleProcessor *TroubleProcessor) HandleMessage(message *nsq.Message) er
 		return detailedError
 	}
 	result.NsqMessage = message
-	troubleProcessor.dumpToFile(&result)
+	troubleProcessor.dumpToFile(result)
 	troubleProcessor.ProcUtil.MessageLog.Info("Processed DPN bag %s", result.BagIdentifier)
 	return nil
 }

@@ -131,6 +131,19 @@ func (result *DPNResult) OriginalBagName() (string, error) {
 	return "", err
 }
 
+func (result *DPNResult) TarFilePath() (string) {
+	// Locally ingested bags have a PackageResult...
+	if result.PackageResult != nil && result.PackageResult.TarFilePath != "" {
+		return result.PackageResult.TarFilePath
+	}
+	// Bags replicated from other nodes have a CopyResult...
+	if result.CopyResult != nil && result.CopyResult.LocalPath != "" {
+		return result.CopyResult.LocalPath
+	}
+	// This bag is messed up
+	return ""
+}
+
 // PackageResult maintains information about the state of the
 // packaging process. This struct is passed from channel to channel,
 // accumulating information along the way. If packaging fails after

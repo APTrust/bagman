@@ -114,15 +114,8 @@ func (testUtil *TestUtil) MakeTestDirs() (error) {
 }
 
 func (testUtil *TestUtil) MakeTestData() (error) {
-	allNodes, err := testUtil.LocalRestClient.DPNNodeListGet(nil)
-	if err != nil {
-		return err
-	}
 	count := 0
-	for _, node := range allNodes.Results {
-		if node.Namespace == testUtil.DPNConfig.LocalNode {
-			continue
-		}
+	for node, _ := range TEST_NODE_URLS {
 		count += 1
 
 		// Create a symlink from dpn_home/integration_test/<uuid>.tar
@@ -136,7 +129,7 @@ func (testUtil *TestUtil) MakeTestData() (error) {
 		}
 
 		// Create an entry for this bag on the remote node.
-		bag, err := testUtil.CreateBag(bagUuid, node.Namespace)
+		bag, err := testUtil.CreateBag(bagUuid, node)
 		if err != nil {
 			return err
 		} else {

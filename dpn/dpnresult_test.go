@@ -21,3 +21,27 @@ func TestOriginalBagName(t *testing.T) {
 		t.Errorf("OriginalBagName did not return expected error for invalid bag name")
 	}
 }
+
+func TestTarFilePath(t *testing.T) {
+	result := dpn.NewDPNResult("test.edu/ncsu.1840.16-1004")
+	result.PackageResult = &dpn.PackageResult{
+		TarFilePath: "/path/to/packaged_file.tar",
+	}
+	if result.TarFilePath() != "/path/to/packaged_file.tar" {
+		t.Errorf("TarFilePath() returned %s, expected '/path/to/packaged_file.tar'",
+			result.TarFilePath())
+	}
+	result.PackageResult = nil
+	result.CopyResult = &dpn.CopyResult{
+		LocalPath: "/path/to/copied_file.tar",
+	}
+	if result.TarFilePath() != "/path/to/copied_file.tar" {
+		t.Errorf("TarFilePath() returned %s, expected '/path/to/copied_file.tar'",
+			result.TarFilePath())
+	}
+	result.CopyResult = nil
+	if result.TarFilePath() != "" {
+		t.Errorf("TarFilePath() returned %s, expected empty string",
+			result.TarFilePath())
+	}
+}

@@ -48,6 +48,17 @@ then
     exit 1
 fi
 
+# Copy bags and transfer requests from other nodes to our local DPN node.
+echo "Synching replication requests from remote nodes to local"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_sync
+go run dpn_sync.go -config dpn/dpn_config.json
+if [ $? != 0 ]
+then
+    echo "DPN sync failed"
+    kill -s SIGINT $NSQ_PID
+    exit 1
+fi
+
 # Start NSQ, because we'll need to put some data into
 # the work queues.
 echo "Starting NSQ"
@@ -67,17 +78,6 @@ if [ $? != 0 ]
 then
     echo "Check requests failed"
     kill_all
-    exit 1
-fi
-
-# Copy bags and transfer requests from other nodes to our local DPN node.
-echo "Synching replication requests from remote nodes to local"
-cd ~/go/src/github.com/APTrust/bagman/apps/dpn_sync
-go run dpn_sync.go -config dpn/dpn_config.json
-if [ $? != 0 ]
-then
-    echo "DPN sync failed"
-    kill -s SIGINT $NSQ_PID
     exit 1
 fi
 
