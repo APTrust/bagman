@@ -7,6 +7,7 @@ import (
 	"github.com/bitly/go-nsq"
 	"github.com/crowdmob/goamz/s3"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -110,6 +111,14 @@ func (storer *Storer) store() {
 			continue
 		}
 
+		err := os.MkdirAll(filepath.Dir(result.TarFilePath()), 0755)
+		if err != nil {
+			result.ErrorMessage = fmt.Sprintf("Error creating directory '%s': %v",
+				filepath.Dir(result.TarFilePath()), err)
+			storer.PostProcessChannel <- result
+			continue
+		}
+
 		// Now we'll open a file reader and stream the tar file
 		// up to S3.
 		reader, err := os.Open(result.TarFilePath())
@@ -136,7 +145,13 @@ func (storer *Storer) store() {
 			continue
 		}
 
-		fileName := fmt.Sprintf("%s.tar", result.DPNBag.UUID)
+		bagUUID := ""
+		if result.DPNBag != nil {
+			bagUUID = result.DPNBag.UUID
+		} else {
+			bagUUID = result.PackageResult.BagBuilder.UUID
+		}
+		fileName := fmt.Sprintf("%s.tar", bagUUID)
 		url, err := storer.ProcUtil.S3Client.SaveToS3(
 			storer.ProcUtil.Config.DPNPreservationBucket,
 			fileName,
@@ -159,7 +174,6 @@ func (storer *Storer) store() {
 		// Update the transfer request, if there is one.
 		if result.TransferRequest != nil {
 			result.TransferRequest.Status = "Stored"
-			storer.updateReplicationRequest(result)
 		}
 		if result.ErrorMessage != "" {
 			result.ErrorMessage = fmt.Sprintf("Bag was stored, but we couldn't " +
@@ -184,17 +198,13 @@ func (storer *Storer) refetchReplicationRequest(result *DPNResult) {
 	storer.makeReplicationRequest(result, "GET")
 }
 
-func (storer *Storer) updateReplicationRequest(result *DPNResult) {
-	storer.makeReplicationRequest(result, "POST")
-}
-
 func (storer *Storer) makeReplicationRequest(result *DPNResult, whatKind string) {
 
 	if result.TransferRequest == nil {
 		// This is a local bag and there is no replication request.
 		storer.ProcUtil.MessageLog.Error("makeReplicationRequest was called for bag %s (%s), " +
 			"which has no associated replication request. Is this a local bag?",
-			result.BagIdentifier, result.DPNBag.UUID)
+			result.BagIdentifier, result.PackageResult.BagBuilder.UUID)
 		return
 	}
 
@@ -276,18 +286,7 @@ func (storer *Storer) createBagRecord() {
 				ReplicatingNodes: make([]string, 0),
 				Fixities: fixities,
 			}
-			savedBag, err := storer.LocalRESTClient.DPNBagCreate(newBag)
-			if err != nil {
-				result.ErrorMessage = fmt.Sprintf(
-					"Error sending new bag record to local DPN REST service: %v", err)
-				storer.CleanupChannel <- result
-				continue
-			} else {
-				storer.ProcUtil.MessageLog.Debug(
-					"Successfully created bag %s in DPN REST service with UUID %s",
-					result.BagIdentifier, savedBag.UUID)
-			}
-			result.DPNBag = savedBag
+			result.DPNBag = newBag
 		}
 		storer.CleanupChannel <- result
 	}

@@ -204,12 +204,13 @@ func (recorder *Recorder) postProcess() {
 				recorder.ProcUtil.MessageLog.Info(
 					"Ingest complete for bag %s from %s",
 					result.DPNBag.UUID, result.DPNBag.AdminNode)
-			} else
-			{
+			} else {
 				// Replicated bag
-				recorder.ProcUtil.MessageLog.Info(
-					"Replication complete for bag %s from %s",
-					result.TransferRequest.UUID, result.TransferRequest.FromNode)
+				if result.TransferRequest.Status == "Stored" {
+					recorder.ProcUtil.MessageLog.Info(
+						"Replication complete for bag %s from %s",
+						result.TransferRequest.UUID, result.TransferRequest.FromNode)
+				}
 			}
 			result.NsqMessage.Finish()
 		}
@@ -356,7 +357,15 @@ func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (strin
 	recorder.ProcUtil.MessageLog.Debug("Creating symlink from '%s' to '%s'",
 		symLink, absPath)
 
-	err := os.Symlink(absPath, symLink)
+	dir := filepath.Dir(symLink)
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		detailedError := fmt.Errorf("Error creating directory '%s': %v",
+			dir, err)
+		return "", detailedError
+	}
+
+	err = os.Symlink(absPath, symLink)
 	if err != nil {
 		detailedError := fmt.Errorf("Error creating symlink at '%s' pointing to '%s': %v",
 			symLink, absPath, err)

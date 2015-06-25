@@ -245,7 +245,7 @@ func (packager *Packager) doTar() {
 		// The name of the tar file will be the DPN UUID + .tar
 		tarFileName := fmt.Sprintf("%s.tar", result.PackageResult.BagBuilder.UUID)
 		tarFilePath := filepath.Join(packager.ProcUtil.Config.DPNStagingDirectory,
-			"bags", tarFileName)
+			tarFileName)
 		// Make sure the directory exists, then open a new tar file for writing
 		err = os.MkdirAll(filepath.Dir(tarFilePath), 0755)
 		if err != nil {

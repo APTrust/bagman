@@ -59,7 +59,13 @@ func (troubleProcessor *TroubleProcessor) dumpToFile(result *DPNResult) error {
 	if err != nil {
 		panic(err)
 	}
-	filePath := path.Join(outdir, result.BagIdentifier)
+	bagUUID := ""
+	if result.DPNBag != nil {
+		bagUUID = result.DPNBag.UUID
+	} else {
+		bagUUID = result.PackageResult.BagBuilder.UUID
+	}
+	filePath := path.Join(outdir, bagUUID)
 	os.MkdirAll(filepath.Dir(filePath), 0755)
 	err = ioutil.WriteFile(filePath, json, 0644)
 	if err != nil {
