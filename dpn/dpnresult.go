@@ -237,6 +237,10 @@ func LoadConfig(pathToFile string) (*DPNConfig, error) {
 	if config.RestClient.LocalAuthToken == "" {
 		config.RestClient.LocalAuthToken = os.Getenv("DPN_REST_TOKEN")
 	}
+	expanded, err := bagman.ExpandTilde(config.LogDirectory)
+	if err == nil {
+		config.LogDirectory = expanded
+	}
     return &config, nil
 }
 

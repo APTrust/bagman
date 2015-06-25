@@ -73,6 +73,8 @@ func (troubleProcessor *TroubleProcessor) dumpToFile(result *DPNResult) error {
 	}
 	if result.NsqMessage != nil {
 		result.NsqMessage.Finish()
+	} else {
+		troubleProcessor.WaitGroup.Done()
 	}
 	return nil
 }

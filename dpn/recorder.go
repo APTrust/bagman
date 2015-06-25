@@ -299,7 +299,7 @@ func (recorder *Recorder) recordPremisEvents(result *DPNResult) {
 		Identifier:         idAssignmentUuid.String(),
 		EventType:          "identifier_assignment",
 		DateTime:           now,
-		Detail:             "Assigned new storage identifier",
+		Detail:             "Assigned new DPN storage identifier",
 		Outcome:            string(bagman.StatusSuccess),
 		OutcomeDetail:      result.StorageURL,
 		Object:             "Go uuid library + APTrust DPN services",

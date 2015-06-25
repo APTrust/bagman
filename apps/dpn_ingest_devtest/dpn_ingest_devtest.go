@@ -5,6 +5,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
 	"github.com/APTrust/bagman/workers"
+	"path/filepath"
 )
 
 const NONCE = "12345"
@@ -71,12 +72,40 @@ func main() {
 	}
 	recorder.RunTest(dpnResult)
 
-	// TODO: Check record result
+	// Check record result
+	if dpnResult.RecordResult == nil {
+		procUtil.MessageLog.Error("Record result is nil")
+	} else {
+		if dpnResult.RecordResult.DPNBagCreatedAt.IsZero() {
+			procUtil.MessageLog.Error("DPNBagCreatedAt was not set")
+		}
+		if len(dpnResult.RecordResult.DPNReplicationRequests) != 2 {
+			procUtil.MessageLog.Error("Expected 2 replication requests, found %d",
+				len(dpnResult.RecordResult.DPNReplicationRequests))
+		}
+		if dpnResult.RecordResult.PremisIngestEventId == "" {
+			procUtil.MessageLog.Error("PremisIngestEventId was not set")
+		}
+		if dpnResult.RecordResult.PremisIdentifierEventId == "" {
+			procUtil.MessageLog.Error("PremisIdentifierEventId was not set")
+		}
+		if dpnResult.RecordResult.ErrorMessage != "" {
+			procUtil.MessageLog.Error(dpnResult.RecordResult.ErrorMessage)
+		}
+	}
 
 
 	dpnResult.ErrorMessage += "  Nothing wrong. Just testing the trouble processor."
 	troubleProcessor := dpn.NewTroubleProcessor(procUtil)
 	troubleProcessor.RunTest(dpnResult)
+
+	// Make sure the trouble worker wrote its file
+	troubleFile := filepath.Join(dpnConfig.LogDirectory, "dpn_trouble", dpnResult.DPNBag.UUID)
+	if !bagman.FileExists(troubleFile) {
+		procUtil.MessageLog.Error("Trouble worker did not write JSON file to %s", troubleFile)
+	} else {
+		procUtil.MessageLog.Debug("Trouble worker successfully wrote file to %s", troubleFile)
+	}
 }
 
 func getClient(config *dpn.DPNConfig, procUtil *bagman.ProcessUtil) (*dpn.DPNRestClient, error) {
