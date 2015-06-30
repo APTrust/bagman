@@ -1,5 +1,8 @@
 #!/bin/bash
 #
+# THIS SCRIPT IS DEPRECATED AND WILL BE REMOVED SOON.
+# USE dpn_local_test.sh INSTEAD.
+#
 
 ORIGINAL_DIR=`pwd`
 BAGMAN_HOME=~/go/src/github.com/APTrust/bagman

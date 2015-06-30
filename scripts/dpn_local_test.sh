@@ -81,6 +81,13 @@ then
     exit 1
 fi
 
+# Package processor packages existing APTrust bags for
+# ingest to DPN.
+echo "Starting the package processor"
+cd ~/go/src/github.com/APTrust/bagman/apps/dpn_package
+go run dpn_package.go -config test &
+PACKAGE_PID=$!
+
 # Copy processor copies bags from other nodes via rsync, so
 # we can replicate them.
 echo "Starting the DPN copy processor"
@@ -116,9 +123,11 @@ cd ~/go/src/github.com/APTrust/bagman/apps/dpn_trouble
 go run dpn_trouble.go -config test &
 TROUBLE_PID=$!
 
-
 kill_all()
 {
+    echo "Shutting down the package worker"
+    kill -s SIGINT $PACKAGE_PID
+
     echo "Shutting down the copy worker"
     kill -s SIGINT $COPY_PID
 

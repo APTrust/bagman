@@ -41,6 +41,9 @@ type RecordResult struct {
 	// PREMIS identifier assignment event ID for bags ingested
 	// by APTrust.
 	PremisIdentifierEventId      string
+	// What time did we update the processed item request for this bag?
+	// This lets Fluctus know that the task is complete.
+	ProcessedItemUpdatedAt       time.Time
 	// If this is not an APTrust bag, did we send the copy receipt
 	// the remote node that asked us to replicate this bag?
 	// If sent the copy receipt, this should be set to the
@@ -231,6 +234,10 @@ func (recorder *Recorder) RecordAPTrustDPNData(result *DPNResult) {
 		return
 	}
 	recorder.createReplicationRequests(result)
+	if result.ErrorMessage != "" {
+		return
+	}
+	recorder.updateProcessedItem(result)
 }
 
 // Create a new DPN bag entry in our local DPN registry. We do this only
@@ -347,6 +354,18 @@ func (recorder *Recorder) createReplicationRequests(result *DPNResult) {
 				result.RecordResult.DPNReplicationRequests, savedXfer.ToNode)
 		}
 	}
+}
+
+func (recorder *Recorder) updateProcessedItem(result *DPNResult) {
+	processedItem := result.FluctusProcessStatus
+	processedItem.Date = time.Now()
+	processedItem.Stage = "Record"
+	processedItem.Status = "Success"
+	err := recorder.ProcUtil.FluctusClient.UpdateProcessedItem(processedItem)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Error updating ProcessedItem status in Fluctus: %v", err)
+	}
+	result.RecordResult.ProcessedItemUpdatedAt = processedItem.Date
 }
 
 func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (string, error) {

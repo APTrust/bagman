@@ -83,7 +83,7 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
 
 	// TODO: Change this. We'll actually just have the bag identifier in the queue.
-	var dpnResult *DPNResult
+	dpnResult := &DPNResult{}
 	err := json.Unmarshal(message.Body, dpnResult)
 	if err != nil {
 		detailedError := fmt.Errorf("Could not unmarshal JSON data from nsq:",
@@ -94,6 +94,7 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Start processing.
+	dpnResult.NsqMessage = message
 	dpnResult.Stage = STAGE_PACKAGE
 	packager.LookupChannel <- dpnResult
 	packager.ProcUtil.MessageLog.Info("Put %s into lookup channel",
