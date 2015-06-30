@@ -42,14 +42,55 @@ func main() {
 		procUtil.MessageLog.Fatal(msg)
 		os.Exit(2)
 	}
+	err = queueIngestRequests(procUtil)
+	if err != nil {
+		procUtil.MessageLog.Error(err.Error())
+		// Don't quit. Try to queue replication requests
+	}
 	err = queueReplicationRequests(client, procUtil)
 	if err != nil {
 		procUtil.MessageLog.Error(err.Error())
-		fmt.Println(err.Error())
 		os.Exit(3)
 	}
 }
 
+// Find requests for APTrust bags that should be ingested into
+// DPN, and push those requests into NSQ.
+func queueIngestRequests(procUtil *bagman.ProcessUtil) (error) {
+	procUtil.MessageLog.Info("Checking for APTrust bags that should go to DPN")
+	ps := &bagman.ProcessStatus{
+		Action: "DPN",
+		Stage: "Requested",
+		Status: "Pending",
+		Retry: true,
+	}
+	statusRecords, err := procUtil.FluctusClient.ProcessStatusSearch(ps, true, false)
+	if err != nil {
+		return err
+	}
+	procUtil.MessageLog.Info("Found %d APTrust bags marked for DPN", len(statusRecords))
+	nsqUrl := fmt.Sprintf("%s/mput?topic=%s",
+		procUtil.Config.NsqdHttpAddress,
+		procUtil.Config.DPNPackageWorker.NsqTopic)
+	for _, record := range statusRecords {
+		procUtil.MessageLog.Info("APTrust bag %s queued for ingest to DPN", record.ObjectIdentifier)
+		genericSlice := make([]interface{}, 1)
+		genericSlice[0] = dpn.NewDPNResult(record.ObjectIdentifier)
+		err = bagman.QueueToNSQ(nsqUrl, genericSlice)
+		if err != nil {
+			return err
+		}
+		record.Status = "Started"
+		err = procUtil.FluctusClient.UpdateProcessedItem(record)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Find outstanding replication requests from other nodes and push
+// them into NSQ.
 func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.ProcessUtil) (error) {
 	lastCheck := readLastTimestampFile(procUtil)
 	nsqUrl := fmt.Sprintf("%s/mput?topic=%s",
@@ -89,7 +130,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			dpnResult.Stage = dpn.STAGE_COPY
 			genericSlice[i] = dpnResult
 		}
-		bagman.QueueToNSQ(nsqUrl, genericSlice)
+		err = bagman.QueueToNSQ(nsqUrl, genericSlice)
 		if err != nil {
 			return err
 		}
