@@ -182,9 +182,12 @@ func (recorder *Recorder) postProcess() {
 					result.DPNBag.UUID, result.ErrorMessage)
 				if result.NsqMessage != nil {
 					result.NsqMessage.Requeue(1 * time.Minute)
-					continue
 				}
 			}
+			if result.NsqMessage == nil {
+				recorder.WaitGroup.Done()
+			}
+			continue
 		} else {
 			// Nothing went wrong
 			storageResultSent := !result.RecordResult.StorageResultSentAt.IsZero()
@@ -366,6 +369,12 @@ func (recorder *Recorder) updateProcessedItem(result *DPNResult) {
 		result.ErrorMessage = fmt.Sprintf("Error updating ProcessedItem status in Fluctus: %v", err)
 	}
 	result.RecordResult.ProcessedItemUpdatedAt = processedItem.Date
+
+	// DELETE THIS AFTER TESTING!!!
+	// This code forces a failure to test failure processing.
+	// result.ErrorMessage = "This error was put here just for fun"
+	// result.Retry = false
+	// END OF DELETE THIS
 }
 
 func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (string, error) {
