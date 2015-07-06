@@ -1,34 +1,106 @@
 {
-    "LocalNode": "aptrust",
-    "LogDirectory": "~/tmp/logs",
-    "LogLevel": 4,
-    "LogToStderr": false,
-    "ReplicateToNumNodes": 2,
-    "RestClient": {
-        "Comment": "Settings for our local DPN REST API server. LocalAuthToken should be loaded from environment.",
-        "LocalServiceURL": "http://localhost:8000",
-        "LocalAPIRoot": "api-v1",
-        "LocalAuthToken": ""
+    "dev": {
+        "LocalNode": "aptrust",
+        "LogDirectory": "~/tmp/logs",
+        "LogLevel": 4,
+        "LogToStderr": false,
+        "ReplicateToNumNodes": 2,
+        "RestClient": {
+            "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
+            "LocalServiceURL": "http://localhost:8000",
+            "LocalAPIRoot": "api-v1",
+            "LocalAuthToken": ""
+        },
+        "DefaultMetadata": {
+            "Comment": "Config settings for common DPN bagit metadata",
+            "BagItVersion": "0.97",
+            "BagItEncoding": "UTF-8",
+            "IngestNodeName": "APTrust",
+            "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
+            "IngestNodeContactName": "APTrust Administrator",
+            "IngestNodeContactEmail": "help@aptrust.org"
+        },
+        "RemoteNodeTokens": {
+            "chron": "2222222222222222222222222222222222222222",
+            "hathi": "3333333333333333333333333333333333333333",
+            "sdr":   "4444444444444444444444444444444444444444",
+            "tdr":   "5555555555555555555555555555555555555555"
+        },
+        "RemoteNodeURLs": {
+            "chron": "http://localhost:8001",
+            "hathi": "http://localhost:8002",
+            "sdr":   "http://localhost:8003",
+            "tdr":   "http://localhost:8004"
+        }
     },
-    "DefaultMetadata": {
-        "Comment": "Config settings for common DPN bagit metadata",
-        "BagItVersion": "0.97",
-        "BagItEncoding": "UTF-8",
-        "IngestNodeName": "APTrust",
-        "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
-        "IngestNodeContactName": "APTrust Administrator",
-        "IngestNodeContactEmail": "help@aptrust.org"
+    "test": {
+        "LocalNode": "aptrust",
+        "LogDirectory": "~/tmp/logs",
+        "LogLevel": 4,
+        "LogToStderr": false,
+        "ReplicateToNumNodes": 2,
+        "RestClient": {
+            "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
+            "LocalServiceURL": "http://localhost:8000",
+            "LocalAPIRoot": "api-v1",
+            "LocalAuthToken": ""
+        },
+        "DefaultMetadata": {
+            "Comment": "Config settings for common DPN bagit metadata",
+            "BagItVersion": "0.97",
+            "BagItEncoding": "UTF-8",
+            "IngestNodeName": "APTrust",
+            "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
+            "IngestNodeContactName": "APTrust Administrator",
+            "IngestNodeContactEmail": "help@aptrust.org"
+        },
+        "RemoteNodeTokens": {
+            "chron": "2222222222222222222222222222222222222222",
+            "hathi": "3333333333333333333333333333333333333333",
+            "sdr":   "4444444444444444444444444444444444444444",
+            "tdr":   "5555555555555555555555555555555555555555"
+        },
+        "RemoteNodeURLs": {
+            "chron": "http://localhost:8001",
+            "hathi": "http://localhost:8002",
+            "sdr":   "http://localhost:8003",
+            "tdr":   "http://localhost:8004"
+        }
     },
-    "RemoteNodeTokens": {
-        "chron": "2222222222222222222222222222222222222222",
-        "hathi": "3333333333333333333333333333333333333333",
-        "sdr":   "4444444444444444444444444444444444444444",
-        "tdr":   "5555555555555555555555555555555555555555"
-    },
-    "RemoteNodeURLs": {
-        "chron": "http://localhost:8001",
-        "hathi": "http://localhost:8002",
-        "sdr":   "http://localhost:8003",
-        "tdr":   "http://localhost:8004"
+    "production": {
+        "LocalNode": "aptrust",
+        "LogDirectory": "/mnt/dpn/logs",
+        "LogLevel": 4,
+        "LogToStderr": false,
+        "ReplicateToNumNodes": 2,
+        "RestClient": {
+            "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
+            "LocalServiceURL": "https://dpn.aptrust.org",
+            "LocalAPIRoot": "api-v1",
+            "LocalAuthToken": ""
+        },
+        "DefaultMetadata": {
+            "Comment": "Config settings for common DPN bagit metadata",
+            "BagItVersion": "0.97",
+            "BagItEncoding": "UTF-8",
+            "IngestNodeName": "APTrust",
+            "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
+            "IngestNodeContactName": "APTrust Administrator",
+            "IngestNodeContactEmail": "help@aptrust.org"
+        },
+        "RemoteNodeTokens": {
+            "comment": "Leave these blank. Will get from REST service.",
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
+        "RemoteNodeURLs": {
+            "comment": "Leave these blank. Will get from REST service.",
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        }
     }
 }

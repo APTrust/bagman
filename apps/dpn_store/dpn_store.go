@@ -16,7 +16,7 @@ func main() {
 		procUtil.MessageLog.Fatal(err.Error())
 	}
 	procUtil.MessageLog.Info("dpn_store started")
-	dpnConfig, err := dpn.LoadConfig("dpn/dpn_config.json")
+	dpnConfig, err := dpn.LoadConfig("dpn/dpn_config.json", procUtil.ConfigName)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}

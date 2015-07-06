@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -17,15 +18,16 @@ import (
 
 var timestampFile, _ = bagman.RelativeToAbsPath(filepath.Join("bin", "dpnLastRequestCheck.txt"))
 var dummyTime, _ = time.Parse(time.RFC3339, "1999-12-31T23:59:59Z")
+var defaultConfigFile = "dpn/dpn_config.json"
 
 // dpn_check_requests checks our local DPN node for outstanding
 // replication requests and adds them into NSQ.
 func main() {
-	configPath := parseCommandLine()
-	dpnConfig, err := dpn.LoadConfig(configPath)
+	requestedConfig := parseCommandLine()
+	dpnConfig, err := dpn.LoadConfig(defaultConfigFile, requestedConfig)
 	if err != nil {
 		msg := fmt.Sprintf("Error loading dpn config file '%s': %v\n",
-			configPath, err)
+			defaultConfigFile, err)
 		fmt.Fprintf(os.Stderr, msg)
 		os.Exit(1)
 	}
@@ -166,14 +168,14 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 }
 
 func parseCommandLine() (string) {
-	configFile := flag.String("config", "", "DPN config file")
+	config := flag.String("config", "", "DPN config [dev|test|production]")
 	flag.Parse()
-	if configFile == nil || *configFile == "" {
+	if config == nil || *config == "" {
 		printUsage()
-		fmt.Fprintln(os.Stderr, "You must specify a DPN config file.")
+		fmt.Fprintln(os.Stderr, "You must specify a DPN config (test|dev|production).")
 		os.Exit(1)
 	}
-	return *configFile
+	return *config
 }
 
 func printUsage() {

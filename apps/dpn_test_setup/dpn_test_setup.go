@@ -65,7 +65,7 @@ type TestUtil struct {
 func NewTestUtil() (*TestUtil) {
 	procUtil := workers.CreateProcUtil()
 	procUtil.MessageLog.Info("Starting data setup for local integration test")
-	dpnConfig, err := dpn.LoadConfig("dpn/dpn_config.json")
+	dpnConfig, err := dpn.LoadConfig("dpn/dpn_config.json", "test")
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}

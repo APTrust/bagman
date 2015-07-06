@@ -232,16 +232,20 @@ type DPNConfig struct {
 	RemoteNodeURLs        map[string]string
 }
 
-func LoadConfig(pathToFile string) (*DPNConfig, error) {
+func LoadConfig(pathToFile, requestedConfig string) (*DPNConfig, error) {
 	data, err := bagman.LoadRelativeFile(pathToFile)
 	if err != nil {
 		return nil, err
 	}
-	config := DPNConfig{}
-	err = json.Unmarshal(data, &config)
+	configMap := make(map[string]*DPNConfig)
+	err = json.Unmarshal(data, &configMap)
     if err != nil {
         return nil, err
     }
+	config := configMap[requestedConfig]
+	if config == nil {
+		return nil, fmt.Errorf("DPN config '%s' does not exist", requestedConfig)
+	}
 	// Load local API token from environment to keep it out of config file.
 	// Need a better solution for this.
 	if config.RestClient.LocalAuthToken == "" {
@@ -251,7 +255,7 @@ func LoadConfig(pathToFile string) (*DPNConfig, error) {
 	if err == nil {
 		config.LogDirectory = expanded
 	}
-    return &config, nil
+    return config, nil
 }
 
 // BagBuilder builds a DPN bag from an APTrust intellectual object.

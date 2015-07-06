@@ -19,6 +19,7 @@ etc.). It also encapsulates some functions common to all of
 those services.
 */
 type ProcessUtil struct {
+	ConfigName      string
 	Config          Config
 	JsonLog         *log.Logger
 	MessageLog      *logging.Logger
@@ -49,6 +50,7 @@ func NewProcessUtil(requestedConfig *string) (procUtil *ProcessUtil) {
 		succeeded: int64(0),
 		failed: int64(0),
 	}
+	procUtil.ConfigName = *requestedConfig
 	procUtil.Config = LoadRequestedConfig(requestedConfig)
 	procUtil.initLogging()
 	procUtil.initVolume()

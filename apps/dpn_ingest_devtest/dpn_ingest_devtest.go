@@ -19,7 +19,7 @@ func main() {
 	procUtil := workers.CreateProcUtil()
 
 	pathToConfigFile := "dpn/dpn_config.json"
-	dpnConfig, err := dpn.LoadConfig(pathToConfigFile)
+	dpnConfig, err := dpn.LoadConfig(pathToConfigFile, "test")
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())
 	}

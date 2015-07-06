@@ -10,8 +10,9 @@ import (
 // dpn_sync copies updated records from the registries
 // at other nodes into our local DPN registry.
 func main() {
-	configPath := parseCommandLine()
-	dpnConfig, err := dpn.LoadConfig(configPath)
+	configPath := "dpn/dpn_config.json"
+	configName := parseCommandLine()
+	dpnConfig, err := dpn.LoadConfig(configPath, configName)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error loading dpn config file '%s': %v\n",
 			configPath, err)
@@ -40,14 +41,14 @@ func main() {
 }
 
 func parseCommandLine() (string) {
-	configFile := flag.String("config", "", "DPN config file")
+	config := flag.String("config", "", "DPN config name [dev|test|production]")
 	flag.Parse()
-	if configFile == nil || *configFile == "" {
+	if config == nil || *config == "" {
 		printUsage()
-		fmt.Fprintln(os.Stderr, "You must specify a DPN config file.")
+		fmt.Fprintln(os.Stderr, "You must specify a DPN config name (dev|test|production)")
 		os.Exit(1)
 	}
-	return *configFile
+	return *config
 }
 
 func printUsage() {

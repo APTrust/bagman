@@ -22,7 +22,7 @@ func loadConfig(t *testing.T, configPath string) (*dpn.DPNConfig) {
 		return dpnConfig
 	}
 	var err error
-	dpnConfig, err = dpn.LoadConfig(configPath)
+	dpnConfig, err = dpn.LoadConfig(configPath, "test")
 	if err != nil {
 		t.Errorf("Error loading %s: %v\n", configPath, err)
 		return nil

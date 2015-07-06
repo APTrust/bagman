@@ -51,7 +51,7 @@ fi
 # Copy bags and transfer requests from other nodes to our local DPN node.
 echo "Synching replication requests from remote nodes to local"
 cd ~/go/src/github.com/APTrust/bagman/apps/dpn_sync
-go run dpn_sync.go -config dpn/dpn_config.json
+go run dpn_sync.go -config test
 if [ $? != 0 ]
 then
     echo "DPN sync failed"
@@ -73,7 +73,7 @@ sleep 3
 # Let this run to completion. It should take a few seconds.
 echo "Checking for replication requests"
 cd ~/go/src/github.com/APTrust/bagman/apps/dpn_check_requests
-go run dpn_check_requests.go -config dpn/dpn_config.json
+go run dpn_check_requests.go -config test
 if [ $? != 0 ]
 then
     echo "Check requests failed"

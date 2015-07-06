@@ -285,6 +285,8 @@ func (config *Config) AbsLogDirectory() string {
 // -config flag), or if the specified configuration cannot
 // be found, this prints a help message and terminates the
 // program.
+//
+// TODO: Use string param, not pointer!
 func LoadRequestedConfig(requestedConfig *string) (config Config) {
 	configurations := loadConfigFile()
 	config, configExists := configurations[*requestedConfig]
