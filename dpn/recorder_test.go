@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 // Many of the variables and functions used in this file
@@ -82,6 +83,27 @@ func buildLocalResult(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResult) {
 	result.DPNBag = makeBag() // defined in dpnrestclient_test.go
 	result.DPNBag.LocalId = "test.edu/test.edu.bag6"
 	result.StorageURL = fmt.Sprintf("http://fakeurl.kom/%s", result.DPNBag.UUID)
+
+	ps := &bagman.ProcessStatus{
+		ObjectIdentifier: "test.edu/test.edu.bag6",
+		Name: "Test Bag Six",
+		Bucket: "bukkety-poo",
+		ETag: "12345678",
+		BagDate: time.Now(),
+		Institution: "test.edu",
+		Action: "DPN",
+		Stage: "Requested",
+		Status: "Pending",
+		Note: "Requested...",
+		Outcome: "Requested...",
+		Retry: true,
+	}
+	err := recorder.ProcUtil.FluctusClient.UpdateProcessedItem(ps)
+	if err != nil {
+		t.Errorf("Could not create Fluctus ProcessedItem to test DPN ingest: %v", err)
+		return nil
+	}
+	result.FluctusProcessStatus = ps
 	return result
 }
 
@@ -97,6 +119,10 @@ func TestLocalBag(t *testing.T) {
 	}
 	recorder := getRecorder(t)
 	dpnResult := buildLocalResult(t, recorder)
+	if dpnResult == nil {
+		t.Errorf("Cannot perform TestLocalBag due to previous errors")
+		return
+	}
 	recorderTestEnsureFiles(t, recorder.ProcUtil)
 
 	// Make a dummy file so the symlink operation in
