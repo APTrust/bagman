@@ -87,6 +87,18 @@
             "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
+        },
+        "RemoteNodeTokens": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
+        "RemoteNodeURLs": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
         }
     },
     "demo": {
@@ -109,6 +121,18 @@
             "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
+        },
+        "RemoteNodeTokens": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
+        "RemoteNodeURLs": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
         }
     }
 }

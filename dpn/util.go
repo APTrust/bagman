@@ -9,6 +9,8 @@ import (
 	"os"
 )
 
+// TODO: Fix this. This forces us to have empty entries in RemoteNodeTokens
+// to ensure that we build remote node clients. Not good!
 func GetRemoteClients(localClient *DPNRestClient, config *DPNConfig, logger *logging.Logger) (map[string]*DPNRestClient, error) {
 	remoteClients := make(map[string]*DPNRestClient)
 	for namespace, _ := range config.RemoteNodeTokens {
