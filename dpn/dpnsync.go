@@ -150,6 +150,11 @@ func (dpnSync *DPNSync) SyncBags(remoteNode *DPNNode) ([]*DPNBag, error) {
 	pageNumber := 1
 	bagsUpdated := make([]*DPNBag, 0)
 	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
+	if remoteClient == nil {
+		dpnSync.Logger.Error("Skipping sync for node %s: REST client for that node is nil",
+			remoteNode.Namespace)
+		return bagsUpdated, fmt.Errorf("No client available for node %s", remoteNode.Namespace)
+	}
 	for {
 		dpnSync.Logger.Debug("Getting page %d of bags from %s", pageNumber, remoteNode.Namespace)
 		result, err := dpnSync.getBags(remoteClient, remoteNode, pageNumber)
