@@ -89,14 +89,12 @@
             "IngestNodeContactEmail": "help@aptrust.org"
         },
         "RemoteNodeTokens": {
-            "comment": "Leave these blank. Will get from REST service.",
             "chron": "",
             "hathi": "",
             "sdr":   "",
             "tdr":   ""
         },
         "RemoteNodeURLs": {
-            "comment": "Leave these blank. Will get from REST service.",
             "chron": "",
             "hathi": "",
             "sdr":   "",
@@ -125,14 +123,12 @@
             "IngestNodeContactEmail": "help@aptrust.org"
         },
         "RemoteNodeTokens": {
-            "comment": "Leave these blank. Will get from REST service.",
             "chron": "",
             "hathi": "",
             "sdr":   "",
             "tdr":   ""
         },
         "RemoteNodeURLs": {
-            "comment": "Leave these blank. Will get from REST service.",
             "chron": "",
             "hathi": "",
             "sdr":   "",
