@@ -151,7 +151,7 @@ func (dpnSync *DPNSync) SyncBags(remoteNode *DPNNode) ([]*DPNBag, error) {
 	bagsUpdated := make([]*DPNBag, 0)
 	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
 	if remoteClient == nil {
-		dpnSync.Logger.Error("Skipping sync for node %s: REST client for that node is nil",
+		dpnSync.Logger.Error("Skipping bag sync for node %s: REST client is nil",
 			remoteNode.Namespace)
 		return bagsUpdated, fmt.Errorf("No client available for node %s", remoteNode.Namespace)
 	}
@@ -215,6 +215,11 @@ func (dpnSync *DPNSync) SyncReplicationRequests(remoteNode *DPNNode) ([]*DPNRepl
 	xfersUpdated := make([]*DPNReplicationTransfer, 0)
 	pageNumber := 1
 	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
+	if remoteClient == nil {
+		dpnSync.Logger.Error("Skipping replication sync for node %s: REST client is nil",
+			remoteNode.Namespace)
+		return xfersUpdated, fmt.Errorf("No client available for node %s", remoteNode.Namespace)
+	}
 	for {
 		dpnSync.Logger.Debug("Getting page %d of replication requests from %s", pageNumber, remoteNode.Namespace)
 		result, err := dpnSync.getReplicationRequests(remoteClient, remoteNode, pageNumber)
@@ -275,6 +280,11 @@ func (dpnSync *DPNSync) SyncRestoreRequests(remoteNode *DPNNode) ([]*DPNRestoreT
 	xfersUpdated := make([]*DPNRestoreTransfer, 0)
 	pageNumber := 1
 	remoteClient := dpnSync.RemoteClients[remoteNode.Namespace]
+	if remoteClient == nil {
+		dpnSync.Logger.Error("Skipping restore sync for node %s: REST client is nil",
+			remoteNode.Namespace)
+		return xfersUpdated, fmt.Errorf("No client available for node %s", remoteNode.Namespace)
+	}
 	for {
 		dpnSync.Logger.Debug("Getting page %d of restore requests from %s", pageNumber, remoteNode.Namespace)
 		result, err := dpnSync.getRestoreRequests(remoteClient, remoteNode, pageNumber)
