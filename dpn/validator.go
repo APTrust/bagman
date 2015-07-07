@@ -110,8 +110,9 @@ func (validator *Validator) validate() {
 		// have to sign the checksum with that to get the fixity value
 		// that the originating node will accept.
 		nonce := ""
-		if result.TransferRequest != nil && result.TransferRequest.FixityNonce != "" {
-			nonce = result.TransferRequest.FixityNonce
+		if result.TransferRequest != nil && result.TransferRequest.FixityNonce != nil &&
+			*result.TransferRequest.FixityNonce != "" {
+			nonce = *result.TransferRequest.FixityNonce
 			validator.ProcUtil.MessageLog.Info("FixityNonce for bag %s is %s",
 				result.DPNBag.UUID, nonce)
 		} else {

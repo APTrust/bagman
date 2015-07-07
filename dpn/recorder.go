@@ -401,13 +401,14 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 	// dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar
 	link := fmt.Sprintf("dpn.%s@devops.aptrust.org:outbound/%s.tar",
 		toNode, result.DPNBag.UUID)
+	emptyString := ""
 	return &DPNReplicationTransfer{
 		FromNode: recorder.DPNConfig.LocalNode,
 		ToNode: toNode,
 		UUID: result.DPNBag.UUID,
 		FixityAlgorithm: "sha256",
-		FixityNonce: "",
-		FixityValue: "",
+		FixityNonce: &emptyString,
+		FixityValue: &emptyString,
 		Status: "Requested",
 		Protocol: "R",
 		Link: link,
@@ -456,14 +457,15 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	bagValid := result.ValidationResult.IsValid()
 	result.TransferRequest.Status = "Received"
 	result.TransferRequest.BagValid = &bagValid
-	result.TransferRequest.FixityValue = result.BagSha256Digest
+	digest := result.BagSha256Digest
+	result.TransferRequest.FixityValue = &digest
 
 	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s " +
 		"from remote node %s. " +
 		"Setting status to 'Received', BagValid to %t, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
-		result.TransferRequest.FixityValue)
+		*result.TransferRequest.FixityValue)
 	recorder.ProcUtil.MessageLog.Debug("Updating %s", detailedMessage)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)
 	if err != nil {
@@ -518,7 +520,7 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 		"Setting status to 'Stored', BagValid to %t, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
-		result.TransferRequest.FixityValue)
+		*result.TransferRequest.FixityValue)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error updating transfer request on remote node: %v", err)

@@ -148,12 +148,12 @@ type DPNReplicationTransfer struct {
 	FixityAlgorithm string       `json:"fixity_algorithm"`
 
 	// FixityNonce is an optional nonce used to calculate the fixity digest.
-	FixityNonce     string       `json:"fixity_nonce"`
+	FixityNonce     *string      `json:"fixity_nonce"`
 
 	// FixityValue is the fixity value calculated by the ToNode after
 	// it receives the bag. This will be null/empty until the replicating
 	// node sends the info back to the FromNode.
-	FixityValue     string       `json:"fixity_value"`
+	FixityValue     *string      `json:"fixity_value"`
 
 	// FixityAccept describes whether the FromNode accepts the fixity
 	// value calculated by the ToNode. This is a nullable boolean,

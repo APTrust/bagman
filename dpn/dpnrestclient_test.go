@@ -87,13 +87,14 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 	id, _ := uuid.NewV4()
 	idString := id.String()
 	randChars := idString[0:8]
+	nonce := "McNunce"
 	return &dpn.DPNReplicationTransfer{
 		FromNode: fromNode,
 		ToNode: toNode,
 		UUID: bagUuid,
 		FixityAlgorithm: "sha256",
-		FixityNonce: "McNunce",
-		FixityValue: randChars,
+		FixityNonce: &nonce,
+		FixityValue: &randChars,
 		FixityAccept: nil,
 		BagValid: nil,
 		Status: "Requested",
@@ -472,11 +473,11 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.ReplicationId != replicationIdentifier {
 		t.Errorf("ReplicationId: expected '%s', got '%s'", replicationIdentifier, xfer.ReplicationId)
 	}
-	if xfer.FixityNonce != "" {
-		t.Errorf("FixityNonce: expected '', got '%s'", xfer.FixityNonce)
+	if xfer.FixityNonce != nil && *xfer.FixityNonce != "" {
+		t.Errorf("FixityNonce: expected '', got '%s'", *xfer.FixityNonce)
 	}
-	if xfer.FixityValue != "" {
-		t.Errorf("FixityValue: expected empty, got '%s'", xfer.FixityValue)
+	if xfer.FixityValue != nil && *xfer.FixityValue != "" {
+		t.Errorf("FixityValue: expected empty, got '%s'", *xfer.FixityValue)
 	}
 	if xfer.FixityAlgorithm != "sha256" {
 		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
@@ -623,11 +624,11 @@ func TestReplicationTransferCreate(t *testing.T) {
 		t.Errorf("FixityAlgorithm is %s; expected %s",
 			newXfer.FixityAlgorithm, xfer.FixityAlgorithm)
 	}
-	if newXfer.FixityNonce != xfer.FixityNonce {
+	if *newXfer.FixityNonce != *xfer.FixityNonce {
 		t.Errorf("FixityNonce is %s; expected %s",
-			newXfer.FixityNonce, xfer.FixityNonce)
+			*newXfer.FixityNonce, *xfer.FixityNonce)
 	}
-	if newXfer.FixityValue != "" {
+	if newXfer.FixityValue != nil {
 		t.Errorf("FixityValue was set to %s but it shouldn't have been. " +
 			"(This is a problem with the server implementation, not our code!",
 			newXfer.FixityValue)
@@ -705,9 +706,10 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	// fixity value, because we don't know the good one, so
 	// the server will cancel this transfer.
 	bagValid := true
+	newFixityValue := "1234567890"
 	newXfer.Status = "Received"
 	newXfer.BagValid = &bagValid
-	newXfer.FixityValue = "1234567890"
+	newXfer.FixityValue = &newFixityValue
 
 	updatedXfer, err = client.ReplicationTransferUpdate(newXfer)
 	if err != nil {
@@ -720,9 +722,12 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	}
 
 	// Make sure the fields were set correctly.
-	if updatedXfer.FixityValue != "1234567890" {
-		t.Errorf("FixityValue was %s; expected 1234567890",
-			updatedXfer.FixityValue)
+	if updatedXfer.FixityValue == nil || *updatedXfer.FixityValue != "1234567890" {
+		val := "nil"
+		if updatedXfer.FixityValue != nil {
+			val = *updatedXfer.FixityValue
+		}
+		t.Errorf("FixityValue was %s; expected 1234567890", val)
 	}
 	if *updatedXfer.FixityAccept != false {
 		t.Errorf("FixityAccept is %s; expected false", *updatedXfer.FixityAccept)
