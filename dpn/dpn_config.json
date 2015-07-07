@@ -109,7 +109,7 @@
         "ReplicateToNumNodes": 2,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "https://devops.aptrust.org",
+            "LocalServiceURL": "https://devops.aptrust.org/dpnode",
             "LocalAPIRoot": "api-v1",
             "LocalAuthToken": ""
         },
