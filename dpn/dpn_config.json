@@ -102,5 +102,41 @@
             "sdr":   "",
             "tdr":   ""
         }
+    },
+    "production": {
+        "LocalNode": "demo",
+        "LogDirectory": "/mnt/dpn/logs",
+        "LogLevel": 4,
+        "LogToStderr": false,
+        "ReplicateToNumNodes": 2,
+        "RestClient": {
+            "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
+            "LocalServiceURL": "https://dpn.aptrust.org",
+            "LocalAPIRoot": "api-v1",
+            "LocalAuthToken": ""
+        },
+        "DefaultMetadata": {
+            "Comment": "Config settings for common DPN bagit metadata",
+            "BagItVersion": "0.97",
+            "BagItEncoding": "UTF-8",
+            "IngestNodeName": "APTrust",
+            "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
+            "IngestNodeContactName": "APTrust Administrator",
+            "IngestNodeContactEmail": "help@aptrust.org"
+        },
+        "RemoteNodeTokens": {
+            "comment": "Leave these blank. Will get from REST service.",
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
+        "RemoteNodeURLs": {
+            "comment": "Leave these blank. Will get from REST service.",
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        }
     }
 }
