@@ -103,8 +103,8 @@
             "tdr":   ""
         }
     },
-    "production": {
-        "LocalNode": "demo",
+    "demo": {
+        "LocalNode": "aptrust",
         "LogDirectory": "/mnt/dpn/logs",
         "LogLevel": 4,
         "LogToStderr": false,
