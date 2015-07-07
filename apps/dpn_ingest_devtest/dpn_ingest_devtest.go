@@ -121,13 +121,14 @@ func getClient(config *dpn.DPNConfig, procUtil *bagman.ProcessUtil) (*dpn.DPNRes
 }
 
 func createXferRequest(client *dpn.DPNRestClient, uuid, checksum string) (*dpn.DPNReplicationTransfer, error) {
+	nonce := "12345"
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: "aptrust",
 		ToNode: "aptrust",
 		UUID: uuid,
 		FixityAlgorithm: "sha256",
-		FixityNonce: "12345",
-		FixityValue: checksum,
+		FixityNonce: &nonce,
+		FixityValue: &checksum,
 		Status: "Requested",
 		Protocol: "R",
 		Link: "rsync://our/sink.tar",
