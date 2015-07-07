@@ -146,7 +146,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			}
 			//fmt.Println(message)
 		}
-		if xferList.Next == "" {
+		if xferList.Next == nil || *xferList.Next == "" {
 			message := fmt.Sprintf("No more results after page %d", pageNum)
 			procUtil.MessageLog.Info(message)
 			//fmt.Println(message)
