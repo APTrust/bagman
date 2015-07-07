@@ -33,8 +33,8 @@ type DPNRestClient struct {
 
 type NodeListResult struct {
 	Count       int32                      `json:count`
-	Next        string                     `json:next`
-	Previous    string                     `json:previous`
+	Next        *string                    `json:next`
+	Previous    *string                    `json:previous`
 	Results     []*DPNNode                 `json:results`
 }
 
@@ -42,8 +42,8 @@ type NodeListResult struct {
 // we ask for a list of bags.
 type BagListResult struct {
 	Count       int32                      `json:count`
-	Next        string                     `json:next`
-	Previous    string                     `json:previous`
+	Next        *string                    `json:next`
+	Previous    *string                    `json:previous`
 	Results     []*DPNBag                  `json:results`
 }
 
@@ -51,8 +51,8 @@ type BagListResult struct {
 // we ask for a list of transfer requests.
 type ReplicationListResult struct {
 	Count       int32                     `json:count`
-	Next        string                    `json:next`
-	Previous    string                    `json:previous`
+	Next        *string                   `json:next`
+	Previous    *string                   `json:previous`
 	Results     []*DPNReplicationTransfer `json:results`
 }
 
@@ -60,8 +60,8 @@ type ReplicationListResult struct {
 // we ask for a list of restore requests.
 type RestoreListResult struct {
 	Count       int32                     `json:count`
-	Next        string                    `json:next`
-	Previous    string                    `json:previous`
+	Next        *string                   `json:next`
+	Previous    *string                   `json:previous`
 	Results     []*DPNRestoreTransfer     `json:results`
 }
 

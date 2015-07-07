@@ -167,7 +167,7 @@ func (dpnSync *DPNSync) SyncBags(remoteNode *DPNNode) ([]*DPNBag, error) {
 			return bagsUpdated, err
 		}
 		bagsUpdated = append(bagsUpdated, updated...)
-		if result.Next == "" {
+		if result.Next == nil || *result.Next == "" {
 			dpnSync.Logger.Debug("No more bags to get from %s", remoteNode.Namespace)
 			break
 		}
@@ -232,7 +232,7 @@ func (dpnSync *DPNSync) SyncReplicationRequests(remoteNode *DPNNode) ([]*DPNRepl
 			return xfersUpdated, err
 		}
 		xfersUpdated = append(xfersUpdated, updated...)
-		if result.Next == "" {
+		if result.Next == nil || *result.Next == "" {
 			dpnSync.Logger.Debug("No more replication requests to get from %s", remoteNode.Namespace)
 			break
 		}
@@ -297,7 +297,7 @@ func (dpnSync *DPNSync) SyncRestoreRequests(remoteNode *DPNNode) ([]*DPNRestoreT
 			return xfersUpdated, err
 		}
 		xfersUpdated = append(xfersUpdated, updated...)
-		if result.Next == "" {
+		if result.Next == nil || *result.Next == "" {
 			dpnSync.Logger.Debug("No more restore requests to get from %s", remoteNode.Namespace)
 			break
 		}
