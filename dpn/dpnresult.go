@@ -251,6 +251,21 @@ func LoadConfig(pathToFile, requestedConfig string) (*DPNConfig, error) {
 	if config.RestClient.LocalAuthToken == "" {
 		config.RestClient.LocalAuthToken = os.Getenv("DPN_REST_TOKEN")
 	}
+
+	tokensInConfig := config.RemoteNodeTokens != nil && len(config.RemoteNodeTokens) > 0
+	if tokensInConfig && config.RemoteNodeTokens["chron"] == "" {
+		config.RestClient.LocalAuthToken = os.Getenv("DPN_CHRON_TOKEN")
+	}
+	if tokensInConfig && config.RemoteNodeTokens["hathi"] == "" {
+		config.RestClient.LocalAuthToken = os.Getenv("DPN_HATHI_TOKEN")
+	}
+	if tokensInConfig && config.RemoteNodeTokens["sdr"] == "" {
+		config.RestClient.LocalAuthToken = os.Getenv("DPN_SDR_TOKEN")
+	}
+	if tokensInConfig && config.RemoteNodeTokens["tdr"] == "" {
+		config.RestClient.LocalAuthToken = os.Getenv("DPN_TDR_TOKEN")
+	}
+
 	expanded, err := bagman.ExpandTilde(config.LogDirectory)
 	if err == nil {
 		config.LogDirectory = expanded
