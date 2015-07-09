@@ -120,7 +120,7 @@ type DPNBag struct {
 	ReplicatingNodes   []string             `json:"replicating_nodes"`
 
 	// Fixities are the checksum/fixity values for this bag.
-	Fixities           []*DPNFixity         `json:"fixities"`
+	Fixities           *DPNFixity           `json:"fixities"`
 
 	// CreatedAt is when this record was created.
 	CreatedAt          time.Time            `json:"created_at"`

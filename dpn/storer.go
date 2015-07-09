@@ -268,7 +268,6 @@ func (storer *Storer) createBagRecord() {
 				storer.CleanupChannel <- result
 				continue
 			}
-			fixities := []*DPNFixity{ fixity }
 			newBag := &DPNBag{
 				UUID: result.PackageResult.BagBuilder.UUID,
 				LocalId: result.BagIdentifier,
@@ -284,7 +283,7 @@ func (storer *Storer) createBagRecord() {
 				Interpretive: make([]string, 0),
 				// No replicating nodes on a new bag; cannot be nil
 				ReplicatingNodes: make([]string, 0),
-				Fixities: fixities,
+				Fixities: fixity,
 			}
 			result.DPNBag = newBag
 		}

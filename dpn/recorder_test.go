@@ -64,14 +64,14 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 		t.Error(err)
 		return nil
 	}
-	if len(bag.Fixities) < 1 {
+	if bag.Fixities == nil || bag.Fixities.Sha256 == "" {
 		t.Errorf("Bag %s has no fixity value!", bag.UUID)
 		return nil
 	}
 	result := dpn.NewDPNResult("")
 	result.DPNBag = dpnBag
 	result.TransferRequest = xfer
-	result.BagSha256Digest = bag.Fixities[0].Sha256
+	result.BagSha256Digest = bag.Fixities.Sha256
 	result.BagMd5Digest = "SomeFakeValue"
 	return result
 }

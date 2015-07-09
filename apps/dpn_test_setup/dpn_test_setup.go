@@ -198,10 +198,8 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 		Rights: make([]string, 0),
 		Interpretive: make([]string, 0),
 		ReplicatingNodes: make([]string, 0),
-		Fixities: []*dpn.DPNFixity {
-			&dpn.DPNFixity{
-				Sha256: testBagDigest,
-			},
+		Fixities: &dpn.DPNFixity{
+			Sha256: testBagDigest,
 		},
 	}
 	// You have to be node admin to create a bag, so use the admin client.

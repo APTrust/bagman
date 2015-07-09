@@ -70,16 +70,16 @@ func makeBag() (*dpn.DPNBag) {
 		Interpretive: []string{},
 		Rights: []string{},
 		ReplicatingNodes: []string{},
-		Fixities: []*dpn.DPNFixity {
-			&dpn.DPNFixity{
-				Sha256: randChars,
-			},
+		Fixities: &dpn.DPNFixity{
+			Sha256: randChars,
 		},
 		LocalId: "my_bag",
 		Size: 12345678,
 		FirstVersionUUID: youyoueyedee.String(),
 		Version: 1,
 		BagType: "D",
+		IngestNode: "aptrust",
+		AdminNode: "aptrust",
 	}
 }
 
@@ -267,12 +267,12 @@ func TestDPNBagGet(t *testing.T) {
 		t.Errorf("ReplicatingNodes[0]: expected 'tdr', got '%s'",
 			dpnBag.ReplicatingNodes[0])
 	}
-	if len(dpnBag.Fixities) != 1 {
-		t.Errorf("Fixities: expected 1 item, got %d", len(dpnBag.Fixities))
+	if dpnBag.Fixities == nil || dpnBag.Fixities.Sha256 == "" {
+		t.Errorf("Fixities: should not be empty")
 	}
-	if dpnBag.Fixities[0].Sha256 != "5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3" {
-		t.Errorf("Fixities[0].Sha256: expected '5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3', got '%s'",
-			dpnBag.Fixities[0].Sha256)
+	if dpnBag.Fixities.Sha256 != "5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3" {
+		t.Errorf("Fixities.Sha256: expected '5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3', got '%s'",
+			dpnBag.Fixities.Sha256)
 	}
 }
 
@@ -363,12 +363,12 @@ func TestDPNBagCreate(t *testing.T) {
 	if dpnBag.BagType != bag.BagType {
 		t.Errorf("BagTypes don't match. Ours = %s, Theirs = %s", bag.BagType, dpnBag.BagType)
 	}
-	if dpnBag.Fixities == nil || len(dpnBag.Fixities) == 0 {
+	if dpnBag.Fixities == nil || dpnBag.Fixities.Sha256 == "" {
 		t.Errorf("Bag fixities are missing")
 	}
-	if dpnBag.Fixities[0].Sha256 != bag.Fixities[0].Sha256 {
+	if dpnBag.Fixities.Sha256 != bag.Fixities.Sha256 {
 		t.Errorf("Fixities don't match. Ours = %s, Theirs = %s",
-			bag.Fixities[0].Sha256, dpnBag.Fixities[0].Sha256)
+			bag.Fixities.Sha256, dpnBag.Fixities.Sha256)
 	}
 
 	// These tests really check that the server is behaving correctly,
