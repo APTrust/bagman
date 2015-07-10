@@ -321,7 +321,8 @@ func (client *DPNRestClient) dpnBagSave(bag *DPNBag, method string) (*DPNBag, er
 		return nil, err
 	}
 	if response.StatusCode != expectedResponseCode {
-		error := fmt.Errorf("%s to %s returned status code %d", method, objUrl, response.StatusCode)
+		error := fmt.Errorf("%s to %s returned status code %d. Post data: %v",
+			method, objUrl, response.StatusCode, string(postData))
 		client.buildAndLogError(body, error.Error())
 		fmt.Println(string(body))
 		return nil, error
@@ -430,7 +431,8 @@ func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfe
 		return nil, err
 	}
 	if response.StatusCode != expectedResponseCode {
-		error := fmt.Errorf("%s to %s returned status code %d", method, objUrl, response.StatusCode)
+		error := fmt.Errorf("%s to %s returned status code %d. Post data: %v",
+			method, objUrl, response.StatusCode, string(postData))
 		client.buildAndLogError(body, error.Error())
 		fmt.Println(string(body))
 		return nil, error
@@ -538,7 +540,8 @@ func (client *DPNRestClient) restoreTransferSave(xfer *DPNRestoreTransfer, metho
 		return nil, err
 	}
 	if response.StatusCode != expectedResponseCode {
-		error := fmt.Errorf("%s to %s returned status code %d", method, objUrl, response.StatusCode)
+		error := fmt.Errorf("%s to %s returned status code %d. Post data: %v",
+			method, objUrl, response.StatusCode, string(postData))
 		client.buildAndLogError(body, error.Error())
 		fmt.Println(string(body))
 		return nil, error
