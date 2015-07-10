@@ -5,7 +5,7 @@
         "LogLevel": 4,
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
-        "AcceptInvalidSSLCerts": false,
+        "AcceptInvalidSSLCerts": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
             "LocalServiceURL": "http://localhost:8000",
@@ -40,7 +40,7 @@
         "LogLevel": 4,
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
-        "AcceptInvalidSSLCerts": false,
+        "AcceptInvalidSSLCerts": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
             "LocalServiceURL": "http://localhost:8000",
@@ -75,7 +75,7 @@
         "LogLevel": 4,
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
-        "AcceptInvalidSSLCerts": true,
+        "AcceptInvalidSSLCerts": false,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
             "LocalServiceURL": "https://dpn.aptrust.org",
@@ -110,7 +110,7 @@
         "LogLevel": 4,
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
-        "AcceptInvalidSSLCerts": false,
+        "AcceptInvalidSSLCerts": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
             "LocalServiceURL": "https://devops.aptrust.org/dpnode",
