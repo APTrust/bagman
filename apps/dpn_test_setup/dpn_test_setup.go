@@ -75,6 +75,7 @@ func NewTestUtil() (*TestUtil) {
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,
 		dpnConfig.RestClient.LocalAuthToken,
+		dpnConfig.AcceptInvalidSSLCerts,
 		procUtil.MessageLog)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())

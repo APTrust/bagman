@@ -2,6 +2,7 @@ package dpn
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -67,7 +68,7 @@ type RestoreListResult struct {
 
 
 // Creates a new DPN REST client.
-func NewDPNRestClient(hostUrl, apiVersion, apiKey string, logger *logging.Logger) (*DPNRestClient, error) {
+func NewDPNRestClient(hostUrl, apiVersion, apiKey string, acceptInvalidSSLCerts bool, logger *logging.Logger) (*DPNRestClient, error) {
 	cookieJar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("Can't create cookie jar for DPN REST client: %v", err)
@@ -81,6 +82,9 @@ func NewDPNRestClient(hostUrl, apiVersion, apiKey string, logger *logging.Logger
 		}).Dial,
 		ResponseHeaderTimeout: 10 * time.Second,
 		TLSHandshakeTimeout: 10 * time.Second,
+	}
+	if acceptInvalidSSLCerts {
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	httpClient := &http.Client{Jar: cookieJar, Transport: transport}
 	// Trim trailing slashes from host url
@@ -584,6 +588,7 @@ func (client *DPNRestClient) GetRemoteClient(remoteNodeNamespace string, dpnConf
 		apiRoot,
 		dpnConfig.RestClient.LocalAPIRoot, // All nodes should be on same version
 		authToken,
+		dpnConfig.AcceptInvalidSSLCerts,
 		logger)
 	if err != nil {
 		detailedError := fmt.Errorf("Could not create REST client for remote node %s: %v",

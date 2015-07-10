@@ -74,6 +74,7 @@ func NewRecorder(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Recorder,
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,
 		dpnConfig.RestClient.LocalAuthToken,
+		dpnConfig.AcceptInvalidSSLCerts,
 		procUtil.MessageLog)
 	if err != nil {
 		return nil, err

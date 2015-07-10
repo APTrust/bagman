@@ -220,6 +220,12 @@ type DPNConfig struct {
 	LogToStderr           bool
 	// Number of nodes we should replicate bags to.
 	ReplicateToNumNodes   int
+	// Should we accept self-signed and otherwise invalid SSL
+	// certificates? We need to do this in testing, but it
+	// should not be allowed in production. Bools in Go default
+	// to false, so if this is not set in config, we should be
+	// safe.
+	AcceptInvalidSSLCerts bool
 	// Default metadata that goes into bags produced at our node.
 	DefaultMetadata       *DefaultMetadata
 	// Settings for connecting to our own REST service
