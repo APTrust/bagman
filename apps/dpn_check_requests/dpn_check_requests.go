@@ -31,8 +31,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, msg)
 		os.Exit(1)
 	}
-	configName := "test"
-	procUtil := bagman.NewProcessUtil(&configName)
+	procUtil := bagman.NewProcessUtil(&requestedConfig)
 	client, err := dpn.NewDPNRestClient(
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,
@@ -169,18 +168,18 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 }
 
 func parseCommandLine() (string) {
-	config := flag.String("config", "", "DPN config [dev|test|production]")
+	config := flag.String("config", "", "DPN config [dev|test|demo|production]")
 	flag.Parse()
 	if config == nil || *config == "" {
 		printUsage()
-		fmt.Fprintln(os.Stderr, "You must specify a DPN config (test|dev|production).")
+		fmt.Fprintln(os.Stderr, "You must specify a DPN config (test|dev|demo|production).")
 		os.Exit(1)
 	}
 	return *config
 }
 
 func printUsage() {
-	fmt.Println("Usage: dpn_check_requests -config=pathToDPNConfigFile")
+	fmt.Println("Usage: dpn_check_requests -config=<dev|test|demo|production>")
 	fmt.Println("Checks the local DPN node for replication requests and adds them to NSQ.")
 }
 
