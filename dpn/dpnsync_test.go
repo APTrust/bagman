@@ -292,7 +292,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 				node.Namespace, syncResult.BagSyncError)
 		}
 		if len(syncResult.Bags) != BAG_COUNT {
-			t.Errorf("Expected %s bags from %s, got %d",
+			t.Errorf("Expected %d bags from %s, got %d",
 				BAG_COUNT, node.Namespace, len(syncResult.Bags))
 		}
 
