@@ -365,6 +365,7 @@ func (recorder *Recorder) updateProcessedItem(result *DPNResult) {
 	processedItem.Date = time.Now()
 	processedItem.Stage = "Record"
 	processedItem.Status = "Success"
+	processedItem.Note = fmt.Sprintf("DPN bag stored at %s", result.StorageURL)
 	err := recorder.ProcUtil.FluctusClient.UpdateProcessedItem(processedItem)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error updating ProcessedItem status in Fluctus: %v", err)
