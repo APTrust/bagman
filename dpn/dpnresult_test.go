@@ -45,3 +45,22 @@ func TestTarFilePath(t *testing.T) {
 			result.TarFilePath())
 	}
 }
+
+func TestTokenFormatStringFor(t *testing.T) {
+	config := &dpn.DPNConfig{}
+	format := config.TokenFormatStringFor("mickey")
+	if format != dpn.DEFAULT_TOKEN_FORMAT_STRING {
+		t.Errorf("TokenFormatStringFor(): Expected %s, got %s",
+			dpn.DEFAULT_TOKEN_FORMAT_STRING, format)
+	}
+
+	customFormat := "Token smokin=%s"
+	formatMap := make(map[string]string, 0)
+	formatMap["minnie"] = customFormat
+	config.AuthTokenHeaderFormats = formatMap
+	format = config.TokenFormatStringFor("minnie")
+	if format != customFormat {
+		t.Errorf("TokenFormatStringFor(): Expected %s, got %s",
+			customFormat, format)
+	}
+}

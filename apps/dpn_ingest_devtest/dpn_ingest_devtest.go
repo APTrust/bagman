@@ -113,7 +113,8 @@ func getClient(config *dpn.DPNConfig, procUtil *bagman.ProcessUtil) (*dpn.DPNRes
 		config.RestClient.LocalServiceURL,
 		config.RestClient.LocalAPIRoot,
 		config.RestClient.LocalAuthToken,
-		config.AcceptInvalidSSLCerts,
+		config.LocalNode,
+		config,
 		procUtil.MessageLog)
 	if err != nil {
 		return nil, err

@@ -26,7 +26,8 @@ func NewValidator(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Validato
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,
 		dpnConfig.RestClient.LocalAuthToken,
-		dpnConfig.AcceptInvalidSSLCerts,
+		dpnConfig.LocalNode,
+		dpnConfig,
 		procUtil.MessageLog)
 	if err != nil {
 		return nil, err

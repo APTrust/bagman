@@ -26,10 +26,11 @@ type DPNRestClient struct {
 	HostUrl      string
 	APIVersion   string
 	APIKey       string
+	Node         string
+	dpnConfig    *DPNConfig
 	httpClient   *http.Client
 	transport    *http.Transport
 	logger       *logging.Logger
-	institutions map[string]string
 }
 
 type NodeListResult struct {
@@ -68,7 +69,7 @@ type RestoreListResult struct {
 
 
 // Creates a new DPN REST client.
-func NewDPNRestClient(hostUrl, apiVersion, apiKey string, acceptInvalidSSLCerts bool, logger *logging.Logger) (*DPNRestClient, error) {
+func NewDPNRestClient(hostUrl, apiVersion, apiKey, node string, dpnConfig *DPNConfig, logger *logging.Logger) (*DPNRestClient, error) {
 	cookieJar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("Can't create cookie jar for DPN REST client: %v", err)
@@ -83,7 +84,7 @@ func NewDPNRestClient(hostUrl, apiVersion, apiKey string, acceptInvalidSSLCerts 
 		ResponseHeaderTimeout: 10 * time.Second,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
-	if acceptInvalidSSLCerts {
+	if dpnConfig.AcceptInvalidSSLCerts {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	httpClient := &http.Client{Jar: cookieJar, Transport: transport}
@@ -91,7 +92,17 @@ func NewDPNRestClient(hostUrl, apiVersion, apiKey string, acceptInvalidSSLCerts 
 	for strings.HasSuffix(hostUrl, "/") {
 		hostUrl = hostUrl[:len(hostUrl)-1]
 	}
-	return &DPNRestClient{hostUrl, apiVersion, apiKey, httpClient, transport, logger, nil}, nil
+	client := &DPNRestClient{
+		HostUrl: hostUrl,
+		APIVersion: apiVersion,
+		APIKey: apiKey,
+		Node: node,
+		dpnConfig: dpnConfig,
+		httpClient: httpClient,
+		transport: transport,
+		logger: logger,
+	}
+	return client, nil
 }
 
 
@@ -116,7 +127,13 @@ func (client *DPNRestClient) NewJsonRequest(method, targetUrl string, body io.Re
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", fmt.Sprintf("token %s", client.APIKey))
+
+	// Token format string varies for Rails, Django REST servers
+	// Django -> token xxxxx
+	// Rails  -> Token token=xxxxxx
+	tokenFormatString := client.dpnConfig.TokenFormatStringFor(client.Node)
+
+	req.Header.Add("Authorization", fmt.Sprintf(tokenFormatString, client.APIKey))
 	req.Header.Add("Connection", "Keep-Alive")
 	return req, nil
 }
@@ -591,7 +608,8 @@ func (client *DPNRestClient) GetRemoteClient(remoteNodeNamespace string, dpnConf
 		apiRoot,
 		dpnConfig.RestClient.LocalAPIRoot, // All nodes should be on same version
 		authToken,
-		dpnConfig.AcceptInvalidSSLCerts,
+		remoteNodeNamespace,
+		dpnConfig,
 		logger)
 	if err != nil {
 		detailedError := fmt.Errorf("Could not create REST client for remote node %s: %v",

@@ -41,7 +41,8 @@ func NewCopier(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Copier, err
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,
 		dpnConfig.RestClient.LocalAuthToken,
-		dpnConfig.AcceptInvalidSSLCerts,
+		dpnConfig.LocalNode,
+		dpnConfig,
 		procUtil.MessageLog)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating local DPN REST client: %v", err)

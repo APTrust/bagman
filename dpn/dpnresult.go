@@ -21,6 +21,8 @@ const (
 	STAGE_RECORD    = "Record"
 	STAGE_COMPLETE  = "Complete"
 	STAGE_CANCELLED = "Cancelled"
+
+	DEFAULT_TOKEN_FORMAT_STRING = "token %s"
 )
 
 type DPNResult struct {
@@ -210,32 +212,50 @@ type RestClientConfig struct {
 type DPNConfig struct {
 	// LocalNode is the namespace of the node this code is running on.
 	// E.g. "aptrust", "chron", "hathi", "tdr", "sdr"
-	LocalNode             string
+	LocalNode              string
 	// Where should DPN service logs go?
-	LogDirectory          string
+	LogDirectory           string
 	// Log level (4 = debug)
-	LogLevel              logging.Level
+	LogLevel               logging.Level
 	// Should we log to Stderr in addition to writing to
 	// the log file?
-	LogToStderr           bool
+	LogToStderr            bool
 	// Number of nodes we should replicate bags to.
-	ReplicateToNumNodes   int
+	ReplicateToNumNodes    int
 	// Should we accept self-signed and otherwise invalid SSL
 	// certificates? We need to do this in testing, but it
 	// should not be allowed in production. Bools in Go default
 	// to false, so if this is not set in config, we should be
 	// safe.
-	AcceptInvalidSSLCerts bool
+	AcceptInvalidSSLCerts  bool
 	// Default metadata that goes into bags produced at our node.
-	DefaultMetadata       *DefaultMetadata
+	DefaultMetadata        *DefaultMetadata
 	// Settings for connecting to our own REST service
-	RestClient            *RestClientConfig
+	RestClient             *RestClientConfig
+	// Standard Auth token header format for REST services
+	// is "token %s", where "%s" will be the token. Rails
+	// REST services require the format "Token token=%s".
+	// This map of formats lets us override the standard
+	// "token %s" with whatever the remote REST service
+	// expects. Since the default is "token %s", there is no
+	// need to create entries in this map for most nodes.
+	AuthTokenHeaderFormats map[string]string
 	// API Tokens for connecting to remote nodes
-	RemoteNodeTokens      map[string]string
+	RemoteNodeTokens       map[string]string
 	// URLs for remote nodes. Set these only if you want to
 	// override the node URLs we get back from our local
 	// DPN REST server.
-	RemoteNodeURLs        map[string]string
+	RemoteNodeURLs         map[string]string
+}
+
+func (dpnConfig *DPNConfig) TokenFormatStringFor(nodeNamespace string) (string) {
+	tokenFormat := DEFAULT_TOKEN_FORMAT_STRING
+	if dpnConfig.AuthTokenHeaderFormats != nil {
+		if specialFormat, ok := dpnConfig.AuthTokenHeaderFormats[nodeNamespace]; ok {
+			tokenFormat = specialFormat
+		}
+	}
+	return tokenFormat
 }
 
 func LoadConfig(pathToFile, requestedConfig string) (*DPNConfig, error) {

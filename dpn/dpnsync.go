@@ -57,7 +57,8 @@ func NewDPNSync(config *DPNConfig) (*DPNSync, error) {
 		config.RestClient.LocalServiceURL,
 		config.RestClient.LocalAPIRoot,
 		config.RestClient.LocalAuthToken,
-		config.AcceptInvalidSSLCerts,
+		config.LocalNode,
+		config,
 		logger)
 	if err != nil {
 		return nil, fmt.Errorf("Error creating local DPN REST client: %v", err)

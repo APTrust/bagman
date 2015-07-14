@@ -36,7 +36,8 @@ func main() {
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,
 		dpnConfig.RestClient.LocalAuthToken,
-		dpnConfig.AcceptInvalidSSLCerts,
+		dpnConfig.LocalNode,
+		dpnConfig,
 		procUtil.MessageLog)
 	if err != nil {
 		msg := fmt.Sprintf("Error creating DPN REST client: %v", err.Error())

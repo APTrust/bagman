@@ -91,6 +91,9 @@
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
         },
+        "AuthTokenHeaderFormats": {
+            "hathi": "Token token=%s"
+        },
         "RemoteNodeTokens": {
             "chron": "",
             "hathi": "",
@@ -125,6 +128,9 @@
             "IngestNodeAddress": "160 McCormick Rd., Charlottesville, VA 22904",
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
+        },
+        "AuthTokenHeaderFormats": {
+            "hathi": "Token token=%s"
         },
         "RemoteNodeTokens": {
             "chron": "",

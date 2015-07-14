@@ -55,7 +55,8 @@ func getClient(t *testing.T) (*dpn.DPNRestClient) {
 		config.RestClient.LocalServiceURL,
 		config.RestClient.LocalAPIRoot,
 		config.RestClient.LocalAuthToken,
-		config.AcceptInvalidSSLCerts,
+		dpnConfig.LocalNode,
+		dpnConfig,
 		logger)
 	if err != nil {
 		t.Errorf("Error constructing DPN REST client: %v", err)
