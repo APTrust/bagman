@@ -87,7 +87,11 @@ func NewDPNRestClient(hostUrl, apiVersion, apiKey, node string, dpnConfig *DPNCo
 	if dpnConfig.AcceptInvalidSSLCerts {
 		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
-	httpClient := &http.Client{Jar: cookieJar, Transport: transport}
+	httpClient := &http.Client{
+		Jar: cookieJar,
+		Transport: transport,
+		CheckRedirect: RedirectHandler,
+	}
 	// Trim trailing slashes from host url
 	for strings.HasSuffix(hostUrl, "/") {
 		hostUrl = hostUrl[:len(hostUrl)-1]
@@ -678,4 +682,32 @@ func HackNullDates(jsonBytes []byte)([]byte) {
 	dummyDate := "\"last_pull_date\":\"1980-01-01T00:00:00Z\""
 	re := regexp.MustCompile("\"last_pull_date\":\\s*null")
 	return re.ReplaceAll(jsonBytes, []byte(dummyDate))
+}
+
+
+// By default, the Go HTTP client does not send headers from the
+// original request to the redirect location. See the issue at
+// https://code.google.com/p/go/issues/detail?id=4800&q=request%20header
+//
+// We want to send all headers from the original request, but we'll
+// send the auth header only if the host of the redirect URL matches
+// the host of the original URL.
+func RedirectHandler (req *http.Request, via []*http.Request) (error) {
+	if len(via) >= 10 {
+		return fmt.Errorf("too many redirects")
+	}
+	if len(via) == 0 {
+		return nil
+	}
+	for attr, val := range via[0].Header {
+		if _, ok := req.Header[attr]; !ok {
+			// Copy all headers except Authorization from the original request.
+			// If the new URL is at the same host as the original URL,
+			// copy the Auth header as well.
+			if attr != "Authorization" || req.URL.Host == via[0].URL.Host {
+				req.Header[attr] = val
+			}
+		}
+	}
+	return nil
 }
