@@ -713,6 +713,11 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	newXfer.BagValid = &bagValid
 	newXfer.FixityValue = &newFixityValue
 
+	// Now that there are no milliseconds on the DPN timestamps,
+	// we have to sleep for more than 1 second to test whether
+	// UpdatedAt timestamps change after update.
+	time.Sleep(1500 * time.Millisecond)
+
 	updatedXfer, err = client.ReplicationTransferUpdate(newXfer)
 	if err != nil {
 		t.Errorf("ReplicationTransferUpdate returned error %v", err)
@@ -970,6 +975,11 @@ func TestRestoreTransferUpdate(t *testing.T) {
 	link := "rsync://blah/blah/blah/yadda/yadda/beer"
 	newXfer.Status = "Prepared"
 	newXfer.Link = link
+
+	// Now that there are no milliseconds on the DPN timestamps,
+	// we have to sleep for more than 1 second to test whether
+	// UpdatedAt timestamps change after update.
+	time.Sleep(1500 * time.Millisecond)
 
 	updatedXfer, err = client.RestoreTransferUpdate(newXfer)
 	if err != nil {
