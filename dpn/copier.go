@@ -279,6 +279,8 @@ func GetRsyncCommand(copyFrom, copyTo string) (*exec.Cmd) {
 	path, _ := exec.LookPath(cmd)
 	if path != "" {
 		cmd = path
+	} else {
+		cmd = "/usr/bin/rsync"  // WTF??
 	}
 	return exec.Command(cmd, "-avz", "-e",  "ssh", copyFrom, copyTo)
 }
