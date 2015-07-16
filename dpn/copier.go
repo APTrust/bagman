@@ -275,12 +275,5 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 //
 func GetRsyncCommand(copyFrom, copyTo string) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
-	cmd := "rsync"
-	path, _ := exec.LookPath(cmd)
-	if path != "" {
-		cmd = path
-	} else {
-		cmd = "/usr/bin/rsync"  // WTF??
-	}
-	return exec.Command(cmd, "-avz", "-e",  "ssh", copyFrom, copyTo)
+	return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
 }
