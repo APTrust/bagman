@@ -12,12 +12,21 @@ import (
 
 // This map points "remote" DPN REST clients
 // toward our local test cluster.
-var TEST_NODE_URLS = map[string]string {
-	"chron": "http://127.0.0.1:8001",
-	"hathi": "http://127.0.0.1:8002",
-	"sdr":   "http://127.0.0.1:8003",
-	"tdr":   "http://127.0.0.1:8004",
-}
+// var TEST_NODE_URLS = map[string]string {
+// 	"chron": "http://127.0.0.1:2003",
+// 	"hathi": "http://127.0.0.1:3003",
+// 	"sdr":   "http://127.0.0.1:3004",
+// 	"tdr":   "http://127.0.0.1:3005",
+// }
+
+// var TEST_NODE_TOKENS = map[string]string {
+// 	"chron": "chron_token",
+// 	"hathi": "hathi_token",
+// 	"sdr":   "sdr_token",
+// 	"tdr":   "tdr_token",
+// }
+
+
 // We want to mark these two APTrust bags
 // for ingest to DPN, so they'll go into
 // the work queue when we run our tests.
@@ -91,22 +100,26 @@ func NewTestUtil() (*TestUtil) {
 	remoteClients, err := dpn.GetRemoteClients(localClient, dpnConfig,
 		procUtil.MessageLog)
 	adminConfig := *dpnConfig
-	adminConfig.RemoteNodeTokens["chron"] = adminTestToken
-	adminConfig.RemoteNodeTokens["hathi"] = adminTestToken
-	adminConfig.RemoteNodeTokens["sdr"] = adminTestToken
-	adminConfig.RemoteNodeTokens["tdr"] = adminTestToken
+	// adminConfig.RemoteNodeTokens["chron"] = adminTestToken
+	// adminConfig.RemoteNodeTokens["hathi"] = adminTestToken
+	// adminConfig.RemoteNodeTokens["sdr"] = adminTestToken
+	// adminConfig.RemoteNodeTokens["tdr"] = adminTestToken
 	remoteAdminClients, err := dpn.GetRemoteClients(localClient,
 		&adminConfig, procUtil.MessageLog)
+
+	if err != nil {
+		panic(err)
+	}
 
 	// Point the remote clients toward our own local DPN test cluster.
 	// This means you have to run the run_cluster.sh script in the
 	// DPN REST project to run these tests.
-	for nodeNamespace := range remoteClients {
-		remoteClient := remoteClients[nodeNamespace]
-		remoteClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
-		remoteAdminClient := remoteAdminClients[nodeNamespace]
-		remoteAdminClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
-	}
+	// for nodeNamespace := range remoteClients {
+	// 	remoteClient := remoteClients[nodeNamespace]
+	// 	remoteClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
+	// 	remoteAdminClient := remoteAdminClients[nodeNamespace]
+	// 	remoteAdminClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
+	// }
 
 	return &TestUtil{
 		ProcUtil: procUtil,
@@ -130,12 +143,12 @@ func (testUtil *TestUtil) MakeTestDirs() (error) {
 
 func (testUtil *TestUtil) MakeTestData() (error) {
 	count := 0
-	for node, _ := range TEST_NODE_URLS {
+	for node, _ := range testUtil.DPNConfig.RemoteNodeURLs {
 		count += 1
 
 		// Create a symlink from dpn_home/integration_test/<uuid>.tar
 		// to our known good bag in dpn/testdata/000...1.tar
-		bagUuid := fmt.Sprintf("%d0000000-0000-0000-0000-000000000001", count)
+		bagUuid := fmt.Sprintf("00000000-0000-4000-a000-00000000000%d", count)
 		linkPath, err := testUtil.CreateSymLink(bagUuid)
 		if err != nil {
 			return err
@@ -215,7 +228,7 @@ func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath str
 		UUID: bag.UUID,
 		FixityAlgorithm: "sha256",
 		Status: "Requested",
-		Protocol: "R",
+		Protocol: "rsync",
 		Link: linkPath,
 	}
 	// You have to be node admin to create the transfer request,

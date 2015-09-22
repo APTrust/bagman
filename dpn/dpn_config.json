@@ -22,16 +22,23 @@
             "IngestNodeContactEmail": "help@aptrust.org"
         },
         "RemoteNodeTokens": {
-            "chron": "2222222222222222222222222222222222222222",
-            "hathi": "3333333333333333333333333333333333333333",
-            "sdr":   "4444444444444444444444444444444444444444",
-            "tdr":   "5555555555555555555555555555555555555555"
+            "chron": "chron_token",
+            "hathi": "hathi_token",
+            "sdr":   "sdr_token",
+            "tdr":   "tdr_token"
         },
         "RemoteNodeURLs": {
-            "chron": "http://localhost:8001",
-            "hathi": "http://localhost:8002",
-            "sdr":   "http://localhost:8003",
-            "tdr":   "http://localhost:8004"
+            "chron": "http://localhost:3002",
+            "hathi": "http://localhost:3003",
+            "sdr":   "http://localhost:3004",
+            "tdr":   "http://localhost:3005"
+        },
+        "AuthTokenHeaderFormats": {
+            "aptrust": "Token token=%s",
+            "chron": "Token token=%s",
+            "hathi": "Token token=%s",
+            "sdr": "Token token=%s",
+            "tdr": "Token token=%s"
         }
     },
     "test": {
@@ -43,9 +50,9 @@
         "AcceptInvalidSSLCerts": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "http://localhost:8000",
+            "LocalServiceURL": "http://localhost:3001",
             "LocalAPIRoot": "api-v1",
-            "LocalAuthToken": ""
+            "LocalAuthToken": "aptrust_token"
         },
         "DefaultMetadata": {
             "Comment": "Config settings for common DPN bagit metadata",
@@ -57,16 +64,23 @@
             "IngestNodeContactEmail": "help@aptrust.org"
         },
         "RemoteNodeTokens": {
-            "chron": "2222222222222222222222222222222222222222",
-            "hathi": "3333333333333333333333333333333333333333",
-            "sdr":   "4444444444444444444444444444444444444444",
-            "tdr":   "5555555555555555555555555555555555555555"
+            "chron": "chron_token",
+            "hathi": "hathi_token",
+            "sdr":   "sdr_token",
+            "tdr":   "tdr_token"
         },
         "RemoteNodeURLs": {
-            "chron": "http://localhost:8001",
-            "hathi": "http://localhost:8002",
-            "sdr":   "http://localhost:8003",
-            "tdr":   "http://localhost:8004"
+            "chron": "http://localhost:3002",
+            "hathi": "http://localhost:3003",
+            "sdr":   "http://localhost:3004",
+            "tdr":   "http://localhost:3005"
+        },
+        "AuthTokenHeaderFormats": {
+            "aptrust": "Token token=%s",
+            "chron": "Token token=%s",
+            "hathi": "Token token=%s",
+            "sdr": "Token token=%s",
+            "tdr": "Token token=%s"
         }
     },
     "production": {
