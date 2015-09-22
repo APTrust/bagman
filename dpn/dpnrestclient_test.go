@@ -100,7 +100,7 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 		FixityAccept: nil,
 		BagValid: nil,
 		Status: "Requested",
-		Protocol: "R",
+		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
 	}
 }
@@ -113,7 +113,7 @@ func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransf
 		ToNode: toNode,
 		UUID: bagUuid,
 		Status: "Requested",
-		Protocol: "R",
+		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
 	}
 }
@@ -493,7 +493,7 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.Status != "Requested" {
 		t.Errorf("Status: expected 'Requested', got '%s'", xfer.Status)
 	}
-	if xfer.Protocol != "R" {
+	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
 	if xfer.Link != "dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar" {
@@ -779,7 +779,7 @@ func TestRestoreTransferGet(t *testing.T) {
 	if xfer.Status != "Requested" {
 		t.Errorf("Status: expected 'Requested', got '%s'", xfer.Status)
 	}
-	if xfer.Protocol != "R" {
+	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
 	if xfer.CreatedAt.Format(time.RFC3339) != "2015-06-01T19:07:53Z" {
