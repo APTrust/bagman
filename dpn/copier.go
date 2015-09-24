@@ -275,5 +275,7 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 //
 func GetRsyncCommand(copyFrom, copyTo string) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
-	return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
+	// return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
+	// TODO: Undo this temp fix. Use proper config to specify whether to use SSH!
+	return exec.Command("rsync", "-avz", copyFrom, copyTo)
 }
