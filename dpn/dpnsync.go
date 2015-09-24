@@ -122,9 +122,12 @@ func (dpnSync *DPNSync) SyncEverythingFromNode(remoteNode *DPNNode) (*SyncResult
 	syncResult.ReplicationTransfers = replXfers
 	syncResult.ReplicationSyncError = err
 
-	restoreXfers, err := dpnSync.SyncRestoreRequests(remoteNode)
-	syncResult.RestoreTransfers = restoreXfers
-	syncResult.RestoreSyncError = err
+	// (AD Sept. 24, 2015)
+	// NOTE: This is temporarily disabled because the Rails service
+	//       does not yet implement the restore endpoints.
+	// restoreXfers, err := dpnSync.SyncRestoreRequests(remoteNode)
+	// syncResult.RestoreTransfers = restoreXfers
+	// syncResult.RestoreSyncError = err
 
 
 	if !syncResult.HasSyncErrors() {
