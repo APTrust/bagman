@@ -20,12 +20,12 @@ var testConfig string = "test"
 // and we have data for them in our local DPN REST
 // service (they're in the fixture file TestServerData.json).
 var TEST_BAGS = []string {
-	"005e7793-8253-4585-7118-2da702e29aa0",
-	"06edc30f-af04-4a4e-4ad6-3c679a195d46",
-	"41e5376c-cc13-4c3e-6af3-297cc2e005aa",
-	"472218b3-95ce-4b8e-6c21-6e514cfbe43f",
-	"4d11736c-c0ab-44b0-66c6-a947f414d4f1",
-	"8839f294-c7c0-404d-4467-7ab223ff461b",
+	"10000000-0000-4000-a000-000000000001",
+	"10000000-0000-4000-a000-000000000002",
+	"10000000-0000-4000-a000-000000000003",
+	"10000000-0000-4000-a000-000000000004",
+	"10000000-0000-4000-a000-000000000005",
+	"10000000-0000-4000-a000-000000000006",
 }
 
 var skipCopyMessagePrinted = false
