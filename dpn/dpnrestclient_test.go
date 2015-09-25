@@ -194,6 +194,14 @@ func TestDPNNodeUpdate(t *testing.T) {
 	}
 	dpnNode.LastPullDate = newPullDate
 	savedNode, err := client.DPNNodeUpdate(dpnNode)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if savedNode == nil {
+		t.Errorf("Call to DPNNodeUpdate returned nil")
+		return
+	}
 	if savedNode.LastPullDate != newPullDate {
 		t.Errorf("Expected last pull date %s, got %s",
 			newPullDate.Format(time.RFC3339Nano),
