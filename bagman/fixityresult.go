@@ -3,7 +3,7 @@ package bagman
 import (
 	"fmt"
 	"github.com/bitly/go-nsq"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"time"
 	"strings"
 )
@@ -119,11 +119,7 @@ func (result *FixityResult) BuildPremisEvent() (*PremisEvent, error) {
 			result.FedoraSha256(), result.Sha256)
 	}
 
-	youyoueyedee, err := uuid.NewV4()
-	if err != nil {
-		detailedErr := fmt.Errorf("Error generating UUID for fixity check event: %v", err)
-		return nil, detailedErr
-	}
+	youyoueyedee := uuid.NewV4()
 
 	premisEvent := &PremisEvent {
 		Identifier: youyoueyedee.String(),

@@ -5,7 +5,7 @@ package bagman_test
 import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -399,10 +399,7 @@ func TestEventSave(t *testing.T) {
 		return
 	}
 
-	eventId, err := uuid.NewV4()
-	if err != nil {
-		t.Errorf("Error generating UUID: %v", err)
-	}
+	eventId := uuid.NewV4()
 	ingestEvent := &bagman.PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "Ingest",
@@ -428,10 +425,7 @@ func TestEventSave(t *testing.T) {
 		t.Error("PremisEventSave returned object with wrong id")
 	}
 
-	eventId, err = uuid.NewV4()
-	if err != nil {
-		t.Errorf("Error generating UUID: %v", err)
-	}
+	eventId = uuid.NewV4()
 	identifierEvent := &bagman.PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "identifier_assignment",
@@ -440,7 +434,7 @@ func TestEventSave(t *testing.T) {
 		Outcome:            string(bagman.StatusSuccess),
 		OutcomeDetail:      "00000000-0000-0000-0000-000000000000",
 		Object:             "GoUUID",
-		Agent:              "https://github.com/nu7hatch/gouuid",
+		Agent:              "https://github.com/satori/go.uuid",
 		OutcomeInformation: "Generated with uuid.NewV4()",
 	}
 
@@ -503,10 +497,7 @@ func TestSendProcessedItem(t *testing.T) {
 		return
 	}
 	fluctusClient := getClient(t)
-	itemName, err := uuid.NewV4()
-	if err != nil {
-		t.Errorf("Error generating UUID: %v", err)
-	}
+	itemName := uuid.NewV4()
 	status := &bagman.ProcessStatus{
 		Id:          0,
 		Name:        itemName.String(),
@@ -526,7 +517,7 @@ func TestSendProcessedItem(t *testing.T) {
 	}
 
 	// Create new records
-	err = fluctusClient.SendProcessedItem(status)
+	err := fluctusClient.SendProcessedItem(status)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 	}
@@ -754,10 +745,7 @@ func TestRestorationStatusSet(t *testing.T) {
 	fluctusClient := getClient(t)
 
 	// Create a test record
-	itemName, err := uuid.NewV4()
-	if err != nil {
-		t.Errorf("Error generating UUID: %v", err)
-	}
+	itemName := uuid.NewV4()
 	record := &bagman.ProcessStatus{
 		Id:          0,
 		Name:        itemName.String(),
@@ -776,7 +764,7 @@ func TestRestorationStatusSet(t *testing.T) {
 		Reviewed:    false,
 	}
 
-	err = fluctusClient.SendProcessedItem(record)
+	err := fluctusClient.SendProcessedItem(record)
 	if err != nil {
 		t.Errorf("Error sending processed item: %v", err)
 		return

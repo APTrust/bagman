@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/APTrust/bagins"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"io"
 	"os"
 	"path"
@@ -319,11 +319,7 @@ func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size
 		file.ErrorMessage = fmt.Sprintf("Path error: %v", err)
 		return file
 	}
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		file.ErrorMessage = fmt.Sprintf("UUID error: %v", err)
-		return file
-	}
+	uuid := uuid.NewV4()
 	file.Uuid = uuid.String()
 	file.UuidGenerated = time.Now().UTC()
 	file.Size = size

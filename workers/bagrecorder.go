@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"strings"
 	"sync"
 	"time"
@@ -481,10 +481,7 @@ func (bagRecorder *BagRecorder) fedoraUpdateIntellectualObject(result *bagman.Pr
 	}
 
 	// Add PremisEvents for the ingest
-	eventId, err := uuid.NewV4()
-	if err != nil {
-		return fmt.Errorf("Error generating UUID for ingest event: %v", err)
-	}
+	eventId := uuid.NewV4()
 	ingestEvent := &bagman.PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "ingest",

@@ -2,7 +2,7 @@ package bagman
 
 import (
 	"fmt"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"time"
 )
 
@@ -93,10 +93,7 @@ func (file *File) ToGenericFile() (*GenericFile, error) {
 		DateTime:  file.Sha256Generated,
 		Digest:    file.Sha256,
 	}
-	events, err := file.PremisEvents()
-	if err != nil {
-		return nil, err
-	}
+	events := file.PremisEvents()
 	genericFile := &GenericFile{
 		Identifier:         file.Identifier,
 		Format:             file.MimeType,
@@ -113,14 +110,10 @@ func (file *File) ToGenericFile() (*GenericFile, error) {
 // PremisEvents returns a list of Premis events generated during bag
 // processing. Ingest, Fixity Generation (sha256), identifier
 // assignment.
-func (file *File) PremisEvents() (events []*PremisEvent, err error) {
+func (file *File) PremisEvents() (events []*PremisEvent) {
 	events = make([]*PremisEvent, 5)
 	// Fixity check
-	fCheckEventUuid, err := uuid.NewV4()
-	if err != nil {
-		detailedErr := fmt.Errorf("Error generating UUID for fixity check event: %v", err)
-		return nil, detailedErr
-	}
+	fCheckEventUuid := uuid.NewV4()
 	// Fixity check event
 	events[0] = &PremisEvent{
 		Identifier:         fCheckEventUuid.String(),
@@ -135,11 +128,7 @@ func (file *File) PremisEvents() (events []*PremisEvent, err error) {
 	}
 
 	// Ingest
-	ingestEventUuid, err := uuid.NewV4()
-	if err != nil {
-		detailedErr := fmt.Errorf("Error generating UUID for ingest event: %v", err)
-		return nil, detailedErr
-	}
+	ingestEventUuid := uuid.NewV4()
 	// Ingest event
 	events[1] = &PremisEvent{
 		Identifier:         ingestEventUuid.String(),
@@ -153,11 +142,7 @@ func (file *File) PremisEvents() (events []*PremisEvent, err error) {
 		OutcomeInformation: "Put using md5 checksum",
 	}
 	// Fixity Generation (sha256)
-	fixityGenUuid, err := uuid.NewV4()
-	if err != nil {
-		detailedErr := fmt.Errorf("Error generating UUID for fixity generation event: %v", err)
-		return nil, detailedErr
-	}
+	fixityGenUuid := uuid.NewV4()
 	events[2] = &PremisEvent{
 		Identifier:         fixityGenUuid.String(),
 		EventType:          "fixity_generation",
@@ -170,11 +155,7 @@ func (file *File) PremisEvents() (events []*PremisEvent, err error) {
 		OutcomeInformation: "",
 	}
 	// Identifier assignment (Friendly ID)
-	idAssignmentUuid, err := uuid.NewV4()
-	if err != nil {
-		detailedErr := fmt.Errorf("Error generating UUID for identifier assignment event for friendly ID: %v", err)
-		return nil, detailedErr
-	}
+	idAssignmentUuid := uuid.NewV4()
 	events[3] = &PremisEvent{
 		Identifier:         idAssignmentUuid.String(),
 		EventType:          "identifier_assignment",
@@ -187,11 +168,7 @@ func (file *File) PremisEvents() (events []*PremisEvent, err error) {
 		OutcomeInformation: "",
 	}
 	// Identifier assignment (S3 URL)
-	urlAssignmentUuid, err := uuid.NewV4()
-	if err != nil {
-		detailedErr := fmt.Errorf("Error generating UUID for identifier assignment event for S3 URL: %v", err)
-		return nil, detailedErr
-	}
+	urlAssignmentUuid := uuid.NewV4()
 	events[4] = &PremisEvent{
 		Identifier:         urlAssignmentUuid.String(),
 		EventType:          "identifier_assignment",
@@ -200,10 +177,10 @@ func (file *File) PremisEvents() (events []*PremisEvent, err error) {
 		Outcome:            string(StatusSuccess),
 		OutcomeDetail:      file.StorageURL,
 		Object:             "Go uuid library + goamz S3 library",
-		Agent:              "http://github.com/nu7hatch/gouuid",
+		Agent:              "https://github.com/satori/go.uuid",
 		OutcomeInformation: "",
 	}
-	return events, nil
+	return events
 }
 
 // Returns a replication event, saying the file was saved to
@@ -214,11 +191,7 @@ func (file *File) ReplicationEvent(replicationUrl string) (*PremisEvent, error) 
 		return nil, fmt.Errorf("Param replicationUrl must be a valid URL. '%s' won't cut it!",
 			replicationUrl)
 	}
-	eventId, err := uuid.NewV4()
-	if err != nil {
-		detailedErr := fmt.Errorf("Error generating event UUID for S3 replication URL: %v", err)
-		return nil, detailedErr
-	}
+	eventId := uuid.NewV4()
 	event := &PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "ingest",
@@ -227,7 +200,7 @@ func (file *File) ReplicationEvent(replicationUrl string) (*PremisEvent, error) 
 		Outcome:            string(StatusSuccess),
 		OutcomeDetail:      replicationUrl,
 		Object:             "Go uuid library + goamz S3 library",
-		Agent:              "http://github.com/nu7hatch/gouuid",
+		Agent:              "https://github.com/satori/go.uuid",
 		OutcomeInformation: "",
 	}
 	return event, nil
