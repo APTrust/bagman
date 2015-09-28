@@ -10,22 +10,6 @@ import (
 	"time"
 )
 
-// This map points "remote" DPN REST clients
-// toward our local test cluster.
-// var TEST_NODE_URLS = map[string]string {
-// 	"chron": "http://127.0.0.1:2003",
-// 	"hathi": "http://127.0.0.1:3003",
-// 	"sdr":   "http://127.0.0.1:3004",
-// 	"tdr":   "http://127.0.0.1:3005",
-// }
-
-// var TEST_NODE_TOKENS = map[string]string {
-// 	"chron": "chron_token",
-// 	"hathi": "hathi_token",
-// 	"sdr":   "sdr_token",
-// 	"tdr":   "tdr_token",
-// }
-
 
 // We want to mark these two APTrust bags
 // for ingest to DPN, so they'll go into
@@ -100,26 +84,12 @@ func NewTestUtil() (*TestUtil) {
 	remoteClients, err := dpn.GetRemoteClients(localClient, dpnConfig,
 		procUtil.MessageLog)
 	adminConfig := *dpnConfig
-	// adminConfig.RemoteNodeTokens["chron"] = adminTestToken
-	// adminConfig.RemoteNodeTokens["hathi"] = adminTestToken
-	// adminConfig.RemoteNodeTokens["sdr"] = adminTestToken
-	// adminConfig.RemoteNodeTokens["tdr"] = adminTestToken
 	remoteAdminClients, err := dpn.GetRemoteClients(localClient,
 		&adminConfig, procUtil.MessageLog)
 
 	if err != nil {
 		panic(err)
 	}
-
-	// Point the remote clients toward our own local DPN test cluster.
-	// This means you have to run the run_cluster.sh script in the
-	// DPN REST project to run these tests.
-	// for nodeNamespace := range remoteClients {
-	// 	remoteClient := remoteClients[nodeNamespace]
-	// 	remoteClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
-	// 	remoteAdminClient := remoteAdminClients[nodeNamespace]
-	// 	remoteAdminClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
-	// }
 
 	return &TestUtil{
 		ProcUtil: procUtil,
