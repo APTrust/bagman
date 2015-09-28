@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/bitly/go-nsq"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"os"
 	"path/filepath"
 	"sync"
@@ -268,12 +268,7 @@ func (recorder *Recorder) recordPremisEvents(result *DPNResult) {
 
 	recorder.ProcUtil.MessageLog.Debug("Creating ingest PREMIS event for bag %s (%s)",
 		result.DPNBag.UUID, result.BagIdentifier)
-	ingestUuid, err := uuid.NewV4()
-	if err != nil {
-		result.ErrorMessage =  fmt.Sprintf("Error generating UUID for DPN " +
-			"ingest event for S3 URL: %v", err)
-		return
-	}
+	ingestUuid := uuid.NewV4()
 	ingestEvent := &bagman.PremisEvent{
 		Identifier:         ingestUuid.String(),
 		EventType:          "ingest",
@@ -282,7 +277,7 @@ func (recorder *Recorder) recordPremisEvents(result *DPNResult) {
 		Outcome:            string(bagman.StatusSuccess),
 		OutcomeDetail:      result.DPNBag.UUID,
 		Object:             "Go uuid library + goamz S3 library",
-		Agent:              "http://github.com/nu7hatch/gouuid",
+		Agent:              "https://github.com/satori/go.uuid",
 		OutcomeInformation: result.DPNBag.UUID,
 	}
 
@@ -301,12 +296,7 @@ func (recorder *Recorder) recordPremisEvents(result *DPNResult) {
 
 	recorder.ProcUtil.MessageLog.Debug("Creating id assignment PREMIS event for bag %s (%s)",
 		result.DPNBag.UUID, result.BagIdentifier)
-	idAssignmentUuid, err := uuid.NewV4()
-	if err != nil {
-		result.ErrorMessage =  fmt.Sprintf("Error generating UUID for identifier " +
-			"assignment event for S3 URL: %v", err)
-		return
-	}
+	idAssignmentUuid := uuid.NewV4()
 	idEvent := &bagman.PremisEvent{
 		Identifier:         idAssignmentUuid.String(),
 		EventType:          "identifier_assignment",
@@ -315,7 +305,7 @@ func (recorder *Recorder) recordPremisEvents(result *DPNResult) {
 		Outcome:            string(bagman.StatusSuccess),
 		OutcomeDetail:      result.StorageURL,
 		Object:             "Go uuid library + APTrust DPN services",
-		Agent:              "http://github.com/nu7hatch/gouuid",
+		Agent:              "https://github.com/satori/go.uuid",
 		OutcomeInformation: fmt.Sprintf("DPN bag stored at %s", result.StorageURL),
 	}
 

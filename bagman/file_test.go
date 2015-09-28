@@ -88,7 +88,7 @@ func TestPremisEvents(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	events, err := file.PremisEvents()
+	events := file.PremisEvents()
 	if len(events) != 5 {
 		t.Errorf("PremisEvents() should have returned 5 events")
 		return

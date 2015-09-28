@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"net/http"
 	"net/url"
 	"strings"
@@ -65,7 +65,7 @@ func getClient(t *testing.T) (*dpn.DPNRestClient) {
 }
 
 func makeBag() (*dpn.DPNBag) {
-	youyoueyedee, _ := uuid.NewV4()
+	youyoueyedee := uuid.NewV4()
 	randChars := youyoueyedee.String()[0:8]
 	return &dpn.DPNBag {
 		UUID: youyoueyedee.String(),
@@ -86,7 +86,7 @@ func makeBag() (*dpn.DPNBag) {
 }
 
 func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTransfer) {
-	id, _ := uuid.NewV4()
+	id := uuid.NewV4()
 	idString := id.String()
 	randChars := idString[0:8]
 	nonce := "McNunce"
@@ -106,7 +106,7 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 }
 
 func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransfer) {
-	id, _ := uuid.NewV4()
+	id := uuid.NewV4()
 	idString := id.String()
 	return &dpn.DPNRestoreTransfer{
 		FromNode: fromNode,

@@ -3,7 +3,7 @@ package bagman
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"strings"
 	"time"
 )
@@ -84,18 +84,9 @@ func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, 
 	genericFileMaps := GenericFilesToBulkSaveMaps(genericFiles)
 
 	events := make([]*PremisEvent, 3)
-	ingestEvent, err := obj.CreateIngestEvent()
-	if err != nil {
-		return nil, err
-	}
-	idEvent, err := obj.CreateIdEvent()
-	if err != nil {
-		return nil, err
-	}
-	rightsEvent, err := obj.CreateRightsEvent()
-	if err != nil {
-		return nil, err
-	}
+	ingestEvent := obj.CreateIngestEvent()
+	idEvent := obj.CreateIdEvent()
+	rightsEvent := obj.CreateRightsEvent()
 	events[0] = idEvent
 	events[1] = ingestEvent
 	events[2] = rightsEvent
@@ -120,11 +111,8 @@ func (obj *IntellectualObject) SerializeForCreate(maxGenericFiles int) ([]byte, 
 	return jsonBytes, nil
 }
 
-func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent, error) {
-	eventId, err := uuid.NewV4()
-	if err != nil {
-		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
-	}
+func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent) {
+	eventId := uuid.NewV4()
 	return &PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "ingest",
@@ -135,14 +123,11 @@ func (obj *IntellectualObject) CreateIngestEvent() (*PremisEvent, error) {
 		Object:             "goamz S3 client",
 		Agent:              "https://github.com/crowdmob/goamz",
 		OutcomeInformation: "Multipart put using md5 checksum",
-	}, nil
+	}
 }
 
-func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
-	eventId, err := uuid.NewV4()
-	if err != nil {
-		return nil, fmt.Errorf("Error generating UUID for ingest event: %v", err)
-	}
+func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent) {
+	eventId := uuid.NewV4()
 	return &PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "identifier_assignment",
@@ -153,14 +138,11 @@ func (obj *IntellectualObject) CreateIdEvent() (*PremisEvent, error) {
 		Object:             "APTrust bagman",
 		Agent:              "https://github.com/APTrust/bagman",
 		OutcomeInformation: "Institution domain + tar file name",
-	}, nil
+	}
 }
 
-func (obj *IntellectualObject) CreateRightsEvent() (*PremisEvent, error) {
-	eventId, err := uuid.NewV4()
-	if err != nil {
-		return nil, fmt.Errorf("Error generating UUID for ingest access/rights event: %v", err)
-	}
+func (obj *IntellectualObject) CreateRightsEvent() (*PremisEvent) {
+	eventId := uuid.NewV4()
 	return &PremisEvent{
 		Identifier:         eventId.String(),
 		EventType:          "access_assignment",
@@ -171,7 +153,7 @@ func (obj *IntellectualObject) CreateRightsEvent() (*PremisEvent, error) {
 		Object:             "APTrust bagman",
 		Agent:              "https://github.com/APTrust/bagman",
 		OutcomeInformation: "Set access to " + obj.Access,
-	}, nil
+	}
 }
 
 // Serialize the subset of IntellectualObject data that fluctus

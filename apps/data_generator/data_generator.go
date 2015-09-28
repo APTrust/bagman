@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/workers"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"math/rand"
 	"os"
 	"time"
@@ -53,7 +53,7 @@ func makeFile(bagName string, number int) (*bagman.File) {
 	mimeType, ext := getMimeAndExt()
 	path := fmt.Sprintf("data/%d%s", number, ext)
 	baseDate := getBaseDate()
-	uuid, _ := uuid.NewV4()
+	uuid := uuid.NewV4()
 	md5 := randSeq(32)
 	return &bagman.File{
 		Path: path,

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/nu7hatch/gouuid"
+	"github.com/satori/go.uuid"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +20,7 @@ import (
 // contains default metadata, such as the BagIt version, ingest node name,
 // etc.
 func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, defaultMetadata *DefaultMetadata) (*BagBuilder) {
-	uuid, uuidErr := uuid.NewV4()
+	uuid := uuid.NewV4()
 	filePath, err := filepath.Abs(localPath)
 	bag := &Bag{
 		LocalPath: filePath,
@@ -35,9 +35,6 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, defaultMeta
 	}
 	if err != nil {
 		builder.ErrorMessage = err.Error()
-	}
-	if uuidErr != nil {
-		builder.ErrorMessage += uuidErr.Error()
 	}
 
 	err = os.MkdirAll(filepath.Join(filePath, "dpn-tags"), 0755)
