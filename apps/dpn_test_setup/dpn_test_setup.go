@@ -23,6 +23,7 @@ var goodBagPath = fmt.Sprintf("dpn/testdata/%s.tar", testBagUuid)
 var testBagSize = uint64(268800)
 var testBagDigest = "f9f39a1602cde405042dd8b4859c6a3e2c04092a76eaab858ae28e48403ccba4"
 var adminTestToken = "0000000000000000000000000000000000000000"
+var FaberCollege = "9a000000-0000-4000-a000-000000000002"
 
 // dpn_test_setup.go sets up some test data on our local DPN REST cluster
 // so that we can run some end-to-end replication tests. Make sure you're
@@ -183,6 +184,7 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 		Rights: make([]string, 0),
 		Interpretive: make([]string, 0),
 		ReplicatingNodes: make([]string, 0),
+		Member: FaberCollege,
 		Fixities: &dpn.DPNFixity{
 			Sha256: testBagDigest,
 		},

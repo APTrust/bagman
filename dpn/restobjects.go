@@ -86,6 +86,9 @@ type DPNBag struct {
 	// LocalId is the depositor's local identifier for a bag.
 	LocalId            string               `json:"local_id"`
 
+	// Member is the UUID of the member who deposited this bag.
+	Member             string               `json:"member"`
+
 	// Size is the size, in bytes of the bag.
 	Size               uint64               `json:"size"`
 
@@ -142,6 +145,7 @@ type DPNReplicationTransfer struct {
 	UUID            string       `json:"uuid"`
 
 	// ReplicationId is a unique id for this replication request.
+	// It's a UUID in string format.
 	ReplicationId   string       `json:"replication_id"`
 
 	// FixityAlgorithm is the algorithm used to calculate the fixity digest.

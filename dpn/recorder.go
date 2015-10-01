@@ -396,6 +396,7 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 		toNode, result.DPNBag.UUID)
 	emptyString := ""
 	return &DPNReplicationTransfer{
+		ReplicationId: uuid.NewV4().String(),
 		FromNode: recorder.DPNConfig.LocalNode,
 		ToNode: toNode,
 		UUID: result.DPNBag.UUID,
