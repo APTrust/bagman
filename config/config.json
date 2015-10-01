@@ -793,7 +793,7 @@
         "LogDirectory": "/mnt/apt/logs",
         "ReplicationDirectory": "/mnt/apt/replication",
         "DPNStagingDirectory": "/mnt/dpn/staging",
-        "DPNHomeDirectory": "/home",
+        "DPNHomeDirectory": "/mnt/dpn",
         "MaxFileSize": 0,
         "SkipAlreadyProcessed": true,
         "DeleteOnSuccess": true,
@@ -814,8 +814,8 @@
         "MaxDaysSinceFixityCheck": 30,
 
         "PrepareWorker": {
-            "NetworkConnections": 8,
-            "Workers": 4,
+            "NetworkConnections": 12,
+            "Workers": 8,
             "NsqTopic": "prepare_topic",
             "NsqChannel": "prepare_channel",
             "MaxAttempts": 3,
@@ -853,7 +853,7 @@
         },
 
         "ReplicationWorker": {
-            "NetworkConnections": 4,
+            "NetworkConnections": 16,
             "Workers": 8,
             "NsqTopic": "replication_topic",
             "NsqChannel": "replication_channel",
