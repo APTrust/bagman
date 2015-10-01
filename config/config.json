@@ -814,8 +814,8 @@
         "MaxDaysSinceFixityCheck": 30,
 
         "PrepareWorker": {
-            "NetworkConnections": 12,
-            "Workers": 8,
+            "NetworkConnections": 6,
+            "Workers": 6,
             "NsqTopic": "prepare_topic",
             "NsqChannel": "prepare_channel",
             "MaxAttempts": 3,
@@ -827,8 +827,8 @@
         },
 
         "StoreWorker": {
-            "NetworkConnections": 16,
-            "Workers": 8,
+            "NetworkConnections": 12,
+            "Workers": 6,
             "NsqTopic": "store_topic",
             "NsqChannel": "store_channel",
             "MaxAttempts": 3,
@@ -840,8 +840,8 @@
         },
 
         "RecordWorker": {
-            "NetworkConnections": 8,
-            "Workers": 4,
+            "NetworkConnections": 6,
+            "Workers": 3,
             "NsqTopic": "record_topic",
             "NsqChannel": "record_channel",
             "MaxAttempts": 3,
@@ -853,7 +853,7 @@
         },
 
         "ReplicationWorker": {
-            "NetworkConnections": 16,
+            "NetworkConnections": 12,
             "Workers": 8,
             "NsqTopic": "replication_topic",
             "NsqChannel": "replication_channel",
