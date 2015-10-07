@@ -3,6 +3,7 @@ package bagman
 import (
 	"fmt"
 	"github.com/satori/go.uuid"
+	"strings"
 	"time"
 )
 
@@ -204,4 +205,15 @@ func (file *File) ReplicationEvent(replicationUrl string) (*PremisEvent, error) 
 		OutcomeInformation: "",
 	}
 	return event, nil
+}
+
+// This function shouldn't exist. It's related to Pivotal Tracker #105112644,
+// which pertains to reingested files that we should not try to re-save
+// to Glacier.
+func (file *File) S3UUID() (string) {
+	if file.StorageURL != "" {
+		startOfUuid := strings.LastIndex(file.StorageURL, "/") + 1
+		return file.StorageURL[startOfUuid:]
+	}
+	return ""
 }

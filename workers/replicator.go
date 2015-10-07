@@ -53,7 +53,17 @@ func (replicator *Replicator) HandleMessage(message *nsq.Message) error {
 		message.Finish()
 		return fmt.Errorf("Could not unmarshal JSON data from nsq")
 	}
-	if replicator.ReplicatedFileExists(&file) {
+	if file.NeedsSave == false &&  replicator.ReplicatedFileExists(file.S3UUID()){
+		// This occurs when the depositor has uploaded a new version
+		// of an existing bag, but this particiluar file within the
+		// bag did not change.
+		replicator.ProcUtil.MessageLog.Info("File %s has not changed since it was last saved " +
+			"and is confirmed to exist in replication bucket with UUID %s",
+			file.Identifier, file.S3UUID())
+		message.Finish()
+		return nil
+	}
+	if replicator.ReplicatedFileExists(file.Uuid) {
 		replicator.ProcUtil.MessageLog.Info("File %s already exists in replication bucket",
 			file.Identifier)
 		message.Finish()
@@ -85,10 +95,10 @@ func (replicator *Replicator) HandleMessage(message *nsq.Message) error {
 	return nil
 }
 
-func (replicator *Replicator) ReplicatedFileExists(file *bagman.File) (bool) {
+func (replicator *Replicator) ReplicatedFileExists(fileUUID string) (bool) {
 	exists, _ := replicator.S3ReplicationClient.Exists(
 		replicator.ProcUtil.Config.PreservationBucket,
-		file.Uuid)
+		fileUUID)
 	return exists
 }
 
