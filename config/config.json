@@ -840,8 +840,8 @@
         },
 
         "RecordWorker": {
-            "NetworkConnections": 4,
-            "Workers": 2,
+            "NetworkConnections": 6,
+            "Workers": 3,
             "NsqTopic": "record_topic",
             "NsqChannel": "record_channel",
             "MaxAttempts": 3,
