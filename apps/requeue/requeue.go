@@ -9,43 +9,68 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/APTrust/bagman/workers"
+	"io/ioutil"
 	"os"
 	"strings"
 	"time"
 )
 
-// *************************************************************************
-// This file contains stubs and notes. It doesn't work yet.
-// Maybe you can fix that on the plane, Andrew!
-// *************************************************************************
 
-// Usage:
-//
-// ./requeue -config=<config> <filename>
-// ./requeue -config=<config> <filename*>
-//
-// TODO:
-//
-// 1. Open file.
-// 2. Change retry to true.
-// 3. Figure out which queue it should go into and put it there.
-
-
+var config string
+var queueName string
+var jsonFile string
 var procUtil *bagman.ProcessUtil
 var statusCache map[string]*bagman.ProcessStatus
 
+var configs = []string{ "dev", "test", "demo", "production", }
+var queues = []string{
+	"bag_delete_topic",
+	"dpn_copy_topic",
+	"dpn_package_topic",
+	"dpn_store_topic",
+	"dpn_record_topic",
+	"dpn_validation_topic",
+	"file_delete_topic",
+	"fixity_topic",
+	"prepare_topic",
+	"record_topic",
+	"replication_topic",
+	"restore_topic",
+	"store_topic",
+}
+
 func main() {
 	var err error = nil
-	procUtil = workers.CreateProcUtil()
+	parseCommandLine()
+	procUtil = bagman.NewProcessUtil(&config)
+	err = procUtil.Config.EnsureFluctusConfig()
+	if err != nil {
+		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
+	}
 	procUtil.MessageLog.Info("requeue started")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Initialization failed for requeue: %v", err)
+		procUtil.MessageLog.Info("Initialization failed for requeue: %v", err)
 		os.Exit(1)
 	}
-	run()
+	result := readResult()
+	procUtil.MessageLog.Info("Setting retry to true for %s", result.S3File.Key.Key)
+	result.Retry = true
+
+	// statusRecord, err := getStatusRecord(result.S3File)
+	// if err != nil {
+	// 	procUtil.MessageLog.Fatalf("Error retrieving ProcessedItem from Fluctus: %v", err)
+	// }
+	// statusRecord.Retry = true
+
+	err = bagman.Enqueue(procUtil.Config.NsqdHttpAddress, queueName, result)
+	if err != nil {
+		procUtil.MessageLog.Fatalf("Error sending to %s at %s: %v", 
+			queueName, procUtil.Config.NsqdHttpAddress, err)
+	}
 }
 
 type DateParseError struct {
@@ -53,39 +78,32 @@ type DateParseError struct {
 }
 func (e DateParseError) Error() string { return e.message }
 
-func run() {
-
-	// Item will be an instance of bagman.ProcessResult
-	// item := readItemFromFile()
-
-	// Get the status record
-	// statusRecord := getStatusRecord(item.S3File)
-
-	// Set retry to true on the status record...
-	// [Do we really need this? Do we check retry after initial ingest steps?]
-	// statusRecord.Retry = true
-
-	// Send status record back to Fluctus
-	// err = procUtil.FluctusClient.SendProcessedItem(statusRecord)
-
-	// Prepare the item for the queue by resetting the appropriate
-	// retry flags AND figuring out which queue it belongs in.
-	// (Where in the process did it fail?)
-	// queueName := prepareForQueue(item)
-
-	// Topic here will depend on where in the process the item failed.
-	// url := fmt.Sprintf("%s/put?topic=%s", procUtil.Config.NsqdHttpAddress,
-	//	procUtil.Config.PrepareWorker.NsqTopic)
-	// err = bagman.QueueToNSQ(url, item)
-	// if err != nil {
-	// 	procUtil.MessageLog.Fatal(err.Error())
-	// }
+// Reset the retry flag(s) and return the name of the queue this should go into.
+func readResult() (*bagman.ProcessResult) {
+	file, err := os.Open(jsonFile)
+	if err != nil {
+		procUtil.MessageLog.Fatal(err)
+	}
+	defer file.Close()
+	jsonBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		procUtil.MessageLog.Fatal(err)
+	}
+	result := bagman.ProcessResult{}
+	err = json.Unmarshal(jsonBytes, &result)
+	if err != nil {
+		procUtil.MessageLog.Fatal(err)
+	}
+	return &result
 }
 
-
-// Reset the retry flag(s) and return the name of the queue this should go into.
-func prepareForQueue() () {
-
+func sliceContains(slice []string, item string) (bool) {
+	for _, value := range slice {
+		if item == value {
+			return true
+		}
+	}
+	return false
 }
 
 // CHANGE: This should retrieve the status record, set retry to true, then save it.
@@ -101,4 +119,61 @@ func getStatusRecord(s3File *bagman.S3File) (status *bagman.ProcessStatus, err e
 	etag := strings.Replace(s3File.Key.ETag, "\"", "", 2)
 	status, err = procUtil.FluctusClient.GetBagStatus(etag, s3File.Key.Key, bagDate)
 	return status, err
+}
+
+func parseCommandLine() {
+	flag.StringVar(&queueName, "q", "", "Queue name")
+	flag.StringVar(&config, "config", "", "APTrust config file")
+	flag.Parse()
+	if !sliceContains(configs, config) {
+		printUsage()
+		fmt.Println("Option -config is required and must be one of the options above.")
+		os.Exit(0)
+	}
+	if !sliceContains(queues, queueName) {
+		printUsage()
+		fmt.Println("Option -q is required and must be one of the options above.")
+		os.Exit(0)
+	}
+	if len(os.Args) < 4 {
+		printUsage()
+		fmt.Printf("Please specify one or more json files to requeue.\n")		
+		os.Exit(1)
+	} else {
+		jsonFile = strings.TrimSpace(os.Args[3])
+	}
+}
+
+func printUsage() {
+	message := `
+Usage:
+
+  requeue -config=<config> -q=<queue name> <filename.json>
+
+Sends the data in filename.json back into the queue specified
+in the -q option. This will set the retry flag to true before
+requeueing, so that the item will be reprocessed.
+
+Depending on the config value, the item will requeued in the
+dev, test, demo or production environment.
+
+Options:
+
+  -config <dev|test|demo|production>
+  -q      bag_delete_topic
+          dpn_copy_topic
+          dpn_package_topic
+          dpn_store_topic
+          dpn_record_topic
+          dpn_validation_topic
+          file_delete_topic
+          fixity_topic
+          prepare_topic
+          record_topic
+          replication_topic
+          restore_topic
+          store_topic
+          
+`
+	fmt.Println(message)
 }
