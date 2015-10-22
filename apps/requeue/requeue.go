@@ -9,10 +9,11 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/APTrust/bagman/bagman"
+	"github.com/APTrust/bagman/bagman"	
 	"io/ioutil"
 	"os"
 	"strings"
@@ -22,7 +23,6 @@ import (
 
 var config string
 var queueName string
-var jsonFile string
 var procUtil *bagman.ProcessUtil
 var statusCache map[string]*bagman.ProcessStatus
 
@@ -43,11 +43,17 @@ var queues = []string{
 	"store_topic",
 }
 
+type DateParseError struct {
+    message   string
+}
+
+func (e DateParseError) Error() string { return e.message }
+
+
 func main() {
-	var err error = nil
-	parseCommandLine()
+	jsonFiles := parseCommandLine()
 	procUtil = bagman.NewProcessUtil(&config)
-	err = procUtil.Config.EnsureFluctusConfig()
+	err := procUtil.Config.EnsureFluctusConfig()
 	if err != nil {
 		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)
 	}
@@ -56,7 +62,50 @@ func main() {
 		procUtil.MessageLog.Info("Initialization failed for requeue: %v", err)
 		os.Exit(1)
 	}
-	result := readResult()
+	if confirm(jsonFiles) == false {
+		procUtil.MessageLog.Info("Nothing requeued. User cancelled request.")
+		fmt.Println("OK. Bye.")
+		return
+	}
+	succeeded := 0
+	failed := 0
+	for _, jsonFile := range(jsonFiles) {
+		err = requeueFile(jsonFile)
+		if err != nil {
+			procUtil.MessageLog.Error(err.Error())
+			failed++
+		} else {
+			succeeded++
+		}
+	}
+	message := fmt.Sprintf("%d Succeeded, %d Failed")
+	fmt.Println(message)
+	procUtil.MessageLog.Info(message)
+}
+
+func confirm(jsonFiles []string) bool {
+	for _, f := range(jsonFiles) {
+		fmt.Println(f)
+	}
+	reader := bufio.NewReader(os.Stdin)
+	response := ""
+	for response == "" {
+		fmt.Printf("Requeue %d files? [y/N]: ", len(jsonFiles))
+		response, _ = reader.ReadString('\n')
+		if len(response) > 0 {
+			if response[0] == 'y' || response[0] == 'Y' {
+				return true
+			} 
+		}
+	}
+	return false
+}
+
+func requeueFile(jsonFile string) (error) {
+	result, err := readResult(jsonFile)
+	if err != nil {
+		return err
+	}
 	procUtil.MessageLog.Info("Setting retry to true for %s", result.S3File.Key.Key)
 	result.Retry = true
 
@@ -70,34 +119,26 @@ func main() {
 	// statusRecord.Retry = true
 
 	err = bagman.Enqueue(procUtil.Config.NsqdHttpAddress, queueName, result)
-	if err != nil {
-		procUtil.MessageLog.Fatalf("Error sending to %s at %s: %v", 
-			queueName, procUtil.Config.NsqdHttpAddress, err)
-	}
+	return fmt.Errorf("Error sending to %s at %s: %v", 
+		queueName, procUtil.Config.NsqdHttpAddress, err)
 }
 
-type DateParseError struct {
-    message   string
-}
-func (e DateParseError) Error() string { return e.message }
-
-// Reset the retry flag(s) and return the name of the queue this should go into.
-func readResult() (*bagman.ProcessResult) {
+func readResult(jsonFile string) (*bagman.ProcessResult, error) {
 	file, err := os.Open(jsonFile)
 	if err != nil {
-		procUtil.MessageLog.Fatal(err)
+		return nil, err
 	}
 	defer file.Close()
 	jsonBytes, err := ioutil.ReadAll(file)
 	if err != nil {
-		procUtil.MessageLog.Fatal(err)
+		return nil, err
 	}
 	result := bagman.ProcessResult{}
 	err = json.Unmarshal(jsonBytes, &result)
 	if err != nil {
-		procUtil.MessageLog.Fatal(err)
+		return nil, err
 	}
-	return &result
+	return &result, err
 }
 
 func sliceContains(slice []string, item string) (bool) {
@@ -124,7 +165,7 @@ func getStatusRecord(s3File *bagman.S3File) (status *bagman.ProcessStatus, err e
 	return status, err
 }
 
-func parseCommandLine() {
+func parseCommandLine() ([]string) {
 	flag.StringVar(&queueName, "q", "", "Queue name")
 	flag.StringVar(&config, "config", "", "APTrust config file")
 	flag.Parse()
@@ -142,9 +183,8 @@ func parseCommandLine() {
 		printUsage()
 		fmt.Printf("Please specify one or more json files to requeue.\n")		
 		os.Exit(1)
-	} else {
-		jsonFile = strings.TrimSpace(os.Args[3])
 	}
+	return os.Args[3:]
 }
 
 func printUsage() {
