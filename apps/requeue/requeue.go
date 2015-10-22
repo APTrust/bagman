@@ -78,7 +78,7 @@ func main() {
 			succeeded++
 		}
 	}
-	message := fmt.Sprintf("%d Succeeded, %d Failed")
+	message := fmt.Sprintf("%d Succeeded, %d Failed", succeeded, failed)
 	fmt.Println(message)
 	procUtil.MessageLog.Info(message)
 }
