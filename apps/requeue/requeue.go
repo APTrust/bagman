@@ -114,6 +114,11 @@ func requeueFile(jsonFile string) (error) {
 		result.FedoraResult.ErrorMessage = ""
 	}
 
+	if result.FedoraResult == nil && queueName == "record_topic" {
+		return fmt.Errorf("File %s has no FedoraResult, " + 
+			"so it's not going into the record_topic.", jsonFile)
+	}
+
 	// statusRecord, err := getStatusRecord(result.S3File)
 	// if err != nil {
 	// 	procUtil.MessageLog.Fatalf("Error retrieving ProcessedItem from Fluctus: %v", err)
