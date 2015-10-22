@@ -60,6 +60,9 @@ func main() {
 	procUtil.MessageLog.Info("Setting retry to true for %s", result.S3File.Key.Key)
 	result.Retry = true
 
+	result.ErrorMessage = ""
+	result.FedoraResult.ErrorMessage = ""
+
 	// statusRecord, err := getStatusRecord(result.S3File)
 	// if err != nil {
 	// 	procUtil.MessageLog.Fatalf("Error retrieving ProcessedItem from Fluctus: %v", err)
