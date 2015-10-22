@@ -110,7 +110,9 @@ func requeueFile(jsonFile string) (error) {
 	result.Retry = true
 
 	result.ErrorMessage = ""
-	result.FedoraResult.ErrorMessage = ""
+	if result.FedoraResult != nil {
+		result.FedoraResult.ErrorMessage = ""
+	}
 
 	// statusRecord, err := getStatusRecord(result.S3File)
 	// if err != nil {
