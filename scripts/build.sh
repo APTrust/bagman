@@ -14,7 +14,7 @@
 # branch of all libraries, some of which have breaking
 # API changes.
 
-BAGMAN_HOME=~/go/src/github.com/APTrust/bagman
+BAGMAN_HOME=${BAGMAN_HOME-~/go/src/github.com/APTrust/bagman}
 BAGMAN_BIN=${BAGMAN_HOME}/bin
 
 if [ ! -d ${BAGMAN_BIN} ]; then
