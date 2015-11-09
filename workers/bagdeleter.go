@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"time"
 )
 

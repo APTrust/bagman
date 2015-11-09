@@ -2,7 +2,7 @@ package bagman
 
 import (
 	"fmt"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/op/go-logging"
 	"log"

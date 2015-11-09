@@ -1,7 +1,7 @@
 package bagman
 
 import (
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"strings"
 	"time"
 )

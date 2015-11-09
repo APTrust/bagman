@@ -9,7 +9,7 @@ import (
 	"archive/tar"
 	"fmt"
 	"github.com/APTrust/bagins"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"github.com/op/go-logging"

@@ -3,7 +3,7 @@ package bagman
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"github.com/crowdmob/goamz/s3"
 	"os"
 	"path/filepath"

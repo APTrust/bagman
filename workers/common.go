@@ -3,7 +3,7 @@ package workers
 import (
 	"flag"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"os"
 )
 
