@@ -5,9 +5,9 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
 	"github.com/APTrust/bagman/workers"
-	"github.com/satori/go.uuid"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -175,7 +175,7 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 	}
 	bag = &dpn.DPNBag{
 		UUID: bagUuid,
-		LocalId: fmt.Sprintf("integration-test-%s-1", node),
+		LocalId: fmt.Sprintf("integration-test-%s-1000", node),
 		Size: testBagSize,
 		FirstVersionUUID: bagUuid,
 		Version: 1,
@@ -198,8 +198,8 @@ func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath str
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: bag.AdminNode,
 		ToNode: testUtil.DPNConfig.LocalNode,
-		UUID: bag.UUID,
-		ReplicationId: uuid.NewV4().String(),
+		BagId: bag.UUID,
+		ReplicationId: strings.Replace(bag.UUID, "4000", "4444", 1),
 		FixityAlgorithm: "sha256",
 		Status: "requested",
 		Protocol: "rsync",
