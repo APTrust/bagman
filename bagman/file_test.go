@@ -198,3 +198,16 @@ func TestReplicationEvent(t *testing.T) {
 		t.Error("File.ReplicationEvent accepted an invalid URL")
 	}
 }
+
+func TestS3UUID(t *testing.T) {
+	file := &bagman.File{
+		StorageURL: "https://s3.amazonaws.com/aptrust.preservation.storage/9fbbc661-3011-4368-b95b-5a432a8bb80e",
+	}
+	if file.S3UUID() != "9fbbc661-3011-4368-b95b-5a432a8bb80e" {
+		t.Errorf("Expected UUID '9fbbc661-3011-4368-b95b-5a432a8bb80e', got '%s'", file.S3UUID())
+	}
+	file = &bagman.File{}
+	if file.S3UUID() != "" {
+		t.Errorf("Expected empty UUID, got '%s'", file.S3UUID())
+	}
+}

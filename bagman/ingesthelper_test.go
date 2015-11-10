@@ -5,7 +5,7 @@ package bagman_test
 import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"github.com/crowdmob/goamz/s3"
 	"io/ioutil"
 	"net/http"

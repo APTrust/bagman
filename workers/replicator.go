@@ -8,7 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"github.com/crowdmob/goamz/aws"
 	"github.com/crowdmob/goamz/s3"
 	"os"
@@ -53,7 +53,17 @@ func (replicator *Replicator) HandleMessage(message *nsq.Message) error {
 		message.Finish()
 		return fmt.Errorf("Could not unmarshal JSON data from nsq")
 	}
-	if replicator.ReplicatedFileExists(&file) {
+	if file.NeedsSave == false && replicator.ReplicatedFileExists(file.S3UUID()){
+		// This occurs when the depositor has uploaded a new version
+		// of an existing bag, but this particiluar file within the
+		// bag did not change.
+		replicator.ProcUtil.MessageLog.Info("File %s has not changed since it was last saved " +
+			"and is confirmed to exist in replication bucket with UUID %s",
+			file.Identifier, file.S3UUID())
+		message.Finish()
+		return nil
+	}
+	if replicator.ReplicatedFileExists(file.Uuid) {
 		replicator.ProcUtil.MessageLog.Info("File %s already exists in replication bucket",
 			file.Identifier)
 		message.Finish()
@@ -85,10 +95,17 @@ func (replicator *Replicator) HandleMessage(message *nsq.Message) error {
 	return nil
 }
 
-func (replicator *Replicator) ReplicatedFileExists(file *bagman.File) (bool) {
-	exists, _ := replicator.S3ReplicationClient.Exists(
-		replicator.ProcUtil.Config.PreservationBucket,
-		file.Uuid)
+func (replicator *Replicator) ReplicatedFileExists(fileUUID string) (bool) {
+	exists, err := replicator.S3ReplicationClient.Exists(
+		replicator.ProcUtil.Config.ReplicationBucket,
+		fileUUID)
+	if err != nil {
+		replicator.ProcUtil.MessageLog.Warning("Error checking S3 file exists " +
+			"in replication bucket: %v", err)
+		replicator.ProcUtil.MessageLog.Info("File %s will be sent to replication " +
+			"because we're not sure it's already there", fileUUID)
+		return false
+    }
 	return exists
 }
 

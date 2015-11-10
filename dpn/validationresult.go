@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
-	"github.com/bitly/go-nsq"
+	"github.com/nsqio/go-nsq"
 	"io"
 	"os"
 	"path/filepath"
