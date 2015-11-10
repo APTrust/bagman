@@ -217,7 +217,7 @@ func (recorder *Recorder) postProcess() {
 				if result.TransferRequest.Status == "Stored" {
 					recorder.ProcUtil.MessageLog.Info(
 						"Replication complete for bag %s from %s",
-						result.TransferRequest.UUID, result.TransferRequest.FromNode)
+						result.TransferRequest.BagId, result.TransferRequest.FromNode)
 				}
 			}
 			result.NsqMessage.Finish()
@@ -399,7 +399,7 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 		ReplicationId: uuid.NewV4().String(),
 		FromNode: recorder.DPNConfig.LocalNode,
 		ToNode: toNode,
-		UUID: result.DPNBag.UUID,
+		BagId: result.DPNBag.UUID,
 		FixityAlgorithm: "sha256",
 		FixityNonce: &emptyString,
 		FixityValue: &emptyString,
@@ -457,7 +457,7 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s " +
 		"from remote node %s. " +
 		"Setting status to 'Received', BagValid to %t, and checksum to %s",
-		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
+		result.TransferRequest.ReplicationId, result.TransferRequest.BagId,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		*result.TransferRequest.FixityValue)
 	recorder.ProcUtil.MessageLog.Debug("Updating %s", detailedMessage)
@@ -474,7 +474,7 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	if xfer.FixityAccept == nil || *xfer.FixityAccept == false {
 		recorder.ProcUtil.MessageLog.Debug(
 			"Remote node rejected fixity value for xfer request %s (bag %s)",
-			result.TransferRequest.ReplicationId, result.TransferRequest.UUID)
+			result.TransferRequest.ReplicationId, result.TransferRequest.BagId)
 		result.ErrorMessage = "Remote node did not accept the fixity value we sent for this bag. " +
 			"This cancels the transfer request, and we will not store the bag."
 		return
@@ -482,13 +482,13 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	if xfer.Status == "Cancelled" {
 		recorder.ProcUtil.MessageLog.Debug(
 			"Remote node says status is 'Cancelled' for xfer request %s (bag %s)",
-			result.TransferRequest.ReplicationId, result.TransferRequest.UUID)
+			result.TransferRequest.ReplicationId, result.TransferRequest.BagId)
 		result.ErrorMessage = "This transfer request has been marked as cancelled on the remote node. " +
 			"This bag will not be copied to storage."
 		return
 	}
 	recorder.ProcUtil.MessageLog.Debug("Remote node updated xfer request %s (bag %s), " +
-		"and set status to %s", xfer.ReplicationId, xfer.UUID, xfer.Status)
+		"and set status to %s", xfer.ReplicationId, xfer.BagId, xfer.Status)
 
 }
 
@@ -512,7 +512,7 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 	result.TransferRequest.Status = "Stored"
 	recorder.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
 		"Setting status to 'Stored', BagValid to %t, and checksum to %s",
-		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
+		result.TransferRequest.ReplicationId, result.TransferRequest.BagId,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		*result.TransferRequest.FixityValue)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)
@@ -526,7 +526,7 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 	result.RecordResult.StorageResultSentAt = time.Now()
 
 	recorder.ProcUtil.MessageLog.Debug("Remote node updated xfer request %s (bag %s), " +
-		"and set status to %s", xfer.ReplicationId, xfer.UUID, xfer.Status)
+		"and set status to %s", xfer.ReplicationId, xfer.BagId, xfer.Status)
 }
 
 func (recorder *Recorder) RunTest(result *DPNResult) {

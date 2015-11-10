@@ -110,7 +110,7 @@ func (copier *Copier) doLookup() {
 		copier.ProcUtil.MessageLog.Debug(
 			"Looking up ReplicationId %s, bag %s, on node %s ",
 				result.TransferRequest.ReplicationId,
-				result.TransferRequest.UUID,
+				result.TransferRequest.BagId,
 				result.TransferRequest.FromNode)
 
 
@@ -123,7 +123,7 @@ func (copier *Copier) doLookup() {
 				"Cancelling copy of ReplicationId %s (bag %s) because " +
 					"replication status on %s is %s",
 				result.TransferRequest.ReplicationId,
-				result.TransferRequest.UUID,
+				result.TransferRequest.BagId,
 				result.TransferRequest.FromNode,
 				xfer.Status)
 			copier.ProcUtil.MessageLog.Info(message)
@@ -144,7 +144,7 @@ func (copier *Copier) doCopy() {
 	for result := range copier.CopyChannel {
 		localPath := filepath.Join(
 			copier.ProcUtil.Config.DPNStagingDirectory,
-			fmt.Sprintf("%s.tar", result.TransferRequest.UUID))
+			fmt.Sprintf("%s.tar", result.TransferRequest.BagId))
 
 		if !bagman.FileExists(copier.ProcUtil.Config.DPNStagingDirectory) {
 			os.MkdirAll(copier.ProcUtil.Config.DPNStagingDirectory, 0755)
