@@ -461,7 +461,7 @@ func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfe
 	returnedXfer := DPNReplicationTransfer{}
 	err = json.Unmarshal(body, &returnedXfer)
 	if err != nil {
-		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		error := fmt.Errorf("Could not parse JSON response from %s: %v", objUrl, err)
 		client.buildAndLogError(body, error.Error())
 		return nil, error
 	}

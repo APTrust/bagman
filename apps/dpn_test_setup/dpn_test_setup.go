@@ -5,6 +5,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
 	"github.com/APTrust/bagman/workers"
+	"github.com/satori/go.uuid"
 	"os"
 	"path/filepath"
 	"time"
@@ -198,8 +199,9 @@ func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath str
 		FromNode: bag.AdminNode,
 		ToNode: testUtil.DPNConfig.LocalNode,
 		UUID: bag.UUID,
+		ReplicationId: uuid.NewV4().String(),
 		FixityAlgorithm: "sha256",
-		Status: "Requested",
+		Status: "requested",
 		Protocol: "rsync",
 		Link: linkPath,
 	}
