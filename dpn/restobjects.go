@@ -76,6 +76,21 @@ type DPNFixity struct {
 
 }
 
+// DPNMember describes an institution or depositor that owns
+// a bag.
+type DPNMember struct {
+
+	// UUID is the unique identifier for a member
+	UUID               string               `json:"uuid"`
+
+	// Name is the member's name
+	Name               string               `json:"name"`
+
+	// Email is the member's email address
+	Email              string               `json:"email"`
+
+}
+
 // DPNBag represents a Bag object in the DPN REST service.
 // Like all of the DPN REST objects, it contains metadata only.
 type DPNBag struct {
