@@ -139,12 +139,15 @@ func TestGetRsyncCommand(t *testing.T) {
 	procUtil := bagman.NewProcessUtil(&testConfig)
 	copyFrom := getTestLink(TEST_BAGS[0])
 	copyTo := procUtil.Config.DPNStagingDirectory
-	command := dpn.GetRsyncCommand(copyFrom, copyTo)
+
+	// Test with SSH
+	command := dpn.GetRsyncCommand(copyFrom, copyTo, true)
 	if !strings.HasSuffix(command.Path, "rsync") {
 		t.Errorf("Expected Path ending in 'rsync', got '%s'", command.Path)
 	}
 	if len(command.Args) < 6 {
-		t.Errorf("rsync command has %d args, expected 5", len(command.Args))
+		t.Errorf("rsync command has %d args, expected %d",
+			len(command.Args), 6)
 		return
 	}
 	if command.Args[3] != "ssh" {
@@ -158,6 +161,26 @@ func TestGetRsyncCommand(t *testing.T) {
 		t.Errorf("rsync command is copying to '%s', expected '%s'",
 			command.Args[5], copyTo)
 	}
+
+	// Test without SSH
+	command = dpn.GetRsyncCommand(copyFrom, copyTo, false)
+	if !strings.HasSuffix(command.Path, "rsync") {
+		t.Errorf("Expected Path ending in 'rsync', got '%s'", command.Path)
+	}
+	if len(command.Args) < 4 {
+		t.Errorf("rsync command has %d args, expected %d",
+			len(command.Args), 4)
+		return
+	}
+	if command.Args[2] != copyFrom {
+		t.Errorf("rsync command is copying from '%s', expected '%s'",
+			command.Args[2], copyFrom)
+	}
+	if command.Args[3] != copyTo {
+		t.Errorf("rsync command is copying to '%s', expected '%s'",
+			command.Args[3], copyTo)
+	}
+
 }
 
 func TestCopier(t *testing.T) {

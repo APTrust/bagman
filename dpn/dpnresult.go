@@ -228,6 +228,9 @@ type DPNConfig struct {
 	// to false, so if this is not set in config, we should be
 	// safe.
 	AcceptInvalidSSLCerts  bool
+	// When copying bags from remote nodes, should we use rsync
+	// over SSH (true) or just plain rsync (false)?
+	UseSSHWithRsync        bool
 	// Default metadata that goes into bags produced at our node.
 	DefaultMetadata        *DefaultMetadata
 	// Settings for connecting to our own REST service

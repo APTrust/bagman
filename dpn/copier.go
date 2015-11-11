@@ -150,7 +150,8 @@ func (copier *Copier) doCopy() {
 			os.MkdirAll(copier.ProcUtil.Config.DPNStagingDirectory, 0755)
 		}
 
-		rsyncCommand := GetRsyncCommand(result.TransferRequest.Link, localPath)
+		rsyncCommand := GetRsyncCommand(result.TransferRequest.Link,
+			localPath, copier.DPNConfig.UseSSHWithRsync)
 
 		// Touch message on both sides of rsync, so NSQ doesn't time out.
 		if result.NsqMessage != nil {
@@ -273,9 +274,10 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 // }
 
 //
-func GetRsyncCommand(copyFrom, copyTo string) (*exec.Cmd) {
+func GetRsyncCommand(copyFrom, copyTo string, useSSH bool) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
-	// return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
-	// TODO: Undo this temp fix. Use proper config to specify whether to use SSH!
+	if useSSH {
+		return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
+	}
 	return exec.Command("rsync", "-avz", copyFrom, copyTo)
 }
