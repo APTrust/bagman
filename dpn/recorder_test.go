@@ -54,12 +54,12 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 	// the transfers with id <namespace>-13 to <namespace>-18 are
 	// transfers to APTrust. So tdr-18, sdr-18, chron-18, etc. are
 	// all bound for APTrust.
-	xfer, err := recorder.RemoteClients["hathi"].ReplicationTransferGet("hathi-18")
+	xfer, err := recorder.RemoteClients["hathi"].ReplicationTransferGet("10000000-0000-4000-a000-000000000018")
 	if err != nil {
 		t.Error(err)
 		return nil
 	}
-	bag, err := recorder.RemoteClients["hathi"].DPNBagGet(xfer.UUID)
+	bag, err := recorder.RemoteClients["hathi"].DPNBagGet(xfer.BagId)
 	if err != nil {
 		t.Error(err)
 		return nil
@@ -171,6 +171,10 @@ func TestReplicatedBag(t *testing.T) {
 	}
 	recorder := getRecorder(t)
 	dpnResult := buildResultWithTransfer(t, recorder)
+	if dpnResult == nil {
+		t.Errorf("Failed to build test result. Can't run TestReplicatedBag.")
+		return
+	}
 	recorderTestEnsureFiles(t, recorder.ProcUtil)
 
 	// Test a bag that was copied and validated

@@ -93,7 +93,7 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 	return &dpn.DPNReplicationTransfer{
 		FromNode: fromNode,
 		ToNode: toNode,
-		UUID: bagUuid,
+		BagId: bagUuid,
 		FixityAlgorithm: "sha256",
 		FixityNonce: &nonce,
 		FixityValue: &randChars,
@@ -111,7 +111,7 @@ func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransf
 	return &dpn.DPNRestoreTransfer{
 		FromNode: fromNode,
 		ToNode: toNode,
-		UUID: bagUuid,
+		BagId: bagUuid,
 		Status: "Requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
@@ -477,8 +477,8 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.ToNode != "tdr" {
 		t.Errorf("ToNode: expected 'tdr', got '%s'", xfer.ToNode)
 	}
-	if xfer.UUID != aptrustBagIdentifier {
-		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, xfer.UUID)
+	if xfer.BagId != aptrustBagIdentifier {
+		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, xfer.BagId)
 	}
 	if xfer.ReplicationId != replicationIdentifier {
 		t.Errorf("ReplicationId: expected '%s', got '%s'", replicationIdentifier, xfer.ReplicationId)
@@ -624,8 +624,8 @@ func TestReplicationTransferCreate(t *testing.T) {
 	if newXfer.ToNode != xfer.ToNode {
 		t.Errorf("ToNode is %s; expected %s", newXfer.ToNode, xfer.ToNode)
 	}
-	if newXfer.UUID != xfer.UUID {
-		t.Errorf("UUID is %s; expected %s", newXfer.UUID, xfer.UUID)
+	if newXfer.BagId != xfer.BagId {
+		t.Errorf("UUID is %s; expected %s", newXfer.BagId, xfer.BagId)
 	}
 	if newXfer.ReplicationId == "" {
 		t.Errorf("ReplicationId is missing")
@@ -777,9 +777,9 @@ func TestRestoreTransferGet(t *testing.T) {
 	if xfer.ToNode != "aptrust" {
 		t.Errorf("ToNode: expected 'aptrust', got '%s'", xfer.ToNode)
 	}
-	if xfer.UUID != "41e5376c-cc13-4c3e-6af3-297cc2e005aa" {
+	if xfer.BagId != "41e5376c-cc13-4c3e-6af3-297cc2e005aa" {
 		t.Errorf("UUID: expected '41e5376c-cc13-4c3e-6af3-297cc2e005aa', got '%s'",
-			xfer.UUID)
+			xfer.BagId)
 	}
 	if xfer.RestoreId != restoreIdentifier {
 		t.Errorf("RestoreId: expected '%s', got '%s'", restoreIdentifier, xfer.RestoreId)
@@ -908,8 +908,8 @@ func TestRestoreTransferCreate(t *testing.T) {
 	if newXfer.ToNode != xfer.ToNode {
 		t.Errorf("ToNode is %s; expected %s", newXfer.ToNode, xfer.ToNode)
 	}
-	if newXfer.UUID != xfer.UUID {
-		t.Errorf("UUID is %s; expected %s", newXfer.UUID, xfer.UUID)
+	if newXfer.BagId != xfer.BagId {
+		t.Errorf("UUID is %s; expected %s", newXfer.BagId, xfer.BagId)
 	}
 	if newXfer.RestoreId == "" {
 		t.Errorf("RestoreId is missing")

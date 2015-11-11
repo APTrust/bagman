@@ -8,7 +8,7 @@
         "AcceptInvalidSSLCerts": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "http://localhost:8000",
+            "LocalServiceURL": "http://localhost:3001",
             "LocalAPIRoot": "api-v1",
             "LocalAuthToken": ""
         },

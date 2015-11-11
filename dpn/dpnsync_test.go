@@ -204,6 +204,10 @@ func TestSyncReplicationRequests(t *testing.T) {
 				len(xfersSynched), node.Namespace, REPL_COUNT)
 		}
 		for _, xfer := range(xfersSynched) {
+			if xfer == nil {
+				t.Errorf("Xfer is nil")
+				return
+			}
 			localCopy, _ := dpnSync.LocalClient.ReplicationTransferGet(xfer.ReplicationId)
 			if localCopy == nil {
 				t.Errorf("Xfer %s didn't make into local registry", xfer.ReplicationId)
