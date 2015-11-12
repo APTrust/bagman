@@ -81,7 +81,6 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 func buildLocalResult(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResult) {
 	result := dpn.NewDPNResult("test.edu/test.edu.bag6")
 	result.DPNBag = makeBag() // defined in dpnrestclient_test.go
-	result.DPNBag.LocalId = "test.edu/test.edu.bag6"
 	result.StorageURL = fmt.Sprintf("http://fakeurl.kom/%s", result.DPNBag.UUID)
 
 	ps := &bagman.ProcessStatus{

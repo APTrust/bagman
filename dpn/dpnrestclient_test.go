@@ -8,6 +8,7 @@ import (
 	"github.com/satori/go.uuid"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -95,6 +96,7 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 		FromNode: fromNode,
 		ToNode: toNode,
 		BagId: bagUuid,
+		ReplicationId: uuid.NewV4().String(),
 		FixityAlgorithm: "sha256",
 		FixityNonce: &nonce,
 		FixityValue: &randChars,
@@ -113,6 +115,7 @@ func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransf
 		FromNode: fromNode,
 		ToNode: toNode,
 		BagId: bagUuid,
+		RestoreId: uuid.NewV4().String(),
 		Status: "requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
@@ -744,11 +747,19 @@ func TestReplicationTransferUpdate(t *testing.T) {
 		}
 		t.Errorf("FixityValue was %s; expected 1234567890", val)
 	}
-	if *updatedXfer.FixityAccept != false {
-		t.Errorf("FixityAccept is %s; expected false", *updatedXfer.FixityAccept)
+	if updatedXfer.FixityAccept == nil || *updatedXfer.FixityAccept != false {
+		value := "nil"
+		if updatedXfer.FixityAccept != nil {
+			value = strconv.FormatBool(*updatedXfer.FixityAccept)
+		}
+		t.Errorf("FixityAccept is %s; expected false", value)
 	}
-	if *updatedXfer.BagValid != true {
-		t.Errorf("BagValid is %s; expected true", *updatedXfer.BagValid)
+	if updatedXfer.FixityAccept == nil || *updatedXfer.BagValid != true {
+		value := "nil"
+		if updatedXfer.BagValid != nil {
+			value = strconv.FormatBool(*updatedXfer.BagValid)
+		}
+		t.Errorf("BagValid is %s; expected true", value)
 	}
 	// Note: Status will be cancelled instead of received because
 	// we sent a bogus checksum, and that causes the server to cancel
