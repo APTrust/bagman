@@ -11,7 +11,7 @@ import (
 var skipSyncMessagePrinted = false
 
 const (
-	BAG_COUNT     = 8
+	BAG_COUNT     = 6
 	REPL_COUNT    = 24
 	RESTORE_COUNT = 4
 )

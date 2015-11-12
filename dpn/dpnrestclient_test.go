@@ -222,11 +222,11 @@ func TestDPNBagGet(t *testing.T) {
 	if dpnBag.UUID != aptrustBagIdentifier {
 		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, dpnBag.UUID)
 	}
-	if dpnBag.LocalId != "test.edu/test.edu.bag6" {
-		t.Errorf("LocalId: expected 'test.edu/test.edu.bag6', got '%s'", dpnBag.LocalId)
+	if dpnBag.LocalId != "APTrust Bag 1" {
+		t.Errorf("LocalId: expected 'APTrust Bag 1', got '%s'", dpnBag.LocalId)
 	}
-	if dpnBag.Size != 3974144 {
-		t.Errorf("Size: expected 3974144, got %d", dpnBag.Size)
+	if dpnBag.Size != 71680 {
+		t.Errorf("Size: expected 71680, got %d", dpnBag.Size)
 	}
 	if dpnBag.FirstVersionUUID != aptrustBagIdentifier {
 		t.Errorf("FirstVersionUUID: expected '%s', got '%s'",
@@ -244,12 +244,12 @@ func TestDPNBagGet(t *testing.T) {
 	if dpnBag.AdminNode != "aptrust" {
 		t.Errorf("AdminNode: expected 'aptrust', got '%s'", dpnBag.AdminNode)
 	}
-	if dpnBag.CreatedAt.Format(time.RFC3339) != "2015-05-22T19:08:48Z" {
-		t.Errorf("CreatedAt: expected '2015-05-22T19:08:48Z', got '%s'",
+	if dpnBag.CreatedAt.Format(time.RFC3339) != "2015-09-15T17:56:03Z" {
+		t.Errorf("CreatedAt: expected '2015-09-15T17:56:03Z', got '%s'",
 			dpnBag.CreatedAt.Format(time.RFC3339))
 	}
-	if dpnBag.UpdatedAt.Format(time.RFC3339) != "2015-05-22T19:08:48Z" {
-		t.Errorf("UpdatedAt: expected '2015-05-22T19:08:48Z', got '%s'",
+	if dpnBag.UpdatedAt.Format(time.RFC3339) != "2015-09-15T17:56:03Z" {
+		t.Errorf("UpdatedAt: expected '2015-09-15T17:56:03Z', got '%s'",
 			dpnBag.UpdatedAt.Format(time.RFC3339))
 	}
 	//
@@ -478,8 +478,8 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.FromNode != "aptrust" {
 		t.Errorf("FromNode: expected 'aptrust', got '%s'", xfer.FromNode)
 	}
-	if xfer.ToNode != "tdr" {
-		t.Errorf("ToNode: expected 'tdr', got '%s'", xfer.ToNode)
+	if xfer.ToNode != "hathi" {
+		t.Errorf("ToNode: expected 'hathi', got '%s'", xfer.ToNode)
 	}
 	if xfer.BagId != aptrustBagIdentifier {
 		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, xfer.BagId)
@@ -496,31 +496,28 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.FixityAlgorithm != "sha256" {
 		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
 	}
-	if xfer.FixityAccept != nil {
-		t.Errorf("FixityAccept: expected nil, got %s", *xfer.FixityAccept)
+	if *xfer.FixityAccept != false {
+		t.Errorf("FixityAccept: expected false, got %s", *xfer.FixityAccept)
 	}
-	if xfer.BagValid != nil {
-		t.Errorf("BagValid: expected nil, got %s", *xfer.BagValid)
+	if *xfer.BagValid != true {
+		t.Errorf("BagValid: expected true, got %s", *xfer.BagValid)
 	}
-	if xfer.Status != "Requested" {
-		t.Errorf("Status: expected 'Requested', got '%s'", xfer.Status)
+	if xfer.Status != "requested" {
+		t.Errorf("Status: expected 'requested', got '%s'", xfer.Status)
 	}
 	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
-	if xfer.Link != "dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar" {
-		t.Errorf("Link: expected 'dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar', got '%s'", xfer.Link)
+	if strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
+		t.Errorf("Expected link to end with 'IntTestValidBag01.tar', got '%s'", xfer.Link)
 	}
-	if xfer.CreatedAt.Format(time.RFC3339) != "2015-05-22T19:46:45Z" {
-		t.Errorf("CreatedAt: expected '2015-05-22T19:46:45Z', got '%s'",
+	if xfer.CreatedAt.Format(time.RFC3339) != "2015-09-15T19:38:31Z" {
+		t.Errorf("CreatedAt: expected '2015-09-15T19:38:31Z', got '%s'",
 			xfer.CreatedAt.Format(time.RFC3339))
 	}
-	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-05-28T16:15:35Z" {
-		t.Errorf("UpdatedAt: expected '2015-05-28T16:15:35Z', got '%s'",
+	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-09-15T19:38:31Z" {
+		t.Errorf("UpdatedAt: expected '2015-09-15T19:38:31Z', got '%s'",
 			xfer.UpdatedAt.Format(time.RFC3339))
-	}
-	if xfer.Link != "dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar" {
-		t.Errorf("Link: expected 'dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar', got '%s'", xfer.Link)
 	}
 }
 
@@ -775,35 +772,35 @@ func TestRestoreTransferGet(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	if xfer.FromNode != "tdr" {
-		t.Errorf("FromNode: expected 'tdr', got '%s'", xfer.FromNode)
+	if xfer.FromNode != "hathi" {
+		t.Errorf("FromNode: expected 'hathi', got '%s'", xfer.FromNode)
 	}
 	if xfer.ToNode != "aptrust" {
 		t.Errorf("ToNode: expected 'aptrust', got '%s'", xfer.ToNode)
 	}
-	if xfer.BagId != "41e5376c-cc13-4c3e-6af3-297cc2e005aa" {
-		t.Errorf("UUID: expected '41e5376c-cc13-4c3e-6af3-297cc2e005aa', got '%s'",
+	if xfer.BagId != "30000000-0000-4000-a000-000000000001" {
+		t.Errorf("UUID: expected '30000000-0000-4000-a000-000000000001', got '%s'",
 			xfer.BagId)
 	}
 	if xfer.RestoreId != restoreIdentifier {
 		t.Errorf("RestoreId: expected '%s', got '%s'", restoreIdentifier, xfer.RestoreId)
 	}
-	if xfer.Status != "Requested" {
-		t.Errorf("Status: expected 'Requested', got '%s'", xfer.Status)
+	if xfer.Status != "requested" {
+		t.Errorf("Status: expected 'requested', got '%s'", xfer.Status)
 	}
 	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
-	if xfer.CreatedAt.Format(time.RFC3339) != "2015-06-01T19:07:53Z" {
-		t.Errorf("CreatedAt: expected '2015-06-01T19:07:53Z', got '%s'",
+	if xfer.CreatedAt.Format(time.RFC3339) != "2015-09-15T19:38:31Z" {
+		t.Errorf("CreatedAt: expected '2015-09-15T19:38:31Z', got '%s'",
 			xfer.CreatedAt.Format(time.RFC3339))
 	}
-	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-06-01T19:07:53Z" {
-		t.Errorf("UpdatedAt: expected '2015-06-01T19:07:53Z', got '%s'",
+	if xfer.UpdatedAt.Format(time.RFC3339) != "2015-09-15T19:38:31Z" {
+		t.Errorf("UpdatedAt: expected '2015-09-15T19:38:31Z', got '%s'",
 			xfer.UpdatedAt.Format(time.RFC3339))
 	}
-	if xfer.Link != "rsync://mnt/staging/41e5376c-cc13-4c3e-6af3-297cc2e005aa.tar" {
-		t.Errorf("Link: expected 'rsync://mnt/staging/41e5376c-cc13-4c3e-6af3-297cc2e005aa.tar', got '%s'", xfer.Link)
+	if strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
+		t.Errorf("Expected link to end with 'IntTestValidBag01.tar', got '%s'", xfer.Link)
 	}
 }
 
