@@ -510,11 +510,21 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 	}
 
 	result.TransferRequest.Status = "Stored"
+
+	// Handle nil values for logging
+	bagValid := "nil"
+	if result.TransferRequest.BagValid != nil {
+		bagValid = fmt.Sprintf("%t", *result.TransferRequest.BagValid)
+	}
+	fixityValue := "nil"
+	if result.TransferRequest.FixityValue != nil {
+		fixityValue = *result.TransferRequest.FixityValue
+	}
+
 	recorder.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
 		"Setting status to 'Stored', BagValid to %t, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.BagId,
-		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
-		*result.TransferRequest.FixityValue)
+		result.TransferRequest.FromNode, bagValid, fixityValue)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error updating transfer request on remote node: %v", err)

@@ -27,9 +27,9 @@ load that test data into your DPN instance.
 
 var configFile = "dpn/dpn_config.json"
 var skipRestMessagePrinted = false
-var aptrustBagIdentifier = "472218b3-95ce-4b8e-6c21-6e514cfbe43f"
-var replicationIdentifier = "aptrust-1"
-var restoreIdentifier = "aptrust-1"
+var aptrustBagIdentifier = "10000000-0000-4000-a000-000000000001"
+var replicationIdentifier = "10000000-0000-4111-a000-000000000001"
+var restoreIdentifier = "11000000-0000-4111-a000-000000000001"
 
 func runRestTests(t *testing.T) bool {
 	config := loadConfig(t, configFile)
@@ -272,6 +272,10 @@ func TestDPNBagGet(t *testing.T) {
 	// }
 	if len(dpnBag.ReplicatingNodes) != 1 {
 		t.Errorf("ReplicatingNodes: expected 1 item, got %d", len(dpnBag.ReplicatingNodes))
+	}
+	if len(dpnBag.ReplicatingNodes) == 0 {
+		t.Errorf("Got zero replicating nodes. Abandoning test.")
+		return
 	}
 	if dpnBag.ReplicatingNodes[0] != "tdr" {
 		t.Errorf("ReplicatingNodes[0]: expected 'tdr', got '%s'",
