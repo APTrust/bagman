@@ -186,19 +186,19 @@ type DPNReplicationTransfer struct {
 
 	// Status is the status of the request, which can be any of:
 	//
-	// "Requested"  - The FromNode has requested this transfer.
+	// "requested"  - The FromNode has requested this transfer.
 	//                This means the transfer is new, and no
 	//                action has been taken yet.
-	// "Rejected"   - Set by the ToNode when it will not or cannot
+	// "rejected"   - Set by the ToNode when it will not or cannot
 	//                accept this transfer. (Usually due to disk space.)
-	// "Received"   - Set by the ToNode to indicate it has received the
+	// "received"   - Set by the ToNode to indicate it has received the
 	//                the bag.
-	// "Confirmed"  - Set by the FromNode after the bag has been confirmed
+	// "confirmed"  - Set by the FromNode after the bag has been confirmed
 	//                valid, the fixity value has been approved, and the bag
 	//                has been stored by the ToNode.
-	// "Stored"     - Set by the ToNode after the bag has been copied to
+	// "stored"     - Set by the ToNode after the bag has been copied to
 	//                long-term storage.
-	// "Cancelled"  - Can be set by either node for any reason. No further
+	// "cancelled"  - Can be set by either node for any reason. No further
 	//                processing should occur on a cancelled request.
 	Status          string       `json:"status"`
 
@@ -235,16 +235,16 @@ type DPNRestoreTransfer struct {
 	// Status is the status of the restoration operation. It can
 	// have any of the following values:
 	//
-	// "Requested" - Default status used when record first created.
-	// "Accepted"  - Indicates the FromNode has accepted the request to
+	// "requested" - Default status used when record first created.
+	// "accepted"  - Indicates the FromNode has accepted the request to
 	//               restore the bag.
-	// "Rejected"  - Set by the FromNode if it cannot or will not restore
+	// "rejected"  - Set by the FromNode if it cannot or will not restore
 	//               the bag.
-	// "Prepared"  - Set by the FromNode when the content has been restored
+	// "prepared"  - Set by the FromNode when the content has been restored
 	//               locally and staged for transfer back to the to_node.
-	// "Finished"  - Set by the ToNode after it has retrieved the restored
+	// "finished"  - Set by the ToNode after it has retrieved the restored
 	//               bag from the FromNode.
-	// "Cancelled" - Set by either node to indicate the restore operation
+	// "cancelled" - Set by either node to indicate the restore operation
 	//               was cancelled.
 	Status          string       `json:"status"`
 

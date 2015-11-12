@@ -75,13 +75,14 @@ func makeBag() (*dpn.DPNBag) {
 		Fixities: &dpn.DPNFixity{
 			Sha256: randChars,
 		},
-		LocalId: "my_bag",
+		LocalId: fmt.Sprintf("GO-TEST-BAG-%s", youyoueyedee.String()),
 		Size: 12345678,
 		FirstVersionUUID: youyoueyedee.String(),
 		Version: 1,
 		BagType: "D",
 		IngestNode: "aptrust",
 		AdminNode: "aptrust",
+		Member: "9a000000-0000-4000-a000-000000000002", // Faber College
 	}
 }
 
@@ -99,7 +100,7 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 		FixityValue: &randChars,
 		FixityAccept: nil,
 		BagValid: nil,
-		Status: "Requested",
+		Status: "requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
 	}
@@ -112,7 +113,7 @@ func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransf
 		FromNode: fromNode,
 		ToNode: toNode,
 		BagId: bagUuid,
-		Status: "Requested",
+		Status: "requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
 	}
@@ -401,11 +402,11 @@ func TestDPNBagCreate(t *testing.T) {
 		t.Errorf("UpdatedAt was not set")
 	}
 
-	// Make sure we can create a bag that has rights and interpretive
-	// uuids specified.
+	// We were using Rights and Interpretive bags, but these are hold
+	// as of fall, 2015.
 	anotherBag := makeBag()
-	anotherBag.Rights = append(anotherBag.Rights, bag.UUID)
-	anotherBag.Interpretive = append(anotherBag.Interpretive, bag.UUID)
+	//anotherBag.Rights = append(anotherBag.Rights, bag.UUID)
+	//anotherBag.Interpretive = append(anotherBag.Interpretive, bag.UUID)
 
 	dpnBag, err = client.DPNBagCreate(anotherBag)
 	if err != nil {
@@ -453,14 +454,12 @@ func TestDPNBagUpdate(t *testing.T) {
 	}
 	if updatedBag.Rights == nil || len(updatedBag.Rights) != 1 {
 		t.Errorf("Updated bag should have one Rights bag")
-	}
-	if updatedBag.Rights[0] != anotherBag.UUID {
+	} else if updatedBag.Rights[0] != anotherBag.UUID {
 		t.Errorf("Rights bag was %s; expected %s", updatedBag.Rights[0], anotherBag.UUID)
 	}
 	if updatedBag.Interpretive == nil || len(updatedBag.Interpretive) != 1 {
 		t.Errorf("Updated bag should have one Interpretive bag")
-	}
-	if updatedBag.Interpretive[0] != anotherBag.UUID {
+	} else if updatedBag.Interpretive[0] != anotherBag.UUID {
 		t.Errorf("Interpretive bag was %s; expected %s", updatedBag.Interpretive[0], anotherBag.UUID)
 	}
 }
@@ -508,7 +507,7 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
-	if strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
+	if !strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
 		t.Errorf("Expected link to end with 'IntTestValidBag01.tar', got '%s'", xfer.Link)
 	}
 	if xfer.CreatedAt.Format(time.RFC3339) != "2015-09-15T19:38:31Z" {
@@ -650,8 +649,8 @@ func TestReplicationTransferCreate(t *testing.T) {
 	if newXfer.BagValid != nil {
 		t.Errorf("BagValid is %s; expected nil", *newXfer.BagValid)
 	}
-	if newXfer.Status != "Requested" {
-		t.Errorf("Status is %s; expected Requested", newXfer.Status)
+	if newXfer.Status != "requested" {
+		t.Errorf("Status is %s; expected requested", newXfer.Status)
 	}
 	if newXfer.Protocol != xfer.Protocol {
 		t.Errorf("Protocol is %s; expected %s", newXfer.Protocol, xfer.Protocol)
@@ -799,7 +798,7 @@ func TestRestoreTransferGet(t *testing.T) {
 		t.Errorf("UpdatedAt: expected '2015-09-15T19:38:31Z', got '%s'",
 			xfer.UpdatedAt.Format(time.RFC3339))
 	}
-	if strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
+	if !strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
 		t.Errorf("Expected link to end with 'IntTestValidBag01.tar', got '%s'", xfer.Link)
 	}
 }
@@ -915,8 +914,8 @@ func TestRestoreTransferCreate(t *testing.T) {
 	if newXfer.RestoreId == "" {
 		t.Errorf("RestoreId is missing")
 	}
-	if newXfer.Status != "Requested" {
-		t.Errorf("Status is %s; expected Requested", newXfer.Status)
+	if newXfer.Status != "requested" {
+		t.Errorf("Status is %s; expected requested", newXfer.Status)
 	}
 	if newXfer.Protocol != xfer.Protocol {
 		t.Errorf("Protocol is %s; expected %s", newXfer.Protocol, xfer.Protocol)

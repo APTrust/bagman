@@ -118,7 +118,7 @@ func (copier *Copier) doLookup() {
 		// not be processed, then don't process it...
 		xfer, _ := remoteClient.ReplicationTransferGet(
 			result.TransferRequest.ReplicationId)
-		if xfer != nil && xfer.Status != "Requested" {
+		if xfer != nil && xfer.Status != "requested" {
 			message := fmt.Sprintf(
 				"Cancelling copy of ReplicationId %s (bag %s) because " +
 					"replication status on %s is %s",

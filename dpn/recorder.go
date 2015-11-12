@@ -403,7 +403,7 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 		FixityAlgorithm: "sha256",
 		FixityNonce: &emptyString,
 		FixityValue: &emptyString,
-		Status: "Requested",
+		Status: "requested",
 		Protocol: "rsync",
 		Link: link,
 	}
