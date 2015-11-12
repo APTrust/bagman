@@ -159,6 +159,10 @@ func TestSyncBags(t *testing.T) {
 				len(bagsSynched), node.Namespace, BAG_COUNT)
 		}
 		for _, remoteBag := range(bagsSynched) {
+			if remoteBag == nil {
+				t.Errorf("Remote bag is nil")
+				return
+			}
 			localBag, _ := dpnSync.LocalClient.DPNBagGet(remoteBag.UUID)
 			if localBag == nil {
 				t.Errorf("Bag %s didn't make into local registry", remoteBag.UUID)
