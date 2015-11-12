@@ -150,6 +150,7 @@ func (copier *Copier) doCopy() {
 			os.MkdirAll(copier.ProcUtil.Config.DPNStagingDirectory, 0755)
 		}
 
+		copier.ProcUtil.MessageLog.Info("Rsync link is %s", result.TransferRequest.Link)
 		rsyncCommand := GetRsyncCommand(result.TransferRequest.Link,
 			localPath, copier.DPNConfig.UseSSHWithRsync)
 
@@ -168,6 +169,8 @@ func (copier *Copier) doCopy() {
 			result.LocalPath = localPath
 			result.CopyResult.LocalPath = localPath
 			result.CopyResult.BagWasCopied = true
+			// TODO: This is not necessary. We just need to calculate the checksum
+			// of the SHA-256 manifest
 			fileDigest, err := bagman.CalculateDigests(localPath)
 			if result.NsqMessage != nil {
 				result.NsqMessage.Touch()

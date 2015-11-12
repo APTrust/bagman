@@ -80,7 +80,8 @@ func canRunCopyTests(t *testing.T) (bool) {
 // entry in ~/.ssh/config with settings to connect to
 // the dpn-test server.
 func getTestLink(tarredBagName string) (string) {
-	return fmt.Sprintf("dpn-test:/home/earthdiver/staging/%s", tarredBagName)
+	procUtil := bagman.NewProcessUtil(&testConfig)
+	return fmt.Sprintf("dpn-test:%s/%s", procUtil.Config.DPNStagingDirectory, tarredBagName)
 }
 
 // This builds a DPNResult suitable for feeding to the Copier.RunTest()
@@ -117,11 +118,6 @@ func buildTestResult(bagIdentifier string, t *testing.T) (*dpn.DPNResult) {
 		return nil
 	}
 	result.TransferRequest = xferRequests.Results[0]
-
-	// Change the rsync link for the bag to point toward
-	// our dpn test server.
-	tarredBagName := fmt.Sprintf("%s.tar", bagIdentifier)
-	result.TransferRequest.Link = getTestLink(tarredBagName)
 
 	return result
 }
@@ -229,14 +225,19 @@ func TestCopier(t *testing.T) {
 				"but that file does not exist", uuid,
 				dpnResult.CopyResult.LocalPath)
 		}
-		if dpnResult.DPNBag.Fixities.Sha256 != dpnResult.BagSha256Digest {
-			t.Errorf("Fixity did not match for bag %s. Expected %s, " +
-				"got %s", uuid, dpnResult.DPNBag.Fixities.Sha256,
-				dpnResult.BagSha256Digest)
-		}
-		if len(dpnResult.BagMd5Digest) == 0 {
-			t.Errorf("Bg MD5 digest is missing.")
-		}
+		// ----------------------------------------------------------------------
+		// TODO: Get rid of the bag-level checksums.
+		// We should check only the SHA-256 of the sha256 manifest,
+		// and that's done in the validation step.
+		// ----------------------------------------------------------------------
+		// if dpnResult.DPNBag.Fixities.Sha256 != dpnResult.BagSha256Digest {
+		// 	t.Errorf("Fixity did not match for bag %s. Expected %s, " +
+		// 		"got %s", uuid, dpnResult.DPNBag.Fixities.Sha256,
+		// 		dpnResult.BagSha256Digest)
+		// }
+		// if len(dpnResult.BagMd5Digest) == 0 {
+		// 	t.Errorf("Bg MD5 digest is missing.")
+		// }
 		if dpnResult.BagSize == 0 {
 			t.Errorf("Bag size is missing")
 		}
