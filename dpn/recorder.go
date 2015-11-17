@@ -395,6 +395,7 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 	link := fmt.Sprintf("dpn.%s@devops.aptrust.org:outbound/%s.tar",
 		toNode, result.DPNBag.UUID)
 	emptyString := ""
+	now := time.Now().UTC().Truncate(time.Second)
 	return &DPNReplicationTransfer{
 		ReplicationId: uuid.NewV4().String(),
 		FromNode: recorder.DPNConfig.LocalNode,
@@ -406,6 +407,8 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 		Status: "requested",
 		Protocol: "rsync",
 		Link: link,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
