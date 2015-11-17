@@ -362,6 +362,18 @@ func (client *DPNRestClient) DPNNodeUpdate(node *DPNNode) (*DPNNode, error) {
 	return &returnedNode, nil
 }
 
+// Returns the last time we pulled data from the specified node.
+func (client *DPNRestClient) DPNNodeGetLastPullDate(identifier string) (time.Time, error) {
+	params := url.Values{}
+	params.Set("ordering", "updated_at")
+	params.Set("page", "1")
+	params.Set("page_size", "1")
+	bags, err := client.DPNBagListGet(&params)
+	if err != nil || bags.Count == 0 {
+		return time.Time{}, err
+	}
+	return bags.Results[0].UpdatedAt, err
+}
 
 func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 	relativeUrl := fmt.Sprintf("/%s/bag/%s/", client.APIVersion, identifier)

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 /*
@@ -191,12 +192,18 @@ func TestDPNNodeUpdate(t *testing.T) {
 		t.Error(err)
 		return
 	}
-	origPullDate := dpnNode.LastPullDate
-	newPullDate := time.Date(2015, time.June, 1, 12, 0, 0, 0, time.UTC)
-	if !origPullDate.IsZero() {
-		newPullDate = dpnNode.LastPullDate.Add(-24 * time.Hour)
+	origName := dpnNode.Name
+	if origName == "" {
+		origName = "No Name"
 	}
-	dpnNode.LastPullDate = newPullDate
+	// Reverse the name.
+    newName := make([]rune, utf8.RuneCountInString(origName));
+    i := len(origName);
+    for _, c := range origName {
+		i--;
+		newName[i] = c;
+    }
+	dpnNode.Name = string(newName)
 	savedNode, err := client.DPNNodeUpdate(dpnNode)
 	if err != nil {
 		t.Error(err)
@@ -206,10 +213,25 @@ func TestDPNNodeUpdate(t *testing.T) {
 		t.Errorf("Call to DPNNodeUpdate returned nil")
 		return
 	}
-	if savedNode.LastPullDate != newPullDate {
-		t.Errorf("Expected last pull date %s, got %s",
-			newPullDate.Format(time.RFC3339Nano),
-			savedNode.LastPullDate.Format(time.RFC3339Nano))
+	if savedNode.Name != string(newName) {
+		t.Errorf("Expected name %s, got %s", string(newName), savedNode.Name)
+	}
+}
+
+func TestDPNNodeGetLastPullDate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	nodes := []string{"tdr", "sdr", "hathi", "chron"}
+	for _, node := range nodes {
+		lastPull, err := client.DPNNodeGetLastPullDate(node)
+		if err != nil {
+			t.Errorf("Error getting last pull date for %s: %v", node, err)
+		}
+		if lastPull.IsZero() {
+			t.Errorf("Error getting last pull date for %s is empty", node)
+		}
 	}
 }
 
