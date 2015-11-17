@@ -257,7 +257,8 @@ func TestDPNBagGet(t *testing.T) {
 			dpnBag.UpdatedAt.Format(time.RFC3339))
 	}
 	//
-	// TODO - Add Rights/Interpretive to this test object and then uncomment the
+	// TODO - We're not using Rights/Interpretive bags at launch. If that changes,
+    //        Add Rights/Interpretive to this test object and then uncomment the
 	//        following tests.
 	//
 	// if len(dpnBag.Rights) != 1 {
@@ -274,22 +275,26 @@ func TestDPNBagGet(t *testing.T) {
 	// 	t.Errorf("Interpretive[0]: expected '821decbb-4063-48b1-adef-1d3906bf7b87', got '%s'",
 	// 		dpnBag.Interpretive[0])
 	// }
-	if len(dpnBag.ReplicatingNodes) != 1 {
-		t.Errorf("ReplicatingNodes: expected 1 item, got %d", len(dpnBag.ReplicatingNodes))
+	if len(dpnBag.ReplicatingNodes) != 2 {
+		t.Errorf("ReplicatingNodes: expected 2 items, got %d", len(dpnBag.ReplicatingNodes))
 	}
 	if len(dpnBag.ReplicatingNodes) == 0 {
 		t.Errorf("Got zero replicating nodes. Abandoning test.")
 		return
 	}
-	if dpnBag.ReplicatingNodes[0] != "tdr" {
-		t.Errorf("ReplicatingNodes[0]: expected 'tdr', got '%s'",
+	if dpnBag.ReplicatingNodes[0] != "chron" {
+		t.Errorf("ReplicatingNodes[0]: expected 'chron', got '%s'",
 			dpnBag.ReplicatingNodes[0])
+	}
+	if dpnBag.ReplicatingNodes[1] != "hathi" {
+		t.Errorf("ReplicatingNodes[1]: expected 'hathi', got '%s'",
+			dpnBag.ReplicatingNodes[1])
 	}
 	if dpnBag.Fixities == nil || dpnBag.Fixities.Sha256 == "" {
 		t.Errorf("Fixities: should not be empty")
 	}
-	if dpnBag.Fixities.Sha256 != "5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3" {
-		t.Errorf("Fixities.Sha256: expected '5329a5d06216ca9effc42a6f5b7c492952334d8b188ebbdefbbd0b970ab981a3', got '%s'",
+	if dpnBag.Fixities.Sha256 != "c76dba32693e2c3359921043c5ddfbb3087047cd743856da82ad0291d8546abb" {
+		t.Errorf("Fixities.Sha256: expected 'c76dba32693e2c3359921043c5ddfbb3087047cd743856da82ad0291d8546abb', got '%s'",
 			dpnBag.Fixities.Sha256)
 	}
 }
