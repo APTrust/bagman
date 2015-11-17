@@ -69,6 +69,7 @@ func getClient(t *testing.T) (*dpn.DPNRestClient) {
 func makeBag() (*dpn.DPNBag) {
 	youyoueyedee := uuid.NewV4()
 	randChars := youyoueyedee.String()[0:8]
+	now := time.Now()
 	return &dpn.DPNBag {
 		UUID: youyoueyedee.String(),
 		Interpretive: []string{},
@@ -85,12 +86,15 @@ func makeBag() (*dpn.DPNBag) {
 		IngestNode: "aptrust",
 		AdminNode: "aptrust",
 		Member: "9a000000-0000-4000-a000-000000000002", // Faber College
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
 func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTransfer) {
 	id := uuid.NewV4()
 	idString := id.String()
+	now := time.Now()
 	randChars := idString[0:8]
 	nonce := "McNunce"
 	return &dpn.DPNReplicationTransfer{
@@ -106,12 +110,15 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 		Status: "requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
 func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransfer) {
 	id := uuid.NewV4()
 	idString := id.String()
+	now := time.Now()
 	return &dpn.DPNRestoreTransfer{
 		FromNode: fromNode,
 		ToNode: toNode,
@@ -120,6 +127,8 @@ func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransf
 		Status: "requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
@@ -349,7 +358,7 @@ func TestDPNBagListGet(t *testing.T) {
 	}
 
 	// Test filters
-	// Get all bags updated after December 31, 1999
+	// Get all bags updated after December 31, 1969
 	aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
 	params := url.Values{}
 	params.Set("after", aLongTimeAgo.Format(time.RFC3339Nano))
@@ -459,8 +468,12 @@ func TestDPNBagUpdate(t *testing.T) {
 		return
 	}
 
-	newTimestamp := time.Now().UTC().Truncate(time.Second)
+	// We have to set UpdatedAt ahead, or the server won't update
+	// record we're sending.
+	newTimestamp := time.Now().UTC().Add(1 * time.Second).Truncate(time.Second)
 	newLocalId := fmt.Sprintf("GO-TEST-BAG-%s", uuid.NewV4().String())
+
+	fmt.Println("Old = %s, New = %s", dpnBag.UpdatedAt, newTimestamp)
 
 	dpnBag.UpdatedAt = newTimestamp
 	dpnBag.LocalId = newLocalId
@@ -511,13 +524,13 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.FixityAlgorithm != "sha256" {
 		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
 	}
-	if *xfer.FixityAccept != false {
-		t.Errorf("FixityAccept: expected false, got %s", *xfer.FixityAccept)
+	if *xfer.FixityAccept != true {
+		t.Errorf("FixityAccept: expected true, got %t", *xfer.FixityAccept)
 	}
 	if *xfer.BagValid != true {
 		t.Errorf("BagValid: expected true, got %s", *xfer.BagValid)
 	}
-	if xfer.Status != "requested" {
+	if xfer.Status != "stored" {
 		t.Errorf("Status: expected 'requested', got '%s'", xfer.Status)
 	}
 	if xfer.Protocol != "rsync" {
