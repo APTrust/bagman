@@ -69,7 +69,7 @@ func getClient(t *testing.T) (*dpn.DPNRestClient) {
 func makeBag() (*dpn.DPNBag) {
 	youyoueyedee := uuid.NewV4()
 	randChars := youyoueyedee.String()[0:8]
-	now := time.Now()
+	tenSecondsAgo := time.Now().Add(-10 * time.Second)
 	return &dpn.DPNBag {
 		UUID: youyoueyedee.String(),
 		Interpretive: []string{},
@@ -86,15 +86,15 @@ func makeBag() (*dpn.DPNBag) {
 		IngestNode: "aptrust",
 		AdminNode: "aptrust",
 		Member: "9a000000-0000-4000-a000-000000000002", // Faber College
-		CreatedAt: now,
-		UpdatedAt: now,
+		CreatedAt: tenSecondsAgo,
+		UpdatedAt: tenSecondsAgo,
 	}
 }
 
 func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTransfer) {
 	id := uuid.NewV4()
 	idString := id.String()
-	now := time.Now()
+	tenSecondsAgo := time.Now().Add(-10 * time.Second)
 	randChars := idString[0:8]
 	nonce := "McNunce"
 	return &dpn.DPNReplicationTransfer{
@@ -110,15 +110,15 @@ func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 		Status: "requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
-		CreatedAt: now,
-		UpdatedAt: now,
+		CreatedAt: tenSecondsAgo,
+		UpdatedAt: tenSecondsAgo,
 	}
 }
 
 func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransfer) {
 	id := uuid.NewV4()
 	idString := id.String()
-	now := time.Now()
+	tenSecondsAgo := time.Now().Add(-10 * time.Second)
 	return &dpn.DPNRestoreTransfer{
 		FromNode: fromNode,
 		ToNode: toNode,
@@ -127,8 +127,8 @@ func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransf
 		Status: "requested",
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
-		CreatedAt: now,
-		UpdatedAt: now,
+		CreatedAt: tenSecondsAgo,
+		UpdatedAt: tenSecondsAgo,
 	}
 }
 
@@ -473,8 +473,6 @@ func TestDPNBagUpdate(t *testing.T) {
 	newTimestamp := time.Now().UTC().Add(1 * time.Second).Truncate(time.Second)
 	newLocalId := fmt.Sprintf("GO-TEST-BAG-%s", uuid.NewV4().String())
 
-	fmt.Println("Old = %s, New = %s", dpnBag.UpdatedAt, newTimestamp)
-
 	dpnBag.UpdatedAt = newTimestamp
 	dpnBag.LocalId = newLocalId
 
@@ -667,13 +665,12 @@ func TestReplicationTransferCreate(t *testing.T) {
 		t.Errorf("FixityNonce is %s; expected %s",
 			*newXfer.FixityNonce, *xfer.FixityNonce)
 	}
-	if newXfer.FixityValue != nil {
-		t.Errorf("FixityValue was set to %s but it shouldn't have been. " +
-			"(This is a problem with the server implementation, not our code!",
-			newXfer.FixityValue)
+	if *newXfer.FixityValue != *xfer.FixityValue {
+		t.Errorf("FixityValue: expected %s but got %s",
+			*xfer.FixityValue, *newXfer.FixityValue)
 	}
 	if newXfer.FixityAccept != nil {
-		t.Errorf("FixityAccept is %s; expected nil", *newXfer.FixityAccept)
+		t.Errorf("FixityAccept is %t; expected nil", *newXfer.FixityAccept)
 	}
 	if newXfer.BagValid != nil {
 		t.Errorf("BagValid is %s; expected nil", *newXfer.BagValid)
@@ -711,7 +708,11 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	}
 
 	// Make sure we can create a transfer request.
-	xfer := makeXferRequest("aptrust", "chron", dpnBag.UUID)
+	xfer := makeXferRequest("chron", "aptrust", dpnBag.UUID)
+
+	// Null out the fixity value, because once it's set, we can't change
+	// it. And below, we want to set a bad fixity value to see what happens.
+	xfer.FixityValue = nil
 	newXfer, err := client.ReplicationTransferCreate(xfer)
 	if err != nil {
 		t.Errorf("ReplicationTransferCreate returned error %v", err)
@@ -722,8 +723,13 @@ func TestReplicationTransferUpdate(t *testing.T) {
 		return
 	}
 
-	// Reject this one...
-	newXfer.Status = "Rejected"
+	// Mark as received, with a bad fixity.
+	bagValid := true
+	newFixityValue := "1234567890"
+	newXfer.Status = "received"
+	newXfer.UpdatedAt = newXfer.UpdatedAt.Add(1 * time.Second)
+	newXfer.BagValid = &bagValid
+	newXfer.FixityValue = &newFixityValue
 
 	updatedXfer, err := client.ReplicationTransferUpdate(newXfer)
 	if err != nil {
@@ -736,24 +742,18 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	}
 
 	// ... make sure status is correct
-	if updatedXfer.Status != "Rejected" {
-		t.Errorf("Status is %s; expected Rejected", updatedXfer.Status)
+	if updatedXfer.Status != "received" {
+		t.Errorf("Status is %s; expected received", updatedXfer.Status)
 	}
 
 
-	// Update the allowed fields. We're going to send a bad
-	// fixity value, because we don't know the good one, so
-	// the server will cancel this transfer.
-	bagValid := true
-	newFixityValue := "1234567890"
-	newXfer.Status = "Received"
-	newXfer.BagValid = &bagValid
-	newXfer.FixityValue = &newFixityValue
-
-	// Now that there are no milliseconds on the DPN timestamps,
-	// we have to sleep for more than 1 second to test whether
-	// UpdatedAt timestamps change after update.
-	time.Sleep(1500 * time.Millisecond)
+	// Mark as confirmed and send a bad fixity value.
+	// The server should cancel this transfer.
+	// At this point, we're testing the server's behavior,
+	// not the behavior of our own code. This kind of test
+	// belongs in the Rails spec.
+	newXfer.Status = "confirmed"
+	newXfer.UpdatedAt = newXfer.UpdatedAt.Add(1 * time.Second)
 
 	updatedXfer, err = client.ReplicationTransferUpdate(newXfer)
 	if err != nil {
@@ -790,8 +790,8 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	// Note: Status will be cancelled instead of received because
 	// we sent a bogus checksum, and that causes the server to cancel
 	// the transfer.
-	if updatedXfer.Status != "Cancelled" {
-		t.Errorf("Status is %s; expected Cancelled", updatedXfer.Status)
+	if updatedXfer.Status != "cancelled" {
+		t.Errorf("Status is %s; expected cancelled", updatedXfer.Status)
 	}
 	if updatedXfer.UpdatedAt.After(newXfer.UpdatedAt) == false {
 		t.Errorf("UpdatedAt was not updated")
