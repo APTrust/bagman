@@ -94,38 +94,6 @@ func TestGetAllNodes(t *testing.T) {
 	}
 }
 
-func TestUpdateLastPullDate(t *testing.T) {
-	if runSyncTests(t) == false {
-		return  // local test cluster isn't running
-	}
-	dpnSync := newDPNSync(t)
-	if dpnSync == nil {
-		return
-	}
-	nodes, err := dpnSync.GetAllNodes()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(nodes) != 5 {
-		t.Errorf("Expected 5 nodes, got %d", len(nodes))
-		return
-	}
-	someNode := nodes[2]
-	origLastPullDate := someNode.LastPullDate
-	newLastPullDate := origLastPullDate.Add(-12 * time.Hour)
-
-	updatedNode, err := dpnSync.UpdateLastPullDate(someNode, newLastPullDate)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if updatedNode.LastPullDate != newLastPullDate {
-		t.Errorf("Expected LastPullDate %s, got %s",
-			newLastPullDate, updatedNode.LastPullDate)
-	}
-}
-
 func TestSyncBags(t *testing.T) {
 	if runSyncTests(t) == false {
 		return  // local test cluster isn't running
