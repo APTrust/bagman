@@ -40,9 +40,6 @@ type SyncResult struct {
 	// during the synching of Restore Transfers. The first error
 	// will stop the synching of all subsquent restore requests.
 	RestoreSyncError      error
-	// TimestampError contains the error (if any) that occurred when
-	// trying to update the LastPullDate timestamp for the node.
-	TimestampError        error
 }
 
 func (syncResult *SyncResult) HasSyncErrors() (bool) {
@@ -98,18 +95,11 @@ func (dpnSync *DPNSync) GetAllNodes()([]*DPNNode, error) {
 	return result.Results, nil
 }
 
-func (dpnSync *DPNSync) UpdateLastPullDate(node *DPNNode, lastPullDate time.Time) (*DPNNode, error) {
-	dpnSync.Logger.Debug("Setting last pull date on %s to %s", node.Namespace, lastPullDate)
-	node.LastPullDate = lastPullDate  // Don't set this until you're ready to send!
-	return dpnSync.LocalClient.DPNNodeUpdate(node)
-}
-
 // Sync all bags, replication requests and restore requests from
 // the specified remote node. Note that this is a pull-only sync.
 // We are not writing any data to other nodes, just reading what
 // they have and updating our own registry with their info.
 func (dpnSync *DPNSync) SyncEverythingFromNode(remoteNode *DPNNode) (*SyncResult) {
-	nextTimeStamp := time.Now().UTC()
 	syncResult := &SyncResult {
 		RemoteNode: remoteNode,
 	}
@@ -128,16 +118,6 @@ func (dpnSync *DPNSync) SyncEverythingFromNode(remoteNode *DPNNode) (*SyncResult
 	// restoreXfers, err := dpnSync.SyncRestoreRequests(remoteNode)
 	// syncResult.RestoreTransfers = restoreXfers
 	// syncResult.RestoreSyncError = err
-
-
-	if !syncResult.HasSyncErrors() {
-		updatedNode, err := dpnSync.UpdateLastPullDate(remoteNode, nextTimeStamp)
-		syncResult.RemoteNode = updatedNode
-		syncResult.TimestampError = err
-	} else {
-		syncResult.TimestampError = fmt.Errorf(
-			"LastPullDate was not updated because of errors during the synchronization process.")
-	}
 
 	return syncResult
 }
