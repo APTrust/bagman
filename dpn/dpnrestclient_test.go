@@ -436,39 +436,25 @@ func TestDPNBagUpdate(t *testing.T) {
 		t.Errorf("DPNBagCreate returned error %v", err)
 		return
 	}
-	anotherBag := makeBag()
-	dpnBag, err = client.DPNBagCreate(anotherBag)
-	if err != nil {
-		t.Errorf("DPNBagCreate returned error %v", err)
-		return
-	}
 
-	// Add replicating nodes, rights and interpretive bags.
-	// The service we're testing against should have records
-	// for the chron and trd nodes, since they are founding
-	// member nodes.
-	dpnBag.ReplicatingNodes = append(dpnBag.ReplicatingNodes, "chron")
-	dpnBag.ReplicatingNodes = append(dpnBag.ReplicatingNodes, "tdr")
-	dpnBag.Rights = append(dpnBag.Rights, anotherBag.UUID)
-	dpnBag.Interpretive = append(dpnBag.Interpretive, anotherBag.UUID)
+	newTimestamp := time.Now().UTC().Truncate(time.Second)
+	newLocalId := fmt.Sprintf("GO-TEST-BAG-%s", uuid.NewV4().String())
+
+	dpnBag.UpdatedAt = newTimestamp
+	dpnBag.LocalId = newLocalId
 
 	updatedBag, err := client.DPNBagUpdate(dpnBag)
 	if err != nil {
 		t.Errorf("DPNBagUpdate returned error %v", err)
 		return
 	}
-	if updatedBag.ReplicatingNodes == nil || len(updatedBag.ReplicatingNodes) != 2 {
-		t.Errorf("Updated bag should have two replicating nodes")
+	if updatedBag.UpdatedAt != newTimestamp {
+		t.Errorf("Expected UpdatedAt = '%s', got '%s'",
+			newTimestamp, updatedBag.UpdatedAt)
 	}
-	if updatedBag.Rights == nil || len(updatedBag.Rights) != 1 {
-		t.Errorf("Updated bag should have one Rights bag")
-	} else if updatedBag.Rights[0] != anotherBag.UUID {
-		t.Errorf("Rights bag was %s; expected %s", updatedBag.Rights[0], anotherBag.UUID)
-	}
-	if updatedBag.Interpretive == nil || len(updatedBag.Interpretive) != 1 {
-		t.Errorf("Updated bag should have one Interpretive bag")
-	} else if updatedBag.Interpretive[0] != anotherBag.UUID {
-		t.Errorf("Interpretive bag was %s; expected %s", updatedBag.Interpretive[0], anotherBag.UUID)
+	if updatedBag.LocalId != newLocalId {
+		t.Errorf("Expected LocalId '%s', got '%s'",
+			newLocalId, updatedBag.LocalId)
 	}
 }
 
