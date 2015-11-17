@@ -284,6 +284,10 @@ func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 	if err != nil {
 		return nil, client.formatJsonError(objUrl, body, err)
 	}
+	obj.LastPullDate, err = client.DPNNodeGetLastPullDate(identifier)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
 	return obj, nil
 }
 
