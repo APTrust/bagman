@@ -175,11 +175,12 @@ func (dpnSync *DPNSync) syncBags(bags []*DPNBag) ([]*DPNBag, error) {
 				dpnSync.Logger.Debug("Not updating bag %s, because timestamp is not newer: " +
 					"Remote updated_at = %s, Local updated_at = %s", bag.UUID,
 					bag.UpdatedAt, existingBag.UpdatedAt)
+				continue
 			} else {
 				dpnSync.Logger.Debug("Bag %s exists... updating", bag.UUID)
 				processedBag, err = dpnSync.LocalClient.DPNBagUpdate(bag)
 			}
-		} else {
+		} else {  // New bag
 			dpnSync.Logger.Debug("Bag %s not in local registry... creating", bag.UUID)
 			processedBag, err = dpnSync.LocalClient.DPNBagCreate(bag)
 		}
