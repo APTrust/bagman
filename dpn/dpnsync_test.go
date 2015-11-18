@@ -113,11 +113,6 @@ func TestSyncBags(t *testing.T) {
 		}
 		aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
 		node.LastPullDate = aLongTimeAgo
-		_, err := dpnSync.LocalClient.DPNNodeUpdate(node)
-		if err != nil {
-			t.Errorf("Error setting last pull date to 1999: %v", err)
-			return
-		}
 		bagsSynched, err := dpnSync.SyncBags(node)
 		if err != nil {
 			t.Errorf("Error synching bags for node %s: %v", node.Namespace, err)
@@ -129,7 +124,7 @@ func TestSyncBags(t *testing.T) {
 		for _, remoteBag := range(bagsSynched) {
 			if remoteBag == nil {
 				t.Errorf("Remote bag is nil")
-				return
+				continue
 			}
 			localBag, _ := dpnSync.LocalClient.DPNBagGet(remoteBag.UUID)
 			if localBag == nil {
