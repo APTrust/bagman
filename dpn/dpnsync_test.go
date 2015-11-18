@@ -245,6 +245,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 	if dpnSync == nil {
 		return
 	}
+
 	nodes, err := dpnSync.GetAllNodes()
 	if err != nil {
 		t.Error(err)
