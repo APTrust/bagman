@@ -117,9 +117,15 @@ func TestSyncBags(t *testing.T) {
 		if err != nil {
 			t.Errorf("Error synching bags for node %s: %v", node.Namespace, err)
 		}
-		if len(bagsSynched) != BAG_COUNT {
+		expectedBagCount := BAG_COUNT
+		if node.Namespace == "hathi" {
+			// From test fixtures, one of the six
+			// Hathi bags is already in our registry.
+			expectedBagCount = BAG_COUNT - 1
+		}
+		if len(bagsSynched) != expectedBagCount {
 			t.Errorf("Synched %d bags for node %s. Expected %d.",
-				len(bagsSynched), node.Namespace, BAG_COUNT)
+				len(bagsSynched), node.Namespace, expectedBagCount)
 		}
 		for _, remoteBag := range(bagsSynched) {
 			if remoteBag == nil {
