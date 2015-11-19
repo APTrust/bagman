@@ -226,6 +226,10 @@ func TestSyncRestoreRequests(t *testing.T) {
 				len(xfersSynched), node.Namespace, RESTORE_COUNT)
 		}
 		for _, xfer := range(xfersSynched) {
+			if xfer == nil {
+				t.Errorf("xfer is nil")
+				continue
+			}
 			localCopy, _ := dpnSync.LocalClient.RestoreTransferGet(xfer.RestoreId)
 			if localCopy == nil {
 				t.Errorf("Xfer %s didn't make into local registry", xfer.RestoreId)
@@ -243,6 +247,13 @@ func TestSyncEverythingFromNode(t *testing.T) {
 	}
 	dpnSync := newDPNSync(t)
 	if dpnSync == nil {
+		return
+	}
+
+	recordCount := 10
+	_, err := addRecords(dpnSync, recordCount)
+	if err != nil {
+		t.Errorf("Error creating mocks: %v", err)
 		return
 	}
 
@@ -269,7 +280,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected bag-sync error from node %s: %v",
 				node.Namespace, syncResult.BagSyncError)
 		}
-		if len(syncResult.Bags) != BAG_COUNT {
+		if len(syncResult.Bags) != recordCount {
 			t.Errorf("Expected %d bags from %s, got %d",
 				BAG_COUNT, node.Namespace, len(syncResult.Bags))
 		}
@@ -279,7 +290,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected replication transfer-sync error from node %s: %v",
 				node.Namespace, syncResult.ReplicationSyncError)
 		}
-		if len(syncResult.ReplicationTransfers) != REPL_COUNT {
+		if len(syncResult.ReplicationTransfers) != recordCount {
 			t.Errorf("Expected %d replication transfers from %s, got %d",
 				REPL_COUNT, node.Namespace, len(syncResult.ReplicationTransfers))
 		}
@@ -289,7 +300,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected restore transfer-sync error from node %s: %v",
 				node.Namespace, syncResult.RestoreSyncError)
 		}
-		if len(syncResult.RestoreTransfers) != RESTORE_COUNT {
+		if len(syncResult.RestoreTransfers) != recordCount {
 			t.Errorf("Expected %d restore transfers from %s, got %d",
 				RESTORE_COUNT, node.Namespace, len(syncResult.RestoreTransfers))
 		}
@@ -374,4 +385,62 @@ func TestHasSyncErrors(t *testing.T) {
 	if syncResult.HasSyncErrors() == false {
 		t.Errorf("HasSyncErrors() returned false. Expected true.")
 	}
+}
+
+type Mocks struct {
+	Bags      []*dpn.DPNBag
+	Xfers     []*dpn.DPNReplicationTransfer
+	Restores  []*dpn.DPNRestoreTransfer
+}
+
+// Create some bags, transfer requests and restore requests
+// at the remote nodes.
+func addRecords(dpnSync *dpn.DPNSync, count int) (mocks *Mocks, err error) {
+	mocks = &Mocks{}
+	nodes, err := dpnSync.GetAllNodes()
+	if err != nil {
+		return nil, err
+	}
+	for _, node := range nodes {
+		if node.Namespace == "aptrust" {
+			continue
+		}
+		client := dpnSync.RemoteClients[node.Namespace]
+		for i := 0; i < count; i++ {
+			// Create bags...
+			bag := makeBag()
+			bag.IngestNode = node.Namespace
+			bag.AdminNode = node.Namespace
+			_, err = client.DPNBagCreate(bag)
+			if err != nil {
+				return nil, err
+			}
+			mocks.Bags = append(mocks.Bags, bag)
+
+			for _, otherNode := range nodes {
+				// Don't create transfers to the current node
+				if otherNode.Namespace == node.Namespace {
+					continue
+				}
+				// Create replication transfers
+				xfer := makeXferRequest(node.Namespace,
+					otherNode.Namespace, bag.UUID)
+				_, err = client.ReplicationTransferCreate(xfer)
+				if err != nil {
+					return nil, err
+				}
+				mocks.Xfers = append(mocks.Xfers, xfer)
+
+				// Create restore transfers
+				restore := makeRestoreRequest(otherNode.Namespace,
+					node.Namespace, bag.UUID)
+				_, err = client.RestoreTransferCreate(restore)
+				if err != nil {
+					return nil, err
+				}
+				mocks.Restores = append(mocks.Restores, restore)
+			}
+		}
+	}
+	return mocks, nil
 }
