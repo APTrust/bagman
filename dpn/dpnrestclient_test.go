@@ -20,8 +20,9 @@ This file contains integration that rely on a locally-running instance
 of the DPN REST service. The tests will not run if runRestTests()
 determines that the DPN REST server is unreachable.
 
-The DPN-REST respository includes a file at data/integration_test_data.json
-that contains the test data we're expecting to find in these tests.
+The dpn-server respository includes a set of test fixures under
+test/fixtures/integration that contains the test data we're expecting
+to find in these tests.
 
 See the data/README.md file in that repo for information about how to
 load that test data into your DPN instance.
@@ -32,6 +33,7 @@ var skipRestMessagePrinted = false
 var aptrustBagIdentifier = "10000000-0000-4000-a000-000000000001"
 var replicationIdentifier = "10000000-0000-4111-a000-000000000001"
 var restoreIdentifier = "11000000-0000-4111-a000-000000000001"
+var memberIdentifier = "9a000000-0000-4000-a000-000000000001"
 
 func runRestTests(t *testing.T) bool {
 	config := loadConfig(t, configFile)
@@ -175,6 +177,108 @@ func TestDPNNodeGetLastPullDate(t *testing.T) {
 		if lastPull.IsZero() {
 			t.Errorf("Error getting last pull date for %s is empty", node)
 		}
+	}
+}
+
+func TestDPNMemberListGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	memberList, err := client.DPNMemberListGet(nil)
+	if err != nil {
+		t.Errorf("DPNMemberListGet returned error: %v", err)
+	}
+	if len(memberList.Results) != 4 {
+		t.Errorf("DPNMemberListGet returned %d results; expected %d",
+			len(memberList.Results), 4)
+	}
+	params := url.Values{}
+	params.Set("name", "Faber College")
+	memberList, err = client.DPNMemberListGet(&params)
+	if err != nil {
+		t.Errorf("DPNMemberListGet returned error: %v", err)
+	}
+	if len(memberList.Results) != 1 {
+		t.Errorf("DPNMemberListGet returned %d results; expected %d",
+			len(memberList.Results), 1)
+	}
+}
+
+func TestDPNMemberGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	member, err := client.DPNMemberGet(memberIdentifier)
+	if err != nil {
+		t.Errorf("DPNMemberGet returned error: %v", err)
+	}
+	if member == nil {
+		t.Errorf("DPNMemberGet returned nothing")
+		return
+	}
+	if member.UUID != memberIdentifier {
+		t.Errorf("DPNMemberGet returned the wrong member")
+	}
+}
+
+func TestDPNMemberCreate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	id := uuid.NewV4().String()
+	member := dpn.DPNMember{
+		UUID: id,
+		Name: fmt.Sprintf("GO-TEST-MEMBER-%s", id),
+		Email: fmt.Sprintf("%s@example.com", id),
+	}
+	newMember, err := client.DPNMemberCreate(&member)
+	if err != nil {
+		t.Errorf("DPNMemberGet returned error: %v", err)
+	}
+	if newMember == nil {
+		t.Errorf("DPNMemberGet returned nothing")
+		return
+	}
+	if newMember.UUID != member.UUID {
+		t.Errorf("New member UUID was not saved correctly")
+	}
+	if newMember.Name != member.Name {
+		t.Errorf("New member Name was not saved correctly")
+	}
+	if newMember.Email != member.Email {
+		t.Errorf("New member Email was not saved correctly")
+	}
+}
+
+func TestDPNMemberUpdate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	member, err := client.DPNMemberGet(memberIdentifier)
+	if err != nil {
+		t.Errorf("DPNMemberGet returned error: %v", err)
+	}
+	if member == nil {
+		t.Errorf("DPNMemberGet returned nothing")
+		return
+	}
+	newName := fmt.Sprintf("GO-UPDATED-%s", uuid.NewV4().String())
+	member.Name = newName
+	member.UpdatedAt = time.Now().UTC().Truncate(time.Second)
+	newMember, err := client.DPNMemberUpdate(member)
+	if err != nil {
+		t.Errorf("DPNMemberGet returned error: %v", err)
+	}
+	if newMember == nil {
+		t.Errorf("DPNMemberGet returned nothing")
+		return
+	}
+	if newMember.Name != newName {
+		t.Errorf("New member Name was not updated correctly")
 	}
 }
 

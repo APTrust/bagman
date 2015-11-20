@@ -89,6 +89,12 @@ type DPNMember struct {
 	// Email is the member's email address
 	Email              string               `json:"email"`
 
+	// CreatedAt is when this record was created.
+	CreatedAt          time.Time            `json:"created_at"`
+
+	// UpdatedAt is when this record was last updated.
+	UpdatedAt          time.Time            `json:"updated_at"`
+
 }
 
 // DPNBag represents a Bag object in the DPN REST service.
