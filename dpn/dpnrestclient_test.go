@@ -748,8 +748,8 @@ func TestRestoreTransferGet(t *testing.T) {
 	if xfer.ToNode != "aptrust" {
 		t.Errorf("ToNode: expected 'aptrust', got '%s'", xfer.ToNode)
 	}
-	if xfer.BagId != "30000000-0000-4000-a000-000000000001" {
-		t.Errorf("UUID: expected '30000000-0000-4000-a000-000000000001', got '%s'",
+	if xfer.BagId != "10000000-0000-4000-a000-000000000001" {
+		t.Errorf("UUID: expected '10000000-0000-4000-a000-000000000001', got '%s'",
 			xfer.BagId)
 	}
 	if xfer.RestoreId != restoreIdentifier {
@@ -930,7 +930,7 @@ func TestRestoreTransferUpdate(t *testing.T) {
 	}
 
 	// Reject this one...
-	newXfer.Status = "Rejected"
+	newXfer.Status = "rejected"
 
 	updatedXfer, err := client.RestoreTransferUpdate(newXfer)
 	if err != nil {
@@ -943,8 +943,8 @@ func TestRestoreTransferUpdate(t *testing.T) {
 	}
 
 	// ... make sure status is correct
-	if updatedXfer.Status != "Rejected" {
-		t.Errorf("Status is %s; expected Rejected", updatedXfer.Status)
+	if updatedXfer.Status != "rejected" {
+		t.Errorf("Status is '%s'; expected 'rejected'", updatedXfer.Status)
 	}
 
 
@@ -952,13 +952,14 @@ func TestRestoreTransferUpdate(t *testing.T) {
 	// fixity value, because we don't know the good one, so
 	// the server will cancel this transfer.
 	link := "rsync://blah/blah/blah/yadda/yadda/beer"
-	newXfer.Status = "Prepared"
+	newXfer.Status = "prepared"
 	newXfer.Link = link
 
 	// Now that there are no milliseconds on the DPN timestamps,
 	// we have to sleep for more than 1 second to test whether
 	// UpdatedAt timestamps change after update.
 	time.Sleep(1500 * time.Millisecond)
+	newXfer.UpdatedAt = time.Now()
 
 	updatedXfer, err = client.RestoreTransferUpdate(newXfer)
 	if err != nil {
@@ -971,8 +972,8 @@ func TestRestoreTransferUpdate(t *testing.T) {
 	}
 
 	// Make sure values were stored...
-	if updatedXfer.Status != "Prepared" {
-		t.Errorf("Status is %s; expected Prepared", updatedXfer.Status)
+	if updatedXfer.Status != "prepared" {
+		t.Errorf("Status is %s; expected prepared", updatedXfer.Status)
 	}
 	if updatedXfer.Link != link {
 		t.Errorf("Status is %s; expected %s", updatedXfer.Link, link)

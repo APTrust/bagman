@@ -288,9 +288,15 @@ func TestSyncEverythingFromNode(t *testing.T) {
 		return
 	}
 
-	recordCount := 10
+	// Make 10 bags.
+	// This will also create 40 replication transfers
+	// and 40 restore transfers: one for each bag to
+	// each remote node.
+	bagCount := 10
+	xferCount := 64     // 24 from fixtures in DPN REST + 40 that we just created
+	restoreCount := 44  //  4 from fixtures in DPN REST + 40 that we just created
 	mock := NewMock(dpnSync)
-	err := mock.AddRecordsToNodes(dpnSync.RemoteNodeNames(), recordCount)
+	err := mock.AddRecordsToNodes(dpnSync.RemoteNodeNames(), bagCount)
 	if err != nil {
 		t.Errorf("Error creating mocks: %v", err)
 		return
@@ -319,7 +325,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected bag-sync error from node %s: %v",
 				node.Namespace, syncResult.BagSyncError)
 		}
-		if len(syncResult.Bags) != recordCount {
+		if len(syncResult.Bags) != bagCount {
 			t.Errorf("Expected %d bags from %s, got %d",
 				BAG_COUNT, node.Namespace, len(syncResult.Bags))
 		}
@@ -329,9 +335,9 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected replication transfer-sync error from node %s: %v",
 				node.Namespace, syncResult.ReplicationSyncError)
 		}
-		if len(syncResult.ReplicationTransfers) != recordCount {
+		if len(syncResult.ReplicationTransfers) != xferCount {
 			t.Errorf("Expected %d replication transfers from %s, got %d",
-				REPL_COUNT, node.Namespace, len(syncResult.ReplicationTransfers))
+				xferCount, node.Namespace, len(syncResult.ReplicationTransfers))
 		}
 
 		// Bags
@@ -339,9 +345,9 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected restore transfer-sync error from node %s: %v",
 				node.Namespace, syncResult.RestoreSyncError)
 		}
-		if len(syncResult.RestoreTransfers) != recordCount {
+		if len(syncResult.RestoreTransfers) != restoreCount {
 			t.Errorf("Expected %d restore transfers from %s, got %d",
-				RESTORE_COUNT, node.Namespace, len(syncResult.RestoreTransfers))
+				restoreCount, node.Namespace, len(syncResult.RestoreTransfers))
 		}
 
 		// Timestamp update
