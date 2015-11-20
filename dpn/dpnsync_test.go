@@ -77,6 +77,44 @@ func TestNewDPNSync(t *testing.T) {
 	}
 }
 
+func TestLocalNodeName(t *testing.T) {
+	// Local node name is set in dpn_config.json
+	config := loadConfig(t, configFile)
+	dpnSync := newDPNSync(t)
+	if config == nil || dpnSync == nil {
+		t.Errorf("Can't complete local name test")
+		return
+	}
+	if dpnSync.LocalNodeName() != config.LocalNode {
+		t.Errorf("LocalNodeName() returned '%s', expected '%s'",
+			dpnSync.LocalNodeName(), config.LocalNode)
+	}
+}
+
+func TestRemoteNodeNames(t *testing.T) {
+	// Local node name is set in dpn_config.json
+	config := loadConfig(t, configFile)
+	dpnSync := newDPNSync(t)
+	if config == nil || dpnSync == nil {
+		t.Errorf("Can't complete remote names test")
+		return
+	}
+	remoteNodeNames := dpnSync.RemoteNodeNames()
+	for name, _ := range config.RemoteNodeURLs {
+		nameIsPresent := false
+		for _, remoteName := range remoteNodeNames {
+			if name == remoteName {
+				nameIsPresent = true
+				break
+			}
+		}
+		if !nameIsPresent {
+			t.Errorf("Node %s is in config file, but was not returned " +
+				"by RemoteNodeNames()", name)
+		}
+	}
+}
+
 func TestGetAllNodes(t *testing.T) {
 	if runSyncTests(t) == false {
 		return  // local test cluster isn't running
@@ -251,7 +289,8 @@ func TestSyncEverythingFromNode(t *testing.T) {
 	}
 
 	recordCount := 10
-	_, err := addRecords(dpnSync, recordCount)
+	mock := NewMock(dpnSync)
+	err := mock.AddRecordsToNodes(dpnSync.RemoteNodeNames(), recordCount)
 	if err != nil {
 		t.Errorf("Error creating mocks: %v", err)
 		return
@@ -385,62 +424,4 @@ func TestHasSyncErrors(t *testing.T) {
 	if syncResult.HasSyncErrors() == false {
 		t.Errorf("HasSyncErrors() returned false. Expected true.")
 	}
-}
-
-type Mocks struct {
-	Bags      []*dpn.DPNBag
-	Xfers     []*dpn.DPNReplicationTransfer
-	Restores  []*dpn.DPNRestoreTransfer
-}
-
-// Create some bags, transfer requests and restore requests
-// at the remote nodes.
-func addRecords(dpnSync *dpn.DPNSync, count int) (mocks *Mocks, err error) {
-	mocks = &Mocks{}
-	nodes, err := dpnSync.GetAllNodes()
-	if err != nil {
-		return nil, err
-	}
-	for _, node := range nodes {
-		if node.Namespace == "aptrust" {
-			continue
-		}
-		client := dpnSync.RemoteClients[node.Namespace]
-		for i := 0; i < count; i++ {
-			// Create bags...
-			bag := makeBag()
-			bag.IngestNode = node.Namespace
-			bag.AdminNode = node.Namespace
-			_, err = client.DPNBagCreate(bag)
-			if err != nil {
-				return nil, err
-			}
-			mocks.Bags = append(mocks.Bags, bag)
-
-			for _, otherNode := range nodes {
-				// Don't create transfers to the current node
-				if otherNode.Namespace == node.Namespace {
-					continue
-				}
-				// Create replication transfers
-				xfer := makeXferRequest(node.Namespace,
-					otherNode.Namespace, bag.UUID)
-				_, err = client.ReplicationTransferCreate(xfer)
-				if err != nil {
-					return nil, err
-				}
-				mocks.Xfers = append(mocks.Xfers, xfer)
-
-				// Create restore transfers
-				restore := makeRestoreRequest(otherNode.Namespace,
-					node.Namespace, bag.UUID)
-				_, err = client.RestoreTransferCreate(restore)
-				if err != nil {
-					return nil, err
-				}
-				mocks.Restores = append(mocks.Restores, restore)
-			}
-		}
-	}
-	return mocks, nil
 }

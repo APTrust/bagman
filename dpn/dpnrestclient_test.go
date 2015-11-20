@@ -66,72 +66,6 @@ func getClient(t *testing.T) (*dpn.DPNRestClient) {
 	return client
 }
 
-func makeBag() (*dpn.DPNBag) {
-	youyoueyedee := uuid.NewV4()
-	randChars := youyoueyedee.String()[0:8]
-	tenSecondsAgo := time.Now().Add(-10 * time.Second)
-	return &dpn.DPNBag {
-		UUID: youyoueyedee.String(),
-		Interpretive: []string{},
-		Rights: []string{},
-		ReplicatingNodes: []string{},
-		Fixities: &dpn.DPNFixity{
-			Sha256: randChars,
-		},
-		LocalId: fmt.Sprintf("GO-TEST-BAG-%s", youyoueyedee.String()),
-		Size: 12345678,
-		FirstVersionUUID: youyoueyedee.String(),
-		Version: 1,
-		BagType: "D",
-		IngestNode: "aptrust",
-		AdminNode: "aptrust",
-		Member: "9a000000-0000-4000-a000-000000000002", // Faber College
-		CreatedAt: tenSecondsAgo,
-		UpdatedAt: tenSecondsAgo,
-	}
-}
-
-func makeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTransfer) {
-	id := uuid.NewV4()
-	idString := id.String()
-	tenSecondsAgo := time.Now().Add(-10 * time.Second)
-	randChars := idString[0:8]
-	nonce := "McNunce"
-	return &dpn.DPNReplicationTransfer{
-		FromNode: fromNode,
-		ToNode: toNode,
-		BagId: bagUuid,
-		ReplicationId: uuid.NewV4().String(),
-		FixityAlgorithm: "sha256",
-		FixityNonce: &nonce,
-		FixityValue: &randChars,
-		FixityAccept: nil,
-		BagValid: nil,
-		Status: "requested",
-		Protocol: "rsync",
-		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
-		CreatedAt: tenSecondsAgo,
-		UpdatedAt: tenSecondsAgo,
-	}
-}
-
-func makeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransfer) {
-	id := uuid.NewV4()
-	idString := id.String()
-	tenSecondsAgo := time.Now().Add(-10 * time.Second)
-	return &dpn.DPNRestoreTransfer{
-		FromNode: fromNode,
-		ToNode: toNode,
-		BagId: bagUuid,
-		RestoreId: uuid.NewV4().String(),
-		Status: "requested",
-		Protocol: "rsync",
-		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),
-		CreatedAt: tenSecondsAgo,
-		UpdatedAt: tenSecondsAgo,
-	}
-}
-
 func TestBuildUrl(t *testing.T) {
 	config := loadConfig(t, configFile)
 	client := getClient(t)
@@ -389,7 +323,7 @@ func TestDPNBagCreate(t *testing.T) {
 		return
 	}
 	client := getClient(t)
-	bag := makeBag()
+	bag := MakeBag()
 	dpnBag, err := client.DPNBagCreate(bag)
 	if err != nil {
 		t.Errorf("DPNBagCreate returned error %v", err)
@@ -443,7 +377,7 @@ func TestDPNBagCreate(t *testing.T) {
 
 	// We were using Rights and Interpretive bags, but these are hold
 	// as of fall, 2015.
-	anotherBag := makeBag()
+	anotherBag := MakeBag()
 	//anotherBag.Rights = append(anotherBag.Rights, bag.UUID)
 	//anotherBag.Interpretive = append(anotherBag.Interpretive, bag.UUID)
 
@@ -461,7 +395,7 @@ func TestDPNBagUpdate(t *testing.T) {
 		return
 	}
 	client := getClient(t)
-	bag := makeBag()
+	bag := MakeBag()
 	dpnBag, err := client.DPNBagCreate(bag)
 	if err != nil {
 		t.Errorf("DPNBagCreate returned error %v", err)
@@ -626,7 +560,7 @@ func TestReplicationTransferCreate(t *testing.T) {
 
 	// The transfer request must refer to an actual bag,
 	// so let's make a bag...
-	bag := makeBag()
+	bag := MakeBag()
 	dpnBag, err := client.DPNBagCreate(bag)
 	if err != nil {
 		t.Errorf("DPNBagCreate returned error %v", err)
@@ -634,7 +568,7 @@ func TestReplicationTransferCreate(t *testing.T) {
 	}
 
 	// Make sure we can create a transfer request.
-	xfer := makeXferRequest("aptrust", "chron", dpnBag.UUID)
+	xfer := MakeXferRequest("aptrust", "chron", dpnBag.UUID)
 	newXfer, err := client.ReplicationTransferCreate(xfer)
 	if err != nil {
 		t.Errorf("ReplicationTransferCreate returned error %v", err)
@@ -700,7 +634,7 @@ func TestReplicationTransferUpdate(t *testing.T) {
 
 	// The transfer request must refer to an actual bag,
 	// so let's make a bag...
-	bag := makeBag()
+	bag := MakeBag()
 	dpnBag, err := client.DPNBagCreate(bag)
 	if err != nil {
 		t.Errorf("DPNBagCreate returned error %v", err)
@@ -708,7 +642,7 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	}
 
 	// Make sure we can create a transfer request.
-	xfer := makeXferRequest("chron", "aptrust", dpnBag.UUID)
+	xfer := MakeXferRequest("chron", "aptrust", dpnBag.UUID)
 
 	// Null out the fixity value, because once it's set, we can't change
 	// it. And below, we want to set a bad fixity value to see what happens.
@@ -919,7 +853,7 @@ func TestRestoreTransferCreate(t *testing.T) {
 
 	// The transfer request must refer to an actual bag,
 	// so let's make a bag...
-	bag := makeBag()
+	bag := MakeBag()
 	dpnBag, err := client.DPNBagCreate(bag)
 	if err != nil {
 		t.Errorf("DPNBagCreate returned error %v", err)
@@ -927,7 +861,7 @@ func TestRestoreTransferCreate(t *testing.T) {
 	}
 
 	// Make sure we can create a transfer request.
-	xfer := makeRestoreRequest("tdr", "aptrust", dpnBag.UUID)
+	xfer := MakeRestoreRequest("tdr", "aptrust", dpnBag.UUID)
 	newXfer, err := client.RestoreTransferCreate(xfer)
 	if err != nil {
 		t.Errorf("RestoreTransferCreate returned error %v", err)
@@ -976,7 +910,7 @@ func TestRestoreTransferUpdate(t *testing.T) {
 
 	// The transfer request must refer to an actual bag,
 	// so let's make a bag...
-	bag := makeBag()
+	bag := MakeBag()
 	dpnBag, err := client.DPNBagCreate(bag)
 	if err != nil {
 		t.Errorf("DPNBagCreate returned error %v", err)
@@ -984,7 +918,7 @@ func TestRestoreTransferUpdate(t *testing.T) {
 	}
 
 	// Make sure we can create a transfer request.
-	xfer := makeRestoreRequest("chron", "aptrust", dpnBag.UUID)
+	xfer := MakeRestoreRequest("chron", "aptrust", dpnBag.UUID)
 	newXfer, err := client.RestoreTransferCreate(xfer)
 	if err != nil {
 		t.Errorf("RestoreTransferCreate returned error %v", err)

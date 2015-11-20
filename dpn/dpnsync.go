@@ -95,6 +95,18 @@ func (dpnSync *DPNSync) GetAllNodes()([]*DPNNode, error) {
 	return result.Results, nil
 }
 
+func (dpnSync *DPNSync) LocalNodeName() (string) {
+	return dpnSync.LocalClient.Node
+}
+
+func (dpnSync *DPNSync) RemoteNodeNames() ([]string) {
+    remoteNodeNames := make([]string, 0)
+    for namespace := range dpnSync.RemoteClients {
+        remoteNodeNames = append(remoteNodeNames, namespace)
+    }
+	return remoteNodeNames
+}
+
 // Sync all bags, replication requests and restore requests from
 // the specified remote node. Note that this is a pull-only sync.
 // We are not writing any data to other nodes, just reading what
