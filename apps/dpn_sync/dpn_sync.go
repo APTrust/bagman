@@ -69,8 +69,4 @@ func printErrors(syncResult *dpn.SyncResult, node *dpn.DPNNode) {
 		fmt.Fprintf(os.Stderr, "Error synching Restore Transfers from %s: %v\n",
 			node.Namespace, syncResult.RestoreSyncError)
 	}
-	if syncResult.TimestampError != nil {
-		fmt.Fprintf(os.Stderr, "Error updating LastPullDate for %s: %v\n",
-			node.Namespace, syncResult.TimestampError)
-	}
 }
