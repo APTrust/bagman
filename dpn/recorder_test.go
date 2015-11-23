@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,20 +46,18 @@ func getRecorder(t *testing.T) (*dpn.Recorder) {
 }
 
 func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResult) {
-	dpnBag, err := recorder.LocalRESTClient.DPNBagGet(aptrustBagIdentifier)
+	params := url.Values{}
+	params.Set("to_node", "aptrust")
+	xfers, err := recorder.RemoteClients["hathi"].DPNReplicationListGet(&params)
 	if err != nil {
 		t.Error(err)
 		return nil
 	}
-	// In our test data fixtures for the local DPN REST cluster,
-	// the transfers with id <namespace>-13 to <namespace>-18 are
-	// transfers to APTrust. So tdr-18, sdr-18, chron-18, etc. are
-	// all bound for APTrust.
-	xfer, err := recorder.RemoteClients["hathi"].ReplicationTransferGet("10000000-0000-4000-a000-000000000018")
-	if err != nil {
-		t.Error(err)
+	if len(xfers.Results) == 0 {
+		t.Errorf("No transfers available from Hathi to APTrust")
 		return nil
 	}
+	xfer := xfers.Results[0]
 	bag, err := recorder.RemoteClients["hathi"].DPNBagGet(xfer.BagId)
 	if err != nil {
 		t.Error(err)
@@ -69,7 +68,7 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 		return nil
 	}
 	result := dpn.NewDPNResult("")
-	result.DPNBag = dpnBag
+	result.DPNBag = bag
 	result.TransferRequest = xfer
 	result.BagSha256Digest = bag.Fixities.Sha256
 	result.BagMd5Digest = "SomeFakeValue"
