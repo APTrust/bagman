@@ -454,7 +454,10 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	bagValid := result.ValidationResult.IsValid()
 	result.TransferRequest.Status = "Received"
 	result.TransferRequest.BagValid = &bagValid
-	digest := result.BagSha256Digest
+	// A.D. 11/23/2015:
+	// Use the tag manifest checksum instead of result.BagSha256Digest
+	// which is the digest calculated on the entire bag.
+	digest := result.ValidationResult.TagManifestChecksum
 	result.TransferRequest.FixityValue = &digest
 
 	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s " +
