@@ -118,7 +118,8 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			return err
 		}
 		if len(xferList.Results) == 0 {
-			procUtil.MessageLog.Info("No replication requests for aptrust")
+			procUtil.MessageLog.Info("No replication requests for aptrust at %s",
+				client.Node)
 			return nil
 		}
 		procUtil.MessageLog.Info("Queuing batch of %d items", len(xferList.Results))
