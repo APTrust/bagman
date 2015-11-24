@@ -147,6 +147,6 @@ kill_all()
     kill -s SIGINT $NSQ_PID
 }
 
-trap kill_all SIGINT
+trap kill_all SIGTERM SIGINT SIGHUP
 
 wait $NSQ_PID
