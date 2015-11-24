@@ -159,12 +159,12 @@ func (validator *Validator) postProcess() {
 			validator.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			validator.ProcUtil.IncrementFailed()
 			SendToTroubleQueue(result, validator.ProcUtil)
-			if bagman.FileExists(result.ValidationResult.TarFilePath) {
+			if result.ValidationResult != nil && bagman.FileExists(result.ValidationResult.TarFilePath) {
 				os.Remove(result.ValidationResult.TarFilePath)
 				validator.ProcUtil.MessageLog.Debug(
 					"Deleting tar file %s", result.ValidationResult.TarFilePath)
 			}
-			if result.ValidationResult.UntarredPath != "" &&
+			if result.ValidationResult != nil && result.ValidationResult.UntarredPath != "" &&
 				result.ValidationResult.UntarredPath != "/" &&
 				bagman.FileExists(result.ValidationResult.UntarredPath) {
 				validator.ProcUtil.MessageLog.Debug(
