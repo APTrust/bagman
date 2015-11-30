@@ -248,6 +248,10 @@ func (recorder *Recorder) RecordAPTrustDPNData(result *DPNResult) {
 // Create a new DPN bag entry in our local DPN registry. We do this only
 // for DPN bags that we ingester here at APTrust.
 func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
+	recorder.ensureBagMember(result)
+	if result.ErrorMessage != "" {
+		return
+	}
 	recorder.ProcUtil.MessageLog.Debug("Creating new DPN bag %s (%s) in local registry.",
 		result.DPNBag.UUID, result.BagIdentifier)
 	dpnBag, err := recorder.LocalRESTClient.DPNBagCreate(result.DPNBag)
@@ -258,6 +262,42 @@ func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
 	}
 	result.DPNBag = dpnBag
 	result.RecordResult.DPNBagCreatedAt = dpnBag.CreatedAt
+}
+
+// We have the set the DPN Bag Member UUID if it's not already set,
+// or the DPN REST service  will reject the bag. The member UUID
+// links the bag to the institution that owns it. If we're replicating
+// a bag that came from another node, it should already have a Member
+// UUID. If the bag was ingested at APTrust, it may not yet have a
+// Member UUID.
+func (recorder *Recorder) ensureBagMember(result *DPNResult) {
+	if result.DPNBag.Member != "" {
+		recorder.ProcUtil.MessageLog.Debug("No need to look up bag member. " +
+			"DPN bag %s belongs to member %s.",
+			result.DPNBag.UUID, result.DPNBag.Member)
+		return
+	}
+	if result.BagIdentifier == "" {
+		result.ErrorMessage = fmt.Sprintf("DPN Bag %s has no associated " +
+			"LocalId and no DPN member UUID, so it's " +
+			"impossible to tell who owns it. This bag cannot be recorded " +
+			"in DPN without the member UUID. AdminNode is '%s'.",
+			result.DPNBag.UUID, result.DPNBag.AdminNode)
+		return
+	}
+	// TODO: Create a REST endpoint in Fluctus to get bag owner.
+	inst, err := bagman.GetInstitutionFromBagName(result.BagIdentifier)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Cannot figure out which institution ",
+			"bag '%s' belongs to.", result.BagIdentifier)
+		return
+	}
+	member, err := recorder.LocalRESTClient.DPNMemberGetByName(inst)
+	if err != nil {
+		result.ErrorMessage = err.Error()
+	} else {
+		result.DPNBag.Member = member.UUID
+	}
 }
 
 // Record PREMIS events in Fluctus. We do this only for DPN bags that

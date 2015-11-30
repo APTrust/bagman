@@ -178,6 +178,24 @@ func (client *DPNRestClient) DPNMemberGet(identifier string) (*DPNMember, error)
 	return obj, nil
 }
 
+// Returns the DPN Member with the specified name, or an error
+// if there is not exactly one DPN member with that name.
+func (client *DPNRestClient) DPNMemberGetByName(name string) (*DPNMember, error) {
+	params := url.Values{}
+	params.Set("name", name)
+	list, err := client.DPNMemberListGet(&params)
+	if err != nil {
+		return nil, err
+	}
+	if list.Count == 0 {
+		return nil, fmt.Errorf("Cannot find member with name '%s'", name)
+	}
+	if list.Count > 1 {
+		return nil, fmt.Errorf("Found %d members with name '%s'", list.Count, name)
+	}
+	return list.Results[0], nil
+}
+
 func (client *DPNRestClient) DPNMemberListGet(queryParams *url.Values) (*MemberListResult, error) {
 	relativeUrl := fmt.Sprintf("/%s/member/", client.APIVersion)
 	objUrl := client.BuildUrl(relativeUrl, queryParams)

@@ -150,6 +150,9 @@ func (copier *Copier) doCopy() {
 			os.MkdirAll(copier.ProcUtil.Config.DPNStagingDirectory, 0755)
 		}
 
+		// DEBUG - use for tracing 'file not found'
+		// fmt.Printf("Rsync link is %s\n", result.TransferRequest.Link)
+
 		copier.ProcUtil.MessageLog.Info("Rsync link is %s", result.TransferRequest.Link)
 		rsyncCommand := GetRsyncCommand(result.TransferRequest.Link,
 			localPath, copier.DPNConfig.UseSSHWithRsync)
