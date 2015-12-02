@@ -10,4 +10,5 @@ type Institution struct {
 	Name       string `json:"name"`
 	BriefName  string `json:"brief_name"`
 	Identifier string `json:"identifier"`
+	DpnUuid    string `json:"dpn_uuid"`
 }

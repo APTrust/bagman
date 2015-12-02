@@ -463,6 +463,30 @@ func TestCacheInstitutions(t *testing.T) {
 	}
 }
 
+func TestInstitutionGet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	fluctusClient := getClient(t)
+	inst, err := fluctusClient.InstitutionGet("test.edu")
+	if err != nil {
+		t.Errorf("Error getting institution 'test.edu': %v", err)
+		return
+	}
+	if inst.Name != "Test University" {
+		t.Errorf("Expected Name 'Test University', got '%s'", inst.Name)
+	}
+	if inst.Identifier != "test.edu" {
+		t.Errorf("Expected Identifier 'test.edu', got '%s'", inst.Identifier)
+	}
+	if inst.BriefName != "test" {
+		t.Errorf("Expected BriefName 'test', got '%s'", inst.BriefName)
+	}
+	if inst.DpnUuid != "9a000000-0000-4000-a000-000000000005" {
+		t.Errorf("Expected name '9a000000-0000-4000-a000-000000000005', got '%s'", inst.DpnUuid)
+	}
+}
+
 func TestBulkStatusGet(t *testing.T) {
 	if runFluctusTests() == false {
 		return
