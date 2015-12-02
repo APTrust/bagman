@@ -285,18 +285,20 @@ func (recorder *Recorder) ensureBagMember(result *DPNResult) {
 			result.DPNBag.UUID, result.DPNBag.AdminNode)
 		return
 	}
-	// TODO: Create a REST endpoint in Fluctus to get bag owner.
-	inst, err := bagman.GetInstitutionFromBagName(result.BagIdentifier)
+	instIdentifier, err := bagman.GetInstitutionFromBagIdentifier(result.BagIdentifier)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Cannot figure out which institution ",
 			"bag '%s' belongs to.", result.BagIdentifier)
 		return
 	}
-	member, err := recorder.LocalRESTClient.DPNMemberGetByName(inst)
+	institution, err := recorder.ProcUtil.FluctusClient.InstitutionGet(instIdentifier)
 	if err != nil {
-		result.ErrorMessage = err.Error()
+		result.ErrorMessage = fmt.Sprintf(
+			"Cannot get institution record for '%s' from Fluctus: %s",
+			instIdentifier, err.Error())
 	} else {
-		result.DPNBag.Member = member.UUID
+		// Got it!
+		result.DPNBag.Member = institution.DpnUuid
 	}
 }
 
