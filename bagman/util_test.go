@@ -331,3 +331,18 @@ func TestGetInstitutionFromBagName(t *testing.T) {
 		t.Error("GetInstitutionFromBagName should have accepted bag name 'miami.edu.chc0390_metadata.tar'")
 	}
 }
+
+func TestGetInstitutionFromBagIdentifier(t *testing.T) {
+	inst, err := bagman.GetInstitutionFromBagIdentifier("miami.chc0390_metadata.tar")
+	if err == nil {
+		t.Error("GetInstitutionFromBagIdentifier accepted invalid bag name 'miami.edu.chc0390_metadata.tar'")
+	}
+	inst, err = bagman.GetInstitutionFromBagIdentifier("miami.edu/miami.edu.chc0390_metadata.tar")
+	if err != nil {
+		t.Error("GetInstitutionFromBagIdentifier should have accepted bag name 'miama.edu/miami.edu.chc0390_metadata.tar'")
+	}
+	if inst != "miami.edu" {
+		t.Error("GetInstitutionFromBagIdentifier returned '%s', expected 'miami.edu'",
+			inst)
+	}
+}
