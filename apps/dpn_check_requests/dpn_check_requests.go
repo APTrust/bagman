@@ -104,7 +104,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 	pageNum := 1
 	params := url.Values{}
 	params.Set("to_node", "aptrust")
-	params.Set("status", "Requested")
+	params.Set("status", "requested") // must be all lower-case
 	params.Set("after", lastCheck.Format(time.RFC3339))
 	params.Set("page", fmt.Sprintf("%d", pageNum))
 	for {
