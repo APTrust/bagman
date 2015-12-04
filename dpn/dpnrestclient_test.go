@@ -699,13 +699,13 @@ func TestReplicationTransferCreate(t *testing.T) {
 		t.Errorf("FixityAlgorithm is %s; expected %s",
 			newXfer.FixityAlgorithm, xfer.FixityAlgorithm)
 	}
-	if *newXfer.FixityNonce != *xfer.FixityNonce {
-		t.Errorf("FixityNonce is %s; expected %s",
-			*newXfer.FixityNonce, *xfer.FixityNonce)
+	if newXfer.FixityNonce != nil {
+		t.Errorf("FixityNonce is %s; expected nil",
+			*newXfer.FixityNonce)
 	}
-	if *newXfer.FixityValue != *xfer.FixityValue {
-		t.Errorf("FixityValue: expected %s but got %s",
-			*xfer.FixityValue, *newXfer.FixityValue)
+	if newXfer.FixityValue != nil {
+		t.Errorf("FixityValue: expected nil but got %s",
+			*newXfer.FixityValue)
 	}
 	if newXfer.FixityAccept != nil {
 		t.Errorf("FixityAccept is %t; expected nil", *newXfer.FixityAccept)

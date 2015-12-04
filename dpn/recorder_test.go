@@ -42,6 +42,23 @@ func getRecorder(t *testing.T) (*dpn.Recorder) {
 		t.Error(err)
 		return nil
 	}
+
+	// HACK: Some of our tests require us to connect to
+	// remote nodes as admin, and the remote node tokens
+	// in the dpn_config.json are all admin tokens.
+	// The actions that recorder.go takes on remote nodes
+	// MUST be completed as a non-admin user. So the following
+	// code forces the aptrust_token into all the remote
+	// clients so they connect to the remote nodes as a non-admin
+	// user. This issue affects the test environment only.
+	// In production, we would never connect to a remote node
+	// as an admin. We would never even have the credentials
+	// to do so.
+	for i := range(recorder.RemoteClients) {
+		remoteClient := recorder.RemoteClients[i]
+		remoteClient.APIKey = recorder.LocalRESTClient.APIKey
+	}
+
 	return recorder
 }
 
@@ -70,7 +87,14 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 	result := dpn.NewDPNResult("")
 	result.DPNBag = bag
 	result.TransferRequest = xfer
-	result.BagSha256Digest = bag.Fixities.Sha256
+
+	// Need to send this receipt to admin node
+	fixityValue := bag.Fixities.Sha256
+	result.TransferRequest.FixityValue = &fixityValue
+
+	result.ValidationResult = &dpn.ValidationResult{
+		TagManifestChecksum: bag.Fixities.Sha256,
+	}
 	result.BagMd5Digest = "SomeFakeValue"
 	return result
 }
@@ -181,9 +205,7 @@ func TestReplicatedBag(t *testing.T) {
 		recorder.ProcUtil.Config.DPNStagingDirectory,
 		dpnResult.DPNBag.UUID + ".tar")
 	dpnResult.CopyResult.LocalPath = filePath
-	dpnResult.ValidationResult = &dpn.ValidationResult{
-		TarFilePath: filePath,
-	}
+	dpnResult.ValidationResult.TarFilePath = filePath
 
 	// Run the test...
 	recorder.RunTest(dpnResult)
@@ -198,7 +220,6 @@ func TestReplicatedBag(t *testing.T) {
 	if !dpnResult.RecordResult.StorageResultSentAt.IsZero() {
 		t.Errorf("StorageResultSentAt was set when it should not have been")
 	}
-
 
 	// Test a bag that was stored
 	dpnResult.StorageURL = "https://www.yahoo.com"

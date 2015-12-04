@@ -586,10 +586,12 @@ func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfe
 		expectedResponseCode = 200
 	}
 	client.logger.Debug("%sing replication transfer to DPN REST service: %s", method, objUrl)
+	xfer.UpdatedAt = time.Now().UTC().Truncate(time.Second)
 	postData, err := json.Marshal(xfer)
 	if err != nil {
 		return nil, err
 	}
+
 	req, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(postData))
 	if err != nil {
 		return nil, err

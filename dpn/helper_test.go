@@ -69,16 +69,14 @@ func MakeXferRequest(fromNode, toNode, bagUuid string) (*dpn.DPNReplicationTrans
 	id := uuid.NewV4()
 	idString := id.String()
 	tenSecondsAgo := time.Now().Add(-10 * time.Second)
-	randChars := idString[0:8]
-	nonce := "McNunce"
 	return &dpn.DPNReplicationTransfer{
 		FromNode: fromNode,
 		ToNode: toNode,
 		BagId: bagUuid,
 		ReplicationId: uuid.NewV4().String(),
 		FixityAlgorithm: "sha256",
-		FixityNonce: &nonce,
-		FixityValue: &randChars,
+		FixityNonce: nil,
+		FixityValue: nil,
 		FixityAccept: nil,
 		BagValid: nil,
 		Status: "requested",

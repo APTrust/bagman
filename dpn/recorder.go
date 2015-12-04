@@ -494,7 +494,7 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	// Update the transfer request and send it back to the remote node.
 	// We'll get an updated transfer request back from that node.
 	bagValid := result.ValidationResult.IsValid()
-	result.TransferRequest.Status = "Received"
+	result.TransferRequest.Status = "received"
 	result.TransferRequest.BagValid = &bagValid
 	// A.D. 11/23/2015:
 	// Use the tag manifest checksum instead of result.BagSha256Digest
@@ -504,7 +504,7 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 
 	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s " +
 		"from remote node %s. " +
-		"Setting status to 'Received', BagValid to %t, and checksum to %s",
+		"Setting status to 'received', BagValid to %t, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.BagId,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		*result.TransferRequest.FixityValue)
@@ -520,11 +520,22 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	result.RecordResult.CopyReceiptSentAt = time.Now()
 
 	if xfer.FixityAccept == nil || *xfer.FixityAccept == false {
+		fixityAccept := "null"
+		if xfer.FixityAccept != nil {
+			if *xfer.FixityAccept == true {
+				fixityAccept = "true"
+			} else {
+				fixityAccept = "false"
+			}
+		}
 		recorder.ProcUtil.MessageLog.Debug(
-			"Remote node rejected fixity value for xfer request %s (bag %s)",
+			"Remote node rejected fixity value %s for xfer request %s (bag %s)",
+			*result.TransferRequest.FixityValue,
 			result.TransferRequest.ReplicationId, result.TransferRequest.BagId)
-		result.ErrorMessage = "Remote node did not accept the fixity value we sent for this bag. " +
-			"This cancels the transfer request, and we will not store the bag."
+		result.ErrorMessage = fmt.Sprintf("We sent fixity value '%s'. Remote node " +
+			"returned fixity_accept value of %s for this bag. " +
+			"This cancels the transfer request, and we will not store the bag.",
+			*result.TransferRequest.FixityValue, fixityAccept)
 		return
 	}
 	if xfer.Status == "Cancelled" {
@@ -557,7 +568,7 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 		return
 	}
 
-	result.TransferRequest.Status = "Stored"
+	result.TransferRequest.Status = "stored"
 
 	// Handle nil values for logging
 	bagValid := "nil"
