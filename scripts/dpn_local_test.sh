@@ -55,7 +55,6 @@ go run dpn_sync.go -config test
 if [ $? != 0 ]
 then
     echo "DPN sync failed"
-    kill -s SIGINT $NSQ_PID
     exit 1
 fi
 
