@@ -173,6 +173,7 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 		// Bag already exists. No need to recreate it.
 		return bag, err
 	}
+	utcNow := time.Now().UTC()
 	bag = &dpn.DPNBag{
 		UUID: bagUuid,
 		LocalId: fmt.Sprintf("integration-test-%s-1000", node),
@@ -189,6 +190,8 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 		Fixities: &dpn.DPNFixity{
 			Sha256: testBagDigest,
 		},
+		CreatedAt: utcNow,
+		UpdatedAt: utcNow,
 	}
 	// You have to be node admin to create a bag, so use the admin client.
 	return testUtil.RemoteAdminClients[node].DPNBagCreate(bag)
