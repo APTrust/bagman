@@ -581,7 +581,7 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 	}
 
 	recorder.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
-		"Setting status to 'Stored', BagValid to %t, and checksum to %s",
+		"Setting status to 'stored', BagValid to %s, and checksum to %s",
 		result.TransferRequest.ReplicationId, result.TransferRequest.BagId,
 		result.TransferRequest.FromNode, bagValid, fixityValue)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)

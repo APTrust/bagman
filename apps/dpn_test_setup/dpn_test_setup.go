@@ -22,7 +22,7 @@ var APTrustBags = []string {
 var testBagUuid = "00000000-0000-0000-0000-000000000001"
 var goodBagPath = fmt.Sprintf("dpn/testdata/%s.tar", testBagUuid)
 var testBagSize = uint64(268800)
-var testBagDigest = "f9f39a1602cde405042dd8b4859c6a3e2c04092a76eaab858ae28e48403ccba4"
+var testBagDigest = "c4e254c4432d8f8755de161c42c4f8188455ca1c5ca1e2fd548d2a991dff009a"
 var adminTestToken = "0000000000000000000000000000000000000000"
 var FaberCollege = "9a000000-0000-4000-a000-000000000002"
 
