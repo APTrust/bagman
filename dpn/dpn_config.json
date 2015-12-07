@@ -22,6 +22,12 @@
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
         },
+        "RemoteNodeAdminTokensForTesting": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
         "RemoteNodeTokens": {
             "chron": "chron_token",
             "hathi": "hathi_token",
@@ -65,11 +71,17 @@
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
         },
-        "RemoteNodeTokens": {
+        "RemoteNodeAdminTokensForTesting": {
             "chron": "chron_token",
             "hathi": "hathi_token",
             "sdr":   "sdr_token",
             "tdr":   "tdr_token"
+        },
+        "RemoteNodeTokens": {
+            "chron": "aptrust_token",
+            "hathi": "aptrust_token",
+            "sdr":   "aptrust_token",
+            "tdr":   "aptrust_token"
         },
         "RemoteNodeURLs": {
             "chron": "http://localhost:3002",
@@ -111,6 +123,12 @@
         "AuthTokenHeaderFormats": {
             "hathi": "Token token=%s"
         },
+        "RemoteNodeAdminTokensForTesting": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
         "RemoteNodeTokens": {
             "chron": "",
             "hathi": "",
@@ -149,6 +167,12 @@
         },
         "AuthTokenHeaderFormats": {
             "hathi": "Token token=%s"
+        },
+        "RemoteNodeAdminTokensForTesting": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
         },
         "RemoteNodeTokens": {
             "chron": "",

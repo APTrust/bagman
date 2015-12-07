@@ -210,6 +210,9 @@ type RestClientConfig struct {
 }
 
 type DPNConfig struct {
+	// EnvironmentName is the name of this configuration: "dev", "test",
+	// "production", etc.
+	EnvironmentName        string
 	// LocalNode is the namespace of the node this code is running on.
 	// E.g. "aptrust", "chron", "hathi", "tdr", "sdr"
 	LocalNode              string
@@ -243,6 +246,11 @@ type DPNConfig struct {
 	// expects. Since the default is "token %s", there is no
 	// need to create entries in this map for most nodes.
 	AuthTokenHeaderFormats map[string]string
+	// RemoteNodeAdminTokensForTesting are used in integration
+	// tests only, when we want to perform admin-only operations,
+	// such as creating bags and replication requests on a remote
+	// node in the test cluster.
+	RemoteNodeAdminTokensForTesting map[string]string
 	// API Tokens for connecting to remote nodes
 	RemoteNodeTokens       map[string]string
 	// URLs for remote nodes. Set these only if you want to
@@ -301,6 +309,7 @@ func LoadConfig(pathToFile, requestedConfig string) (*DPNConfig, error) {
 	if err == nil {
 		config.LogDirectory = expanded
 	}
+	config.EnvironmentName = strings.ToLower(requestedConfig)
     return config, nil
 }
 

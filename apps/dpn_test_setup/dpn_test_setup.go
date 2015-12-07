@@ -88,6 +88,11 @@ func NewTestUtil() (*TestUtil) {
 	adminConfig := *dpnConfig
 	remoteAdminClients, err := dpn.GetRemoteClients(localClient,
 		&adminConfig, procUtil.MessageLog)
+	for _, remoteAdminClient := range remoteAdminClients {
+		// Give this client the admin API token, so it
+		// can perform admin operations.
+		remoteAdminClient.APIKey = dpnConfig.RemoteNodeAdminTokensForTesting[remoteAdminClient.Node]
+	}
 
 	if err != nil {
 		panic(err)
@@ -168,7 +173,7 @@ func (testUtil *TestUtil) CreateSymLink(bagUuid string) (string, error) {
 }
 
 func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
-	bag, err := testUtil.RemoteClients[node].DPNBagGet(bagUuid)
+	bag, err := testUtil.RemoteAdminClients[node].DPNBagGet(bagUuid)
 	if err == nil && bag != nil {
 		// Bag already exists. No need to recreate it.
 		return bag, err
@@ -198,6 +203,7 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 }
 
 func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath string) (*dpn.DPNReplicationTransfer, error) {
+	utcNow := time.Now().UTC()
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: bag.AdminNode,
 		ToNode: testUtil.DPNConfig.LocalNode,
@@ -207,6 +213,8 @@ func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath str
 		Status: "requested",
 		Protocol: "rsync",
 		Link: linkPath,
+		CreatedAt: utcNow,
+		UpdatedAt: utcNow,
 	}
 	// You have to be node admin to create the transfer request,
 	// so use the admin client.
