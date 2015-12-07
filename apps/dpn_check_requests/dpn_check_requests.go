@@ -185,6 +185,7 @@ func printUsage() {
 	fmt.Println("Checks the local DPN node for replication requests and adds them to NSQ.")
 }
 
+// TODO: Get rid of this? Read timestamps from database?
 func readLastTimestampFile(procUtil *bagman.ProcessUtil) (time.Time) {
 	lastTime := dummyTime
 	var f *os.File
@@ -235,6 +236,11 @@ func readLastTimestampFile(procUtil *bagman.ProcessUtil) (time.Time) {
 func writeLastTimestampFile(lastCheck time.Time) (error) {
 	fileText := "# Timestamp of last check for outstanding replication requests.\n"
 	fileText += "# Used by dpn_check_requests cron job.\n"
-	fileText += lastCheck.Format(time.RFC3339) + "\n"
+
+	// TODO: UNHACK. This is hacked to set zero time so our
+	// integration tests always try to collect everything.
+	// fileText += lastCheck.Format(time.RFC3339) + "\n"
+	fileText += time.Time{}.Format(time.RFC3339) + "\n"
+
 	return ioutil.WriteFile(timestampFile, []byte(fileText), 0644)
 }
