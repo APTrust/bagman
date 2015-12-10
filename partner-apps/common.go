@@ -3,9 +3,11 @@ package partnerapps
 import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
+	"os/user"
+	"path/filepath"
 )
 
-var Version string = "1.02"
+var Version string = "1.03"
 
 var ConfigHelp string = `
 Your config file should include the following name-value pairs,
@@ -48,7 +50,12 @@ func PrintVersion(appName string) {
 
 // Returns the name of the default APTrust partner config file.
 func DefaultConfigFile() (string, error) {
-	return bagman.ExpandTilde("~/.aptrust_partner.conf")
+	usr, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	defaultConfigFile := filepath.Join(usr.HomeDir, ".aptrust_partner.conf")
+	return defaultConfigFile, nil
 }
 
 // Returns true if the default config file exists.
