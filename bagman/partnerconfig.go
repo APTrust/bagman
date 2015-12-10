@@ -34,7 +34,8 @@ func parsePartnerConfig(file *os.File) (*PartnerConfig, error) {
 	lineNum := 0
 	for {
 		lineNum++
-		line, err := bufReader.ReadString('\n')
+		bytes, _, err := bufReader.ReadLine()
+		line := string(bytes)
 		if err == io.EOF {
 			break
 		} else if err != nil {
