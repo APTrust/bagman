@@ -115,6 +115,7 @@ func TestFetchObjectFiles(t *testing.T) {
 			"You can load this object into your local Fluctus instance by running " +
 			"`bundle exec rake fluctus:reset_data` in the Rails directory, and then " +
 			"running `./scripts/process_items.sh` from the top-level bagman directory.")
+		return
 	}
 	tmpDir := os.TempDir()
 	defer os.RemoveAll(tmpDir)
