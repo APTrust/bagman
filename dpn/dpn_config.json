@@ -168,25 +168,22 @@
         "AuthTokenHeaderFormats": {
             "hathi": "Token token=%s"
         },
-        "comment": "Remote node admin tokens are ignored in this config.",
+        "comment": "Remote node admin tokens are ignored in this config. No sdr node!",
         "RemoteNodeAdminTokensForTesting": {
             "chron": "",
             "hathi": "",
-            "sdr":   "",
             "tdr":   ""
         },
-        "comment": "Set these in the environment, not here. Export DPN_<NODE>_TOKEN",
+        "comment": "Set these in the environment, not here. Export DPN_<NODE>_TOKEN. No sdr node!",
         "RemoteNodeTokens": {
             "chron": "",
             "hathi": "",
-            "sdr":   "",
             "tdr":   ""
         },
-        "comment": "Remote node URLs in demo come from node records in the local REST service.",
+        "comment": "Remote node URLs in demo come from node records in the local REST service. No sdr node!",
         "RemoteNodeURLs": {
             "chron": "",
             "hathi": "",
-            "sdr":   "",
             "tdr":   ""
         }
     }
