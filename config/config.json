@@ -535,8 +535,8 @@
         "FluctusURL": "http://test.aptrust.org",
         "FluctusAPIVersion": "v1",
 
-        "NsqdHttpAddress": "http://localhost:4151",
-        "NsqLookupd": "localhost:4161",
+        "NsqdHttpAddress": "http://ec2-52-0-57-87.compute-1.amazonaws.com:4151",
+        "NsqLookupd": "ec2-52-0-57-87.compute-1.amazonaws.com:4161",
 
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
@@ -789,10 +789,10 @@
 
     },
     "dpn-demo": {
-        "TarDirectory": "/mnt/apt/data",
-        "RestoreDirectory": "/mnt/apt/restore",
-        "LogDirectory": "/mnt/apt/logs",
-        "ReplicationDirectory": "/mnt/apt/replication",
+        "TarDirectory": "/mnt/dpn/data",
+        "RestoreDirectory": "/mnt/dpn/restore",
+        "LogDirectory": "/mnt/dpn/logs",
+        "ReplicationDirectory": "/mnt/dpn/replication",
         "DPNStagingDirectory": "/mnt/dpn/staging",
         "DPNHomeDirectory": "/home",
         "MaxFileSize": 100000000,
