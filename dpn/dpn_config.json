@@ -148,12 +148,12 @@
         "LogLevel": 4,
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
-        "AcceptInvalidSSLCerts": true,
-        "UseSSHWithRsync": false,
+        "AcceptInvalidSSLCerts": false,
+        "UseSSHWithRsync": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "https://devops.aptrust.org/dpnode",
-            "LocalAPIRoot": "api-v1",
+            "LocalServiceURL": "http://127.0.0.1:3000/",
+            "LocalAPIRoot": "api_v1",
             "LocalAuthToken": ""
         },
         "DefaultMetadata": {
@@ -168,18 +168,21 @@
         "AuthTokenHeaderFormats": {
             "hathi": "Token token=%s"
         },
+        "comment": "Remote node admin tokens are ignored in this config.",
         "RemoteNodeAdminTokensForTesting": {
             "chron": "",
             "hathi": "",
             "sdr":   "",
             "tdr":   ""
         },
+        "comment": "Set these in the environment, not here. Export DPN_<NODE>_TOKEN",
         "RemoteNodeTokens": {
             "chron": "",
             "hathi": "",
             "sdr":   "",
             "tdr":   ""
         },
+        "comment": "Remote node URLs in demo come from node records in the local REST service.",
         "RemoteNodeURLs": {
             "chron": "",
             "hathi": "",
