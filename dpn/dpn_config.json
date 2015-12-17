@@ -170,7 +170,7 @@
             "chron": "Token token=%s",
             "hathi": "Token token=%s",
             "tdr": "Token token=%s"
-        }
+        },
         "comment": "Remote node admin tokens are ignored in this config. No sdr node!",
         "RemoteNodeAdminTokensForTesting": {
             "chron": "",
