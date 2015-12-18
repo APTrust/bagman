@@ -535,8 +535,8 @@
         "FluctusURL": "http://test.aptrust.org",
         "FluctusAPIVersion": "v1",
 
-        "NsqdHttpAddress": "http://ec2-52-0-57-87.compute-1.amazonaws.com:4151",
-        "NsqLookupd": "ec2-52-0-57-87.compute-1.amazonaws.com:4161",
+        "NsqdHttpAddress": "http://apt-util.aptrust.org:4151",
+        "NsqLookupd": "apt-util.aptrust.org:4161",
 
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
@@ -804,8 +804,8 @@
         "FluctusURL": "http://test.aptrust.org",
         "FluctusAPIVersion": "v1",
 
-        "NsqdHttpAddress": "http://ec2-52-0-57-87.compute-1.amazonaws.com:4151",
-        "NsqLookupd": "ec2-52-0-57-87.compute-1.amazonaws.com:4161",
+        "NsqdHttpAddress": "http://apt-util.aptrust.org:4151",
+        "NsqLookupd": "apt-util.aptrust.org:4161",
 
         "PreservationBucket": "aptrust.test.preservation",
         "ReplicationBucket": "aptrust.test.preservation.oregon",
