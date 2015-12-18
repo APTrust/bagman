@@ -152,7 +152,7 @@
         "UseSSHWithRsync": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "http://devops.aptrust.org/",
+            "LocalServiceURL": "https://devops.aptrust.org/",
             "LocalAPIRoot": "api-v1",
             "LocalAuthToken": ""
         },
