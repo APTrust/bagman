@@ -35,6 +35,10 @@ func main() {
 	consumer.AddHandler(recorder)
 	consumer.ConnectToNSQLookupd(procUtil.Config.NsqLookupd)
 
+	procUtil.MessageLog.Info("**** If the NSQ lookup service returns a " +
+		"hostname that is not a fully-qualified domain name, be sure " +
+		"that name is in this system's /etc/hosts file! ****")
+
 	// This reader blocks until we get an interrupt, so our program does not exit.
 	<-consumer.StopChan
 
