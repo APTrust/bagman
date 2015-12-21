@@ -21,6 +21,8 @@ var fluctusSkipMessagePrinted bool = false
 var objId string = "ncsu.edu/ncsu.1840.16-2928"
 var gfId string = "ncsu.edu/ncsu.1840.16-2928/data/object.properties"
 
+var testInstitutionId = "fe908327-3635-43c2-9ca6-849485febcf3"
+
 func runFluctusTests() bool {
 	_, err := http.Get(fluctusUrl)
 	if err != nil {
@@ -482,8 +484,8 @@ func TestInstitutionGet(t *testing.T) {
 	if inst.BriefName != "test" {
 		t.Errorf("Expected BriefName 'test', got '%s'", inst.BriefName)
 	}
-	if inst.DpnUuid != "9a000000-0000-4000-a000-000000000005" {
-		t.Errorf("Expected name '9a000000-0000-4000-a000-000000000005', got '%s'", inst.DpnUuid)
+	if inst.DpnUuid != testInstitutionId {
+		t.Errorf("Expected name '%s', got '%s'", testInstitutionId, inst.DpnUuid)
 	}
 }
 
