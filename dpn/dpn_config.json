@@ -104,7 +104,7 @@
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
         "AcceptInvalidSSLCerts": false,
-        "UseSSHWithRsync": false,
+        "UseSSHWithRsync": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
             "LocalServiceURL": "https://dpn.aptrust.org",
