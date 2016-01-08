@@ -121,7 +121,10 @@
             "IngestNodeContactEmail": "help@aptrust.org"
         },
         "AuthTokenHeaderFormats": {
-            "hathi": "Token token=%s"
+            "aptrust": "Token token=%s",
+            "chron": "Token token=%s",
+            "hathi": "Token token=%s",
+            "tdr": "Token token=%s"
         },
         "RemoteNodeAdminTokensForTesting": {
             "chron": "",
@@ -152,7 +155,7 @@
         "UseSSHWithRsync": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "https://devops.aptrust.org/",
+            "LocalServiceURL": "https://dpn-demo.aptrust.org/",
             "LocalAPIRoot": "api-v1",
             "LocalAuthToken": ""
         },
