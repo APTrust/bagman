@@ -127,7 +127,7 @@ func createXferRequest(client *dpn.DPNRestClient, uuid, checksum string) (*dpn.D
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: "aptrust",
 		ToNode: "aptrust",
-		UUID: uuid,
+		BagId: uuid,
 		FixityAlgorithm: "sha256",
 		FixityNonce: &nonce,
 		FixityValue: &checksum,

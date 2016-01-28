@@ -430,8 +430,8 @@ func GetInstitutionFromBagName(bagName string) (string, error) {
 		message := fmt.Sprintf(
 			"Bag name '%s' should start with your institution ID,\n" +
 				"followed by a period and the object name.\n" +
-				"For example, 'miami.my_archive.tar' for a tar file,\n" +
-				"or 'miami.my_archive' for a directory.",
+				"For example, 'miami.edu.my_archive.tar' for a tar file,\n" +
+				"or 'miami.edu.my_archive' for a directory.",
 			bagName)
 		return "", fmt.Errorf(message)
 	}
@@ -439,4 +439,26 @@ func GetInstitutionFromBagName(bagName string) (string, error) {
 		return fmt.Sprintf("%s.%s", parts[0], parts[1]), nil
 	}
 	return parts[0], nil
+}
+
+// Given the identifier of an already ingested bag, such as
+// test.edu/test.edu.bag2, this returns the institution identifier
+// (test.edu).
+func GetInstitutionFromBagIdentifier(bagIdentifier string) (string, error) {
+	errMessage := fmt.Sprintf(
+		"Bag identifier '%s' should start with your institution ID,\n" +
+			"followed by a slash and the object name.\n" +
+			"For example, 'miami.edu/miami.edu.my_archive.tar'. " +
+			"The system currently expects identifiers to end in " +
+			".edu or .org.",
+		bagIdentifier)
+
+	parts := strings.Split(bagIdentifier, "/")
+	if len(parts) < 2 {
+		return "", fmt.Errorf(errMessage)
+	}
+	if strings.HasSuffix(parts[0], ".edu") || strings.HasSuffix(parts[0], ".org") {
+		return parts[0], nil
+	}
+	return "", fmt.Errorf(errMessage)
 }

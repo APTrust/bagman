@@ -110,7 +110,7 @@ func (copier *Copier) doLookup() {
 		copier.ProcUtil.MessageLog.Debug(
 			"Looking up ReplicationId %s, bag %s, on node %s ",
 				result.TransferRequest.ReplicationId,
-				result.TransferRequest.UUID,
+				result.TransferRequest.BagId,
 				result.TransferRequest.FromNode)
 
 
@@ -118,12 +118,12 @@ func (copier *Copier) doLookup() {
 		// not be processed, then don't process it...
 		xfer, _ := remoteClient.ReplicationTransferGet(
 			result.TransferRequest.ReplicationId)
-		if xfer != nil && xfer.Status != "Requested" {
+		if xfer != nil && xfer.Status != "requested" {
 			message := fmt.Sprintf(
 				"Cancelling copy of ReplicationId %s (bag %s) because " +
 					"replication status on %s is %s",
 				result.TransferRequest.ReplicationId,
-				result.TransferRequest.UUID,
+				result.TransferRequest.BagId,
 				result.TransferRequest.FromNode,
 				xfer.Status)
 			copier.ProcUtil.MessageLog.Info(message)
@@ -144,13 +144,18 @@ func (copier *Copier) doCopy() {
 	for result := range copier.CopyChannel {
 		localPath := filepath.Join(
 			copier.ProcUtil.Config.DPNStagingDirectory,
-			fmt.Sprintf("%s.tar", result.TransferRequest.UUID))
+			fmt.Sprintf("%s.tar", result.TransferRequest.BagId))
 
 		if !bagman.FileExists(copier.ProcUtil.Config.DPNStagingDirectory) {
 			os.MkdirAll(copier.ProcUtil.Config.DPNStagingDirectory, 0755)
 		}
 
-		rsyncCommand := GetRsyncCommand(result.TransferRequest.Link, localPath)
+		// DEBUG - use for tracing 'file not found'
+		// fmt.Printf("Rsync link is %s\n", result.TransferRequest.Link)
+
+		copier.ProcUtil.MessageLog.Info("Rsync link is %s", result.TransferRequest.Link)
+		rsyncCommand := GetRsyncCommand(result.TransferRequest.Link,
+			localPath, copier.DPNConfig.UseSSHWithRsync)
 
 		// Touch message on both sides of rsync, so NSQ doesn't time out.
 		if result.NsqMessage != nil {
@@ -167,6 +172,8 @@ func (copier *Copier) doCopy() {
 			result.LocalPath = localPath
 			result.CopyResult.LocalPath = localPath
 			result.CopyResult.BagWasCopied = true
+			// TODO: This is not necessary. We just need to calculate the checksum
+			// of the SHA-256 manifest
 			fileDigest, err := bagman.CalculateDigests(localPath)
 			if result.NsqMessage != nil {
 				result.NsqMessage.Touch()
@@ -273,7 +280,10 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 // }
 
 //
-func GetRsyncCommand(copyFrom, copyTo string) (*exec.Cmd) {
+func GetRsyncCommand(copyFrom, copyTo string, useSSH bool) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
-	return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
+	if useSSH {
+		return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
+	}
+	return exec.Command("rsync", "-avz", copyFrom, copyTo)
 }

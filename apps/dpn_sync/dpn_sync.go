@@ -36,6 +36,24 @@ func main() {
 		// in the log directory specified in the config file.
 		syncResult := dpnSync.SyncEverythingFromNode(node)
 		printErrors(syncResult, node)
+
+		// -- DEBUG --
+		// fmt.Printf("************* Sync Result for %s ************\n", node.Name)
+		// fmt.Println("--- BAGS ---")
+		// for _, bag := range syncResult.Bags {
+		// 	fmt.Println(bag.UUID)
+		// }
+		// fmt.Printf("--- XFERS ---")
+		// for _, xfer := range syncResult.ReplicationTransfers {
+		// 	fmt.Println("%s : % -> %s\n", xfer.BagId, xfer.FromNode, xfer.ToNode)
+		// }
+		// fmt.Println("--- RESTORES ---")
+		// for _, xfer := range syncResult.RestoreTransfers {
+		// 	fmt.Printf("%s : % -> %s\n", xfer.BagId, xfer.ToNode, xfer.FromNode)
+		// }
+		// fmt.Printf(">>> Bag Sync Error: %s\n", syncResult.BagSyncError)
+		// fmt.Printf(">>> Replication Sync Error: %s\n", syncResult.ReplicationSyncError)
+		// fmt.Printf(">>> Restore Sync Error: %s\n", syncResult.RestoreSyncError)
 	}
 
 }
@@ -68,9 +86,5 @@ func printErrors(syncResult *dpn.SyncResult, node *dpn.DPNNode) {
 	if syncResult.RestoreSyncError != nil {
 		fmt.Fprintf(os.Stderr, "Error synching Restore Transfers from %s: %v\n",
 			node.Namespace, syncResult.RestoreSyncError)
-	}
-	if syncResult.TimestampError != nil {
-		fmt.Fprintf(os.Stderr, "Error updating LastPullDate for %s: %v\n",
-			node.Namespace, syncResult.TimestampError)
 	}
 }

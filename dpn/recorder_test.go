@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
+	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
@@ -41,25 +42,40 @@ func getRecorder(t *testing.T) (*dpn.Recorder) {
 		t.Error(err)
 		return nil
 	}
+
+	// HACK: Some of our tests require us to connect to
+	// remote nodes as admin, and the remote node tokens
+	// in the dpn_config.json are all admin tokens.
+	// The actions that recorder.go takes on remote nodes
+	// MUST be completed as a non-admin user. So the following
+	// code forces the aptrust_token into all the remote
+	// clients so they connect to the remote nodes as a non-admin
+	// user. This issue affects the test environment only.
+	// In production, we would never connect to a remote node
+	// as an admin. We would never even have the credentials
+	// to do so.
+	for i := range(recorder.RemoteClients) {
+		remoteClient := recorder.RemoteClients[i]
+		remoteClient.APIKey = recorder.LocalRESTClient.APIKey
+	}
+
 	return recorder
 }
 
 func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResult) {
-	dpnBag, err := recorder.LocalRESTClient.DPNBagGet(aptrustBagIdentifier)
+	params := url.Values{}
+	params.Set("to_node", "aptrust")
+	xfers, err := recorder.RemoteClients["hathi"].DPNReplicationListGet(&params)
 	if err != nil {
 		t.Error(err)
 		return nil
 	}
-	// In our test data fixtures for the local DPN REST cluster,
-	// the transfers with id <namespace>-13 to <namespace>-18 are
-	// transfers to APTrust. So tdr-18, sdr-18, chron-18, etc. are
-	// all bound for APTrust.
-	xfer, err := recorder.RemoteClients["hathi"].ReplicationTransferGet("hathi-18")
-	if err != nil {
-		t.Error(err)
+	if len(xfers.Results) == 0 {
+		t.Errorf("No transfers available from Hathi to APTrust")
 		return nil
 	}
-	bag, err := recorder.RemoteClients["hathi"].DPNBagGet(xfer.UUID)
+	xfer := xfers.Results[0]
+	bag, err := recorder.RemoteClients["hathi"].DPNBagGet(xfer.BagId)
 	if err != nil {
 		t.Error(err)
 		return nil
@@ -69,9 +85,16 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 		return nil
 	}
 	result := dpn.NewDPNResult("")
-	result.DPNBag = dpnBag
+	result.DPNBag = bag
 	result.TransferRequest = xfer
-	result.BagSha256Digest = bag.Fixities.Sha256
+
+	// Need to send this receipt to admin node
+	fixityValue := bag.Fixities.Sha256
+	result.TransferRequest.FixityValue = &fixityValue
+
+	result.ValidationResult = &dpn.ValidationResult{
+		TagManifestChecksum: bag.Fixities.Sha256,
+	}
 	result.BagMd5Digest = "SomeFakeValue"
 	return result
 }
@@ -80,8 +103,7 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 // mimicking a result for a locally-ingested bag.
 func buildLocalResult(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResult) {
 	result := dpn.NewDPNResult("test.edu/test.edu.bag6")
-	result.DPNBag = makeBag() // defined in dpnrestclient_test.go
-	result.DPNBag.LocalId = "test.edu/test.edu.bag6"
+	result.DPNBag = MakeBag() // defined in helper_test.go
 	result.StorageURL = fmt.Sprintf("http://fakeurl.kom/%s", result.DPNBag.UUID)
 
 	ps := &bagman.ProcessStatus{
@@ -171,6 +193,10 @@ func TestReplicatedBag(t *testing.T) {
 	}
 	recorder := getRecorder(t)
 	dpnResult := buildResultWithTransfer(t, recorder)
+	if dpnResult == nil {
+		t.Errorf("Failed to build test result. Can't run TestReplicatedBag.")
+		return
+	}
 	recorderTestEnsureFiles(t, recorder.ProcUtil)
 
 	// Test a bag that was copied and validated
@@ -179,9 +205,7 @@ func TestReplicatedBag(t *testing.T) {
 		recorder.ProcUtil.Config.DPNStagingDirectory,
 		dpnResult.DPNBag.UUID + ".tar")
 	dpnResult.CopyResult.LocalPath = filePath
-	dpnResult.ValidationResult = &dpn.ValidationResult{
-		TarFilePath: filePath,
-	}
+	dpnResult.ValidationResult.TarFilePath = filePath
 
 	// Run the test...
 	recorder.RunTest(dpnResult)
@@ -196,7 +220,6 @@ func TestReplicatedBag(t *testing.T) {
 	if !dpnResult.RecordResult.StorageResultSentAt.IsZero() {
 		t.Errorf("StorageResultSentAt was set when it should not have been")
 	}
-
 
 	// Test a bag that was stored
 	dpnResult.StorageURL = "https://www.yahoo.com"

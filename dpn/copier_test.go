@@ -20,12 +20,12 @@ var testConfig string = "test"
 // and we have data for them in our local DPN REST
 // service (they're in the fixture file TestServerData.json).
 var TEST_BAGS = []string {
-	"005e7793-8253-4585-7118-2da702e29aa0",
-	"06edc30f-af04-4a4e-4ad6-3c679a195d46",
-	"41e5376c-cc13-4c3e-6af3-297cc2e005aa",
-	"472218b3-95ce-4b8e-6c21-6e514cfbe43f",
-	"4d11736c-c0ab-44b0-66c6-a947f414d4f1",
-	"8839f294-c7c0-404d-4467-7ab223ff461b",
+	"10000000-0000-4000-a000-000000000001",
+	"10000000-0000-4000-a000-000000000002",
+	"10000000-0000-4000-a000-000000000003",
+	"10000000-0000-4000-a000-000000000004",
+	"10000000-0000-4000-a000-000000000005",
+	"10000000-0000-4000-a000-000000000006",
 }
 
 var skipCopyMessagePrinted = false
@@ -80,7 +80,8 @@ func canRunCopyTests(t *testing.T) (bool) {
 // entry in ~/.ssh/config with settings to connect to
 // the dpn-test server.
 func getTestLink(tarredBagName string) (string) {
-	return fmt.Sprintf("dpn-test:/home/earthdiver/staging/%s", tarredBagName)
+	procUtil := bagman.NewProcessUtil(&testConfig)
+	return fmt.Sprintf("dpn-test:%s/%s", procUtil.Config.DPNStagingDirectory, tarredBagName)
 }
 
 // This builds a DPNResult suitable for feeding to the Copier.RunTest()
@@ -118,11 +119,6 @@ func buildTestResult(bagIdentifier string, t *testing.T) (*dpn.DPNResult) {
 	}
 	result.TransferRequest = xferRequests.Results[0]
 
-	// Change the rsync link for the bag to point toward
-	// our dpn test server.
-	tarredBagName := fmt.Sprintf("%s.tar", bagIdentifier)
-	result.TransferRequest.Link = getTestLink(tarredBagName)
-
 	return result
 }
 
@@ -139,12 +135,15 @@ func TestGetRsyncCommand(t *testing.T) {
 	procUtil := bagman.NewProcessUtil(&testConfig)
 	copyFrom := getTestLink(TEST_BAGS[0])
 	copyTo := procUtil.Config.DPNStagingDirectory
-	command := dpn.GetRsyncCommand(copyFrom, copyTo)
+
+	// Test with SSH
+	command := dpn.GetRsyncCommand(copyFrom, copyTo, true)
 	if !strings.HasSuffix(command.Path, "rsync") {
 		t.Errorf("Expected Path ending in 'rsync', got '%s'", command.Path)
 	}
 	if len(command.Args) < 6 {
-		t.Errorf("rsync command has %d args, expected 5", len(command.Args))
+		t.Errorf("rsync command has %d args, expected %d",
+			len(command.Args), 6)
 		return
 	}
 	if command.Args[3] != "ssh" {
@@ -158,6 +157,26 @@ func TestGetRsyncCommand(t *testing.T) {
 		t.Errorf("rsync command is copying to '%s', expected '%s'",
 			command.Args[5], copyTo)
 	}
+
+	// Test without SSH
+	command = dpn.GetRsyncCommand(copyFrom, copyTo, false)
+	if !strings.HasSuffix(command.Path, "rsync") {
+		t.Errorf("Expected Path ending in 'rsync', got '%s'", command.Path)
+	}
+	if len(command.Args) < 4 {
+		t.Errorf("rsync command has %d args, expected %d",
+			len(command.Args), 4)
+		return
+	}
+	if command.Args[2] != copyFrom {
+		t.Errorf("rsync command is copying from '%s', expected '%s'",
+			command.Args[2], copyFrom)
+	}
+	if command.Args[3] != copyTo {
+		t.Errorf("rsync command is copying to '%s', expected '%s'",
+			command.Args[3], copyTo)
+	}
+
 }
 
 func TestCopier(t *testing.T) {
@@ -206,14 +225,19 @@ func TestCopier(t *testing.T) {
 				"but that file does not exist", uuid,
 				dpnResult.CopyResult.LocalPath)
 		}
-		if dpnResult.DPNBag.Fixities.Sha256 != dpnResult.BagSha256Digest {
-			t.Errorf("Fixity did not match for bag %s. Expected %s, " +
-				"got %s", uuid, dpnResult.DPNBag.Fixities.Sha256,
-				dpnResult.BagSha256Digest)
-		}
-		if len(dpnResult.BagMd5Digest) == 0 {
-			t.Errorf("Bg MD5 digest is missing.")
-		}
+		// ----------------------------------------------------------------------
+		// TODO: Get rid of the bag-level checksums.
+		// We should check only the SHA-256 of the sha256 manifest,
+		// and that's done in the validation step.
+		// ----------------------------------------------------------------------
+		// if dpnResult.DPNBag.Fixities.Sha256 != dpnResult.BagSha256Digest {
+		// 	t.Errorf("Fixity did not match for bag %s. Expected %s, " +
+		// 		"got %s", uuid, dpnResult.DPNBag.Fixities.Sha256,
+		// 		dpnResult.BagSha256Digest)
+		// }
+		// if len(dpnResult.BagMd5Digest) == 0 {
+		// 	t.Errorf("Bg MD5 digest is missing.")
+		// }
 		if dpnResult.BagSize == 0 {
 			t.Errorf("Bag size is missing")
 		}

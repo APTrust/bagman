@@ -104,7 +104,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 	pageNum := 1
 	params := url.Values{}
 	params.Set("to_node", "aptrust")
-	params.Set("status", "Requested")
+	params.Set("status", "requested") // must be all lower-case
 	params.Set("after", lastCheck.Format(time.RFC3339))
 	params.Set("page", fmt.Sprintf("%d", pageNum))
 	for {
@@ -118,14 +118,15 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			return err
 		}
 		if len(xferList.Results) == 0 {
-			procUtil.MessageLog.Info("No replication requests for aptrust")
+			procUtil.MessageLog.Info("No replication requests for aptrust at %s",
+				client.Node)
 			return nil
 		}
 		procUtil.MessageLog.Info("Queuing batch of %d items", len(xferList.Results))
 		genericSlice := make([]interface{}, len(xferList.Results))
 		for i := range xferList.Results {
 			xfer := xferList.Results[i]
-			bag, err := client.DPNBagGet(xfer.UUID)
+			bag, err := client.DPNBagGet(xfer.BagId)
 			if err != nil {
 				return err
 			}
@@ -140,7 +141,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			return err
 		}
 		for _, xfer := range xferList.Results {
-			message := fmt.Sprintf("Queued %s - %s", xfer.ReplicationId, xfer.UUID)
+			message := fmt.Sprintf("Queued %s - %s", xfer.ReplicationId, xfer.BagId)
 			procUtil.MessageLog.Info(message)
 			if xfer.UpdatedAt.After(lastCheck) {
 				lastCheck = xfer.UpdatedAt
@@ -184,6 +185,7 @@ func printUsage() {
 	fmt.Println("Checks the local DPN node for replication requests and adds them to NSQ.")
 }
 
+// TODO: Get rid of this? Read timestamps from database?
 func readLastTimestampFile(procUtil *bagman.ProcessUtil) (time.Time) {
 	lastTime := dummyTime
 	var f *os.File
@@ -234,6 +236,11 @@ func readLastTimestampFile(procUtil *bagman.ProcessUtil) (time.Time) {
 func writeLastTimestampFile(lastCheck time.Time) (error) {
 	fileText := "# Timestamp of last check for outstanding replication requests.\n"
 	fileText += "# Used by dpn_check_requests cron job.\n"
-	fileText += lastCheck.Format(time.RFC3339) + "\n"
+
+	// TODO: UNHACK. This is hacked to set zero time so our
+	// integration tests always try to collect everything.
+	// fileText += lastCheck.Format(time.RFC3339) + "\n"
+	fileText += time.Time{}.Format(time.RFC3339) + "\n"
+
 	return ioutil.WriteFile(timestampFile, []byte(fileText), 0644)
 }

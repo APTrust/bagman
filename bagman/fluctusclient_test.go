@@ -21,6 +21,8 @@ var fluctusSkipMessagePrinted bool = false
 var objId string = "ncsu.edu/ncsu.1840.16-2928"
 var gfId string = "ncsu.edu/ncsu.1840.16-2928/data/object.properties"
 
+var testInstitutionId = "fe908327-3635-43c2-9ca6-849485febcf3"
+
 func runFluctusTests() bool {
 	_, err := http.Get(fluctusUrl)
 	if err != nil {
@@ -460,6 +462,30 @@ func TestCacheInstitutions(t *testing.T) {
 	err := fluctusClient.CacheInstitutions()
 	if err != nil {
 		t.Errorf("Error caching institutions: %v", err)
+	}
+}
+
+func TestInstitutionGet(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	fluctusClient := getClient(t)
+	inst, err := fluctusClient.InstitutionGet("test.edu")
+	if err != nil {
+		t.Errorf("Error getting institution 'test.edu': %v", err)
+		return
+	}
+	if inst.Name != "Test University" {
+		t.Errorf("Expected Name 'Test University', got '%s'", inst.Name)
+	}
+	if inst.Identifier != "test.edu" {
+		t.Errorf("Expected Identifier 'test.edu', got '%s'", inst.Identifier)
+	}
+	if inst.BriefName != "test" {
+		t.Errorf("Expected BriefName 'test', got '%s'", inst.BriefName)
+	}
+	if inst.DpnUuid != testInstitutionId {
+		t.Errorf("Expected name '%s', got '%s'", testInstitutionId, inst.DpnUuid)
 	}
 }
 

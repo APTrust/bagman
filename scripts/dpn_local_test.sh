@@ -6,18 +6,18 @@
 # server and a local DPN cluster. You can accomplish that with these steps:
 #
 # 1. In your local Fluctus directory, run `rails server`
-# 2. In your DPN-REST/dpnode directory, run `run_cluster.sh`
+# 2. In your dpn-server directory, run `script/run_cluster.sh`
 # 3. Run this script.
 #
 # After running this script, you can check the following local apps in your
 # browser:
 #
 # Fluctus               http://localhost:3000
-# APTrust DPN Node      http://localhost:8000
-# Chronopolis DPN Node  http://localhost:8001
-# Hathi Trust DPN Node  http://localhost:8002
-# SDR DPN Node          http://localhost:8003
-# TDR DPN Node          http://localhost:8004
+# APTrust DPN Node      http://localhost:3001
+# Chronopolis DPN Node  http://localhost:3002
+# Hathi Trust DPN Node  http://localhost:3003
+# SDR DPN Node          http://localhost:3004
+# TDR DPN Node          http://localhost:3005
 #
 
 # TODO
@@ -31,7 +31,7 @@
 #   DPN cluster.
 #
 # 1. Mark a few APTrust bags for replication to DPN.
-# 2.
+#
 
 echo "Getting rid of old logs and data files"
 rm -r ~/tmp/*
@@ -55,7 +55,6 @@ go run dpn_sync.go -config test
 if [ $? != 0 ]
 then
     echo "DPN sync failed"
-    kill -s SIGINT $NSQ_PID
     exit 1
 fi
 
@@ -147,6 +146,6 @@ kill_all()
     kill -s SIGINT $NSQ_PID
 }
 
-trap kill_all SIGINT
+trap kill_all SIGTERM SIGINT SIGHUP
 
 wait $NSQ_PID

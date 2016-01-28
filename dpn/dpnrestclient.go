@@ -40,6 +40,13 @@ type NodeListResult struct {
 	Results     []*DPNNode                 `json:results`
 }
 
+type MemberListResult struct {
+	Count       int32                      `json:count`
+	Next        *string                    `json:next`
+	Previous    *string                    `json:previous`
+	Results     []*DPNMember               `json:results`
+}
+
 // BagListResult is what the REST service returns when
 // we ask for a list of bags.
 type BagListResult struct {
@@ -142,6 +149,130 @@ func (client *DPNRestClient) NewJsonRequest(method, targetUrl string, body io.Re
 	return req, nil
 }
 
+func (client *DPNRestClient) DPNMemberGet(identifier string) (*DPNMember, error) {
+	relativeUrl := fmt.Sprintf("/%s/member/%s/", client.APIVersion, identifier)
+	objUrl := client.BuildUrl(relativeUrl, nil)
+	client.logger.Debug("Requesting member from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// 404 for object not found
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("DPNMemberGet expected status 200 but got %d. URL: %s", response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	obj := &DPNMember{}
+	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return obj, nil
+}
+
+// Returns the DPN Member with the specified name, or an error
+// if there is not exactly one DPN member with that name.
+func (client *DPNRestClient) DPNMemberGetByName(name string) (*DPNMember, error) {
+	params := url.Values{}
+	params.Set("name", name)
+	list, err := client.DPNMemberListGet(&params)
+	if err != nil {
+		return nil, err
+	}
+	if list.Count == 0 {
+		return nil, fmt.Errorf("Cannot find member with name '%s'", name)
+	}
+	if list.Count > 1 {
+		return nil, fmt.Errorf("Found %d members with name '%s'", list.Count, name)
+	}
+	return list.Results[0], nil
+}
+
+func (client *DPNRestClient) DPNMemberListGet(queryParams *url.Values) (*MemberListResult, error) {
+	relativeUrl := fmt.Sprintf("/%s/member/", client.APIVersion)
+	objUrl := client.BuildUrl(relativeUrl, queryParams)
+	client.logger.Debug("Requesting member list from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("DPNMemberListGet expected status 200 but got %d. URL: %s", response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	result := &MemberListResult{}
+	err = json.Unmarshal(body, result)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return result, nil
+}
+
+func (client *DPNRestClient) DPNMemberCreate(bag *DPNMember) (*DPNMember, error) {
+	return client.dpnMemberSave(bag, "POST")
+}
+
+func (client *DPNRestClient) DPNMemberUpdate(bag *DPNMember) (*DPNMember, error) {
+	return client.dpnMemberSave(bag, "PUT")
+}
+
+func (client *DPNRestClient) dpnMemberSave(member *DPNMember, method string) (*DPNMember, error) {
+	// POST/Create
+	relativeUrl := fmt.Sprintf("/%s/member/", client.APIVersion)
+	objUrl := client.BuildUrl(relativeUrl, nil)
+	expectedResponseCode := 201
+	if method == "PUT" {
+		// PUT/Update
+		relativeUrl = fmt.Sprintf("/%s/member/%s/", client.APIVersion, member.UUID)
+		objUrl = client.BuildUrl(relativeUrl, nil)
+		expectedResponseCode = 200
+	}
+	client.logger.Debug("%sing member to DPN REST service: %s", method, objUrl)
+	postData, err := json.Marshal(member)
+	if err != nil {
+		return nil, err
+	}
+	req, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(postData))
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != expectedResponseCode {
+		error := fmt.Errorf("%s to %s returned status code %d. Post data: %v",
+			method, objUrl, response.StatusCode, string(postData))
+		client.buildAndLogError(body, error.Error())
+		fmt.Println(string(body))
+		return nil, error
+	}
+	returnedMember := DPNMember{}
+	err = json.Unmarshal(body, &returnedMember)
+	if err != nil {
+		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+	return &returnedMember, nil
+}
+
 func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 	relativeUrl := fmt.Sprintf("/%s/node/%s/", client.APIVersion, identifier)
 	objUrl := client.BuildUrl(relativeUrl, nil)
@@ -168,6 +299,10 @@ func (client *DPNRestClient) DPNNodeGet(identifier string) (*DPNNode, error) {
 	// Build and return the data structure
 	obj := &DPNNode{}
 	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	obj.LastPullDate, err = client.DPNNodeGetLastPullDate(identifier)
 	if err != nil {
 		return nil, client.formatJsonError(objUrl, body, err)
 	}
@@ -249,6 +384,18 @@ func (client *DPNRestClient) DPNNodeUpdate(node *DPNNode) (*DPNNode, error) {
 	return &returnedNode, nil
 }
 
+// Returns the last time we pulled data from the specified node.
+func (client *DPNRestClient) DPNNodeGetLastPullDate(identifier string) (time.Time, error) {
+	params := url.Values{}
+	params.Set("ordering", "updated_at")
+	params.Set("page", "1")
+	params.Set("page_size", "1")
+	bags, err := client.DPNBagListGet(&params)
+	if err != nil || bags.Count == 0 {
+		return time.Time{}, err
+	}
+	return bags.Results[0].UpdatedAt, err
+}
 
 func (client *DPNRestClient) DPNBagGet(identifier string) (*DPNBag, error) {
 	relativeUrl := fmt.Sprintf("/%s/bag/%s/", client.APIVersion, identifier)
@@ -439,10 +586,12 @@ func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfe
 		expectedResponseCode = 200
 	}
 	client.logger.Debug("%sing replication transfer to DPN REST service: %s", method, objUrl)
+	xfer.UpdatedAt = time.Now().UTC().Truncate(time.Second)
 	postData, err := json.Marshal(xfer)
 	if err != nil {
 		return nil, err
 	}
+
 	req, err := client.NewJsonRequest(method, objUrl, bytes.NewBuffer(postData))
 	if err != nil {
 		return nil, err
@@ -461,7 +610,7 @@ func (client *DPNRestClient) replicationTransferSave(xfer *DPNReplicationTransfe
 	returnedXfer := DPNReplicationTransfer{}
 	err = json.Unmarshal(body, &returnedXfer)
 	if err != nil {
-		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		error := fmt.Errorf("Could not parse JSON response from %s: %v", objUrl, err)
 		client.buildAndLogError(body, error.Error())
 		return nil, error
 	}

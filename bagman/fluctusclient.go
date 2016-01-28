@@ -93,6 +93,37 @@ func (client *FluctusClient) CacheInstitutions() error {
 
 }
 
+func (client *FluctusClient) InstitutionGet(identifier string) (*Institution, error) {
+	instUrl := client.BuildUrl(fmt.Sprintf("/institutions/%s/", identifier))
+	client.logger.Debug("Requesting institution %s from fluctus: %s",
+		identifier, instUrl)
+	request, err := client.NewJsonRequest("GET", instUrl, nil)
+	if err != nil {
+		client.logger.Error("Error building institution GET request in Fluctus client:", err.Error())
+		return nil, err
+	}
+
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		client.logger.Error("Error getting institution from Fluctus", err.Error())
+		return nil, err
+	}
+	if response.StatusCode != 200 {
+		err = fmt.Errorf("Fluctus replied to request for institution with status code %d",
+			response.StatusCode)
+		return nil, err
+	}
+
+	// Build and return the data structure
+	institution := &Institution{}
+	err = json.Unmarshal(body, institution)
+	if err != nil {
+		return nil, client.formatJsonError("InstitutionGet", body, err)
+	}
+	return institution, nil
+}
+
+
 // BuildUrl combines the host and protocol in client.hostUrl with
 // relativeUrl to create an absolute URL. For example, if client.hostUrl
 // is "http://localhost:3456", then client.BuildUrl("/path/to/action.json")

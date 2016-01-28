@@ -217,7 +217,7 @@ func (recorder *Recorder) postProcess() {
 				if result.TransferRequest.Status == "Stored" {
 					recorder.ProcUtil.MessageLog.Info(
 						"Replication complete for bag %s from %s",
-						result.TransferRequest.UUID, result.TransferRequest.FromNode)
+						result.TransferRequest.BagId, result.TransferRequest.FromNode)
 				}
 			}
 			result.NsqMessage.Finish()
@@ -248,6 +248,10 @@ func (recorder *Recorder) RecordAPTrustDPNData(result *DPNResult) {
 // Create a new DPN bag entry in our local DPN registry. We do this only
 // for DPN bags that we ingester here at APTrust.
 func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
+	recorder.ensureBagMember(result)
+	if result.ErrorMessage != "" {
+		return
+	}
 	recorder.ProcUtil.MessageLog.Debug("Creating new DPN bag %s (%s) in local registry.",
 		result.DPNBag.UUID, result.BagIdentifier)
 	dpnBag, err := recorder.LocalRESTClient.DPNBagCreate(result.DPNBag)
@@ -258,6 +262,44 @@ func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
 	}
 	result.DPNBag = dpnBag
 	result.RecordResult.DPNBagCreatedAt = dpnBag.CreatedAt
+}
+
+// We have the set the DPN Bag Member UUID if it's not already set,
+// or the DPN REST service  will reject the bag. The member UUID
+// links the bag to the institution that owns it. If we're replicating
+// a bag that came from another node, it should already have a Member
+// UUID. If the bag was ingested at APTrust, it may not yet have a
+// Member UUID.
+func (recorder *Recorder) ensureBagMember(result *DPNResult) {
+	if result.DPNBag.Member != "" {
+		recorder.ProcUtil.MessageLog.Debug("No need to look up bag member. " +
+			"DPN bag %s belongs to member %s.",
+			result.DPNBag.UUID, result.DPNBag.Member)
+		return
+	}
+	if result.BagIdentifier == "" {
+		result.ErrorMessage = fmt.Sprintf("DPN Bag %s has no associated " +
+			"LocalId and no DPN member UUID, so it's " +
+			"impossible to tell who owns it. This bag cannot be recorded " +
+			"in DPN without the member UUID. AdminNode is '%s'.",
+			result.DPNBag.UUID, result.DPNBag.AdminNode)
+		return
+	}
+	instIdentifier, err := bagman.GetInstitutionFromBagIdentifier(result.BagIdentifier)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf("Cannot figure out which institution ",
+			"bag '%s' belongs to.", result.BagIdentifier)
+		return
+	}
+	institution, err := recorder.ProcUtil.FluctusClient.InstitutionGet(instIdentifier)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf(
+			"Cannot get institution record for '%s' from Fluctus: %s",
+			instIdentifier, err.Error())
+	} else {
+		// Got it!
+		result.DPNBag.Member = institution.DpnUuid
+	}
 }
 
 // Record PREMIS events in Fluctus. We do this only for DPN bags that
@@ -395,16 +437,20 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 	link := fmt.Sprintf("dpn.%s@devops.aptrust.org:outbound/%s.tar",
 		toNode, result.DPNBag.UUID)
 	emptyString := ""
+	now := time.Now().UTC().Truncate(time.Second)
 	return &DPNReplicationTransfer{
+		ReplicationId: uuid.NewV4().String(),
 		FromNode: recorder.DPNConfig.LocalNode,
 		ToNode: toNode,
-		UUID: result.DPNBag.UUID,
+		BagId: result.DPNBag.UUID,
 		FixityAlgorithm: "sha256",
 		FixityNonce: &emptyString,
 		FixityValue: &emptyString,
-		Status: "Requested",
-		Protocol: "R",
+		Status: "requested",
+		Protocol: "rsync",
 		Link: link,
+		CreatedAt: now,
+		UpdatedAt: now,
 	}
 }
 
@@ -448,15 +494,18 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	// Update the transfer request and send it back to the remote node.
 	// We'll get an updated transfer request back from that node.
 	bagValid := result.ValidationResult.IsValid()
-	result.TransferRequest.Status = "Received"
+	result.TransferRequest.Status = "received"
 	result.TransferRequest.BagValid = &bagValid
-	digest := result.BagSha256Digest
+	// A.D. 11/23/2015:
+	// Use the tag manifest checksum instead of result.BagSha256Digest
+	// which is the digest calculated on the entire bag.
+	digest := result.ValidationResult.TagManifestChecksum
 	result.TransferRequest.FixityValue = &digest
 
 	detailedMessage := fmt.Sprintf("xfer request %s status for bag %s " +
 		"from remote node %s. " +
-		"Setting status to 'Received', BagValid to %t, and checksum to %s",
-		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
+		"Setting status to 'received', BagValid to %t, and checksum to %s",
+		result.TransferRequest.ReplicationId, result.TransferRequest.BagId,
 		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
 		*result.TransferRequest.FixityValue)
 	recorder.ProcUtil.MessageLog.Debug("Updating %s", detailedMessage)
@@ -471,23 +520,34 @@ func (recorder *Recorder) RecordCopyReceipt(result *DPNResult) {
 	result.RecordResult.CopyReceiptSentAt = time.Now()
 
 	if xfer.FixityAccept == nil || *xfer.FixityAccept == false {
+		fixityAccept := "null"
+		if xfer.FixityAccept != nil {
+			if *xfer.FixityAccept == true {
+				fixityAccept = "true"
+			} else {
+				fixityAccept = "false"
+			}
+		}
 		recorder.ProcUtil.MessageLog.Debug(
-			"Remote node rejected fixity value for xfer request %s (bag %s)",
-			result.TransferRequest.ReplicationId, result.TransferRequest.UUID)
-		result.ErrorMessage = "Remote node did not accept the fixity value we sent for this bag. " +
-			"This cancels the transfer request, and we will not store the bag."
+			"Remote node rejected fixity value %s for xfer request %s (bag %s)",
+			*result.TransferRequest.FixityValue,
+			result.TransferRequest.ReplicationId, result.TransferRequest.BagId)
+		result.ErrorMessage = fmt.Sprintf("We sent fixity value '%s'. Remote node " +
+			"returned fixity_accept value of %s for this bag. " +
+			"This cancels the transfer request, and we will not store the bag.",
+			*result.TransferRequest.FixityValue, fixityAccept)
 		return
 	}
 	if xfer.Status == "Cancelled" {
 		recorder.ProcUtil.MessageLog.Debug(
 			"Remote node says status is 'Cancelled' for xfer request %s (bag %s)",
-			result.TransferRequest.ReplicationId, result.TransferRequest.UUID)
+			result.TransferRequest.ReplicationId, result.TransferRequest.BagId)
 		result.ErrorMessage = "This transfer request has been marked as cancelled on the remote node. " +
 			"This bag will not be copied to storage."
 		return
 	}
 	recorder.ProcUtil.MessageLog.Debug("Remote node updated xfer request %s (bag %s), " +
-		"and set status to %s", xfer.ReplicationId, xfer.UUID, xfer.Status)
+		"and set status to %s", xfer.ReplicationId, xfer.BagId, xfer.Status)
 
 }
 
@@ -508,12 +568,22 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 		return
 	}
 
-	result.TransferRequest.Status = "Stored"
+	result.TransferRequest.Status = "stored"
+
+	// Handle nil values for logging
+	bagValid := "nil"
+	if result.TransferRequest.BagValid != nil {
+		bagValid = fmt.Sprintf("%t", *result.TransferRequest.BagValid)
+	}
+	fixityValue := "nil"
+	if result.TransferRequest.FixityValue != nil {
+		fixityValue = *result.TransferRequest.FixityValue
+	}
+
 	recorder.ProcUtil.MessageLog.Debug("Updating xfer request %s status for bag %s on remote node %s. " +
-		"Setting status to 'Stored', BagValid to %t, and checksum to %s",
-		result.TransferRequest.ReplicationId, result.TransferRequest.UUID,
-		result.TransferRequest.FromNode, *result.TransferRequest.BagValid,
-		*result.TransferRequest.FixityValue)
+		"Setting status to 'stored', BagValid to %s, and checksum to %s",
+		result.TransferRequest.ReplicationId, result.TransferRequest.BagId,
+		result.TransferRequest.FromNode, bagValid, fixityValue)
 	xfer, err := remoteClient.ReplicationTransferUpdate(result.TransferRequest)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error updating transfer request on remote node: %v", err)
@@ -525,7 +595,7 @@ func (recorder *Recorder) RecordStorageResult(result *DPNResult) {
 	result.RecordResult.StorageResultSentAt = time.Now()
 
 	recorder.ProcUtil.MessageLog.Debug("Remote node updated xfer request %s (bag %s), " +
-		"and set status to %s", xfer.ReplicationId, xfer.UUID, xfer.Status)
+		"and set status to %s", xfer.ReplicationId, xfer.BagId, xfer.Status)
 }
 
 func (recorder *Recorder) RunTest(result *DPNResult) {

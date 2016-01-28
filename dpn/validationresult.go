@@ -44,7 +44,7 @@ var DPN_INFO_TAGS = []string {
 	"Ingest-Node-Contact-Email",
 	"Version-Number",
 	"First-Version-Object-ID",
-	"Brightening-Object-ID",
+	// "Brightening-Object-ID",
 	"Rights-Object-ID",
 	"Bag-Type",
 }

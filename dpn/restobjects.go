@@ -76,6 +76,27 @@ type DPNFixity struct {
 
 }
 
+// DPNMember describes an institution or depositor that owns
+// a bag.
+type DPNMember struct {
+
+	// UUID is the unique identifier for a member
+	UUID               string               `json:"uuid"`
+
+	// Name is the member's name
+	Name               string               `json:"name"`
+
+	// Email is the member's email address
+	Email              string               `json:"email"`
+
+	// CreatedAt is when this record was created.
+	CreatedAt          time.Time            `json:"created_at"`
+
+	// UpdatedAt is when this record was last updated.
+	UpdatedAt          time.Time            `json:"updated_at"`
+
+}
+
 // DPNBag represents a Bag object in the DPN REST service.
 // Like all of the DPN REST objects, it contains metadata only.
 type DPNBag struct {
@@ -85,6 +106,9 @@ type DPNBag struct {
 
 	// LocalId is the depositor's local identifier for a bag.
 	LocalId            string               `json:"local_id"`
+
+	// Member is the UUID of the member who deposited this bag.
+	Member             string               `json:"member"`
 
 	// Size is the size, in bytes of the bag.
 	Size               uint64               `json:"size"`
@@ -138,10 +162,11 @@ type DPNReplicationTransfer struct {
 	// ToNode is the node the bag is being transfered to
 	ToNode          string       `json:"to_node"`
 
-	// UUID is the UUID of the bag to be replicated
-	UUID            string       `json:"uuid"`
+	// Bag is the UUID of the bag to be replicated
+	BagId           string       `json:"uuid"`
 
 	// ReplicationId is a unique id for this replication request.
+	// It's a UUID in string format.
 	ReplicationId   string       `json:"replication_id"`
 
 	// FixityAlgorithm is the algorithm used to calculate the fixity digest.
@@ -167,19 +192,19 @@ type DPNReplicationTransfer struct {
 
 	// Status is the status of the request, which can be any of:
 	//
-	// "Requested"  - The FromNode has requested this transfer.
+	// "requested"  - The FromNode has requested this transfer.
 	//                This means the transfer is new, and no
 	//                action has been taken yet.
-	// "Rejected"   - Set by the ToNode when it will not or cannot
+	// "rejected"   - Set by the ToNode when it will not or cannot
 	//                accept this transfer. (Usually due to disk space.)
-	// "Received"   - Set by the ToNode to indicate it has received the
+	// "received"   - Set by the ToNode to indicate it has received the
 	//                the bag.
-	// "Confirmed"  - Set by the FromNode after the bag has been confirmed
+	// "confirmed"  - Set by the FromNode after the bag has been confirmed
 	//                valid, the fixity value has been approved, and the bag
 	//                has been stored by the ToNode.
-	// "Stored"     - Set by the ToNode after the bag has been copied to
+	// "stored"     - Set by the ToNode after the bag has been copied to
 	//                long-term storage.
-	// "Cancelled"  - Can be set by either node for any reason. No further
+	// "cancelled"  - Can be set by either node for any reason. No further
 	//                processing should occur on a cancelled request.
 	Status          string       `json:"status"`
 
@@ -210,22 +235,22 @@ type DPNRestoreTransfer struct {
 	// The ToNode initiates a restoration request.
 	ToNode          string       `json:"to_node"`
 
-	// UUID is the unique identifier of the bag to be restored.
-	UUID            string       `json:"uuid"`
+	// Bag is the unique identifier of the bag to be restored.
+	BagId           string       `json:"uuid"`
 
 	// Status is the status of the restoration operation. It can
 	// have any of the following values:
 	//
-	// "Requested" - Default status used when record first created.
-	// "Accepted"  - Indicates the FromNode has accepted the request to
+	// "requested" - Default status used when record first created.
+	// "accepted"  - Indicates the FromNode has accepted the request to
 	//               restore the bag.
-	// "Rejected"  - Set by the FromNode if it cannot or will not restore
+	// "rejected"  - Set by the FromNode if it cannot or will not restore
 	//               the bag.
-	// "Prepared"  - Set by the FromNode when the content has been restored
+	// "prepared"  - Set by the FromNode when the content has been restored
 	//               locally and staged for transfer back to the to_node.
-	// "Finished"  - Set by the ToNode after it has retrieved the restored
+	// "finished"  - Set by the ToNode after it has retrieved the restored
 	//               bag from the FromNode.
-	// "Cancelled" - Set by either node to indicate the restore operation
+	// "cancelled" - Set by either node to indicate the restore operation
 	//               was cancelled.
 	Status          string       `json:"status"`
 

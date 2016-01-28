@@ -7,17 +7,11 @@ import (
 	"github.com/APTrust/bagman/workers"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
-// This map points "remote" DPN REST clients
-// toward our local test cluster.
-var TEST_NODE_URLS = map[string]string {
-	"chron": "http://127.0.0.1:8001",
-	"hathi": "http://127.0.0.1:8002",
-	"sdr":   "http://127.0.0.1:8003",
-	"tdr":   "http://127.0.0.1:8004",
-}
+
 // We want to mark these two APTrust bags
 // for ingest to DPN, so they'll go into
 // the work queue when we run our tests.
@@ -28,8 +22,9 @@ var APTrustBags = []string {
 var testBagUuid = "00000000-0000-0000-0000-000000000001"
 var goodBagPath = fmt.Sprintf("dpn/testdata/%s.tar", testBagUuid)
 var testBagSize = uint64(268800)
-var testBagDigest = "f9f39a1602cde405042dd8b4859c6a3e2c04092a76eaab858ae28e48403ccba4"
+var testBagDigest = "c4e254c4432d8f8755de161c42c4f8188455ca1c5ca1e2fd548d2a991dff009a"
 var adminTestToken = "0000000000000000000000000000000000000000"
+var FaberCollege = "9a000000-0000-4000-a000-000000000002"
 
 // dpn_test_setup.go sets up some test data on our local DPN REST cluster
 // so that we can run some end-to-end replication tests. Make sure you're
@@ -91,21 +86,16 @@ func NewTestUtil() (*TestUtil) {
 	remoteClients, err := dpn.GetRemoteClients(localClient, dpnConfig,
 		procUtil.MessageLog)
 	adminConfig := *dpnConfig
-	adminConfig.RemoteNodeTokens["chron"] = adminTestToken
-	adminConfig.RemoteNodeTokens["hathi"] = adminTestToken
-	adminConfig.RemoteNodeTokens["sdr"] = adminTestToken
-	adminConfig.RemoteNodeTokens["tdr"] = adminTestToken
 	remoteAdminClients, err := dpn.GetRemoteClients(localClient,
 		&adminConfig, procUtil.MessageLog)
+	for _, remoteAdminClient := range remoteAdminClients {
+		// Give this client the admin API token, so it
+		// can perform admin operations.
+		remoteAdminClient.APIKey = dpnConfig.RemoteNodeAdminTokensForTesting[remoteAdminClient.Node]
+	}
 
-	// Point the remote clients toward our own local DPN test cluster.
-	// This means you have to run the run_cluster.sh script in the
-	// DPN REST project to run these tests.
-	for nodeNamespace := range remoteClients {
-		remoteClient := remoteClients[nodeNamespace]
-		remoteClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
-		remoteAdminClient := remoteAdminClients[nodeNamespace]
-		remoteAdminClient.HostUrl = TEST_NODE_URLS[nodeNamespace]
+	if err != nil {
+		panic(err)
 	}
 
 	return &TestUtil{
@@ -130,12 +120,12 @@ func (testUtil *TestUtil) MakeTestDirs() (error) {
 
 func (testUtil *TestUtil) MakeTestData() (error) {
 	count := 0
-	for node, _ := range TEST_NODE_URLS {
+	for node, _ := range testUtil.DPNConfig.RemoteNodeURLs {
 		count += 1
 
 		// Create a symlink from dpn_home/integration_test/<uuid>.tar
 		// to our known good bag in dpn/testdata/000...1.tar
-		bagUuid := fmt.Sprintf("%d0000000-0000-0000-0000-000000000001", count)
+		bagUuid := fmt.Sprintf("00000000-0000-4000-a000-00000000000%d", count)
 		linkPath, err := testUtil.CreateSymLink(bagUuid)
 		if err != nil {
 			return err
@@ -183,14 +173,15 @@ func (testUtil *TestUtil) CreateSymLink(bagUuid string) (string, error) {
 }
 
 func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
-	bag, err := testUtil.RemoteClients[node].DPNBagGet(bagUuid)
+	bag, err := testUtil.RemoteAdminClients[node].DPNBagGet(bagUuid)
 	if err == nil && bag != nil {
 		// Bag already exists. No need to recreate it.
 		return bag, err
 	}
+	utcNow := time.Now().UTC()
 	bag = &dpn.DPNBag{
 		UUID: bagUuid,
-		LocalId: fmt.Sprintf("integration-test-%s-1", node),
+		LocalId: fmt.Sprintf("integration-test-%s-1000", node),
 		Size: testBagSize,
 		FirstVersionUUID: bagUuid,
 		Version: 1,
@@ -200,23 +191,30 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 		Rights: make([]string, 0),
 		Interpretive: make([]string, 0),
 		ReplicatingNodes: make([]string, 0),
+		Member: FaberCollege,
 		Fixities: &dpn.DPNFixity{
 			Sha256: testBagDigest,
 		},
+		CreatedAt: utcNow,
+		UpdatedAt: utcNow,
 	}
 	// You have to be node admin to create a bag, so use the admin client.
 	return testUtil.RemoteAdminClients[node].DPNBagCreate(bag)
 }
 
 func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath string) (*dpn.DPNReplicationTransfer, error) {
+	utcNow := time.Now().UTC()
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: bag.AdminNode,
 		ToNode: testUtil.DPNConfig.LocalNode,
-		UUID: bag.UUID,
+		BagId: bag.UUID,
+		ReplicationId: strings.Replace(bag.UUID, "4000", "4444", 1),
 		FixityAlgorithm: "sha256",
-		Status: "Requested",
-		Protocol: "R",
+		Status: "requested",
+		Protocol: "rsync",
 		Link: linkPath,
+		CreatedAt: utcNow,
+		UpdatedAt: utcNow,
 	}
 	// You have to be node admin to create the transfer request,
 	// so use the admin client.

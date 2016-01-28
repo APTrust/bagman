@@ -11,7 +11,7 @@ import (
 var skipSyncMessagePrinted = false
 
 const (
-	BAG_COUNT     = 8
+	BAG_COUNT     = 6
 	REPL_COUNT    = 24
 	RESTORE_COUNT = 4
 )
@@ -77,6 +77,44 @@ func TestNewDPNSync(t *testing.T) {
 	}
 }
 
+func TestLocalNodeName(t *testing.T) {
+	// Local node name is set in dpn_config.json
+	config := loadConfig(t, configFile)
+	dpnSync := newDPNSync(t)
+	if config == nil || dpnSync == nil {
+		t.Errorf("Can't complete local name test")
+		return
+	}
+	if dpnSync.LocalNodeName() != config.LocalNode {
+		t.Errorf("LocalNodeName() returned '%s', expected '%s'",
+			dpnSync.LocalNodeName(), config.LocalNode)
+	}
+}
+
+func TestRemoteNodeNames(t *testing.T) {
+	// Local node name is set in dpn_config.json
+	config := loadConfig(t, configFile)
+	dpnSync := newDPNSync(t)
+	if config == nil || dpnSync == nil {
+		t.Errorf("Can't complete remote names test")
+		return
+	}
+	remoteNodeNames := dpnSync.RemoteNodeNames()
+	for name, _ := range config.RemoteNodeURLs {
+		nameIsPresent := false
+		for _, remoteName := range remoteNodeNames {
+			if name == remoteName {
+				nameIsPresent = true
+				break
+			}
+		}
+		if !nameIsPresent {
+			t.Errorf("Node %s is in config file, but was not returned " +
+				"by RemoteNodeNames()", name)
+		}
+	}
+}
+
 func TestGetAllNodes(t *testing.T) {
 	if runSyncTests(t) == false {
 		return  // local test cluster isn't running
@@ -91,38 +129,6 @@ func TestGetAllNodes(t *testing.T) {
 	}
 	if len(nodes) != 5 {
 		t.Errorf("Expected 5 nodes, got %d", len(nodes))
-	}
-}
-
-func TestUpdateLastPullDate(t *testing.T) {
-	if runSyncTests(t) == false {
-		return  // local test cluster isn't running
-	}
-	dpnSync := newDPNSync(t)
-	if dpnSync == nil {
-		return
-	}
-	nodes, err := dpnSync.GetAllNodes()
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if len(nodes) != 5 {
-		t.Errorf("Expected 5 nodes, got %d", len(nodes))
-		return
-	}
-	someNode := nodes[2]
-	origLastPullDate := someNode.LastPullDate
-	newLastPullDate := origLastPullDate.Add(-12 * time.Hour)
-
-	updatedNode, err := dpnSync.UpdateLastPullDate(someNode, newLastPullDate)
-	if err != nil {
-		t.Error(err)
-		return
-	}
-	if updatedNode.LastPullDate != newLastPullDate {
-		t.Errorf("Expected LastPullDate %s, got %s",
-			newLastPullDate, updatedNode.LastPullDate)
 	}
 }
 
@@ -145,20 +151,25 @@ func TestSyncBags(t *testing.T) {
 		}
 		aLongTimeAgo := time.Date(1999, time.December, 31, 23, 0, 0, 0, time.UTC)
 		node.LastPullDate = aLongTimeAgo
-		_, err := dpnSync.LocalClient.DPNNodeUpdate(node)
-		if err != nil {
-			t.Errorf("Error setting last pull date to 1999: %v", err)
-			return
-		}
 		bagsSynched, err := dpnSync.SyncBags(node)
 		if err != nil {
 			t.Errorf("Error synching bags for node %s: %v", node.Namespace, err)
 		}
-		if len(bagsSynched) != BAG_COUNT {
+		expectedBagCount := BAG_COUNT
+		if node.Namespace == "hathi" {
+			// From test fixtures, one of the six
+			// Hathi bags is already in our registry.
+			expectedBagCount = BAG_COUNT - 1
+		}
+		if len(bagsSynched) != expectedBagCount {
 			t.Errorf("Synched %d bags for node %s. Expected %d.",
-				len(bagsSynched), node.Namespace, BAG_COUNT)
+				len(bagsSynched), node.Namespace, expectedBagCount)
 		}
 		for _, remoteBag := range(bagsSynched) {
+			if remoteBag == nil {
+				t.Errorf("Remote bag is nil")
+				continue
+			}
 			localBag, _ := dpnSync.LocalClient.DPNBagGet(remoteBag.UUID)
 			if localBag == nil {
 				t.Errorf("Bag %s didn't make into local registry", remoteBag.UUID)
@@ -204,6 +215,10 @@ func TestSyncReplicationRequests(t *testing.T) {
 				len(xfersSynched), node.Namespace, REPL_COUNT)
 		}
 		for _, xfer := range(xfersSynched) {
+			if xfer == nil {
+				t.Errorf("Xfer is nil")
+				return
+			}
 			localCopy, _ := dpnSync.LocalClient.ReplicationTransferGet(xfer.ReplicationId)
 			if localCopy == nil {
 				t.Errorf("Xfer %s didn't make into local registry", xfer.ReplicationId)
@@ -249,6 +264,10 @@ func TestSyncRestoreRequests(t *testing.T) {
 				len(xfersSynched), node.Namespace, RESTORE_COUNT)
 		}
 		for _, xfer := range(xfersSynched) {
+			if xfer == nil {
+				t.Errorf("xfer is nil")
+				continue
+			}
 			localCopy, _ := dpnSync.LocalClient.RestoreTransferGet(xfer.RestoreId)
 			if localCopy == nil {
 				t.Errorf("Xfer %s didn't make into local registry", xfer.RestoreId)
@@ -268,6 +287,21 @@ func TestSyncEverythingFromNode(t *testing.T) {
 	if dpnSync == nil {
 		return
 	}
+
+	// Make 10 bags.
+	// This will also create 40 replication transfers
+	// and 40 restore transfers: one for each bag to
+	// each remote node.
+	bagCount := 10
+	xferCount := 64     // 24 from fixtures in DPN REST + 40 that we just created
+	restoreCount := 44  //  4 from fixtures in DPN REST + 40 that we just created
+	mock := NewMock(dpnSync)
+	err := mock.AddRecordsToNodes(dpnSync.RemoteNodeNames(), bagCount)
+	if err != nil {
+		t.Errorf("Error creating mocks: %v", err)
+		return
+	}
+
 	nodes, err := dpnSync.GetAllNodes()
 	if err != nil {
 		t.Error(err)
@@ -291,7 +325,7 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected bag-sync error from node %s: %v",
 				node.Namespace, syncResult.BagSyncError)
 		}
-		if len(syncResult.Bags) != BAG_COUNT {
+		if len(syncResult.Bags) != bagCount {
 			t.Errorf("Expected %d bags from %s, got %d",
 				BAG_COUNT, node.Namespace, len(syncResult.Bags))
 		}
@@ -301,9 +335,9 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected replication transfer-sync error from node %s: %v",
 				node.Namespace, syncResult.ReplicationSyncError)
 		}
-		if len(syncResult.ReplicationTransfers) != REPL_COUNT {
+		if len(syncResult.ReplicationTransfers) != xferCount {
 			t.Errorf("Expected %d replication transfers from %s, got %d",
-				REPL_COUNT, node.Namespace, len(syncResult.ReplicationTransfers))
+				xferCount, node.Namespace, len(syncResult.ReplicationTransfers))
 		}
 
 		// Bags
@@ -311,9 +345,9 @@ func TestSyncEverythingFromNode(t *testing.T) {
 			t.Errorf("Got unexpected restore transfer-sync error from node %s: %v",
 				node.Namespace, syncResult.RestoreSyncError)
 		}
-		if len(syncResult.RestoreTransfers) != RESTORE_COUNT {
+		if len(syncResult.RestoreTransfers) != restoreCount {
 			t.Errorf("Expected %d restore transfers from %s, got %d",
-				RESTORE_COUNT, node.Namespace, len(syncResult.RestoreTransfers))
+				restoreCount, node.Namespace, len(syncResult.RestoreTransfers))
 		}
 
 		// Timestamp update

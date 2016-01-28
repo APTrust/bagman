@@ -6,9 +6,10 @@
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
         "AcceptInvalidSSLCerts": true,
+        "UseSSHWithRsync": false,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "http://localhost:8000",
+            "LocalServiceURL": "http://localhost:3001",
             "LocalAPIRoot": "api-v1",
             "LocalAuthToken": ""
         },
@@ -21,17 +22,30 @@
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
         },
+        "RemoteNodeAdminTokensForTesting": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
         "RemoteNodeTokens": {
-            "chron": "2222222222222222222222222222222222222222",
-            "hathi": "3333333333333333333333333333333333333333",
-            "sdr":   "4444444444444444444444444444444444444444",
-            "tdr":   "5555555555555555555555555555555555555555"
+            "chron": "chron_token",
+            "hathi": "hathi_token",
+            "sdr":   "sdr_token",
+            "tdr":   "tdr_token"
         },
         "RemoteNodeURLs": {
-            "chron": "http://localhost:8001",
-            "hathi": "http://localhost:8002",
-            "sdr":   "http://localhost:8003",
-            "tdr":   "http://localhost:8004"
+            "chron": "http://localhost:3002",
+            "hathi": "http://localhost:3003",
+            "sdr":   "http://localhost:3004",
+            "tdr":   "http://localhost:3005"
+        },
+        "AuthTokenHeaderFormats": {
+            "aptrust": "Token token=%s",
+            "chron": "Token token=%s",
+            "hathi": "Token token=%s",
+            "sdr": "Token token=%s",
+            "tdr": "Token token=%s"
         }
     },
     "test": {
@@ -41,11 +55,12 @@
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
         "AcceptInvalidSSLCerts": true,
+        "UseSSHWithRsync": false,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "http://localhost:8000",
+            "LocalServiceURL": "http://localhost:3001",
             "LocalAPIRoot": "api-v1",
-            "LocalAuthToken": ""
+            "LocalAuthToken": "aptrust_token"
         },
         "DefaultMetadata": {
             "Comment": "Config settings for common DPN bagit metadata",
@@ -56,17 +71,30 @@
             "IngestNodeContactName": "APTrust Administrator",
             "IngestNodeContactEmail": "help@aptrust.org"
         },
+        "RemoteNodeAdminTokensForTesting": {
+            "chron": "chron_token",
+            "hathi": "hathi_token",
+            "sdr":   "sdr_token",
+            "tdr":   "tdr_token"
+        },
         "RemoteNodeTokens": {
-            "chron": "2222222222222222222222222222222222222222",
-            "hathi": "3333333333333333333333333333333333333333",
-            "sdr":   "4444444444444444444444444444444444444444",
-            "tdr":   "5555555555555555555555555555555555555555"
+            "chron": "aptrust_token",
+            "hathi": "aptrust_token",
+            "sdr":   "aptrust_token",
+            "tdr":   "aptrust_token"
         },
         "RemoteNodeURLs": {
-            "chron": "http://localhost:8001",
-            "hathi": "http://localhost:8002",
-            "sdr":   "http://localhost:8003",
-            "tdr":   "http://localhost:8004"
+            "chron": "http://localhost:3002",
+            "hathi": "http://localhost:3003",
+            "sdr":   "http://localhost:3004",
+            "tdr":   "http://localhost:3005"
+        },
+        "AuthTokenHeaderFormats": {
+            "aptrust": "Token token=%s",
+            "chron": "Token token=%s",
+            "hathi": "Token token=%s",
+            "sdr": "Token token=%s",
+            "tdr": "Token token=%s"
         }
     },
     "production": {
@@ -76,6 +104,7 @@
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
         "AcceptInvalidSSLCerts": false,
+        "UseSSHWithRsync": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
             "LocalServiceURL": "https://dpn.aptrust.org",
@@ -92,7 +121,16 @@
             "IngestNodeContactEmail": "help@aptrust.org"
         },
         "AuthTokenHeaderFormats": {
-            "hathi": "Token token=%s"
+            "aptrust": "Token token=%s",
+            "chron": "Token token=%s",
+            "hathi": "Token token=%s",
+            "tdr": "Token token=%s"
+        },
+        "RemoteNodeAdminTokensForTesting": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
         },
         "RemoteNodeTokens": {
             "chron": "",
@@ -113,10 +151,11 @@
         "LogLevel": 4,
         "LogToStderr": false,
         "ReplicateToNumNodes": 2,
-        "AcceptInvalidSSLCerts": true,
+        "AcceptInvalidSSLCerts": false,
+        "UseSSHWithRsync": true,
         "RestClient": {
             "Comment": "Settings for our local DPN REST API server. Load LocalAuthToken from environment!",
-            "LocalServiceURL": "https://devops.aptrust.org/dpnode",
+            "LocalServiceURL": "https://dpn-demo.aptrust.org/",
             "LocalAPIRoot": "api-v1",
             "LocalAuthToken": ""
         },
@@ -130,14 +169,26 @@
             "IngestNodeContactEmail": "help@aptrust.org"
         },
         "AuthTokenHeaderFormats": {
-            "hathi": "Token token=%s"
+            "aptrust": "Token token=%s",
+            "chron": "Token token=%s",
+            "hathi": "Token token=%s",
+            "tdr": "Token token=%s"
         },
+        "comment": "Remote node admin tokens are ignored in this config.",
+        "RemoteNodeAdminTokensForTesting": {
+            "chron": "",
+            "hathi": "",
+            "sdr":   "",
+            "tdr":   ""
+        },
+        "comment": "Set these in the environment, not here. Export DPN_<NODE>_TOKEN.",
         "RemoteNodeTokens": {
             "chron": "",
             "hathi": "",
             "sdr":   "",
             "tdr":   ""
         },
+        "comment": "Remote node URLs in demo come from node records in the local REST service.",
         "RemoteNodeURLs": {
             "chron": "",
             "hathi": "",

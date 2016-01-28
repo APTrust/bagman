@@ -358,8 +358,12 @@ func (packager *Packager) postProcess() {
 					"Bag %s failed, but will retry. %s",
 					result.BagIdentifier, result.ErrorMessage)
 				if result.NsqMessage != nil {
-					packager.ProcUtil.MessageLog.Info("Requeuing %s (%s)",
-						result.BagIdentifier, result.PackageResult.BagBuilder.LocalPath)
+					message := fmt.Sprintf("Requeuing %s",result.BagIdentifier)
+					if result.PackageResult != nil && result.PackageResult.BagBuilder != nil {
+						message = fmt.Sprintf("%s at path %s", message,
+							result.PackageResult.BagBuilder.LocalPath)
+					}
+					packager.ProcUtil.MessageLog.Info(message)
 					result.NsqMessage.Requeue(1 * time.Minute)
 				}
 			}
