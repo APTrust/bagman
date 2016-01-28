@@ -543,7 +543,7 @@
         "DPNPreservationBucket": "aptrust.dpn.test",
         "CustomRestoreBucket": "",
         "RestoreToTestBuckets": true,
-        "MaxDaysSinceFixityCheck": 60,
+        "MaxDaysSinceFixityCheck": 90,
 
         "PrepareWorker": {
             "NetworkConnections": 8,
@@ -812,7 +812,7 @@
         "DPNPreservationBucket": "aptrust.dpn.test",
         "CustomRestoreBucket": "",
         "RestoreToTestBuckets": true,
-        "MaxDaysSinceFixityCheck": 60,
+        "MaxDaysSinceFixityCheck": 90,
 
         "PrepareWorker": {
             "NetworkConnections": 8,
@@ -1081,7 +1081,7 @@
         "DPNPreservationBucket": "aptrust.dpn.preservation",
         "CustomRestoreBucket": "",
         "RestoreToTestBuckets": false,
-        "MaxDaysSinceFixityCheck": 30,
+        "MaxDaysSinceFixityCheck": 90,
 
         "PrepareWorker": {
             "NetworkConnections": 6,
