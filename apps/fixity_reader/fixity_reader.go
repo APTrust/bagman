@@ -22,11 +22,11 @@ import (
 	"time"
 )
 
-// Queue delete requests in batches of 50.
-// Wait X milliseconds between batches.
+// Ideally, we'd get a batch of 200 or more items at a time,
+// but Fedora/Solr is too slow. See PivotalTracker #112606953.
+// When that's fixed, we can increase the batch size.
 const (
-	batchSize        = 500
-	waitMilliseconds = 1000
+	batchSize = 20
 )
 
 var workReader *bagman.WorkReader
@@ -46,7 +46,7 @@ func main() {
 func run() {
 	sinceWhen := getSinceWhenDate()
 	start := 0
-	rows := 200
+	rows := batchSize
 	workReader.MessageLog.Info("Fetching files not checked since %s in batches of %d",
 		sinceWhen.Format(time.RFC822Z), rows)
 	for {
