@@ -252,6 +252,11 @@ func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
 	if result.ErrorMessage != "" {
 		return
 	}
+	// The DPN Rails service does not apply timestamps,
+	// so we have to do it.
+	now := time.Now().UTC()
+	result.DPNBag.CreatedAt = now
+	result.DPNBag.UpdatedAt = now
 	recorder.ProcUtil.MessageLog.Debug("Creating new DPN bag %s (%s) in local registry.",
 		result.DPNBag.UUID, result.BagIdentifier)
 	dpnBag, err := recorder.LocalRESTClient.DPNBagCreate(result.DPNBag)
