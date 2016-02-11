@@ -140,10 +140,6 @@ func (client *FluctusClient) NewJsonRequest(method, targetUrl string, body io.Re
 		return nil, err
 	}
 
-	// http://stackoverflow.com/questions/21147562/unexpected-eof-using-go-http-client
-	// uncomment if errors persist after fixes of Feb. 11, 2016
-	req.Header.Add("Accept-Encoding", "identity")
-
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("X-Fluctus-API-User", client.apiUser)
@@ -595,8 +591,13 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 		return nil, err
 	}
 
-	// Fluctus returns 204 (No content) on update
-	if response.StatusCode != 204 {
+	// Fluctus returns 200 on update because our version of
+	// Phusion Passenger has a bug with 204 responses. See
+	// https://github.com/phusion/passenger/issues/1595
+	//
+	// The Passenger bug causes ingest errors, as described here:
+	// PivotalTracker bug https://www.pivotaltracker.com/story/show/113550323
+	if response.StatusCode != 200 {
 		message := "IntellectualObjectSave Expected status code 204 but got %d. URL: %s."
 		err = client.buildAndLogError(body, message, response.StatusCode, request.URL)
 		return nil, err
@@ -604,10 +605,7 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 		client.logger.Debug("%s IntellectualObject %s succeeded", method, obj.Identifier)
 	}
 
-	// On create, Fluctus returns the new object. On update, it returns nothing.
-	// Don't even try to read the body on a 204. This may be the cause of our
-	// "unexpected EOF" and "invalid byte in chunk length" errors.
-	if response.StatusCode != 204 && len(body) > 0 {
+	if len(body) > 0 {
 		newObj = &IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
