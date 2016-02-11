@@ -142,7 +142,7 @@ func (client *FluctusClient) NewJsonRequest(method, targetUrl string, body io.Re
 
 	// http://stackoverflow.com/questions/21147562/unexpected-eof-using-go-http-client
 	// uncomment if errors persist after fixes of Feb. 11, 2016
-	// req.Header.Add("Accept-Encoding", "identity")
+	req.Header.Add("Accept-Encoding", "identity")
 
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
@@ -591,6 +591,7 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 	}
 	body, response, err := client.doRequest(request)
 	if err != nil {
+		//client.logger.Debug("%s %s failed: %v", method, objUrl, err)
 		return nil, err
 	}
 
