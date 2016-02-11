@@ -139,6 +139,11 @@ func (client *FluctusClient) NewJsonRequest(method, targetUrl string, body io.Re
 	if err != nil {
 		return nil, err
 	}
+
+	// http://stackoverflow.com/questions/21147562/unexpected-eof-using-go-http-client
+	// uncomment if errors persist after fixes of Feb. 11, 2016
+	// req.Header.Add("Accept-Encoding", "identity")
+
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
 	req.Header.Add("X-Fluctus-API-User", client.apiUser)
@@ -599,7 +604,9 @@ func (client *FluctusClient) IntellectualObjectUpdate(obj *IntellectualObject) (
 	}
 
 	// On create, Fluctus returns the new object. On update, it returns nothing.
-	if len(body) > 0 {
+	// Don't even try to read the body on a 204. This may be the cause of our
+	// "unexpected EOF" and "invalid byte in chunk length" errors.
+	if response.StatusCode != 204 && len(body) > 0 {
 		newObj = &IntellectualObject{}
 		err = json.Unmarshal(body, newObj)
 		if err != nil {
