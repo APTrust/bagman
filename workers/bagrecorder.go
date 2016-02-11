@@ -148,7 +148,7 @@ func (bagRecorder *BagRecorder) logResult() {
 			result.NsqMessage.Attempts >= uint16(bagRecorder.ProcUtil.Config.RecordWorker.MaxAttempts) &&
 			result.ErrorMessage != "" {
 			result.Retry = false
-			result.ErrorMessage += fmt.Sprintf("Failure is due to a technical error "+
+			result.ErrorMessage += fmt.Sprintf(" Failure is due to a technical error "+
 				"in Fedora. Giving up after %d failed attempts. This item has been "+
 				"queued for administrative review. ",
 				result.NsqMessage.Attempts)
@@ -335,7 +335,10 @@ func (bagRecorder *BagRecorder) recordAllFedoraData(result *bagman.ProcessResult
 	}
 	if existingObj != nil {
 		bagRecorder.ProcUtil.MessageLog.Debug("Updating object %s", intellectualObject.Identifier)
-		bagRecorder.fedoraUpdateObject(result, existingObj, intellectualObject)
+		err = bagRecorder.fedoraUpdateObject(result, existingObj, intellectualObject)
+		if err != nil {
+			return err
+		}
 	} else if existingObj == nil && len(intellectualObject.GenericFiles) > bagman.MAX_FILES_FOR_CREATE {
 		// Create the object with the first 500 files.
 		// Call update for the rest.
@@ -345,7 +348,10 @@ func (bagRecorder *BagRecorder) recordAllFedoraData(result *bagman.ProcessResult
 		if err != nil {
 			return err
 		}
-		bagRecorder.fedoraUpdateObject(result, newObj, intellectualObject)
+		err = bagRecorder.fedoraUpdateObject(result, newObj, intellectualObject)
+		if err != nil {
+			return err
+		}
 	}else {
 		// New IntellectualObject with < 500 files.
 		// Do one-step create.
@@ -377,25 +383,15 @@ func (bagRecorder *BagRecorder) fedoraCreateObject(result *bagman.ProcessResult,
 // comparison between the two to make sure we don't save files
 // that have not changed, or create new events for files that have
 // not changed.
-func (bagRecorder *BagRecorder) fedoraUpdateObject(result *bagman.ProcessResult, existingObject, objectToSave *bagman.IntellectualObject) {
+func (bagRecorder *BagRecorder) fedoraUpdateObject(result *bagman.ProcessResult, existingObject, objectToSave *bagman.IntellectualObject) (error) {
 	result.FedoraResult.IsNewObject = false
 	result.TarResult.MergeExistingFiles(existingObject.GenericFiles)
 	if result.TarResult.AnyFilesNeedSaving() {
-		bagRecorder.fedoraUpdateIntellectualObject(result, objectToSave)
-		// -------------------------------------------------------------
-		// Old save method - one at a time
-		// -------------------------------------------------------------
-		// for i := range result.TarResult.Files {
-		// 	genericFile := result.TarResult.Files[i]
-		// 	// Save generic file data to Fedora only if the file is new or changed.
-		// 	if genericFile.NeedsSave {
-		// 		bagRecorder.fedoraRecordGenericFile(result, objectToSave.Identifier, genericFile)
-		// 	} else {
-		// 		bagRecorder.ProcUtil.MessageLog.Debug(
-		// 			"Nothing to do for %s: no change since last ingest",
-		// 			genericFile.Identifier)
-		// 	}
-		// }
+
+		err := bagRecorder.fedoraUpdateIntellectualObject(result, objectToSave)
+		if err != nil {
+			return err
+		}
 
 		// -------------------------------------------------------------
 		// New save method - up to 200 at a time
@@ -430,6 +426,7 @@ func (bagRecorder *BagRecorder) fedoraUpdateObject(result *bagman.ProcessResult,
 			"Not saving object, files or events for %s: no change since last ingest",
 			existingObject.Identifier)
 	}
+	return nil
 }
 
 func (bagRecorder *BagRecorder) fedoraRecordGenericFile(result *bagman.ProcessResult, objId string, gf *bagman.File) error {
