@@ -154,13 +154,25 @@ func (storer *Storer) store() {
 			bagUUID = result.PackageResult.BagBuilder.UUID
 		}
 		fileName := fmt.Sprintf("%s.tar", bagUUID)
-		url, err := storer.ProcUtil.S3Client.SaveToS3(
-			storer.ProcUtil.Config.DPNPreservationBucket,
-			fileName,
-			"application/x-tar",
-			reader,
-			fileInfo.Size(),
-			options)
+		url := ""
+		if fileInfo.Size() > bagman.S3_LARGE_FILE {
+			url, err = storer.ProcUtil.S3Client.SaveLargeFileToS3(
+				storer.ProcUtil.Config.DPNPreservationBucket,
+				fileName,
+				"application/x-tar",
+				reader,
+				fileInfo.Size(),
+				options,
+				bagman.S3_CHUNK_SIZE)
+		} else {
+			url, err = storer.ProcUtil.S3Client.SaveToS3(
+				storer.ProcUtil.Config.DPNPreservationBucket,
+				fileName,
+				"application/x-tar",
+				reader,
+				fileInfo.Size(),
+				options)
+		}
 
 		// Close the reader
 		reader.Close()
