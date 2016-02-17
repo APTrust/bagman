@@ -151,10 +151,11 @@ func readResult(jsonFile string) (*bagman.ProcessResult, error) {
 }
 
 func requeueDPNFile(jsonFile string) (error) {
-	result, err := readResult(jsonFile)
+	result, err := readDPNResult(jsonFile)
 	if err != nil {
 		return err
 	}
+	result.ErrorMessage = ""
 	err = bagman.Enqueue(procUtil.Config.NsqdHttpAddress, queueName, result)
 	return fmt.Errorf("Error sending to %s at %s: %v",
 		queueName, procUtil.Config.NsqdHttpAddress, err)
