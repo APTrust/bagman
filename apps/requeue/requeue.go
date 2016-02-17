@@ -13,7 +13,8 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/APTrust/bagman/bagman"	
+	"github.com/APTrust/bagman/bagman"
+	"github.com/APTrust/bagman/dpn"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -70,7 +71,12 @@ func main() {
 	succeeded := 0
 	failed := 0
 	for _, jsonFile := range(jsonFiles) {
-		err = requeueFile(jsonFile)
+		err = nil
+		if strings.HasPrefix(queueName, "dpn_") {
+			err = requeueDPNFile(jsonFile)
+		} else {
+			err = requeueFile(jsonFile)
+		}
 		if err != nil {
 			procUtil.MessageLog.Error(err.Error())
 			failed++
@@ -95,12 +101,13 @@ func confirm(jsonFiles []string) bool {
 		if len(response) > 0 {
 			if response[0] == 'y' || response[0] == 'Y' {
 				return true
-			} 
+			}
 		}
 	}
 	return false
 }
 
+// TODO: Merge requeueFile and requeueDPNFile into one.
 func requeueFile(jsonFile string) (error) {
 	result, err := readResult(jsonFile)
 	if err != nil {
@@ -115,21 +122,16 @@ func requeueFile(jsonFile string) (error) {
 	}
 
 	if result.FedoraResult == nil && queueName == "record_topic" {
-		return fmt.Errorf("File %s has no FedoraResult, " + 
+		return fmt.Errorf("File %s has no FedoraResult, " +
 			"so it's not going into the record_topic.", jsonFile)
 	}
 
-	// statusRecord, err := getStatusRecord(result.S3File)
-	// if err != nil {
-	// 	procUtil.MessageLog.Fatalf("Error retrieving ProcessedItem from Fluctus: %v", err)
-	// }
-	// statusRecord.Retry = true
-
 	err = bagman.Enqueue(procUtil.Config.NsqdHttpAddress, queueName, result)
-	return fmt.Errorf("Error sending to %s at %s: %v", 
+	return fmt.Errorf("Error sending to %s at %s: %v",
 		queueName, procUtil.Config.NsqdHttpAddress, err)
 }
 
+// TODO: Merge readResult and readDPNResult into one.
 func readResult(jsonFile string) (*bagman.ProcessResult, error) {
 	file, err := os.Open(jsonFile)
 	if err != nil {
@@ -147,6 +149,35 @@ func readResult(jsonFile string) (*bagman.ProcessResult, error) {
 	}
 	return &result, err
 }
+
+func requeueDPNFile(jsonFile string) (error) {
+	result, err := readResult(jsonFile)
+	if err != nil {
+		return err
+	}
+	err = bagman.Enqueue(procUtil.Config.NsqdHttpAddress, queueName, result)
+	return fmt.Errorf("Error sending to %s at %s: %v",
+		queueName, procUtil.Config.NsqdHttpAddress, err)
+}
+
+func readDPNResult(jsonFile string) (*dpn.DPNResult, error) {
+	file, err := os.Open(jsonFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	jsonBytes, err := ioutil.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+	result := dpn.DPNResult{}
+	err = json.Unmarshal(jsonBytes, &result)
+	if err != nil {
+		return nil, err
+	}
+	return &result, err
+}
+
 
 func sliceContains(slice []string, item string) (bool) {
 	for _, value := range slice {
@@ -188,7 +219,7 @@ func parseCommandLine() ([]string) {
 	}
 	if len(os.Args) < 4 {
 		printUsage()
-		fmt.Printf("Please specify one or more json files to requeue.\n")		
+		fmt.Printf("Please specify one or more json files to requeue.\n")
 		os.Exit(1)
 	}
 	return os.Args[3:]
@@ -223,7 +254,7 @@ Options:
           replication_topic
           restore_topic
           store_topic
-          
+
 `
 	fmt.Println(message)
 }
