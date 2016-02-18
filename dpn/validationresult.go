@@ -375,7 +375,13 @@ func (validator *ValidationResult) saveFile (destination string, tarReader *tar.
 	}
 }
 
+// We had to untar the bag to validate it, but once validation
+// is done, all we need is the tarred bag, which we'll send to
+// storage. Delete the untarred dir if we're not in test mode.
+// We know we're in test mode if there's no validator.NsqMessage.
 func (validator *ValidationResult) DeleteUntarredBag () {
-	fmt.Println(validator.UntarredPath)
-	//os.RemoveAll(validator.UntarredPath)
+	if validator.NsqMessage != nil && validator.UntarredPath != "" {
+		//fmt.Println(validator.UntarredPath)
+		os.RemoveAll(validator.UntarredPath)
+	}
 }
