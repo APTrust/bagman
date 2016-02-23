@@ -289,13 +289,13 @@ func verifyTarFile(t *testing.T, bagNumber int, tarFilePath string) {
 		}
 	}
 
-	verifyFilePresence(t, "bagit.txt", files)
-	verifyFilePresence(t, "aptrust-info.txt", files)
+	verifyFilePresence(t, "cin.675812/bagit.txt", files)
+	verifyFilePresence(t, "cin.675812/aptrust-info.txt", files)
 
 	if bagNumber == 0 {
-		verifyFilePresence(t, "data/object.properties", files)
+		verifyFilePresence(t, "cin.675812/data/object.properties", files)
 	} else {
-		verifyFilePresence(t, "data/metadata.xml", files)
+		verifyFilePresence(t, "cin.675812/data/metadata.xml", files)
 	}
 }
 

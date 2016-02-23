@@ -439,8 +439,16 @@ path to a bag. To tar all the bags, you'd do this:
     }
 */
 func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
+	// TODO: Clean up this naming mess in the refactor!!
 	bagName := restorer.bagName(setNumber)
 	tarFileName := fmt.Sprintf("%s.tar", bagName)
+	cleanBagName, err := CleanBagName(tarFileName) // inst.edu/my_bag.b001.of008.tar -> inst.edu/my_bag
+	if err != nil {
+		return "", err
+	}
+	slashIndex := strings.Index(cleanBagName, "/") + 1
+	bagNameWithoutInstPrefix := cleanBagName[slashIndex:] // inst.edu/my_bag -> my_bag
+
 	tarFilePath := filepath.Join(restorer.workingDir, tarFileName)
 	tarFile, err := os.Create(tarFilePath)
 	if err != nil {
@@ -454,7 +462,8 @@ func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 	for _, textFile := range textFiles {
 		textFileBase := filepath.Base(textFile)
 		filePath := filepath.Join(restorer.workingDir, bagName, textFileBase)
-		err = AddToArchive(tarWriter, filePath, textFileBase)
+		pathWithinArchive := filepath.Join(bagNameWithoutInstPrefix, textFileBase)
+		err = AddToArchive(tarWriter, filePath, pathWithinArchive)
 		if err != nil {
 			tarFile.Close()
 			os.Remove(tarFilePath)
@@ -466,7 +475,8 @@ func (restorer *BagRestorer) TarBag(setNumber int) (string, error) {
 	for _, gf := range restorer.fileSets[setNumber].Files {
 		gfPath, _ := gf.OriginalPath()
 		filePath := filepath.Join(restorer.workingDir, bagName, gfPath)
-		err = AddToArchive(tarWriter, filePath, gfPath)
+		pathWithinArchive := filepath.Join(bagNameWithoutInstPrefix, gfPath)
+		err = AddToArchive(tarWriter, filePath, pathWithinArchive)
 		if err != nil {
 			tarFile.Close()
 			os.Remove(tarFilePath)
