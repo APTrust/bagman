@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -234,9 +235,10 @@ disk space, you can use RestoreAndPublish below.
 */
 func (restorer *BagRestorer) Restore() ([]string, error) {
 	restorer.buildFileSets()
-	paths := make([]string, len(restorer.fileSets))
+	numberOfBagParts := len(restorer.fileSets)
+	paths := make([]string, numberOfBagParts)
 	for i := range(restorer.fileSets) {
-		bag, err := restorer.buildBag(i)
+		bag, err := restorer.buildBag(i, numberOfBagParts)
 		if err != nil {
 			return nil, err
 		}
@@ -248,7 +250,7 @@ func (restorer *BagRestorer) Restore() ([]string, error) {
 
 
 // Creates a single bag and returns a reference to the bag object.
-func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
+func (restorer *BagRestorer) buildBag(setNumber, numberOfBagParts int) (*bagins.Bag, error) {
 	bagName := restorer.bagName(setNumber)
 	err := restorer.makeDirectory(bagName)
 	if err != nil {
@@ -261,6 +263,11 @@ func (restorer *BagRestorer) buildBag(setNumber int) (*bagins.Bag, error) {
 	}
 	// Add tag files. See https://github.com/APTrust/bagins/blob/develop/bag.go#L88
 	err = restorer.writeAPTrustTagFile(bag)
+	if err != nil {
+	 	return nil, err
+	}
+
+	err = restorer.writeBagInfoTagFile(bag, setNumber, numberOfBagParts)
 	if err != nil {
 	 	return nil, err
 	}
@@ -334,6 +341,38 @@ func (restorer *BagRestorer) writeAPTrustTagFile(bag *bagins.Bag) (error) {
 	}
 	return nil
 }
+
+// Writes the bag-info.txt tag file.
+func (restorer *BagRestorer) writeBagInfoTagFile(bag *bagins.Bag, setNumber, numberOfBagParts int) (error) {
+	restorer.debug(fmt.Sprintf("Creating bag-info.txt"))
+	if err := bag.AddTagfile("bag-info.txt"); err != nil {
+		return err
+	}
+	tagFile, err := bag.TagFile("bag-info.txt")
+	if err != nil {
+		return err
+	}
+	slashIndex := strings.Index(restorer.IntellectualObject.Identifier, "/")
+	instName := restorer.IntellectualObject.Identifier[0:slashIndex]
+	bagNameWithoutInst := restorer.IntellectualObject.Identifier[slashIndex + 1:]
+
+	bagCount := fmt.Sprintf("%d of %d", setNumber + 1, numberOfBagParts)
+
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Source-Organization", instName))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Bagging-Date", time.Now().UTC().Format(time.RFC3339)))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Bag-Count", bagCount))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Bag-Group-Identifier", ""))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Internal-Sender-Description", restorer.IntellectualObject.Description))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Internal-Sender-Identifier", bagNameWithoutInst))
+	return nil
+}
+
 
 // Fetches all of the data files for a bag.
 func (restorer *BagRestorer) fetchAllFiles(setNumber int) ([]string, error) {
@@ -566,9 +605,10 @@ func (restorer *BagRestorer) RestoreAndPublish(message *nsq.Message) (urls []str
 
 	// Fully process each bag as we go, including cleanup,
 	// so we can preserve disk space.
+	numberOfBagParts := len(restorer.fileSets)
 	for i := range(restorer.fileSets) {
 		restorer.touch(message)
-		bag, err := restorer.buildBag(i)
+		bag, err := restorer.buildBag(i, numberOfBagParts)
 		if err != nil {
 			return nil, err
 		}

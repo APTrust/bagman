@@ -375,7 +375,7 @@ func TestCopyToS3 (t *testing.T) {
 		return
 	}
 
-	expectedSizes := []int64 { int64(5120), int64(5632) }
+	expectedSizes := []int64 { int64(6144), int64(6656) }
 
 	s3Client, err := bagman.NewS3Client(aws.USEast)
 	if err != nil {
