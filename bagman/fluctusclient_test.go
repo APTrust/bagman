@@ -540,6 +540,10 @@ func TestSendProcessedItem(t *testing.T) {
 		Outcome:     "O-diddly Kay!",
 		Retry:       true,
 		Reviewed:    false,
+		State:       "{ This should be a blob of JSON }",
+		Node:        "10.11.12.13",
+		Pid:         31337,
+		NeedsAdminReview: true,
 	}
 
 	// Create new records
@@ -799,9 +803,15 @@ func TestRestorationStatusSet(t *testing.T) {
 		t.Error("record.Id was reassigned when it should not have been")
 	}
 
+	// Let's see if these properties stick, while we're at it.
+	record.State = "{ This should be a blob of JSON }"
+	record.Node = "10.11.12.13"
+	record.Pid = 31337
+	record.NeedsAdminReview = true
+	record.Retry = false
+
 	// Now update the status on that record
-	err = fluctusClient.RestorationStatusSet(record.ObjectIdentifier, bagman.StageFetch,
-		bagman.StatusStarted, "Updated note", false)
+	err = fluctusClient.RestorationStatusSet(record)
 	if err != nil {
 		t.Errorf("Error setting restoration status: %v", err)
 		return
@@ -816,18 +826,33 @@ func TestRestorationStatusSet(t *testing.T) {
 		return
 	}
 
-	if updatedRecords[0].Stage != bagman.StageFetch {
-		t.Errorf("Stage should be '%s', but is '%s'", bagman.StageFetch, updatedRecords[0].Stage)
+	if updatedRecords[0].Stage != bagman.StageRequested {
+		t.Errorf("Stage should be '%s', but is '%s'", bagman.StageRequested, updatedRecords[0].Stage)
 	}
-	if updatedRecords[0].Status != bagman.StatusStarted {
-		t.Errorf("Status should be '%s', but is '%s'", bagman.StatusStarted, updatedRecords[0].Status)
+	if updatedRecords[0].Status != bagman.StatusPending {
+		t.Errorf("Status should be '%s', but is '%s'", bagman.StatusPending, updatedRecords[0].Status)
 	}
 	if updatedRecords[0].Retry != false {
 		t.Error("Retry should be false, but is true")
 	}
-	if updatedRecords[0].Note != "Updated note" {
-		t.Errorf("Note should be 'Updated note', but is '%s'", updatedRecords[0].Note)
+	if updatedRecords[0].Note != "Test item" {
+		t.Errorf("Note should be 'Test item', but is '%s'", updatedRecords[0].Note)
 	}
+
+	if updatedRecords[0].State != "{ This should be a blob of JSON }" {
+		t.Errorf("State should be '%s', but is '%s'", "{ This should be a blob of JSON }",
+			updatedRecords[0].Status)
+	}
+	if updatedRecords[0].Node != "10.11.12.13" {
+		t.Errorf("Node should be '10.11.12.13', but is '%s'", updatedRecords[0].Node)
+	}
+	if updatedRecords[0].Pid != 31337 {
+		t.Errorf("Pid should be 31337, but is '%d'", updatedRecords[0].Pid)
+	}
+	if updatedRecords[0].NeedsAdminReview != true {
+		t.Errorf("NeedsAdminReview should be true, but is %t", updatedRecords[0].NeedsAdminReview)
+	}
+
 }
 
 func TestNewJsonRequest(t *testing.T) {

@@ -119,8 +119,7 @@ func (bagRestorer *BagRestorer) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Mark all ProcessedItems related to this object as started
-	err = bagRestorer.ProcUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus.ObjectIdentifier,
-		bagman.StageRequested, bagman.StatusStarted, "Restoration in process", false)
+	err = bagRestorer.ProcUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus)
 	if err != nil {
 		detailedError := fmt.Errorf("Cannot register restoration start with Fluctus for %s: %v",
 			object.Key(), err)
@@ -139,18 +138,7 @@ func (bagRestorer *BagRestorer) HandleMessage(message *nsq.Message) error {
 func (bagRestorer *BagRestorer) logResult() {
 	for object := range bagRestorer.ResultsChannel {
 		// Mark item as resolved in Fluctus & tell the queue what happened.
-		var status bagman.StatusType = bagman.StatusSuccess
-		var stage bagman.StageType = bagman.StageResolve
-		note := ""
-		if object.ErrorMessage != "" {
-			status = bagman.StatusFailed
-			stage = bagman.StageRequested
-			note = object.ErrorMessage
-		} else {
-			note = fmt.Sprintf("Object restored to %s", strings.Join(object.RestorationUrls, ", "))
-		}
-		err := bagRestorer.ProcUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus.ObjectIdentifier,
-			stage, status, note, false)
+		err := bagRestorer.ProcUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus)
 		if err != nil {
 			// Do we really want to go through the whole process
 			// of restoring this again?
@@ -187,10 +175,21 @@ func (bagRestorer *BagRestorer) doRestore() {
 			object.NsqMessage.Touch()
 		}
 		if err != nil {
+			// Something went wrong.
 			object.ErrorMessage = fmt.Sprintf("An error occurred during the restoration process: %v",
 				err)
+			object.ProcessStatus.Stage = bagman.StageRequested
+			object.ProcessStatus.Status = bagman.StatusFailed
+			object.ProcessStatus.Note = object.ErrorMessage
+			object.ProcessStatus.Retry = false
+			object.ProcessStatus.NeedsAdminReview = true
 		} else {
+			// All is well.
 			object.RestorationUrls = urls
+			object.ProcessStatus.Stage = bagman.StageResolve
+			object.ProcessStatus.Status = bagman.StatusSuccess
+			object.ProcessStatus.Retry = true
+			object.ProcessStatus.NeedsAdminReview = false
 		}
 		bagRestorer.ResultsChannel <- object
 	}

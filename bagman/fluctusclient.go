@@ -896,20 +896,15 @@ current object. If an object was uploaded as a series of
 100 bags, this sets the status on the processed item records
 for the latest ingested version of each of those 100 bags.
 */
-func (client *FluctusClient) RestorationStatusSet(objectIdentifier string, stage StageType, status StatusType, note string, retry bool) (error) {
-	if objectIdentifier == "" {
+func (client *FluctusClient) RestorationStatusSet(processStatus *ProcessStatus) (error) {
+	if processStatus.ObjectIdentifier == "" {
 		return fmt.Errorf("Object identifier cannot be empty.")
 	}
 	objUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/restoration_status/%s",
-		client.apiVersion, escapeSlashes(objectIdentifier)))
+		client.apiVersion, escapeSlashes(processStatus.ObjectIdentifier)))
 	client.logger.Debug("Setting restoration status: %s - stage = %s, status = %s, retry = %t",
-		objUrl, stage, status, retry)
-	data := make(map[string]interface{})
-	data["stage"] = stage
-	data["status"] = status
-	data["retry"] = retry
-	data["note"] = note
-	jsonData, err := json.Marshal(data)
+		objUrl, processStatus.Stage, processStatus.Status, processStatus.Retry)
+	jsonData, err := processStatus.SerializeForFluctus()
 	request, err := client.NewJsonRequest("POST", objUrl, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("Could not build POST request for %s: %v", objUrl, err)
