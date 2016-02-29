@@ -292,6 +292,7 @@ func (bagPreparer *BagPreparer) doCleanUp() {
 				bagPreparer.ProcUtil.MessageLog.Info("Requeueing %s", result.S3File.Key.Key)
 				result.NsqMessage.Requeue(5 * time.Minute)
 			} else {
+				// Too many failures. No more retries. Get the admin to see what's up.
 				result.NsqMessage.Finish()
 			}
 		} else {

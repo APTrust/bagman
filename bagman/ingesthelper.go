@@ -187,7 +187,8 @@ func (helper *IngestHelper) LogResult() {
 		helper.ProcUtil.MessageLog.Info("Total Bytes Processed: %d", helper.bytesProcessed)
 
 		// Tell Fluctus what happened
-		err = helper.ProcUtil.FluctusClient.SendProcessedItem(helper.Result.IngestStatus())
+		err = helper.ProcUtil.FluctusClient.SendProcessedItem(
+			helper.Result.IngestStatus(helper.ProcUtil.MessageLog))
 		if err != nil {
 			helper.Result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
 				"item status returned error %v. ", err)
@@ -384,7 +385,7 @@ func (helper *IngestHelper) CopyToPreservationBucket(file *File, reader *os.File
 func (helper *IngestHelper) UpdateFluctusStatus(stage StageType, status StatusType) {
 	helper.ProcUtil.MessageLog.Debug("Setting status for %s to %s/%s in Fluctus",
 		helper.Result.S3File.Key.Key, stage, status)
-	ingestStatus := helper.Result.IngestStatus()
+	ingestStatus := helper.Result.IngestStatus(helper.ProcUtil.MessageLog)
 	ingestStatus.Stage = stage
 	ingestStatus.Status = status
 	err := helper.ProcUtil.FluctusClient.SendProcessedItem(ingestStatus)

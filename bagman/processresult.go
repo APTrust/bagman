@@ -1,7 +1,11 @@
 package bagman
 
 import (
+	"encoding/json"
+	"fmt"
 	"github.com/nsqio/go-nsq"
+	"github.com/op/go-logging"
+	"os"
 	"strings"
 	"time"
 )
@@ -90,7 +94,9 @@ func (result *ProcessResult) GenericFiles() (files []*GenericFile, err error) {
 // IngestStatus returns a lightweight Status object suitable for reporting
 // to the Fluctus results table, so that APTrust partners can view
 // the status of their submitted bags.
-func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
+//
+// TODO: Refactor. We should have to pass in a logger. <Sigh>
+func (result *ProcessResult) IngestStatus(logger *logging.Logger) (status *ProcessStatus) {
 	status = &ProcessStatus{}
 	status.Date = time.Now().UTC()
 	status.Action = ActionIngest
@@ -128,5 +134,25 @@ func (result *ProcessResult) IngestStatus() (status *ProcessStatus) {
 	}
 	status.Institution = OwnerOf(result.S3File.BucketName)
 	status.Outcome = string(status.Status)
+
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		// This should never happen, but if it does,
+		// log it and put a visible note in the Web UI,
+		// or we'll never track down what went wrong.
+		message := fmt.Sprintf("Error converting result to JSON: %v", err)
+		logger.Error(message)
+		status.Note = fmt.Sprintf("%s -- %s", status.Note, message)
+	}
+	status.State = string(jsonBytes)
+
+	nodename, err := os.Hostname()
+	if err != nil {
+		logger.Error("Aarg, matey! I'm so fulla rum, I don't know me own name!")
+		nodename = "Drunken Sailor"
+	}
+	status.Node = nodename
+	status.Pid = os.Getpid()
+
 	return status
 }

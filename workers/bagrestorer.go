@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/nsqio/go-nsq"
+	"os"
 	"strings"
 	"time"
 )
@@ -119,6 +120,10 @@ func (bagRestorer *BagRestorer) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Mark all ProcessedItems related to this object as started
+	hostname := "hostname?"
+	hostname, _ = os.Hostname()
+	object.ProcessStatus.Node = hostname
+	object.ProcessStatus.Pid = os.Getpid()
 	err = bagRestorer.ProcUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus)
 	if err != nil {
 		detailedError := fmt.Errorf("Cannot register restoration start with Fluctus for %s: %v",
@@ -138,6 +143,8 @@ func (bagRestorer *BagRestorer) HandleMessage(message *nsq.Message) error {
 func (bagRestorer *BagRestorer) logResult() {
 	for object := range bagRestorer.ResultsChannel {
 		// Mark item as resolved in Fluctus & tell the queue what happened.
+		object.ProcessStatus.Node = ""
+		object.ProcessStatus.Pid = 0
 		err := bagRestorer.ProcUtil.FluctusClient.RestorationStatusSet(object.ProcessStatus)
 		if err != nil {
 			// Do we really want to go through the whole process

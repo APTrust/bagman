@@ -267,9 +267,10 @@ func (bagRecorder *BagRecorder) QueueBagForDelete(result *bagman.ProcessResult) 
 	}
 }
 
+// We're done trying to record this bag.
 func (bagRecorder *BagRecorder) recordStatus() {
 	for result := range bagRecorder.StatusChannel {
-		ingestStatus := result.IngestStatus()
+		ingestStatus := result.IngestStatus(bagRecorder.ProcUtil.MessageLog)
 		bagRecorder.updateFluctusStatus(result, ingestStatus.Stage, ingestStatus.Status)
 		// Clean up the bag/tar files
 		bagRecorder.CleanUpChannel <- result
@@ -279,12 +280,14 @@ func (bagRecorder *BagRecorder) recordStatus() {
 func (bagRecorder *BagRecorder) updateFluctusStatus(result *bagman.ProcessResult, stage bagman.StageType, status bagman.StatusType) {
 	bagRecorder.ProcUtil.MessageLog.Debug("Setting Ingest status to %s/%s for %s",
 		stage, status, result.S3File.Key.Key)
-	ingestStatus := result.IngestStatus()
+	ingestStatus := result.IngestStatus(bagRecorder.ProcUtil.MessageLog)
 	ingestStatus.Stage = stage
 	ingestStatus.Status = status
 	if result.ErrorMessage == "" && stage == bagman.StageRecord && status == bagman.StatusPending {
 		// This bag is done. No need to process it again.
 		ingestStatus.Retry = false
+		ingestStatus.Node = ""
+		ingestStatus.Pid = 0
 	}
 	err := bagRecorder.ProcUtil.FluctusClient.SendProcessedItem(ingestStatus)
 	if err != nil {

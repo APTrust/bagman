@@ -540,7 +540,7 @@ func TestSendProcessedItem(t *testing.T) {
 		Outcome:     "O-diddly Kay!",
 		Retry:       true,
 		Reviewed:    false,
-		State:       "{ This should be a blob of JSON }",
+		State:       "{ \"msg\": \"This should be a blob of JSON\" }",
 		Node:        "10.11.12.13",
 		Pid:         31337,
 		NeedsAdminReview: true,
@@ -804,7 +804,7 @@ func TestRestorationStatusSet(t *testing.T) {
 	}
 
 	// Let's see if these properties stick, while we're at it.
-	record.State = "{ This should be a blob of JSON }"
+	record.State = "{ \"msg\": \"This should be a blob of JSON\" }"
 	record.Node = "10.11.12.13"
 	record.Pid = 31337
 	record.NeedsAdminReview = true
@@ -839,8 +839,9 @@ func TestRestorationStatusSet(t *testing.T) {
 		t.Errorf("Note should be 'Test item', but is '%s'", updatedRecords[0].Note)
 	}
 
-	if updatedRecords[0].State != "{ This should be a blob of JSON }" {
-		t.Errorf("State should be '%s', but is '%s'", "{ This should be a blob of JSON }",
+	if updatedRecords[0].State != "{ \"msg\": \"This should be a blob of JSON\" }" {
+		t.Errorf("State should be '%s', but is '%s'",
+			"{ \"msg\": \"This should be a blob of JSON\" }",
 			updatedRecords[0].Status)
 	}
 	if updatedRecords[0].Node != "10.11.12.13" {

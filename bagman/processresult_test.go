@@ -60,7 +60,8 @@ func TestIngestStatus(t *testing.T) {
 }
 
 func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedStatus bagman.StatusType) {
-	status := result.IngestStatus()
+	discardLogger := bagman.DiscardLogger("processresult_test")
+	status := result.IngestStatus(discardLogger)
 	expectedBagDate := "2014-05-28 16:22:24.016 +0000 UTC"
 	if status.Date.IsZero() {
 		t.Error("ProcessStatus.Date was not set")
