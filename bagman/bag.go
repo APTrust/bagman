@@ -117,8 +117,12 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 		}
 
 		outputPath := filepath.Join(filepath.Dir(absInputFile), header.Name)
-		tarDirectory := strings.Split(header.Name, "/")[0]
-		if tarResult.OutputDir == "" {
+		// PT #114804083 - Make sure there's a slash in the path before setting
+		// tarfile.OutputDir, or we'll set it incorrectly and when we call
+		// bagman.ReadBag(tarResult.OutputDir), it will fail with "file not found".
+		pathParts := strings.Split(header.Name, "/")
+		tarDirectory := pathParts[0]
+		if tarResult.OutputDir == "" && len(pathParts) > 1 {
 			tarResult.OutputDir = filepath.Join(filepath.Dir(absInputFile), tarDirectory)
 		}
 
