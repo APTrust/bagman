@@ -22,6 +22,12 @@ const (
 	waitMilliseconds = 5000
 )
 
+/*
+---------------------------------------------------------------------
+TODO: Get rid of status cache and handle 409 from Fluctus
+---------------------------------------------------------------------
+*/
+
 var workReader *bagman.WorkReader
 var statusCache map[string]*bagman.ProcessStatus
 

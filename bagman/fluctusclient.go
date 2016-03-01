@@ -377,6 +377,9 @@ func (client *FluctusClient) doStatusRequest(request *http.Request, expectedStat
 		return nil, nil
 	}
 
+	// -----------------------------------------------------
+	// TODO: Need to handle 409 here
+	// -----------------------------------------------------
 	if response.StatusCode != expectedStatus {
 		message := "doStatusRequest Expected status code %d but got %d. URL: %s."
 		err = client.buildAndLogError(body, message, expectedStatus, response.StatusCode, request.URL)
