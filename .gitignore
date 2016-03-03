@@ -28,6 +28,9 @@ _testmain.go
 # Mac Crap
 .DS_Store
 
+# IntelliJ, in case you're using it
+.idea
+
 # Test data that might have been untarred and not cleaned up
 testdata/sample_bad_checksums/
 testdata/sample_good/
