@@ -59,19 +59,6 @@ cd ~/go/src/github.com/APTrust/bagman/apps/apt_trouble
 go run apt_trouble.go -config dev &
 TROUBLE_PID=$!
 
-# This one exits on its own
-echo "Starting cleanup reader"
-cd ~/go/src/github.com/APTrust/bagman/apps/cleanup_reader
-go run cleanup_reader.go -config dev
-
-echo "Starting cleanup processor"
-cd ~/go/src/github.com/APTrust/bagman/apps/apt_bag_delete
-go run apt_bag_delete.go -config dev &
-CLEANUP_PID=$!
-
-echo "Waiting 20 seconds to start apt_replicate"
-sleep 20
-
 echo "Starting apt_replicate"
 cd ~/go/src/github.com/APTrust/bagman/apps/apt_replicate
 go run apt_replicate.go -config dev &
@@ -90,9 +77,6 @@ kill_all()
 
     echo "Shutting down replication worker"
     kill -s SIGINT $REPLICATION_PID
-
-    echo "Shutting down cleanup worker"
-    kill -s SIGINT $CLEANUP_PID
 
     echo "Shutting down trouble worker"
     kill -s SIGINT $TROUBLE_PID

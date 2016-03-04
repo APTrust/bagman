@@ -48,10 +48,6 @@ echo "building apt_trouble"
 cd "${BAGMAN_HOME}/apps/apt_trouble"
 go build -o ${BAGMAN_BIN}/apt_trouble apt_trouble.go
 
-echo "building apt_bag_delete"
-cd "${BAGMAN_HOME}/apps/apt_bag_delete"
-go build -o ${BAGMAN_BIN}/apt_bag_delete apt_bag_delete.go
-
 echo "building apt_restore"
 cd "${BAGMAN_HOME}/apps/apt_restore"
 go build -o ${BAGMAN_BIN}/apt_restore apt_restore.go
@@ -67,10 +63,6 @@ go build -o ${BAGMAN_BIN}/bucket_reader bucket_reader.go
 echo "building request_reader"
 cd "${BAGMAN_HOME}/apps/request_reader"
 go build -o ${BAGMAN_BIN}/request_reader request_reader.go
-
-echo "building cleanup_reader"
-cd "${BAGMAN_HOME}/apps/cleanup_reader"
-go build -o ${BAGMAN_BIN}/cleanup_reader cleanup_reader.go
 
 echo "building fixity_reader"
 cd "${BAGMAN_HOME}/apps/fixity_reader"

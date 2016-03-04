@@ -240,48 +240,6 @@ func (client *FluctusClient) ProcessStatusSearch(ps *ProcessStatus, retrySpecifi
 }
 
 
-// GetReviewedItems returns a list of items from Fluctus's reviewed items
-// from Fluctus' processed items list. It returns a list of CleanupResults.
-// The cleanup task uses this list to figure out what to delete from the
-// receiving buckets.
-func (client *FluctusClient) GetReviewedItems() (results []*CleanupResult, err error) {
-	reviewedUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/get_reviewed.json",
-		client.apiVersion))
-
-	request, err := client.NewJsonRequest("GET", reviewedUrl, nil)
-	if err != nil {
-		return nil, err
-	}
-	body, _, err := client.doRequest(request)
-	if err != nil {
-		return nil, err
-	}
-
-	items := make([]*ProcessStatus, 0)
-	err = json.Unmarshal(body, &items)
-	if err != nil {
-		return nil, client.formatJsonError("GetReviewedItems", body, err)
-	}
-	results = make([]*CleanupResult, len(items))
-	for i, item := range items {
-		file := &CleanupFile{
-			BucketName: item.Bucket,
-			Key:        item.Name,
-		}
-		files := make([]*CleanupFile, 1)
-		files[0] = file
-		cleanupResult := &CleanupResult{
-			BagName:          item.Name,
-			ETag:             item.ETag,
-			BagDate:          item.BagDate,
-			ObjectIdentifier: "",
-			Files:            files,
-		}
-		results[i] = cleanupResult
-	}
-	return results, nil
-}
-
 // Returns a list of GenericFiles that have not had a fixity
 // check since the specified datetime.
 func (client *FluctusClient) GetFilesNotCheckedSince(daysAgo time.Time, offset, limit int) (files []*GenericFile, err error) {
