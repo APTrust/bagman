@@ -9,6 +9,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/nsqio/go-nsq"
 	"github.com/satori/go.uuid"
+	"os"
 	"sync"
 	"time"
 )
@@ -216,9 +217,14 @@ func (bagRecorder *BagRecorder) updateFluctusStatus(result *bagman.ProcessResult
 	ingestStatus := result.IngestStatus(bagRecorder.ProcUtil.MessageLog)
 	ingestStatus.Stage = stage
 	ingestStatus.Status = status
-	if stage == bagman.StageCleanup && status == bagman.StatusSuccess {
+	if status == bagman.StatusFailed || (stage == bagman.StageCleanup && status == bagman.StatusSuccess) {
 		ingestStatus.Node = ""
 		ingestStatus.Pid = 0
+	} else {
+		hostname := "hostname?"
+		hostname, _ = os.Hostname()
+		ingestStatus.Node = hostname
+		ingestStatus.Pid = os.Getpid()
 	}
 	err := bagRecorder.ProcUtil.FluctusClient.SendProcessedItem(ingestStatus)
 	if err != nil {
