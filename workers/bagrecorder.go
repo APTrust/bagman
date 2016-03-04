@@ -216,6 +216,10 @@ func (bagRecorder *BagRecorder) updateFluctusStatus(result *bagman.ProcessResult
 	ingestStatus := result.IngestStatus(bagRecorder.ProcUtil.MessageLog)
 	ingestStatus.Stage = stage
 	ingestStatus.Status = status
+	if stage == bagman.StageCleanup && status == bagman.StatusSuccess {
+		ingestStatus.Node = ""
+		ingestStatus.Pid = 0
+	}
 	err := bagRecorder.ProcUtil.FluctusClient.SendProcessedItem(ingestStatus)
 	if err != nil {
 		result.ErrorMessage += fmt.Sprintf("Attempt to record processed "+
@@ -230,8 +234,6 @@ func (bagRecorder *BagRecorder) doCleanup() {
 		bagRecorder.ProcUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
 		bagRecorder.DeleteS3File(result)
 		ingestStatus := result.IngestStatus(bagRecorder.ProcUtil.MessageLog)
-		ingestStatus.Node = ""
-		ingestStatus.Pid = 0
 		bagRecorder.updateFluctusStatus(result, ingestStatus.Stage, ingestStatus.Status)
 
 		// Build and send message back to NSQ, indicating whether
