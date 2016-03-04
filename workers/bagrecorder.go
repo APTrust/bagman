@@ -9,7 +9,7 @@ import (
 	"github.com/APTrust/bagman/bagman"
 	"github.com/nsqio/go-nsq"
 	"github.com/satori/go.uuid"
-	"strings"
+//	"strings"
 	"sync"
 	"time"
 )
@@ -125,7 +125,7 @@ func (bagRecorder *BagRecorder) logResult() {
 		// replication to Oregon.
 		if result.ErrorMessage == "" {
 			bagRecorder.QueueItemsForReplication(result)
-			bagRecorder.QueueBagForDelete(result)
+			bagRecorder.DeleteS3File(result)
 		}
 
 		// Add a message to the message log
@@ -202,70 +202,70 @@ func (bagRecorder *BagRecorder) QueueItemsForReplication(result *bagman.ProcessR
 	}
 }
 
-func (bagRecorder *BagRecorder) QueueBagForDelete(result *bagman.ProcessResult) {
-	bagRecorder.ProcUtil.MessageLog.Info("Queueing bag %s for deletion from receiving bucket",
-		result.S3File.Key.Key)
+// func (bagRecorder *BagRecorder) QueueBagForDelete(result *bagman.ProcessResult) {
+// 	bagRecorder.ProcUtil.MessageLog.Info("Queueing bag %s for deletion from receiving bucket",
+// 		result.S3File.Key.Key)
 
-	// Create a cleanup result describing what needs to be
-	// deleted. The bag_delete worker will try to delete
-	// the file and store the results of the operation in
-	// the cleanup result.
-	// First, describe the file we want to delete. That's
-	// the bag in the receiving bucket.
-	cleanupFile := &bagman.CleanupFile{
-		BucketName: result.S3File.BucketName,
-		Key: result.S3File.Key.Key,
-	}
-	files := make([]*bagman.CleanupFile, 1)
-	files[0] = cleanupFile
-	// Now some metadata for housekeeping.
-    bagDate, err := time.Parse(bagman.S3DateFormat, result.S3File.Key.LastModified)
-    if err != nil {
-        msg := fmt.Sprintf("While trying to queue for cleanup, " +
-			"cannot parse mod date '%s' for bag '%s': %v",
-            result.S3File.Key.LastModified, result.S3File.Key.Key, err)
-		result.ErrorMessage += fmt.Sprintf("%s | ", msg)
-        return
-    }
-	intelObj, err := result.IntellectualObject()
-    if err != nil {
-        msg := fmt.Sprintf("While trying to queue for cleanup, " +
-			"cannot construct IntellectualObject data for '%s': %v ",
-            result.S3File.Key.Key, err)
-		result.ErrorMessage += fmt.Sprintf("%s | ", msg)
-        return
-    }
-	cleanupResult := &bagman.CleanupResult{
-		BagName:          result.S3File.Key.Key,
-		ETag:             strings.Replace(result.S3File.Key.ETag, "\"", "", -1),
-		BagDate:          bagDate,
-		ObjectIdentifier: intelObj.Identifier,
-		Files:            files,
-	}
+// 	// Create a cleanup result describing what needs to be
+// 	// deleted. The bag_delete worker will try to delete
+// 	// the file and store the results of the operation in
+// 	// the cleanup result.
+// 	// First, describe the file we want to delete. That's
+// 	// the bag in the receiving bucket.
+// 	cleanupFile := &bagman.CleanupFile{
+// 		BucketName: result.S3File.BucketName,
+// 		Key: result.S3File.Key.Key,
+// 	}
+// 	files := make([]*bagman.CleanupFile, 1)
+// 	files[0] = cleanupFile
+// 	// Now some metadata for housekeeping.
+//     bagDate, err := time.Parse(bagman.S3DateFormat, result.S3File.Key.LastModified)
+//     if err != nil {
+//         msg := fmt.Sprintf("While trying to queue for cleanup, " +
+// 			"cannot parse mod date '%s' for bag '%s': %v",
+//             result.S3File.Key.LastModified, result.S3File.Key.Key, err)
+// 		result.ErrorMessage += fmt.Sprintf("%s | ", msg)
+//         return
+//     }
+// 	intelObj, err := result.IntellectualObject()
+//     if err != nil {
+//         msg := fmt.Sprintf("While trying to queue for cleanup, " +
+// 			"cannot construct IntellectualObject data for '%s': %v ",
+//             result.S3File.Key.Key, err)
+// 		result.ErrorMessage += fmt.Sprintf("%s | ", msg)
+//         return
+//     }
+// 	cleanupResult := &bagman.CleanupResult{
+// 		BagName:          result.S3File.Key.Key,
+// 		ETag:             strings.Replace(result.S3File.Key.ETag, "\"", "", -1),
+// 		BagDate:          bagDate,
+// 		ObjectIdentifier: intelObj.Identifier,
+// 		Files:            files,
+// 	}
 
-	bagRecorder.ProcUtil.MessageLog.Debug("Cleanup record for %s: " +
-		"BagName=%s, ETag=%s, BagDate=%v, ObjectIdentifier=%s, " +
-		"BucketName=%s, Key=%s", result.S3File.Key.Key,
-		cleanupResult.BagName, cleanupResult.ETag, cleanupResult.BagDate,
-		cleanupResult.ObjectIdentifier, cleanupResult.Files[0].BucketName,
-		cleanupResult.Files[0].Key)
+// 	bagRecorder.ProcUtil.MessageLog.Debug("Cleanup record for %s: " +
+// 		"BagName=%s, ETag=%s, BagDate=%v, ObjectIdentifier=%s, " +
+// 		"BucketName=%s, Key=%s", result.S3File.Key.Key,
+// 		cleanupResult.BagName, cleanupResult.ETag, cleanupResult.BagDate,
+// 		cleanupResult.ObjectIdentifier, cleanupResult.Files[0].BucketName,
+// 		cleanupResult.Files[0].Key)
 
-	// Send to NSQ
-	if result.NsqMessage != nil {
-		err = bagman.Enqueue(
-			bagRecorder.ProcUtil.Config.NsqdHttpAddress,
-			bagRecorder.ProcUtil.Config.BagDeleteWorker.NsqTopic,
-			cleanupResult)
-	}
+// 	// Send to NSQ
+// 	if result.NsqMessage != nil {
+// 		err = bagman.Enqueue(
+// 			bagRecorder.ProcUtil.Config.NsqdHttpAddress,
+// 			bagRecorder.ProcUtil.Config.BagDeleteWorker.NsqTopic,
+// 			cleanupResult)
+// 	}
 
-	if err != nil {
-		bagRecorder.ProcUtil.MessageLog.Error(
-			"Error queueing %s for deletion: %v",
-			result.S3File.Key.Key,
-			err)
-		result.ErrorMessage += fmt.Sprintf("%s | ", err.Error())
-	}
-}
+// 	if err != nil {
+// 		bagRecorder.ProcUtil.MessageLog.Error(
+// 			"Error queueing %s for deletion: %v",
+// 			result.S3File.Key.Key,
+// 			err)
+// 		result.ErrorMessage += fmt.Sprintf("%s | ", err.Error())
+// 	}
+// }
 
 // We're done trying to record this bag.
 func (bagRecorder *BagRecorder) recordStatus() {
@@ -544,4 +544,31 @@ func (bagRecorder *BagRecorder) addMetadataRecord(result *bagman.ProcessResult, 
 func (bagRecorder *BagRecorder) handleFedoraError(result *bagman.ProcessResult, message string, err error) {
 	result.FedoraResult.ErrorMessage = fmt.Sprintf("%s: %v", message, err)
 	result.ErrorMessage = result.FedoraResult.ErrorMessage
+}
+
+// Delete the original tar file from the depositor's S3 receiving bucket.
+func (bagRecorder *BagRecorder) DeleteS3File(result *bagman.ProcessResult) {
+	result.Stage = bagman.StageCleanup
+	if bagRecorder.ProcUtil.Config.DeleteOnSuccess == false {
+		// Don't delete the original tar files, because config says
+		// not to. (For integration tests, we don't delete our test
+		// bags.)
+		bagRecorder.ProcUtil.MessageLog.Info("Not deleting %s/%s because " +
+			"config.DeleteOnSuccess == false", result.S3File.BucketName,
+			result.S3File.Key.Key)
+		return
+	}
+	err := bagRecorder.ProcUtil.S3Client.Delete(result.S3File.BucketName,
+		result.S3File.Key.Key)
+	if err != nil {
+		// TODO: We want to report this error to the admin, but we don't
+		// want to stop processing. We need some new mechanism for that.
+		errMessage := fmt.Sprintf("Error deleting file '%s' from "+
+			"bucket '%s': %v ", result.S3File.Key.Key, result.S3File.BucketName)
+		bagRecorder.ProcUtil.MessageLog.Error(errMessage)
+	} else {
+		result.BagDeletedAt = time.Now().UTC()
+		bagRecorder.ProcUtil.MessageLog.Info("Deleted original file '%s' from bucket '%s'",
+			result.S3File.Key.Key, result.S3File.BucketName)
+	}
 }

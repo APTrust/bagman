@@ -148,19 +148,19 @@ func (bagDeleter *BagDeleter) MarkItemResolved(result *bagman.CleanupResult) err
 	if remoteStatus != nil {
 		remoteStatus.Stage = bagman.StageCleanup
 		remoteStatus.Status = bagman.StatusSuccess
-	}
-	// Clear node and pid, so Fluctus knows we're no longer
-	// working on this, but do not overwrite the big ingest
-	// status record with with the cleanup result json
-	// because the status record has the important data.
-	remoteStatus.Node = ""
-	remoteStatus.Pid = 0
-	err = bagDeleter.ProcUtil.FluctusClient.UpdateProcessedItem(remoteStatus)
-	if err != nil {
-		bagDeleter.ProcUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %s", err.Error())
-	} else {
-		bagDeleter.ProcUtil.MessageLog.Info("Updated status in Fluctus for %s: %s/%s\n",
-			remoteStatus.Name, remoteStatus.Stage, remoteStatus.Status)
+		// Clear node and pid, so Fluctus knows we're no longer
+		// working on this, but do not overwrite the big ingest
+		// status record with with the cleanup result json
+		// because the status record has the important data.
+		remoteStatus.Node = ""
+		remoteStatus.Pid = 0
+		err = bagDeleter.ProcUtil.FluctusClient.UpdateProcessedItem(remoteStatus)
+		if err != nil {
+			bagDeleter.ProcUtil.MessageLog.Error("Error sending ProcessedItem to Fluctus: %s", err.Error())
+		} else {
+			bagDeleter.ProcUtil.MessageLog.Info("Updated status in Fluctus for %s: %s/%s\n",
+				remoteStatus.Name, remoteStatus.Stage, remoteStatus.Status)
+		}
 	}
 	return err
 }

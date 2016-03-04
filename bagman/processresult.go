@@ -27,6 +27,7 @@ type ProcessResult struct {
 	TarResult     *TarResult
 	BagReadResult *BagReadResult
 	FedoraResult  *FedoraResult
+	BagDeletedAt  time.Time
 	Stage         StageType
 	Retry         bool
 }
@@ -125,7 +126,7 @@ func (result *ProcessResult) IngestStatus(logger *logging.Logger) (status *Proce
 		}
 	} else {
 		status.Note = "No problems"
-		if result.Stage == "Record" {
+		if result.Stage == "Cleanup" {
 			status.Status = StatusSuccess
 		}
 		// If there were no errors, bag was processed sucessfully,
