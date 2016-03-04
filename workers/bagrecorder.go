@@ -18,7 +18,6 @@ type BagRecorder struct {
 	FedoraChannel  chan *bagman.ProcessResult
 	CleanupChannel chan *bagman.ProcessResult
 	ResultsChannel chan *bagman.ProcessResult
-//	StatusChannel  chan *bagman.ProcessResult
 	ProcUtil       *bagman.ProcessUtil
 	UsingNsq       bool
 	WaitGroup      sync.WaitGroup
@@ -33,12 +32,10 @@ func NewBagRecorder(procUtil *bagman.ProcessUtil) (*BagRecorder) {
 	bagRecorder.FedoraChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	bagRecorder.CleanupChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	bagRecorder.ResultsChannel = make(chan *bagman.ProcessResult, workerBufferSize)
-//	bagRecorder.StatusChannel = make(chan *bagman.ProcessResult, workerBufferSize)
 	for i := 0; i < procUtil.Config.RecordWorker.Workers; i++ {
 		go bagRecorder.recordInFedora()
 		go bagRecorder.logResult()
 		go bagRecorder.doCleanup()
-//		go bagRecorder.recordStatus()
 	}
 	return bagRecorder
 }
@@ -121,13 +118,6 @@ func (bagRecorder *BagRecorder) logResult() {
 		}
 		bagRecorder.ProcUtil.JsonLog.Println(string(json))
 
-		// If record worked, queue individual files for
-		// replication to Oregon.
-		if result.ErrorMessage == "" {
-			bagRecorder.QueueItemsForReplication(result)
-//			bagRecorder.DeleteS3File(result)
-		}
-
 		// Add a message to the message log
 		if result.ErrorMessage != "" {
 			bagRecorder.ProcUtil.IncrementFailed()
@@ -136,6 +126,7 @@ func (bagRecorder *BagRecorder) logResult() {
 				result.S3File.Key.Key,
 				result.ErrorMessage)
 		} else {
+			bagRecorder.QueueItemsForReplication(result)
 			bagRecorder.ProcUtil.IncrementSucceeded()
 			bagRecorder.ProcUtil.MessageLog.Info("%s -> finished OK", result.S3File.Key.Key)
 		}
@@ -202,14 +193,6 @@ func (bagRecorder *BagRecorder) QueueItemsForReplication(result *bagman.ProcessR
 		bagRecorder.ProcUtil.MessageLog.Info(message)
 	}
 }
-
-// We're done trying to record this bag.
-//func (bagRecorder *BagRecorder) recordStatus() {
-//	for result := range bagRecorder.StatusChannel {
-//		// Tell NSQ we're done
-//		bagRecorder.CleanupChannel <- result
-//	}
-//}
 
 func (bagRecorder *BagRecorder) updateFluctusStatus(result *bagman.ProcessResult, stage bagman.StageType, status bagman.StatusType) {
 	bagRecorder.ProcUtil.MessageLog.Debug("Setting Ingest status to %s/%s for %s",
