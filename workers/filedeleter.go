@@ -16,8 +16,8 @@ import (
 // single delete operation.
 type DeleteObject struct {
 	GenericFile     *bagman.GenericFile
-	ProcessStatus   *bagman.ProcessStatus
-	NsqMessage      *nsq.Message
+	ProcessStatus   *bagman.ProcessStatus   `json:"-"`
+	NsqMessage      *nsq.Message            `json:"-"`
 	ErrorMessage    string
 	Retry           bool
 }
@@ -138,6 +138,10 @@ func (fileDeleter *FileDeleter) HandleMessage(message *nsq.Message) error {
 	processStatus.Status = bagman.StatusStarted
 	processStatus.Note = fmt.Sprintf("Attempting to delete generic file '%s' from '%s'",
 		genericFile.Identifier, genericFile.URI)
+
+	// Pass some state info to Fluctus.
+	processStatus.SetNodePidState(deleteObject, fileDeleter.ProcUtil.MessageLog)
+
 	err = fileDeleter.ProcUtil.FluctusClient.UpdateProcessedItem(processStatus)
 	if err != nil {
 		detailedError := fmt.Errorf("Cannot register deletion start with Fluctus for %s: %v",
@@ -168,6 +172,9 @@ func (fileDeleter *FileDeleter) logResult() {
 				deleteObject.GenericFile.Identifier, deleteObject.GenericFile.URI,
 				time.Now().Format(time.RFC3339), deleteObject.ProcessStatus.User)
 		}
+		// Clear Pid and Node so Fluctus knows no one is working on this.
+		deleteObject.ProcessStatus.Node = ""
+		deleteObject.ProcessStatus.Pid = 0
 		err := fileDeleter.ProcUtil.FluctusClient.UpdateProcessedItem(deleteObject.ProcessStatus)
 		if err != nil {
 			fileDeleter.ProcUtil.MessageLog.Error(
