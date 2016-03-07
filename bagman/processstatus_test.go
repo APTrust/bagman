@@ -2,14 +2,15 @@ package bagman_test
 
 import (
 	"github.com/APTrust/bagman/bagman"
+	"os"
 	"testing"
 	"time"
 )
 
-func TestProcessStatusSerializeForFluctus(t *testing.T) {
+func ProcessStatusSample() (*bagman.ProcessStatus) {
 	bagDate, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-07-02T12:00:00.000Z")
 	ingestDate, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-09-10T12:00:00.000Z")
-	ps := bagman.ProcessStatus{
+	return &bagman.ProcessStatus{
 		Id: 9000,
 		ObjectIdentifier: "ncsu.edu/some_object",
 		GenericFileIdentifier: "ncsu.edu/some_object/data/doc.pdf",
@@ -26,7 +27,15 @@ func TestProcessStatusSerializeForFluctus(t *testing.T) {
 		Outcome: "happy day!",
 		Retry: true,
 		Reviewed: false,
+		Node: "",
+		Pid: 0,
+		State: "",
+		NeedsAdminReview: false,
 	}
+}
+
+func TestProcessStatusSerializeForFluctus(t *testing.T) {
+	ps := ProcessStatusSample()
 	bytes, err := ps.SerializeForFluctus()
 	if err != nil {
 		t.Error(err)
@@ -230,5 +239,29 @@ func TestHasPendingIngestRequest(t *testing.T) {
 	statusRecords[2].Status = bagman.StatusCancelled
 	if bagman.HasPendingIngestRequest(statusRecords) == true {
 		t.Error("HasPendingIngestRequest() should have returned false")
+	}
+}
+
+func TestSetNodePidState(t *testing.T) {
+	ps := ProcessStatusSample()
+	object := make(map[string]string)
+	object["key"] = "value"
+
+	logger := bagman.DiscardLogger("processstatus_test")
+	ps.SetNodePidState(object, logger)
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		if ps.Node != "hostname?" {
+			t.Error("Expected 'hostname?' for node, but got '%s'", ps.Node)
+		} else if ps.Node != hostname {
+			t.Error("Expected Node '%s', got '%s'", hostname, ps.Node)
+		}
+	}
+	if ps.Pid != os.Getpid() {
+		t.Error("Expected Pid %d, got %d", os.Getpid(), ps.Pid)
+	}
+	expectedState := "{\"key\":\"value\"}"
+	if ps.State != expectedState {
+		t.Error("Expected State '%s', got '%s'", expectedState, ps.State)
 	}
 }

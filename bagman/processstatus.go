@@ -2,6 +2,8 @@ package bagman
 
 import (
 	"encoding/json"
+	"github.com/op/go-logging"
+	"os"
 	"time"
 )
 
@@ -133,4 +135,25 @@ func HasPendingIngestRequest(statusRecords []*ProcessStatus) (bool) {
 		}
 	}
 	return false
+}
+
+// Set state, node and pid on ProcessStatus.
+func (status *ProcessStatus) SetNodePidState(object interface{}, logger *logging.Logger) {
+	jsonBytes, err := json.Marshal(object)
+	jsonData := ""
+	if err != nil {
+		if logger != nil {
+			logger.Error(err.Error())
+		}
+	} else {
+		jsonData = string(jsonBytes)
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "hostname?"
+	}
+	status.Node = hostname
+	status.Pid = os.Getpid()
+	status.State = jsonData
 }

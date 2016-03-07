@@ -54,9 +54,14 @@ func TestIngestStatus(t *testing.T) {
 	assertCorrectSummary(t, failedStore, bagman.StatusFailed)
 
 	passedRecord := getResult("Record", true)
-	assertCorrectSummary(t, passedRecord, bagman.StatusSuccess)
+	assertCorrectSummary(t, passedRecord, bagman.StatusPending)
 	failedRecord := getResult("Record", false)
 	assertCorrectSummary(t, failedRecord, bagman.StatusFailed)
+
+	passedCleanup := getResult("Cleanup", true)
+	assertCorrectSummary(t, passedCleanup, bagman.StatusSuccess)
+	failedCleanup := getResult("Cleanup", false)
+	assertCorrectSummary(t, failedCleanup, bagman.StatusFailed)
 }
 
 func assertCorrectSummary(t *testing.T, result *bagman.ProcessResult, expectedStatus bagman.StatusType) {
