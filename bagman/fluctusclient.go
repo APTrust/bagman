@@ -183,6 +183,18 @@ func (client *FluctusClient) GetBagStatus(etag, name string, bag_date time.Time)
 	return status, err
 }
 
+// GetBagStatusById returns the processed item with the specified ID, or nil.
+func (client *FluctusClient) GetBagStatusById(id int) (status *ProcessStatus, err error) {
+	statusUrl := client.BuildUrl(fmt.Sprintf("/api/%s/itemresults/%d", client.apiVersion, id))
+	req, err := client.NewJsonRequest("GET", statusUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	status, err = client.doStatusRequest(req, 200)
+	return status, err
+}
+
+
 // ProcessStatusSearch returns any ProcessedItem/ProcessStatus
 // records from fluctus matching the specified criteria.
 // Fill a ProcessStatus with as many attributes as you like

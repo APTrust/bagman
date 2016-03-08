@@ -518,6 +518,37 @@ func TestBulkStatusGet(t *testing.T) {
 	}
 }
 
+func TestGetBagStatusById(t *testing.T) {
+	if runFluctusTests() == false {
+		return
+	}
+	fluctusClient := getClient(t)
+
+	err := loadTestResult(t)
+	if err != nil {
+		return
+	}
+
+	sinceWhen, _ := time.Parse("2006-01-02T15:04:05.000Z", "2014-01-01T12:00:00.000Z")
+	records, err := fluctusClient.BulkStatusGet(sinceWhen)
+	if err != nil {
+		t.Errorf("Error getting bulk status: %v", err)
+	}
+	if len(records) == 0 {
+		t.Error("BulkStatusGet returned no records when it should have returned something.")
+	}
+
+	for _, item := range(records) {
+		record, err := fluctusClient.GetBagStatusById(item.Id)
+		if err != nil {
+			t.Errorf("Error getting ProcessedItem %d by id: %v", item.Id, err)
+		}
+		if record == nil {
+			t.Error("GetBagStatusById returned nil for item id %d", item.Id)
+		}
+	}
+}
+
 func TestSendProcessedItem(t *testing.T) {
 	if runFluctusTests() == false {
 		return
