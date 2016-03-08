@@ -115,6 +115,34 @@ func (recorder *Recorder) HandleMessage(message *nsq.Message) error {
 	}
 	result.NsqMessage = message
 	result.Stage = STAGE_RECORD
+
+	// Fluctus will have a processed item request only
+	// if this bag was ingested at APTrust. APTrust bags
+	// have result.BagIdentifier. Bags replicated from other
+	// nodes do not.
+	if result.ProcessedItemId != 0 {
+		processedItem, err := recorder.ProcUtil.FluctusClient.GetBagStatusById(result.ProcessedItemId)
+		if err != nil {
+			errMessage := fmt.Sprintf("Could not get ProcessedItem with id %d from Fluctus",
+				result.ProcessedItemId)
+			recorder.ProcUtil.MessageLog.Error(errMessage)
+			message.Attempts += 1
+			message.Requeue(1 * time.Minute)
+			return fmt.Errorf(errMessage)
+		}
+		result.processStatus = processedItem
+		result.processStatus.SetNodePidState(result, recorder.ProcUtil.MessageLog)
+		err = recorder.ProcUtil.FluctusClient.UpdateProcessedItem(result.processStatus)
+		if err != nil {
+			errorMessage := fmt.Sprintf("Before processing, error updating ProcessedItem " +
+				"in Fluctus for '%s': %v", result.BagIdentifier, err)
+			recorder.ProcUtil.MessageLog.Error(errorMessage)
+			message.Attempts += 1
+			message.Requeue(1 * time.Minute)
+			return fmt.Errorf(errorMessage)
+		}
+	}
+
 	recorder.ProcUtil.MessageLog.Info(
 		"Putting %s bag %s into the record queue. Stage = %s",
 		result.DPNBag.AdminNode, result.DPNBag.UUID, result.Stage)
@@ -125,7 +153,7 @@ func (recorder *Recorder) HandleMessage(message *nsq.Message) error {
 
 func (recorder *Recorder) record() {
 	for result := range recorder.RecordChannel {
-		if result.TransferRequest == nil {
+		if result.ProcessedItemId != 0 {
 			// This bag was ingested through APTrust.
 			// Do we want to try this multiple times?
 			// Do we want to requeu on failure?
@@ -133,7 +161,7 @@ func (recorder *Recorder) record() {
 			recorder.ProcUtil.MessageLog.Debug("Bag %s (%s) was ingested at APTrust",
 				result.DPNBag.UUID, result.BagIdentifier)
 			recorder.RecordAPTrustDPNData(result)
-		} else {
+		} else if result.TransferRequest != nil {
 			// This bag was replicated from another node.
 			// Here are a few vars to make our logic a little more clear.
 			recorder.ProcUtil.MessageLog.Debug("Bag %s is being replicated from %s",
@@ -164,6 +192,12 @@ func (recorder *Recorder) record() {
 				fmt.Println(fatalErr.Error())
 				recorder.ProcUtil.MessageLog.Fatal(fatalErr)
 			}
+		} else {
+			// This should never happen in the real world. Either
+			// it's an APTrust bag or a replicated bag. But we
+			// managed to hit this with our integration tests.
+			recorder.ProcUtil.MessageLog.Error("Invalid item has neither ProcessedItem ID nor Transfer Request")
+			recorder.ProcUtil.MessageLog.Error("%v", result)
 		}
 		recorder.PostProcessChannel <- result
 	}
@@ -189,9 +223,26 @@ func (recorder *Recorder) postProcess() {
 			if result.NsqMessage == nil {
 				recorder.WaitGroup.Done()
 			}
+			// Tell Fluctus it didn't work
+			processedItem := result.processStatus
+			if processedItem != nil {
+				processedItem.SetNodePidState(result, recorder.ProcUtil.MessageLog)
+				processedItem.Date = time.Now()
+				processedItem.Stage = "Record"
+				processedItem.Status = "Failed"
+				processedItem.Node = ""
+				processedItem.Pid = 0
+				recorder.ProcUtil.MessageLog.Debug(processedItem.Note)
+				err := recorder.ProcUtil.FluctusClient.UpdateProcessedItem(processedItem)
+				if err != nil {
+					result.ErrorMessage = fmt.Sprintf("Error updating ProcessedItem status in Fluctus: %v", err)
+					recorder.ProcUtil.MessageLog.Error(result.ErrorMessage)
+				}
+			}
+
 			continue
 		} else {
-			// Nothing went wrong
+			// Nothing went wrong. Fluctus knows from updateFluctusStatus.
 			storageResultSent := !result.RecordResult.StorageResultSentAt.IsZero()
 			copyReceiptSent := !result.RecordResult.CopyReceiptSentAt.IsZero()
 			if copyReceiptSent && !storageResultSent {
@@ -310,9 +361,9 @@ func (recorder *Recorder) ensureBagMember(result *DPNResult) {
 // Record PREMIS events in Fluctus. We do this only for DPN bags that
 // we ingested here at APTrust. We create one PREMIS event saying the
 // bag was ingested into DPN, and another that gives the DPN identifier.
+// Bags ingested at APTrust should always have processStatus.
 func (recorder *Recorder) recordPremisEvents(result *DPNResult) {
 	now := time.Now()
-
 	recorder.ProcUtil.MessageLog.Debug("Creating ingest PREMIS event for bag %s (%s)",
 		result.DPNBag.UUID, result.BagIdentifier)
 	ingestUuid := uuid.NewV4()
@@ -321,7 +372,7 @@ func (recorder *Recorder) recordPremisEvents(result *DPNResult) {
 		EventType:          "ingest",
 		DateTime:           now,
 		Detail:             fmt.Sprintf("Item ingested into DPN with id %s at request of %s",
-			result.DPNBag.UUID, result.FluctusProcessStatus.User),
+			result.DPNBag.UUID, result.processStatus.User),
 		Outcome:            string(bagman.StatusSuccess),
 		OutcomeDetail:      result.DPNBag.UUID,
 		Object:             "Go uuid library + goamz S3 library",
@@ -400,18 +451,20 @@ func (recorder *Recorder) createReplicationRequests(result *DPNResult) {
 }
 
 func (recorder *Recorder) updateProcessedItem(result *DPNResult) {
-	processedItem := result.FluctusProcessStatus
-	processedItem.Date = time.Now()
-	processedItem.Stage = "Record"
-	processedItem.Status = "Success"
-	processedItem.Note = fmt.Sprintf("DPN bag stored at %s", result.StorageURL)
-	recorder.ProcUtil.MessageLog.Debug(processedItem.Note)
-	err := recorder.ProcUtil.FluctusClient.UpdateProcessedItem(processedItem)
+	result.processStatus.Date = time.Now()
+	result.processStatus.Stage = "Record"
+	result.processStatus.Status = "Success"
+	result.processStatus.Note = fmt.Sprintf("DPN bag stored at %s", result.StorageURL)
+	result.processStatus.SetNodePidState(result, recorder.ProcUtil.MessageLog)
+	result.processStatus.Node = ""
+	result.processStatus.Pid = 0
+	recorder.ProcUtil.MessageLog.Debug(result.processStatus.Note)
+	err := recorder.ProcUtil.FluctusClient.UpdateProcessedItem(result.processStatus)
 	if err != nil {
 		result.ErrorMessage = fmt.Sprintf("Error updating ProcessedItem status in Fluctus: %v", err)
 		recorder.ProcUtil.MessageLog.Error(result.ErrorMessage)
 	}
-	result.RecordResult.ProcessedItemUpdatedAt = processedItem.Date
+	result.RecordResult.ProcessedItemUpdatedAt = result.processStatus.Date
 }
 
 func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (string, error) {

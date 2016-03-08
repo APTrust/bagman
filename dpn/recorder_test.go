@@ -125,7 +125,13 @@ func buildLocalResult(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResult) {
 		t.Errorf("Could not create Fluctus ProcessedItem to test DPN ingest: %v", err)
 		return nil
 	}
-	result.FluctusProcessStatus = ps
+	// This sucks. We need a better way to create fixtures and do integration tests.
+	statusRecords, err := recorder.ProcUtil.FluctusClient.ProcessStatusSearch(ps, true, false)
+	if err != nil || len(statusRecords) == 0 {
+		t.Errorf("Could not get ProcessedItem ID to test DPN ingest: %v", err)
+		return nil
+	}
+	result.ProcessedItemId = statusRecords[0].Id
 	return result
 }
 

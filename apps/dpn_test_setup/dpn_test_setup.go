@@ -240,6 +240,10 @@ func (testUtil *TestUtil) MarkAPTrustBagsForDPN() (error) {
 		processedItem.Status = "Pending"
 		processedItem.Stage = "Requested"
 		processedItem.Retry = true
+		processedItem.Node = ""
+		processedItem.Pid = 0
+		processedItem.State = ""
+		processedItem.NeedsAdminReview = false
 		err = testUtil.ProcUtil.FluctusClient.UpdateProcessedItem(processedItem)
 		if err != nil {
 			return err

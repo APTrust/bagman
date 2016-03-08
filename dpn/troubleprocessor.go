@@ -50,7 +50,11 @@ func (troubleProcessor *TroubleProcessor) HandleMessage(message *nsq.Message) er
 	}
 
 	troubleProcessor.dumpToFile(result)
-	if result.FluctusProcessStatus != nil {
+
+	// Ignore errors, as bags may not have processed item records,
+	// and our goal is mainly to dump out the manifest at this point.
+	result.processStatus, _ = troubleProcessor.ProcUtil.FluctusClient.GetBagStatusById(result.ProcessedItemId)
+	if result.processStatus != nil {
 		troubleProcessor.ProcUtil.MessageLog.Info(
 			"Trying to flag ProcessedItem as failed for bag %s", bagId)
 	}
@@ -93,14 +97,16 @@ func (troubleProcessor *TroubleProcessor) dumpToFile(result *DPNResult) error {
 }
 
 func (troubleProcessor *TroubleProcessor) updateProcessedItem(result *DPNResult) {
-	if result.FluctusProcessStatus == nil {
+	if result.processStatus == nil {
 		return
 	}
-	processedItem := result.FluctusProcessStatus
-	processedItem.Date = time.Now()
-	processedItem.Status = "Failed"
-	processedItem.Note = result.ErrorMessage
-	err := troubleProcessor.ProcUtil.FluctusClient.UpdateProcessedItem(processedItem)
+	result.processStatus.Date = time.Now()
+	result.processStatus.Status = "Failed"
+	result.processStatus.Note = result.ErrorMessage
+	result.processStatus.SetNodePidState(result, troubleProcessor.ProcUtil.MessageLog)
+	result.processStatus.Node = ""
+	result.processStatus.Pid = 0
+	err := troubleProcessor.ProcUtil.FluctusClient.UpdateProcessedItem(result.processStatus)
 	if err != nil {
 		troubleProcessor.ProcUtil.MessageLog.Error(
 			"Error updating ProcessedItem status in Fluctus: %v", err)

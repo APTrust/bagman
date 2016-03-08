@@ -33,14 +33,13 @@ type DPNResult struct {
 	BagIdentifier    string
 
 	// If this is an APTrust bag that we're ingesting into DPN,
-	// FluctusProcessStatus will contain a copy of the ProcessStatus
-	// record (known in Fluctus as a ProcessedItem record) that is
-	// essentially the Fluctus work order we're fulfilling. When
-	// we're done processing, we'll need to update this record in
-	// Fluctus to indicate whether the ingest to DPN succeeded or
-	// failed. For bags coming from other nodes (replications),
-	// FluctusProcessStatus will always be nil.
-	FluctusProcessStatus *bagman.ProcessStatus    `json:"-"`
+	// this is the ID of the "send to DPN" request in the
+	// ProcessedItem queue. For bags being replicated from
+	// other nodes, this will be nil.
+	ProcessedItemId  int
+
+	// Private, transient copy of Fluctus ProcessStatus
+	processStatus    *bagman.ProcessStatus
 
 	// LocalPath is where this bag is stored on disk. The bag
 	// may be a file ending in .tar or a directory if the bag

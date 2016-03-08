@@ -83,8 +83,8 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 	message.DisableAutoResponse()
 
 	// TODO: Change this. We'll actually just have the bag identifier in the queue.
-	dpnResult := &DPNResult{}
-	err := json.Unmarshal(message.Body, dpnResult)
+	result := &DPNResult{}
+	err := json.Unmarshal(message.Body, result)
 	if err != nil {
 		detailedError := fmt.Errorf("Could not unmarshal JSON data from nsq:",
 			string(message.Body))
@@ -94,11 +94,37 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 	}
 
 	// Start processing.
-	dpnResult.NsqMessage = message
-	dpnResult.Stage = STAGE_PACKAGE
-	packager.LookupChannel <- dpnResult
+	result.NsqMessage = message
+	result.Stage = STAGE_PACKAGE
+
+	// Fluctus housekeeping
+	if result.ProcessedItemId != 0 {
+		processedItem, err := packager.ProcUtil.FluctusClient.GetBagStatusById(result.ProcessedItemId)
+		if err != nil {
+			errMessage := fmt.Sprintf("Could not get ProcessedItem with id %d from Fluctus",
+				result.ProcessedItemId)
+			packager.ProcUtil.MessageLog.Error(errMessage)
+			message.Attempts += 1
+			message.Requeue(1 * time.Minute)
+			return fmt.Errorf(errMessage)
+		}
+		result.processStatus = processedItem
+		result.processStatus.Status = bagman.StatusStarted
+		result.processStatus.SetNodePidState(result, packager.ProcUtil.MessageLog)
+		err = packager.ProcUtil.FluctusClient.UpdateProcessedItem(result.processStatus)
+		if err != nil {
+			errorMessage := fmt.Sprintf("Before processing '%s', cannot send status " +
+				"back to Fluctus: %v", result.BagIdentifier, err)
+			packager.ProcUtil.MessageLog.Error(errorMessage)
+			message.Attempts += 1
+			message.Requeue(1 * time.Minute)
+			return fmt.Errorf(errorMessage)
+		}
+	}
+
+	packager.LookupChannel <- result
 	packager.ProcUtil.MessageLog.Info("Put %s into lookup channel",
-		dpnResult.BagIdentifier)
+		result.BagIdentifier)
 	return nil
 }
 
@@ -106,7 +132,10 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 // Fluctus, builds a package result object, and moves the data
 // into the FetchChannel.
 //
-// TODO: Check whether this bag already exists in DPN??
+// We should not have to check whether this bag already exists in DPN
+// because the packager only deals with bags ingested at APTrust, and
+// the APTrust web UI won't even show the "Send to DPN" button if the
+// item is already in DPN.
 func (packager *Packager) doLookup() {
 	for result := range packager.LookupChannel {
 		// Get the bag, with a list of GenericFiles
@@ -333,6 +362,24 @@ func (packager *Packager) doCleanup() {
 // and sends data to the next NSQ topic for post-processing.
 func (packager *Packager) postProcess() {
 	for result := range packager.PostProcessChannel {
+
+		// Tell Fluctus what's up
+		if result.processStatus != nil {
+			result.processStatus.Retry = (
+				result.PackageResult.Succeeded() == false &&
+					packager.reachedMaxAttempts(result) == true)
+			result.Retry = result.processStatus.Retry
+			result.processStatus.SetNodePidState(result, packager.ProcUtil.MessageLog)
+			result.processStatus.Node = ""
+			result.processStatus.Pid = 0
+			err := packager.ProcUtil.FluctusClient.UpdateProcessedItem(result.processStatus)
+			if err != nil {
+				errorMessage := fmt.Sprintf("After processing bag '%s', " +
+					"cannot send status back to Fluctus: %v", result.BagIdentifier, err)
+				packager.ProcUtil.MessageLog.Error(errorMessage)
+			}
+		}
+
 		if result.PackageResult.Succeeded() {
 			packager.ProcUtil.MessageLog.Info("Bag %s successfully packaged at %s",
 				result.BagIdentifier, result.PackageResult.TarFilePath)
@@ -372,6 +419,7 @@ func (packager *Packager) postProcess() {
 			// This is a test message, running outside production.
 			packager.WaitGroup.Done()
 		}
+
 		packager.ProcUtil.LogStats()
 	}
 }
@@ -504,14 +552,14 @@ func (packager *Packager) FilesAlreadyFetched(result *DPNResult) (map[string]boo
 // and you need to have your S3 environment or config vars set up.
 // Run: `dpn_package_devtest -config=dev`
 func (packager *Packager) RunTest(bagIdentifier string) (*DPNResult) {
-	dpnResult := NewDPNResult(bagIdentifier)
+	result := NewDPNResult(bagIdentifier)
 	packager.WaitGroup.Add(1)
 	packager.ProcUtil.MessageLog.Info("Putting %s into lookup channel",
-		dpnResult.BagIdentifier)
-	packager.LookupChannel <- dpnResult
+		result.BagIdentifier)
+	packager.LookupChannel <- result
 	packager.WaitGroup.Wait()
 	fmt.Println("Inspect the tar file output. It's your job to delete the file manually.")
-	return dpnResult
+	return result
 }
 
 func PathWithinArchive(result *DPNResult, filePath, bagDir string) (string, error) {

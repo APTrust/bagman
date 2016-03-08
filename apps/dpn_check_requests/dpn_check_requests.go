@@ -79,7 +79,7 @@ func queueIngestRequests(procUtil *bagman.ProcessUtil) (error) {
 		procUtil.MessageLog.Info("APTrust bag %s queued for ingest to DPN", record.ObjectIdentifier)
 		genericSlice := make([]interface{}, 1)
 		dpnResult := dpn.NewDPNResult(record.ObjectIdentifier)
-		dpnResult.FluctusProcessStatus = record
+		dpnResult.ProcessedItemId = record.Id
 		genericSlice[0] = dpnResult
 		err = bagman.QueueToNSQ(nsqUrl, genericSlice)
 		if err != nil {
