@@ -40,7 +40,7 @@ type DPNResult struct {
 	// Fluctus to indicate whether the ingest to DPN succeeded or
 	// failed. For bags coming from other nodes (replications),
 	// FluctusProcessStatus will always be nil.
-	FluctusProcessStatus *bagman.ProcessStatus
+	FluctusProcessStatus *bagman.ProcessStatus    `json:"-"`
 
 	// LocalPath is where this bag is stored on disk. The bag
 	// may be a file ending in .tar or a directory if the bag
@@ -59,7 +59,7 @@ type DPNResult struct {
 
 	// The NSQ message being processed. May be nil if we're
 	// running tests.
-	NsqMessage       *nsq.Message  `json:"-"`
+	NsqMessage       *nsq.Message                 `json:"-"`
 
 	// The current stage of processing for this bag.
 	Stage            string
