@@ -78,6 +78,9 @@ func TestNewDPNSync(t *testing.T) {
 }
 
 func TestLocalNodeName(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
 	// Local node name is set in dpn_config.json
 	config := loadConfig(t, configFile)
 	dpnSync := newDPNSync(t)
@@ -92,6 +95,9 @@ func TestLocalNodeName(t *testing.T) {
 }
 
 func TestRemoteNodeNames(t *testing.T) {
+	if runSyncTests(t) == false {
+		return  // local test cluster isn't running
+	}
 	// Local node name is set in dpn_config.json
 	config := loadConfig(t, configFile)
 	dpnSync := newDPNSync(t)

@@ -99,7 +99,7 @@ func TestValidate_BagMissingManifest256(t *testing.T) {
 		return
 	}
 	if !strings.Contains(result.ErrorMessages[0],
-		"Manifest 'manifest-sha256.txt' does not exist") {
+		"Manifest file 'manifest-sha256.txt' is missing.") {
 		t.Errorf("ValidationResult should have noted missing manifest-sha256.txt")
 	}
 }

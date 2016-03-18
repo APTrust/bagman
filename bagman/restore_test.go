@@ -375,7 +375,11 @@ func TestCopyToS3 (t *testing.T) {
 		return
 	}
 
-	expectedSizes := []int64 { int64(6144), int64(6656) }
+	// Bags are being restored with both md5 and sha256
+	// manifests, plus md5 and sha256 tagmanifests. So
+	// they're bigger than the originals, which have
+	// only md5 payload manifest and no tagmanifest.
+	expectedSizes := []int64 { int64(10240), int64(10752) }
 
 	s3Client, err := bagman.NewS3Client(aws.USEast)
 	if err != nil {
@@ -417,7 +421,7 @@ func TestCopyToS3 (t *testing.T) {
 			t.Errorf("Bag %s was not uploaded to S3", bagName)
 		}
 		if key.Size != expectedSizes[i] {
-			t.Errorf("Size for bag %s is incorrect. Expected %s, got %s.",
+			t.Errorf("Size for bag %s is incorrect. Expected %d, got %d.",
 				bagName, expectedSizes[i], key.Size)
 		}
 	}

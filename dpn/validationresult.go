@@ -169,10 +169,14 @@ func (validator *ValidationResult) ValidateBag()  {
 		return
 	}
 
+	if validator.sha256ManifestPresent() == false {
+		validator.AddError("Manifest file 'manifest-sha256.txt' is missing.")
+		return
+	}
 	// OK, the name is good, we untarred it and the tag manifest is valid.
 	// Now do the heavy work... and there can be a lot to do on bags
 	// over 100GB in size.
-	bag, err := bagins.ReadBag(validator.UntarredPath, TagFiles(), "manifest-sha256.txt")
+	bag, err := bagins.ReadBag(validator.UntarredPath, TagFiles())
 	if err != nil {
 		validator.AddError(fmt.Sprintf("Error unpacking bag: %v", err))
 		return
@@ -221,16 +225,19 @@ func (validator *ValidationResult) ValidateBag()  {
 	validator.checkRequiredTags(bag)
 
 	// Run all the checksums on all files.
-	checksumErrors := bag.Manifest.RunChecksums()
+	for _, manifest := range bag.Manifests {
+		checksumErrors := manifest.RunChecksums()
+		if len(checksumErrors) > 0 {
+			for _, err := range checksumErrors {
+				validator.AddError(fmt.Sprintf("In %s %s", manifest.Name(), err.Error()))
+			}
+		}
+	}
 
 	// Running the checksums takes a long time on
 	// large bags, so let NSQ know we're still working.
 	if validator.NsqMessage != nil {
 		validator.NsqMessage.Touch()
-	}
-
-	for _, err := range checksumErrors {
-		validator.AddError(err.Error())
 	}
 }
 
@@ -272,6 +279,13 @@ func (validator *ValidationResult) BagNameValid() (bool) {
 // We have to make sure it's here, and bagins will do the rest.
 func (validator *ValidationResult) tagManifestPresent() (bool) {
 	fullPath := filepath.Join(validator.UntarredPath, "tagmanifest-sha256.txt")
+	return bagman.FileExists(fullPath)
+}
+
+// bagins will validate only the manifests it finds.
+// The DPN spec requires manifest-sha256.txt
+func (validator *ValidationResult) sha256ManifestPresent() (bool) {
+	fullPath := filepath.Join(validator.UntarredPath, "manifest-sha256.txt")
 	return bagman.FileExists(fullPath)
 }
 

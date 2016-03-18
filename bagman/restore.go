@@ -257,7 +257,7 @@ func (restorer *BagRestorer) buildBag(setNumber, numberOfBagParts int) (*bagins.
 		return nil, err
 	}
 	restorer.debug(fmt.Sprintf("Creating bag %s", bagName))
-	bag, err := bagins.NewBag(restorer.workingDir, bagName, "md5")
+	bag, err := bagins.NewBag(restorer.workingDir, bagName, []string {"md5", "sha256"}, true)
 	if err != nil {
 	 	return nil, err
 	}

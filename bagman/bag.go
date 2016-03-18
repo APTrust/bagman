@@ -178,7 +178,7 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 	// Final param to bagins.ReadBag is the name of the checksum file.
 	// That param defaults to manifest-md5.txt, which is what it
 	// should be for bags we're fetching from the S3 receiving buckets.
-	bag, err := bagins.ReadBag(tarFilePath, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"}, "")
+	bag, err := bagins.ReadBag(tarFilePath, []string{"bagit.txt", "bag-info.txt", "aptrust-info.txt"})
 	if err != nil {
 		bagReadResult.ErrorMessage = fmt.Sprintf("Error unpacking bag: %v", err)
 		return bagReadResult
@@ -228,13 +228,15 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 
 	extractTags(bag, bagReadResult)
 
-	checksumErrors := bag.Manifest.RunChecksums()
-	if len(checksumErrors) > 0 {
-		errMsg += "The following checksums could not be verified:\n"
-		bagReadResult.ChecksumErrors = make([]error, len(checksumErrors))
-		for i, err := range checksumErrors {
-			bagReadResult.ChecksumErrors[i] = err
-			errMsg += "  " + err.Error() + ".\n"
+	for _, manifest := range bag.Manifests {
+		checksumErrors := manifest.RunChecksums()
+		if len(checksumErrors) > 0 {
+			errMsg += "The following checksums could not be verified:\n"
+			bagReadResult.ChecksumErrors = make([]error, len(checksumErrors))
+			for i, err := range checksumErrors {
+				bagReadResult.ChecksumErrors[i] = err
+				errMsg += fmt.Sprintf("  %s (%s).\n", err.Error(), manifest.Name())
+			}
 		}
 	}
 

@@ -159,7 +159,7 @@ func (builder *BagBuilder) DPNInfo() (*bagins.TagFile) {
 
 func (builder *BagBuilder) DPNManifestSha256() (*bagins.Manifest) {
 	manifestPath := filepath.Join(builder.LocalPath, "manifest-sha256.txt")
-	manifest, err := bagins.NewManifest(manifestPath, "sha256")
+	manifest, err := bagins.NewManifest(manifestPath, "sha256", bagins.PayloadManifest)
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
@@ -178,7 +178,7 @@ func (builder *BagBuilder) DPNManifestSha256() (*bagins.Manifest) {
 
 func (builder *BagBuilder) DPNTagManifest() (*bagins.Manifest) {
 	manifestPath := filepath.Join(builder.LocalPath, "tagmanifest-sha256.txt")
-	manifest, err := bagins.NewManifest(manifestPath, "sha256")
+	manifest, err := bagins.NewManifest(manifestPath, "sha256", bagins.TagManifest)
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
@@ -275,7 +275,7 @@ func (builder *BagBuilder) APTrustInfo() (*bagins.TagFile) {
 
 func (builder *BagBuilder) APTrustManifestMd5() (*bagins.Manifest) {
 	manifestPath := builder.APTrustMetadataPath("manifest-md5.txt")
-	manifest, err := bagins.NewManifest(manifestPath, "md5")
+	manifest, err := bagins.NewManifest(manifestPath, "md5", bagins.PayloadManifest)
 	if err != nil {
 		builder.ErrorMessage += fmt.Sprintf("[%s] ", err.Error())
 		return nil
