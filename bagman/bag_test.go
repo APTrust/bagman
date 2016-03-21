@@ -29,6 +29,10 @@ var sampleNoMd5Manifest string = filepath.Join(testDataPath, "example.edu.sample
 var sampleNoAPTrustInfo string = filepath.Join(testDataPath, "example.edu.sample_no_aptrust_info.tar")
 var sampleNoDataDir string = filepath.Join(testDataPath, "example.edu.sample_no_data_dir.tar")
 var invalidTarFile string = filepath.Join(testDataPath, "example.edu.not_a_tar_file.tar")
+
+var tagSampleGood string = filepath.Join(testDataPath, "example.edu.tagsample_good.tar")
+var tagSampleBad string = filepath.Join(testDataPath, "example.edu.tagsample_bad.tar")
+
 var badFiles []string = []string{
 	sampleBadChecksums,
 	sampleMissingDataFile,
@@ -38,9 +42,11 @@ var badFiles []string = []string{
 	sampleNoMd5Manifest,
 	sampleNoAPTrustInfo,
 	sampleNoDataDir,
+	tagSampleBad,
 }
 var goodFiles []string = []string{
 	sampleGood,
+	tagSampleGood,
 }
 var allFiles []string = append(badFiles, goodFiles...)
 
@@ -87,7 +93,7 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 	defer teardown()
 	// Untar with ingest data (sha256 and mime type)
 	for _, tarFile := range goodFiles {
-		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
+		result := bagman.Untar(tarFile, "test.edu", "good_test_bag.tar", true)
 		if result.ErrorMessage != "" {
 			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
 		}
@@ -97,7 +103,7 @@ func TestUntarWorksOnGoodFiles(t *testing.T) {
 	}
 	// Untar without ingest data
 	for _, tarFile := range goodFiles {
-		result := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", false)
+		result := bagman.Untar(tarFile, "test.edu", "good_test_bag.tar", false)
 		if result.ErrorMessage != "" {
 			t.Errorf("Error untarring %s: %v", tarFile, result.ErrorMessage)
 		}
@@ -292,7 +298,7 @@ func TestBadBagReturnsError(t *testing.T) {
 	setup()
 	defer teardown()
 	for _, tarFile := range badFiles {
-		tarResult := bagman.Untar(tarFile, "ncsu.edu", "ncsu.1840.16-2928.tar", true)
+		tarResult := bagman.Untar(tarFile, "test.edu", "bad_test_bag.tar", true)
 		result := bagman.ReadBag(tarResult.OutputDir)
 		if result.ErrorMessage == "" {
 			t.Errorf("Bag unpacked from %s should have produced an error, but did not",
