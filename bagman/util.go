@@ -491,6 +491,8 @@ func HasSavableName(filename string) (bool) {
 	return !(filename == "." ||
 		filename == ".." ||
 		filename == "bagit.txt" ||
+		strings.HasPrefix(filename, "._") ||  // mac junk files
+		strings.Contains(filename, "/._") || // mac junk files
 		reTagManifest.MatchString(filename) ||
 		reManifest.MatchString(filename))
 }

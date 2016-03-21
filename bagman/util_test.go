@@ -354,6 +354,12 @@ func TestSavableName(t *testing.T) {
 	if bagman.HasSavableName("..") == true {
 		t.Errorf("HasSavableName() should have returned false")
 	}
+	if bagman.HasSavableName("._junk.txt") == true {
+		t.Errorf("HasSavableName() should have returned false")
+	}
+	if bagman.HasSavableName("data/subdir/._junk.txt") == true {
+		t.Errorf("HasSavableName() should have returned false")
+	}
 	if bagman.HasSavableName("bagit.txt") == true {
 		t.Errorf("HasSavableName() should have returned false")
 	}
