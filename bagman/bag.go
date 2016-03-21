@@ -137,10 +137,21 @@ func Untar(tarFilePath, instDomain, bagName string, buildIngestData bool) (resul
 		// Copy the file, if it's an actual file. Otherwise, ignore it and record
 		// a warning. The bag library does not deal with items like symlinks.
 		if header.Typeflag == tar.TypeReg || header.Typeflag == tar.TypeRegA {
-			if strings.Contains(header.Name, "/data/") {
+			pathParts := strings.SplitN(header.Name, "/", 2)
+			if len(pathParts) < 2 {
+				tarResult.ErrorMessage = fmt.Sprintf("File %s in tar archive should be in format dir/filename", header.Name)
+				return tarResult
+			}
+			fileName := pathParts[1]
+			if HasSavableName(fileName) {
 				var dataFile *File = nil
 				dataFile = buildFile(tarReader, filepath.Dir(absInputFile), header.Name,
 					header.Size, header.ModTime, buildIngestData)
+				if dataFile.ErrorMessage != "" {
+					tarResult.ErrorMessage = fmt.Sprintf("Error reading file from tar archive: %v",
+						dataFile.ErrorMessage)
+					return tarResult
+				}
 				cleanBagName, _ := CleanBagName(bagName)
 				dataFile.Identifier = fmt.Sprintf("%s/%s", cleanBagName, dataFile.Path)
 				dataFile.IdentifierAssigned = time.Now()
@@ -319,7 +330,12 @@ func saveFile(destination string, tarReader *tar.Reader) error {
 // GenericFile object in Fedora later.
 func buildFile(tarReader *tar.Reader, tarDirectory string, fileName string, size int64, modTime time.Time, buildIngestData bool) (file *File) {
 	file = NewFile()
-	file.Path = fileName[strings.Index(fileName, "/data/")+1 : len(fileName)]
+	pathParts := strings.SplitN(fileName, "/", 2)
+	if len(pathParts) < 2 {
+		file.ErrorMessage = fmt.Sprintf("File %s in tar archive should be in format dir/filename", fileName)
+		return file
+	}
+	file.Path = pathParts[1]
 	absPath, err := filepath.Abs(filepath.Join(tarDirectory, fileName))
 	if err != nil {
 		file.ErrorMessage = fmt.Sprintf("Path error: %v", err)

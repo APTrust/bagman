@@ -118,24 +118,32 @@ func TestUntarCreatesFiles(t *testing.T) {
 
 	// Generic files contains info about files in the /data directory
 	expectedPath := []string{
+		"aptrust-info.txt",
+		"bag-info.txt",
 		"data/datastream-DC",
 		"data/datastream-descMetadata",
 		"data/datastream-MARC",
 		"data/datastream-RELS-EXT",
 	}
 	expectedIdentifier := []string{
+		"ncsu.1840.16-2928/aptrust-info.txt",
+		"ncsu.1840.16-2928/bag-info.txt",
 		"ncsu.1840.16-2928/data/datastream-DC",
 		"ncsu.1840.16-2928/data/datastream-descMetadata",
 		"ncsu.1840.16-2928/data/datastream-MARC",
 		"ncsu.1840.16-2928/data/datastream-RELS-EXT",
 	}
 	expectedMd5 := []string{
+		"32cea37b3bd418dd0028d6197aefc487",
+		"82c47e0acbf13e3259cb19f88f6304d1",
 		"44d85cf4810d6c6fe87750117633e461",
 		"4bd0ad5f85c00ce84a455466b24c8960",
 		"93e381dfa9ad0086dbe3b92e0324bae6",
 		"ff731b9a1758618f6cc22538dede6174",
 	}
 	expectedSha256 := []string{
+		"4f662a48a65e6502a56d851d1b1398fd726d28badb63310430d57f7eede8e9de",
+		"3fafc2c1685fb9db715b884a1ef33eb5061c17f3fb671fa7cc99037e174b7553",
 		"248fac506a5c46b3c760312b99827b6fb5df4698d6cf9a9cdc4c54746728ab99",
 		"cf9cbce80062932e10ee9cd70ec05ebc24019deddfea4e54b8788decd28b4bc7",
 		"8e3634d207017f3cfc8c97545b758c9bcd8a7f772448d60e196663ac4b62456a",
@@ -143,18 +151,22 @@ func TestUntarCreatesFiles(t *testing.T) {
 	}
 	expectedType := []string{
 		"text/plain",
+		"text/plain",
+		"text/plain",
 		"application/xml",
 		"text/plain",
 		"application/xml",
 	}
-	expectedSize := []int64{2388, 6191, 4663, 579}
+	expectedSize := []int64{49, 223, 2388, 6191, 4663, 579}
 	t0, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
-	t1, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
+	t1, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 20:54:13 +0000 UTC")
 	t2, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
 	t3, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
-	expectedModTime := []time.Time{t0, t1, t2, t3}
+	t4, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
+	t5, _ := time.Parse("2006-01-02 15:04:05 -0700 MST", "2014-12-12 16:51:53 -0400 EDT")
+	expectedModTime := []time.Time{t0, t1, t2, t3, t4, t5}
 
-	if len(tarResult.Files) != 4 {
+	if len(tarResult.Files) != 6 {
 		t.Errorf("Unpacked %d generic files, expected %d", len(tarResult.Files), 4)
 	}
 

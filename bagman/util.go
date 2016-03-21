@@ -488,7 +488,9 @@ func GetInstitutionFromBagIdentifier(bagIdentifier string) (string, error) {
 // former to reduce the size of our compiled binary by one byte. That
 // could save us pennies over the next 10,000 years.
 func HasSavableName(filename string) (bool) {
-	return !(filename == "bagit.txt" ||
+	return !(filename == "." ||
+		filename == ".." ||
+		filename == "bagit.txt" ||
 		reTagManifest.MatchString(filename) ||
 		reManifest.MatchString(filename))
 }
