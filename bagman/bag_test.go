@@ -343,3 +343,40 @@ func TestErrorOnMissingTitle(t *testing.T) {
 			sampleNoTitle)
 	}
 }
+
+
+func TestGoodCustomTags(t *testing.T) {
+	setup()
+	defer teardown()
+	tarResult := bagman.Untar(tagSampleGood, "test.edu", "tag_sample_good.tar", true)
+	readResult := bagman.ReadBag(tarResult.OutputDir)
+	if readResult.ErrorMessage != "" {
+		t.Errorf("ReadBag() should have found no errors in %s, " +
+			"but it found the following:\n%s", tagSampleGood, readResult.ErrorMessage)
+	}
+}
+
+func TestBadCustomTags(t *testing.T) {
+	setup()
+	defer teardown()
+	tarResult := bagman.Untar(tagSampleBad, "test.edu", "tag_sample_bad.tar", true)
+	readResult := bagman.ReadBag(tarResult.OutputDir)
+
+	if !strings.Contains(readResult.ErrorMessage, "checksum 00000000000000000000000000000000 is not valid") {
+		t.Errorf("Validator missed invalid checksum on custom_tags/tracked_tag_file.txt")
+	}
+	if !strings.Contains(readResult.ErrorMessage, "checksum 99999999999999999999999999999999 is not valid") {
+		t.Errorf("Validator missed invalid checksum on custom_tags/tag_file_xyz.pdf")
+	}
+	if !strings.Contains(readResult.ErrorMessage,
+		"checksum 0000000000000000000000000000000000000000000000000000000000000000 is not valid") {
+		t.Errorf("Validator missed invalid checksum on custom_tags/tracked_tag_file.txt")
+	}
+	if !strings.Contains(readResult.ErrorMessage,
+		"checksum 9999999999999999999999999999999999999999999999999999999999999999 is not valid") {
+		t.Errorf("Validator missed invalid checksum on custom_tags/tag_file_xyz.pdf")
+	}
+	if !strings.Contains(readResult.ErrorMessage, "tag_file_xyz.pdf: no such file or directory") {
+		t.Errorf("Validator did not report missing file custom_tags/tag_file_xyz.pdf")
+	}
+}
