@@ -346,3 +346,38 @@ func TestGetInstitutionFromBagIdentifier(t *testing.T) {
 			inst)
 	}
 }
+
+func TestSavableName(t *testing.T) {
+	if bagman.HasSavableName("bagit.txt") == true {
+		t.Errorf("HasSavableName() should have returned false")
+	}
+	if bagman.HasSavableName("manifest-md5.txt") == true {
+		t.Errorf("HasSavableName() should have returned false")
+	}
+	if bagman.HasSavableName("manifest-sha256.txt") == true {
+		t.Errorf("HasSavableName() should have returned false")
+	}
+	if bagman.HasSavableName("tagmanifest-md5.txt") == true {
+		t.Errorf("HasSavableName() should have returned false")
+	}
+	if bagman.HasSavableName("tagmanifest-sha256.txt") == true {
+		t.Errorf("HasSavableName() should have returned false")
+	}
+
+	if bagman.HasSavableName("data/stuff/bagit.txt") == false {
+		t.Errorf("HasSavableName() should have returned true")
+	}
+	if bagman.HasSavableName("custom_tags/manifest-md5.txt") == false {
+		t.Errorf("HasSavableName() should have returned true")
+	}
+	if bagman.HasSavableName("custom_tags/manifest-sha256.txt") == false {
+		t.Errorf("HasSavableName() should have returned true")
+	}
+	if bagman.HasSavableName("useless_tags/tagmanifest-md5.txt") == false {
+		t.Errorf("HasSavableName() should have returned true")
+	}
+	if bagman.HasSavableName("my_tags/tagmanifest-sha256.txt") == false {
+		t.Errorf("HasSavableName() should have returned true")
+	}
+
+}
