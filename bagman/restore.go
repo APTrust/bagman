@@ -410,6 +410,7 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 
 // Fetches the requested file from S3 and returns a FetchResult.
 func (restorer *BagRestorer) fetchFile(genericFile *GenericFile, setNumber int) (*FetchResult) {
+	// TODO: Change this so we can restore files outside the data dir.
 	prefix := strings.SplitN(genericFile.Identifier, "/data/", 2)
 	subdir := strings.Replace(genericFile.Identifier, prefix[0], restorer.bagName(setNumber), 1)
 	localPath := filepath.Join(restorer.workingDir, subdir)

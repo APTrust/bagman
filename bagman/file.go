@@ -10,8 +10,8 @@ import (
 // File contains information about a generic
 // data file within the data directory of bag or tar archive.
 type File struct {
-	// Path is the path to the file within the bag. It should
-	// always begin with "data/"
+	// Path is the path to the file within the bag. Payload files
+	// always begin with "data/".
 	Path string
 	// The size of the file, in bytes.
 	Size int64
