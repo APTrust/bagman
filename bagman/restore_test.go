@@ -375,11 +375,7 @@ func TestCopyToS3 (t *testing.T) {
 		return
 	}
 
-	// Bags are being restored with both md5 and sha256
-	// manifests, plus md5 and sha256 tagmanifests. So
-	// they're bigger than the originals, which have
-	// only md5 payload manifest and no tagmanifest.
-	expectedSizes := []int64 { int64(10240), int64(10752) }
+	expectedSizes := []int64 { int64(8192), int64(8704) }
 
 	s3Client, err := bagman.NewS3Client(aws.USEast)
 	if err != nil {
@@ -524,9 +520,9 @@ func TestPathWithinDataDir (t *testing.T) {
 		absOutputDir,
 		"uc.edu/cin.675812.b0001.of0002/data/object.properties")
 	bagName := "uc.edu/cin.675812.b0001.of0002"
-	pathWithinDir := restorer.PathWithinDataDir(fileName, bagName)
-	if pathWithinDir != "object.properties" {
-		t.Errorf("PathWithinDir returned '%s', expected 'object.properties'", pathWithinDir)
+	pathWithinBag := restorer.PathWithinBag(fileName, bagName)
+	if pathWithinBag != "data/object.properties" {
+		t.Errorf("PathWithinBag returned '%s', expected 'data/object.properties'", pathWithinBag)
 	}
 }
 

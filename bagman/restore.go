@@ -16,7 +16,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 const (
@@ -267,11 +266,6 @@ func (restorer *BagRestorer) buildBag(setNumber, numberOfBagParts int) (*bagins.
 	 	return nil, err
 	}
 
-	err = restorer.writeBagInfoTagFile(bag, setNumber, numberOfBagParts)
-	if err != nil {
-	 	return nil, err
-	}
-
 	// Fetch the generic files
 	filesFetched, err := restorer.fetchAllFiles(setNumber)
 	if err != nil {
@@ -280,9 +274,17 @@ func (restorer *BagRestorer) buildBag(setNumber, numberOfBagParts int) (*bagins.
 
 	// Add the fetched files to the bag.
 	for _, fileName := range filesFetched {
-		err = bag.AddFile(fileName, restorer.PathWithinDataDir(fileName, bagName))
-		if err != nil {
-			return nil, err
+		pathWithinBag := restorer.PathWithinBag(fileName, bagName)
+		if strings.HasPrefix(pathWithinBag, "data/") {
+			err = bag.AddFile(fileName, strings.Replace(pathWithinBag, "data/", "", 1))
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			err = bag.AddCustomTagfile(fileName, pathWithinBag, true)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -318,10 +320,10 @@ func (restorer *BagRestorer) buildBag(setNumber, numberOfBagParts int) (*bagins.
 // bagName: test.edu/ncsu.1840.16-1004
 // workingDir: /Users/apd4n/tmp/restore
 // pathWithinBag: data/metadata.xml
-func (restorer *BagRestorer) PathWithinDataDir(fileName, bagName string) (string) {
-	fileNamePrefix := fmt.Sprintf("%s%c%s%cdata%c", restorer.workingDir,
-		os.PathSeparator, bagName, os.PathSeparator, os.PathSeparator)
-	return strings.Replace(fileName, fileNamePrefix, "", 1)
+func (restorer *BagRestorer) PathWithinBag(fileName, bagName string) (string) {
+	index := strings.Index(fileName, bagName)
+	endIndex := index + len(bagName) + 1
+	return fileName[endIndex:]
 }
 
 // Writes the aptrust-info.txt tag file.
@@ -341,38 +343,6 @@ func (restorer *BagRestorer) writeAPTrustTagFile(bag *bagins.Bag) (error) {
 	}
 	return nil
 }
-
-// Writes the bag-info.txt tag file.
-func (restorer *BagRestorer) writeBagInfoTagFile(bag *bagins.Bag, setNumber, numberOfBagParts int) (error) {
-	restorer.debug(fmt.Sprintf("Creating bag-info.txt"))
-	if err := bag.AddTagfile("bag-info.txt"); err != nil {
-		return err
-	}
-	tagFile, err := bag.TagFile("bag-info.txt")
-	if err != nil {
-		return err
-	}
-	slashIndex := strings.Index(restorer.IntellectualObject.Identifier, "/")
-	instName := restorer.IntellectualObject.Identifier[0:slashIndex]
-	bagNameWithoutInst := restorer.IntellectualObject.Identifier[slashIndex + 1:]
-
-	bagCount := fmt.Sprintf("%d of %d", setNumber + 1, numberOfBagParts)
-
-	tagFile.Data.AddField(*bagins.NewTagField(
-		"Source-Organization", instName))
-	tagFile.Data.AddField(*bagins.NewTagField(
-		"Bagging-Date", time.Now().UTC().Format(time.RFC3339)))
-	tagFile.Data.AddField(*bagins.NewTagField(
-		"Bag-Count", bagCount))
-	tagFile.Data.AddField(*bagins.NewTagField(
-		"Bag-Group-Identifier", ""))
-	tagFile.Data.AddField(*bagins.NewTagField(
-		"Internal-Sender-Description", restorer.IntellectualObject.Description))
-	tagFile.Data.AddField(*bagins.NewTagField(
-		"Internal-Sender-Identifier", bagNameWithoutInst))
-	return nil
-}
-
 
 // Fetches all of the data files for a bag.
 func (restorer *BagRestorer) fetchAllFiles(setNumber int) ([]string, error) {
@@ -410,9 +380,7 @@ func (restorer *BagRestorer) makeDirectory(bagName string) (error){
 
 // Fetches the requested file from S3 and returns a FetchResult.
 func (restorer *BagRestorer) fetchFile(genericFile *GenericFile, setNumber int) (*FetchResult) {
-	// TODO: Change this so we can restore files outside the data dir.
-	prefix := strings.SplitN(genericFile.Identifier, "/data/", 2)
-	subdir := strings.Replace(genericFile.Identifier, prefix[0], restorer.bagName(setNumber), 1)
+	subdir := strings.Replace(genericFile.Identifier, restorer.IntellectualObject.Identifier, restorer.bagName(setNumber), 1)
 	localPath := filepath.Join(restorer.workingDir, subdir)
 	restorer.debug(fmt.Sprintf("Fetching URL %s for file %s into %s",
 		genericFile.URI, genericFile.Identifier, localPath))
