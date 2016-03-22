@@ -349,15 +349,6 @@ func TestDataFiles(t *testing.T) {
 
 }
 
-func TestDataPath(t *testing.T) {
-	origPath := "virginia.edu/my_bag/data/my_file.txt"
-	expected := "data/my_file.txt"
-	if dpn.DataPath(origPath) != expected {
-		t.Errorf("Got data path %s, expected %s",
-			dpn.DataPath(origPath), expected)
-	}
-}
-
 func TestAPTrustMetadataPath(t *testing.T) {
 	builder := createBagBuilder(t, true)
 	if builder == nil {

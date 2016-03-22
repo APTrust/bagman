@@ -8,7 +8,7 @@ import (
 	"github.com/satori/go.uuid"
 	"os"
 	"path/filepath"
-	"strings"
+//	"strings"
 	"time"
 )
 
@@ -165,7 +165,7 @@ func (builder *BagBuilder) DPNManifestSha256() (*bagins.Manifest) {
 		return nil
 	}
 	for _, gf := range builder.IntellectualObject.GenericFiles {
-		pathInBag := DataPath(gf.Identifier)
+		pathInBag, _ := gf.OriginalPath()
 		sha256 := gf.GetChecksum("sha256")
 		if sha256 == nil {
 			builder.ErrorMessage += fmt.Sprintf("[GenericFile %s is missing sha256 checksum] ", gf.Identifier)
@@ -281,7 +281,7 @@ func (builder *BagBuilder) APTrustManifestMd5() (*bagins.Manifest) {
 		return nil
 	}
 	for _, gf := range builder.IntellectualObject.GenericFiles {
-		pathInBag := DataPath(gf.Identifier)
+		pathInBag, _ := gf.OriginalPath()
 		md5 := gf.GetChecksum("md5")
 		if md5 == nil {
 			builder.ErrorMessage += fmt.Sprintf("[GenericFile %s is missing sha256 checksum] ", gf.Identifier)
@@ -297,22 +297,16 @@ func (builder *BagBuilder) APTrustManifestMd5() (*bagins.Manifest) {
 func (builder *BagBuilder) DataFiles() ([]DataFile) {
 	dataFiles := make([]DataFile, len(builder.IntellectualObject.GenericFiles))
 	for i, gf := range builder.IntellectualObject.GenericFiles {
+		pathInBag, _ := gf.OriginalPath()
 		dataFiles[i] = DataFile{
 			ExternalPathType: PATH_TYPE_S3,
 			ExternalPath: gf.URI,
-			PathInBag: DataPath(gf.Identifier),
+			PathInBag: pathInBag,
 		}
 	}
 	return dataFiles
 }
 
-// Given a GenericFile identifier, returns the path inside
-// the bag where that file should reside.
-func DataPath(identifier string) (string) {
-	index := strings.Index(identifier, "data/")
-	return identifier[index:]
-	//return fmt.Sprintf("data/%s", identifier)
-}
 
 // Returns the path inside the bag for a APTrust metadata file.
 func (builder *BagBuilder) APTrustMetadataPath(filename string) (string) {
