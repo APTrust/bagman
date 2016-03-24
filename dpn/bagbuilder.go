@@ -73,17 +73,16 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, defaultMeta
 	}
 
 
-	fmt.Println("Making dir %s", filepath.Join(builder.LocalPath, "dpn-tags"))
 	err = os.MkdirAll(filepath.Join(builder.LocalPath, "dpn-tags"), 0755)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Making dir %s", filepath.Join(builder.LocalPath, "data"))
+
 	err = os.MkdirAll(filepath.Join(builder.LocalPath, "data"), 0755)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("Making dir %s", filepath.Join(builder.LocalPath, "aptrust-tags"))
+
 	err = os.MkdirAll(filepath.Join(builder.LocalPath, "aptrust-tags"), 0755)
 	if err != nil {
 		return nil, err

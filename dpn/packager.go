@@ -300,16 +300,12 @@ func (packager *Packager) doTar() {
 			continue
 		}
 		// Get the list of all files (manifests, tag files & payload)
-		fmt.Printf("******** Listing files in %s\n", bagDir)
 		files, err := bagman.RecursiveFileList(bagDir)
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Cannot get list of files in directory %s: %s",
 				bagDir, err.Error())
 			packager.CleanupChannel <- result
 			continue
-		}
-		for _, fxxx := range files {
-			fmt.Printf("oooooooooooooo -> Found %s\n", fxxx)
 		}
 
 		// The name of the tar file will be the DPN UUID + .tar
@@ -346,7 +342,7 @@ func (packager *Packager) doTar() {
 				packager.CleanupChannel <- result
 				break
 			}
-			fmt.Printf(">>>> Adding %s to bag at %s\n", filePath, pathWithinArchive)
+
 			err = bagman.AddToArchive(tarWriter, filePath, pathWithinArchive)
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Error adding file %s to archive %s: %v",
