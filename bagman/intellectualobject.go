@@ -37,6 +37,15 @@ type IntellectualObject struct {
 	Events        []*PremisEvent `json:"events"`
 }
 
+// Returns the original bag name of this object. That's
+// the intellectual object id, minus the institution name
+// and the slash. So "test.edu/test.edu.bag_999" returns
+// "test.edu.bag_999"
+func (obj *IntellectualObject) OriginalBagName() (string) {
+	i := strings.Index(obj.Identifier, "/") + 1
+	return obj.Identifier[i:]
+}
+
 // Returns the total number of bytes of all of the generic
 // files in this object. The object's bag size will be slightly
 // larger than this, because it will include a manifest, tag

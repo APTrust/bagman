@@ -145,3 +145,18 @@ func TestSerializeForCreateWithMaxFiles(t *testing.T) {
 		t.Error("JSON data from SerializeForCreate() should have had only one Generic File")
 	}
 }
+
+func TestOriginalBagName(t *testing.T) {
+	filepath := filepath.Join("testdata", "result_good.json")
+	result, err := bagman.LoadResult(filepath)
+	if err != nil {
+		t.Errorf("Error loading test data file '%s': %v", filepath, err)
+	}
+	obj, err := result.IntellectualObject()
+	if err != nil {
+		t.Errorf("Error creating intellectual object from result: %v", err)
+	}
+	if obj.OriginalBagName() != "ncsu.1840.16-2928" {
+		t.Errorf("OriginalBagName() expected 'ncsu.1840.16-2928', got '%s'", obj.OriginalBagName())
+	}
+}
