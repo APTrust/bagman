@@ -3,6 +3,7 @@ package dpn
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/nsqio/go-nsq"
 	"github.com/op/go-logging"
@@ -23,7 +24,19 @@ const (
 	STAGE_CANCELLED = "Cancelled"
 
 	DEFAULT_TOKEN_FORMAT_STRING = "token %s"
+
+	BAG_TYPE_DATA = "Data"
+	BAG_TYPE_RIGHTS = "Rights"
+	BAG_TYPE_INTERPRETIVE = "Interpretive"
+
+	PATH_TYPE_LOCAL = "Local Filesystem"
+	PATH_TYPE_S3    = "S3 Bucket"
+
+	// These values are part of the published APTrust spec.
+	APTRUST_BAGIT_VERSION = "0.97"
+	APTRUST_BAGIT_ENCODING = "UTF-8"
 )
+
 
 type DPNResult struct {
 	// BagIdentifier is the APTrust bag identifier, composed of
@@ -79,6 +92,18 @@ type DPNResult struct {
 	// be nil if it's a bag created at our own node. It will be
 	// non-nil for bags we're replicating from other nodes.
 	TransferRequest  *DPNReplicationTransfer
+
+	// The results of attempts to fetch the S3 files that make up this
+	// bag. This will be nil for bags that we're replicating from
+	// other nodes, because in those cases, we just copy the whole
+	// tar file from the remote node. For bags ingested at APTrust,
+	// this should contain a number of records, once we've reached
+	// the fetch stage of the process. Before that stage, it will
+	// be nil.
+	//
+	// It would be nice to serialize this, but we wind up with
+	// a lot of JSON.
+	FetchResults     *FetchResultCollection         `json:"-"`
 
 	// The result of the attempt to package this object as a DPN
 	// bag. We only package APTrust bags that we ingested and that
@@ -340,6 +365,22 @@ type BagBuilder struct {
 	// succeeded.
 	ErrorMessage           string
 
-	bag                    *Bag
+	// What type of bag is this? Data, rights or interpretive?
+	BagType                string
+
+	// The underlying bag object.
+	Bag                    *bagins.Bag
+
+	// // List of files that make up the bag's contents. This does
+	// // not include the standard DPN manifests and tag files.
+	// datafiles              []DataFile
+
+	// Timestamp describing when the bag was assembled.
 	bagtime                time.Time
 }
+
+// type DataFile struct {
+// 	ExternalPathType  string
+// 	ExternalPath      string
+// 	PathInBag         string
+// }

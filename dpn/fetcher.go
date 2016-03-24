@@ -1,6 +1,7 @@
 package dpn
 
 import (
+	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"path/filepath"
 	"strings"
@@ -96,7 +97,15 @@ func FetchObjectFiles(s3Client *bagman.S3Client, genericFiles []*bagman.GenericF
 		if err != nil {
 			return nil, err
 		}
-		localPath := filepath.Join(dir, origPath)
+		// APTrust bags allow misc tag files in top directory,
+		// but DPN BagIt spec doesn't explicitly allow that,
+		// so we'll put those files in custom tag dir, which
+		// DPN does allow.
+		newPath := origPath
+		if !strings.Contains(origPath, "/") {
+			newPath = fmt.Sprintf("aptrust-tags/%s", origPath)
+		}
+		localPath := filepath.Join(dir, newPath)
 		fetchResult := s3Client.FetchURLToFile(gf.URI, localPath)
 		result := &DPNFetchResult{
 			FetchResult: fetchResult,

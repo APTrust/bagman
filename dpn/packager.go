@@ -166,7 +166,10 @@ func (packager *Packager) doLookup() {
 			packager.PostProcessChannel <- result
 			continue
 		} else {
-			dir, err := packager.DPNBagDirectory(result)
+			// dir, err := packager.DPNBagDirectory(result)
+			inst, _ := bagman.GetInstitutionFromBagIdentifier(result.BagIdentifier)
+			dir, err := filepath.Abs(filepath.Join(
+				packager.ProcUtil.Config.DPNStagingDirectory, inst))
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Cannot get absolute path for bag directory: %s",
 					err.Error())
@@ -175,7 +178,15 @@ func (packager *Packager) doLookup() {
 				continue
 			}
 			// Woo-hoo!
-			result.PackageResult.BagBuilder = NewBagBuilder(dir, intelObj, packager.DPNConfig.DefaultMetadata)
+			builder, err := NewBagBuilder(dir, intelObj, packager.DPNConfig.DefaultMetadata)
+			if err != nil {
+				result.ErrorMessage += fmt.Sprintf("Error creating BagBuilder: %s",
+					err.Error())
+				result.Retry = true
+				packager.PostProcessChannel <- result
+				continue
+			}
+			result.PackageResult.BagBuilder = builder
 			packager.FetchChannel <- result
 		}
 	}
@@ -201,13 +212,14 @@ func (packager *Packager) doFetch() {
 		}
 		fetchResults, err := FetchObjectFiles(packager.ProcUtil.S3Client,
 			files, targetDirectory)
+		result.FetchResults = fetchResults
 		if err != nil {
 			result.ErrorMessage += err.Error()
 			packager.CleanupChannel <- result
 		} else if fetchResults.SuccessCount() != len(files) {
 			result.ErrorMessage += strings.Join(fetchResults.Errors(), ", ")
 			packager.CleanupChannel <- result
-		} else {
+		} else  {
 			packager.BuildChannel <- result
 		}
 	}
@@ -223,18 +235,55 @@ func (packager *Packager) doBuild() {
 		if result.NsqMessage != nil {
 			result.NsqMessage.Touch()
 		}
-		bag, err := result.PackageResult.BagBuilder.BuildBag()
-		if err != nil {
-			result.ErrorMessage += fmt.Sprintf("Error building bag: %v", err.Error())
-			packager.CleanupChannel <- result
-			continue
+		// bag, err := result.PackageResult.BagBuilder.BuildBag()
+		// if err != nil {
+		// 	result.ErrorMessage += fmt.Sprintf("Error building bag: %v", err.Error())
+		// 	packager.CleanupChannel <- result
+		// 	continue
+		// }
+		// if result.NsqMessage != nil {
+		// 	result.NsqMessage.Touch()
+		// }
+		// errors := bag.Write()
+
+		// -----------------------------------------------
+		// Add files to bag before saving.
+		// Need fetchReults from above.
+		// -----------------------------------------------
+		for i := range result.FetchResults.Items {
+			fetchResult := result.FetchResults.Items[i]
+			sourcePath := fetchResult.FetchResult.LocalFile
+
+			// Ignoring err return. If this bag has been ingested,
+			// we know the identifier is valid.
+			pathInBag, _ := fetchResult.GenericFile.OriginalPath()
+
+			if strings.HasPrefix(pathInBag, "data/") {
+				// This is in the data dir, so it's a normal payload file.
+				pathWithoutDataPrefix := strings.Replace(pathInBag, "data/", "", 1)
+				result.PackageResult.BagBuilder.Bag.AddFile(sourcePath, pathWithoutDataPrefix)
+			} else if !strings.Contains(pathInBag, "/") {
+				// This is in the root dir, so it's a top-level tag file,
+				// which the DPN spec does not specifically allow or prohibit,
+				// but the DPN bag validators at other nodes will probably reject
+				// the bag if we leave this file in the top-level dir.
+				// Put this in a custom tag dir.
+				pathInBag = fmt.Sprintf("aptrust-tags/%s", pathInBag)
+				result.PackageResult.BagBuilder.Bag.AddCustomTagfile(sourcePath, pathInBag, true)
+			} else {
+				// This is not in the top-level dir or in the data dir.
+				// It's a custom tag file in a custom tag dir. Just put
+				// it in as-is.
+				result.PackageResult.BagBuilder.Bag.AddCustomTagfile(sourcePath, pathInBag, true)
+			}
 		}
-		if result.NsqMessage != nil {
-			result.NsqMessage.Touch()
-		}
-		errors := bag.Write()
+
+		errors := result.PackageResult.BagBuilder.Bag.Save()
 		if errors != nil && len(errors) > 0 {
-			errMessages := strings.Join(errors, ", ")
+			errMessages := ""
+			for _, e := range errors {
+				errMessages = fmt.Sprintf("%s %s ", errMessages, e.Error())
+			}
 			result.ErrorMessage += fmt.Sprintf("Error writing bag: %s", errMessages)
 			packager.CleanupChannel <- result
 			continue
@@ -265,6 +314,7 @@ func (packager *Packager) doTar() {
 			continue
 		}
 		// Get the list of all files (manifests, tag files & payload)
+		fmt.Printf("******** Listing files in %s\n", bagDir)
 		files, err := bagman.RecursiveFileList(bagDir)
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Cannot get list of files in directory %s: %s",
@@ -272,6 +322,10 @@ func (packager *Packager) doTar() {
 			packager.CleanupChannel <- result
 			continue
 		}
+		for _, fxxx := range files {
+			fmt.Printf("oooooooooooooo -> Found %s\n", fxxx)
+		}
+
 		// The name of the tar file will be the DPN UUID + .tar
 		tarFileName := fmt.Sprintf("%s.tar", result.PackageResult.BagBuilder.UUID)
 		tarFilePath := filepath.Join(packager.ProcUtil.Config.DPNStagingDirectory,
@@ -306,6 +360,7 @@ func (packager *Packager) doTar() {
 				packager.CleanupChannel <- result
 				break
 			}
+			fmt.Printf(">>>> Adding %s to bag at %s\n", filePath, pathWithinArchive)
 			err = bagman.AddToArchive(tarWriter, filePath, pathWithinArchive)
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Error adding file %s to archive %s: %v",
@@ -483,17 +538,26 @@ func (packager *Packager) shouldRetry(result *DPNResult) (retry bool) {
 }
 
 func (packager *Packager) cleanup(result *DPNResult) {
-	bagDir, err := packager.DPNBagDirectory(result)
-	if err != nil {
-		result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory: %s", err.Error())
-		packager.ProcUtil.MessageLog.Error("Error cleaning up %s: %v", bagDir, err.Error())
-		return
+	// bagDir, err := packager.DPNBagDirectory(result)
+	// if err != nil {
+	// 	result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory: %s", err.Error())
+	// 	packager.ProcUtil.MessageLog.Error("Error cleaning up %s: %v", bagDir, err.Error())
+	// 	return
+	// }
+	// if strings.Index(bagDir, result.BagIdentifier) < 0 {
+	// 	packager.ProcUtil.MessageLog.Error("Skipping clean-up because bagDir %s looks suspicious", bagDir)
+	// 	return
+	// }
+	stagingDir := packager.ProcUtil.Config.DPNStagingDirectory
+	bagDir := result.PackageResult.BagBuilder.LocalPath
+	if (!strings.HasPrefix(bagDir, stagingDir) ||
+		(strings.HasPrefix(stagingDir, "/") && len(stagingDir) < 5)) {
+	 	packager.ProcUtil.MessageLog.Error("Skipping clean-up because bagDir '%s' looks suspicious", bagDir)
+		packager.ProcUtil.MessageLog.Error("bagDir should start with '%s', and '%s' should not be == '/'",
+			stagingDir, stagingDir)
+	 	return
 	}
-	if strings.Index(bagDir, result.BagIdentifier) < 0 {
-		packager.ProcUtil.MessageLog.Error("Skipping clean-up because bagDir %s looks suspicious", bagDir)
-		return
-	}
-	err = os.RemoveAll(bagDir)
+	err := os.RemoveAll(bagDir)
 	if err != nil {
 		packager.ProcUtil.MessageLog.Error("Error cleaning up %s: %v", bagDir, err)
 	}

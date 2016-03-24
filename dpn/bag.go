@@ -4,16 +4,6 @@ import (
 	"github.com/APTrust/bagins"
 )
 
-const BAG_TYPE_DATA = "Data"
-const BAG_TYPE_RIGHTS = "Rights"
-const BAG_TYPE_INTERPRETIVE = "Interpretive"
-
-const PATH_TYPE_LOCAL = "Local Filesystem"
-const PATH_TYPE_S3    = "S3 Bucket"
-
-// These values are part of the published APTrust spec.
-const APTRUST_BAGIT_VERSION = "0.97"
-const APTRUST_BAGIT_ENCODING = "UTF-8"
 
 type Bag struct {
 	// The type of bag: IntellectualObject or GenericFile
@@ -48,18 +38,19 @@ type Bag struct {
 	APTrustInfo         *bagins.TagFile
 	APTrustManifestMd5  *bagins.Manifest
 
-	// Files inside the data directory
-	DataFiles           []DataFile
+	// // Files inside the bag. This includes items in the payload
+	// // directory and items in custom tag directories.
+	// DataFiles           []DataFile
 
 	// Bag Errors
 	errors              []string
 }
 
-type DataFile struct {
-	ExternalPathType  string
-	ExternalPath      string
-	PathInBag         string
-}
+// type DataFile struct {
+// 	ExternalPathType  string
+// 	ExternalPath      string
+// 	PathInBag         string
+// }
 
 // Tests for the Write functions are in bagbuilder_test.go
 
