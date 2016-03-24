@@ -166,7 +166,6 @@ func (packager *Packager) doLookup() {
 			packager.PostProcessChannel <- result
 			continue
 		} else {
-			// dir, err := packager.DPNBagDirectory(result)
 			inst, _ := bagman.GetInstitutionFromBagIdentifier(result.BagIdentifier)
 			dir, err := filepath.Abs(filepath.Join(
 				packager.ProcUtil.Config.DPNStagingDirectory, inst))
@@ -235,21 +234,8 @@ func (packager *Packager) doBuild() {
 		if result.NsqMessage != nil {
 			result.NsqMessage.Touch()
 		}
-		// bag, err := result.PackageResult.BagBuilder.BuildBag()
-		// if err != nil {
-		// 	result.ErrorMessage += fmt.Sprintf("Error building bag: %v", err.Error())
-		// 	packager.CleanupChannel <- result
-		// 	continue
-		// }
-		// if result.NsqMessage != nil {
-		// 	result.NsqMessage.Touch()
-		// }
-		// errors := bag.Write()
 
-		// -----------------------------------------------
 		// Add files to bag before saving.
-		// Need fetchReults from above.
-		// -----------------------------------------------
 		for i := range result.FetchResults.Items {
 			fetchResult := result.FetchResults.Items[i]
 			sourcePath := fetchResult.FetchResult.LocalFile
@@ -538,16 +524,6 @@ func (packager *Packager) shouldRetry(result *DPNResult) (retry bool) {
 }
 
 func (packager *Packager) cleanup(result *DPNResult) {
-	// bagDir, err := packager.DPNBagDirectory(result)
-	// if err != nil {
-	// 	result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory: %s", err.Error())
-	// 	packager.ProcUtil.MessageLog.Error("Error cleaning up %s: %v", bagDir, err.Error())
-	// 	return
-	// }
-	// if strings.Index(bagDir, result.BagIdentifier) < 0 {
-	// 	packager.ProcUtil.MessageLog.Error("Skipping clean-up because bagDir %s looks suspicious", bagDir)
-	// 	return
-	// }
 	stagingDir := packager.ProcUtil.Config.DPNStagingDirectory
 	bagDir := result.PackageResult.BagBuilder.LocalPath
 	if (!strings.HasPrefix(bagDir, stagingDir) ||
@@ -605,7 +581,6 @@ func (packager *Packager) FilesAlreadyFetched(result *DPNResult) (map[string]boo
 		identifier := strings.Replace(f,
 			result.PackageResult.BagBuilder.LocalPath,
 			result.BagIdentifier, 1)
-		//fmt.Println(identifier)
 		gfIdentifiers[identifier] = true
 	}
 	return gfIdentifiers, err

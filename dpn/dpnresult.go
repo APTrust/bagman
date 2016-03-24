@@ -371,16 +371,6 @@ type BagBuilder struct {
 	// The underlying bag object.
 	Bag                    *bagins.Bag
 
-	// // List of files that make up the bag's contents. This does
-	// // not include the standard DPN manifests and tag files.
-	// datafiles              []DataFile
-
 	// Timestamp describing when the bag was assembled.
 	bagtime                time.Time
 }
-
-// type DataFile struct {
-// 	ExternalPathType  string
-// 	ExternalPath      string
-// 	PathInBag         string
-// }

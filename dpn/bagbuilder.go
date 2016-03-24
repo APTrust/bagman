@@ -1,7 +1,6 @@
 package dpn
 
 import (
-//	"crypto/sha256"
 	"fmt"
 	"github.com/APTrust/bagins"
 	"github.com/APTrust/bagman/bagman"
@@ -54,13 +53,10 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, defaultMeta
 	}
 
 	// Do this, or bagins.NewBag fails
-//	if !bagman.FileExists(localPath) {
-		fmt.Println("NewBagBuilder is making dir %s", localPath)
-		err = os.MkdirAll(localPath, 0755)
-		if err != nil {
-			return nil, err
-		}
-//	}
+	err = os.MkdirAll(localPath, 0755)
+	if err != nil {
+		return nil, err
+	}
 
 	originalBagName := obj.OriginalBagName()
 	bag, err := bagins.NewBag(filePath, originalBagName, []string{"sha256"}, true)
@@ -76,9 +72,6 @@ func NewBagBuilder(localPath string, obj *bagman.IntellectualObject, defaultMeta
 		Bag: bag,
 	}
 
-	// if builder.bag.Type == BAG_TYPE_DATA {
-	// 	builder.bag.DataFiles = builder.addDataFiles()
-	// }
 
 	fmt.Println("Making dir %s", filepath.Join(builder.LocalPath, "dpn-tags"))
 	err = os.MkdirAll(filepath.Join(builder.LocalPath, "dpn-tags"), 0755)
@@ -202,37 +195,6 @@ func (builder *BagBuilder) buildAPTrustBagIt()  {
 	aptrustBagit.Data.AddField(*bagins.NewTagField("Tag-File-Character-Encoding",
 		APTRUST_BAGIT_ENCODING))
 }
-
-
-// // Sets the list of files that should be packed into the DPN bag.
-// // This includes both payload files for the data directory and
-// // custom tag files, which may appear anywhere outside the data
-// // directory.
-// func (builder *BagBuilder) addDataFiles() {
-// 	dataFiles := make([]DataFile, len(builder.IntellectualObject.GenericFiles))
-// 	for i, gf := range builder.IntellectualObject.GenericFiles {
-// 		pathInBag, _ := gf.OriginalPath()
-// 		if !strings.Contains(pathInBag, "/") {
-// 			// APTrust allows misc files in the top level of the bag
-// 			// and assumes they are tag files. The DPN spec doesn't
-// 			// seem to allow these. So we'll move them into a custom
-// 			// tag directory, which the DPN spec permits.
-// 			pathInBag = fmt.Sprintf("aptrust-top-level/%s", pathInBag)
-// 		}
-// 		dataFiles[i] = DataFile{
-// 			ExternalPathType: PATH_TYPE_S3,
-// 			ExternalPath: gf.URI,
-// 			PathInBag: pathInBag,
-// 		}
-// 	}
-// 	return dataFiles
-// }
-
-
-// // Returns the path inside the bag for a APTrust metadata file.
-// func (builder *BagBuilder) APTrustMetadataPath(filename string) (string) {
-// 	return filepath.Join(builder.LocalPath, "aptrust-tags", filename)
-// }
 
 func (builder *BagBuilder) AddTagFile(tagFileName string) (*bagins.TagFile, error) {
 	err := builder.Bag.AddTagfile(tagFileName)
