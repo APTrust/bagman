@@ -1,5 +1,10 @@
 # Changes
 
+## March 29, 2016 (44b4be8)
+
+Ingest services now preserve all custom tag files in a bag, restore
+services restore them, and DPN services pass them through to DPN.
+
 ## March 10, 2016 (c7a0cae)
 
 The Go services now send a copy of the processing state JSON for each
