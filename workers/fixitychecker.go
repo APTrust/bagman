@@ -26,10 +26,12 @@ func NewFixityChecker(procUtil *bagman.ProcessUtil) (*FixityChecker) {
 	fixityChecker := &FixityChecker{
 		ProcUtil: procUtil,
 	}
-	workerBufferSize := procUtil.Config.BagDeleteWorker.Workers * 10
+	workerBufferSize := procUtil.Config.FixityWorker.Workers * 10
 	fixityChecker.FixityChannel = make(chan *bagman.FixityResult, workerBufferSize)
 	fixityChecker.ResultsChannel = make(chan *bagman.FixityResult, workerBufferSize)
-	for i := 0; i < procUtil.Config.BagDeleteWorker.Workers; i++ {
+	fixityChecker.ProcUtil.MessageLog.Info("Starting %d workers with a buffer size of %d",
+		procUtil.Config.FixityWorker.Workers, workerBufferSize)
+	for i := 0; i < procUtil.Config.FixityWorker.Workers; i++ {
 		go fixityChecker.logResult()
 		go fixityChecker.checkFile()
 	}
@@ -65,6 +67,23 @@ func (fixityChecker *FixityChecker) HandleMessage(message *nsq.Message) error {
 	fixityChecker.FixityChannel <- result
 	fixityChecker.ProcUtil.MessageLog.Info("Put %s into fixity channel", genericFile.Identifier)
 	return nil
+}
+
+// Fetch the file and calculate its SHA256 digest. This may take hours if the
+// file is 250GB. Touch the NSQ message on both sides of the operation to
+// prevent it from timing out.
+func (fixityChecker *FixityChecker) checkFile() {
+	for result := range fixityChecker.FixityChannel {
+		fixityChecker.ProcUtil.MessageLog.Info("Checking %s", result.GenericFile.Identifier)
+		result.NsqMessage.Touch()
+		err := fixityChecker.ProcUtil.S3Client.FetchAndCalculateSha256(result, "")
+		// Log usage errors. These shouldn't happen.
+		if err != nil && strings.Index(err.Error(), "cannot be nil") > 0 {
+			fixityChecker.ProcUtil.MessageLog.Error(err.Error())
+		}
+		result.NsqMessage.Touch()
+		fixityChecker.ResultsChannel <- result
+	}
 }
 
 func (fixityChecker *FixityChecker) logResult() {
@@ -132,20 +151,23 @@ func (fixityChecker *FixityChecker) savePremisEvent(fixityResult *bagman.FixityR
 		fixityChecker.ProcUtil.MessageLog.Error("Error building PremisEvent for %s: %v",
 			fixityResult.GenericFile.Identifier, err)
 		return false
+	}
+	if premisEvent.Outcome == "failure" {
+		fixityChecker.ProcUtil.MessageLog.Error("SHA256 CHECKSUM DOES NOT MATCH FOR GENERIC FILE %s",
+			fixityResult.GenericFile.Identifier)
+	}
+	_, err = fixityChecker.ProcUtil.FluctusClient.PremisEventSave(
+		fixityResult.GenericFile.Identifier,
+		"GenericFile",
+		premisEvent)
+	if err != nil {
+		fixityChecker.ProcUtil.MessageLog.Error(
+			"Error saving PremisEvent for %s to Fluctus: %v",
+			fixityResult.GenericFile.Identifier, err)
+		return false
 	} else {
-		_, err := fixityChecker.ProcUtil.FluctusClient.PremisEventSave(
-			fixityResult.GenericFile.Identifier,
-			"GenericFile",
-			premisEvent)
-		if err != nil {
-			fixityChecker.ProcUtil.MessageLog.Error(
-				"Error saving PremisEvent for %s to Fluctus: %v",
-				fixityResult.GenericFile.Identifier, err)
-			return false
-		} else {
-			fixityChecker.ProcUtil.MessageLog.Info("Saved PremisEvent for %s",
-				fixityResult.GenericFile.Identifier)
-		}
+		fixityChecker.ProcUtil.MessageLog.Info("Saved PremisEvent for %s",
+			fixityResult.GenericFile.Identifier)
 	}
 	return true
 }
@@ -153,21 +175,4 @@ func (fixityChecker *FixityChecker) savePremisEvent(fixityResult *bagman.FixityR
 func (fixityChecker *FixityChecker) logStats() {
 	fixityChecker.ProcUtil.MessageLog.Info("**STATS** Succeeded: %d, Failed: %d",
 		fixityChecker.ProcUtil.Succeeded(), fixityChecker.ProcUtil.Failed())
-}
-
-// Fetch the file and calculate its SHA256 digest. This may take hours if the
-// file is 250GB. Touch the NSQ message on both sides of the operation to
-// prevent it from timing out.
-func (fixityChecker *FixityChecker) checkFile() {
-	for result := range fixityChecker.FixityChannel {
-		fixityChecker.ProcUtil.MessageLog.Info("Checking %s", result.GenericFile.Identifier)
-		result.NsqMessage.Touch()
-		err := fixityChecker.ProcUtil.S3Client.FetchAndCalculateSha256(result, "")
-		// Log usage errors. These shouldn't happen.
-		if err != nil && strings.Index(err.Error(), "cannot by nil") > 0 {
-			fixityChecker.ProcUtil.MessageLog.Error(err.Error())
-		}
-		result.NsqMessage.Touch()
-		fixityChecker.ResultsChannel <- result
-	}
 }
