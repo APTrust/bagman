@@ -26,11 +26,12 @@ import (
 // but Fedora/Solr is too slow. See PivotalTracker #112606953.
 // When that's fixed, we can increase the batch size.
 const (
-	batchSize = 20
+	batchSize = 50
 )
 
 var workReader *bagman.WorkReader
 var cmdLineDate = flag.String("date", "", "Find files with no fixity check since this date")
+var limit = flag.Int("limit", 0, "Queue only this many items, then stop")
 
 func main() {
 	var err error = nil
@@ -49,6 +50,10 @@ func run() {
 	rows := batchSize
 	workReader.MessageLog.Info("Fetching files not checked since %s in batches of %d",
 		sinceWhen.Format(time.RFC822Z), rows)
+	if *limit > 0 {
+		workReader.MessageLog.Info("Will queue up to %d items, in chunks of %d",
+			*limit, batchSize)
+	}
 	for {
 		fileCount, err := fetchAndQueueBatch(sinceWhen, start, rows)
 		if err != nil {
@@ -62,6 +67,12 @@ func run() {
 		} else {
 			workReader.MessageLog.Info("Found %d items needing fixity check", fileCount)
 			start += rows
+			if *limit > 0 && *limit <= start {
+				workReader.MessageLog.Info("Queued %d items. Stopping because limit is %d", start, *limit)
+				workReader.MessageLog.Info("Did I queue a few too many? It's because I queue in batches of %d",
+					batchSize)
+				break
+			}
 		}
 	}
 }
@@ -81,7 +92,7 @@ func getSinceWhenDate() (time.Time) {
 				*cmdLineDate)
 			workReader.MessageLog.Fatal(err)
 		}
-		workReader.MessageLog.Info("Using date passed in on command line")
+		workReader.MessageLog.Info("Using date '%s' passed in on command line", *cmdLineDate)
 	} else {
 		workReader.MessageLog.Info(
 			"Calculated date from config.MaxDaysSinceFixityCheck: %d days ago",
