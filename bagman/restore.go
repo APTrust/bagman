@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
@@ -92,6 +93,10 @@ type BagRestorer struct {
 	// fileSets is a list of FileSet structs. We'll
 	// have one for each bag we need to create.
 	fileSets              []*FileSet
+	// Did we find the bag-info.txt file? For bags
+	// ingested before March 29, 2016, we didn't save
+	// that file, and we need to rebuild it when we restore.
+	foundBagInfo          bool
 	// logger is optional. If provided, the functions
 	// below will log debug messages to it.
 	logger                *logging.Logger
@@ -212,7 +217,16 @@ func (restorer *BagRestorer) buildFileSets() {
 			fileSet = &FileSet{}
 			bytesInSet = 0
 		}
+		origPath, _ := gf.OriginalPath()
+		if origPath == "bag-info.txt" {
+			restorer.foundBagInfo = true
+		}
 		fileSet.Files = append(fileSet.Files, gf)
+		// Note that total bytes listed in Bag-Size,
+		// according to the BagIt spec, can be approximate.
+		// That's in section 2.2.2. We calculate this size
+		// to figure out whether we should break the bag
+		// into parts.
 		totalBytes += gf.Size
 		bytesInSet += gf.Size
 		restorer.debug(fmt.Sprintf("Added %s to fileset %d", gf.Identifier, len(restorer.fileSets) + 1))
@@ -264,6 +278,16 @@ func (restorer *BagRestorer) buildBag(setNumber, numberOfBagParts int) (*bagins.
 	err = restorer.writeAPTrustTagFile(bag)
 	if err != nil {
 	 	return nil, err
+	}
+
+	// We did not save bag-info.txt for bags ingested before March 29, 2016,
+	// so we have to reconsititute it here.
+	if restorer.foundBagInfo == false {
+		restorer.debug(fmt.Sprintf("Rebuilding bag-info.txt for %s", bagName))
+		err = restorer.writeBagInfoTagFile(bag, setNumber, numberOfBagParts)
+		if err != nil {
+			return nil, fmt.Errorf("Could not create bag-info.txt: %v", err)
+		}
 	}
 
 	// Fetch the generic files
@@ -341,6 +365,36 @@ func (restorer *BagRestorer) writeAPTrustTagFile(bag *bagins.Bag) (error) {
 	if restorer.IntellectualObject.Description != "" {
 		tagFile.Data.AddField(*bagins.NewTagField("Description", restorer.IntellectualObject.Description))
 	}
+	return nil
+}
+
+func (restorer *BagRestorer) writeBagInfoTagFile(bag *bagins.Bag, setNumber, numberOfBagParts int) (error) {
+	restorer.debug(fmt.Sprintf("Creating bag-info.txt"))
+	if err := bag.AddTagfile("bag-info.txt"); err != nil {
+		return err
+	}
+	tagFile, err := bag.TagFile("bag-info.txt")
+	if err != nil {
+		return err
+	}
+	slashIndex := strings.Index(restorer.IntellectualObject.Identifier, "/")
+	instName := restorer.IntellectualObject.Identifier[0:slashIndex]
+	bagNameWithoutInst := restorer.IntellectualObject.Identifier[slashIndex + 1:]
+
+	bagCount := fmt.Sprintf("%d of %d", setNumber + 1, numberOfBagParts)
+
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Source-Organization", instName))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Bagging-Date", time.Now().UTC().Format(time.RFC3339)))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Bag-Count", bagCount))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Bag-Group-Identifier", ""))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Internal-Sender-Description", restorer.IntellectualObject.Description))
+	tagFile.Data.AddField(*bagins.NewTagField(
+		"Internal-Sender-Identifier", bagNameWithoutInst))
 	return nil
 }
 
