@@ -391,5 +391,47 @@ func TestSavableName(t *testing.T) {
 	if bagman.HasSavableName("my_tags/tagmanifest-sha256.txt") == false {
 		t.Errorf("HasSavableName() should have returned true")
 	}
+}
 
+func TestIsValidFileName(t *testing.T) {
+	if !bagman.IsValidFileName("data/this/is/just/great.txt") {
+		t.Errorf("Name should be valid")
+	}
+	if bagman.IsValidFileName("data/this/is/-just/great.txt") {
+		t.Errorf("Name should NOT be valid")
+	}
+	if bagman.IsValidFileName("data/this/is/just/great.txt!") {
+		t.Errorf("Name should NOT be valid")
+	}
+	if bagman.IsValidFileName("data/th@s/is/just/great.txt") {
+		t.Errorf("Name should NOT be valid")
+	}
+}
+
+func TestNamePartIsValid(t *testing.T) {
+	if !bagman.NamePartIsValid("great.txt") {
+		t.Errorf("Name should be valid")
+	}
+	if !bagman.NamePartIsValid("great-one.txt") {
+		t.Errorf("Name should be valid")
+	}
+	if !bagman.NamePartIsValid("great_one.txt") {
+		t.Errorf("Name should be valid")
+	}
+	if bagman.NamePartIsValid("gre*t.txt") {
+		t.Errorf("Name should NOT be valid")
+	}
+	if bagman.NamePartIsValid("gre&t.txt") {
+		t.Errorf("Name should NOT be valid")
+	}
+	if bagman.NamePartIsValid("gre%t.txt") {
+		t.Errorf("Name should NOT be valid")
+	}
+	if bagman.NamePartIsValid("gre:t.txt") {
+		t.Errorf("Name should NOT be valid")
+	}
+	// Leading dash not allowed.
+	if bagman.NamePartIsValid("-great.txt") {
+		t.Errorf("Name should NOT be valid")
+	}
 }

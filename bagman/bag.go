@@ -223,6 +223,9 @@ func ReadBag(tarFilePath string) (result *BagReadResult) {
 		} else if strings.HasPrefix(fileName, dataDirPrefix) {
 			hasDataFiles = true
 		}
+		if !IsValidFileName(fileName) {
+			bagReadResult.ErrorMessage += fmt.Sprintf(" Invalid file name: %s", fileName)
+		}
 	}
 	if !hasBagit {
 		errMsg += " Bag is missing bagit.txt file.\n"

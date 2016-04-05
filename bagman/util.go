@@ -22,6 +22,7 @@ import (
 
 var reManifest *regexp.Regexp = regexp.MustCompile("^manifest-[A-Za-z0-9]+\\.txt$")
 var reTagManifest *regexp.Regexp = regexp.MustCompile("^tagmanifest-[A-Za-z0-9]+\\.txt$")
+var reLegal *regexp.Regexp = regexp.MustCompile("^[A-Za-z0-9\\-_\\.]+$")
 
 // Returns the domain name of the institution that owns the specified bucket.
 // For example, if bucketName is 'aptrust.receiving.unc.edu' the return value
@@ -495,4 +496,31 @@ func HasSavableName(filename string) (bool) {
 		strings.Contains(filename, "/._") || // mac junk files
 		reTagManifest.MatchString(filename) ||
 		reManifest.MatchString(filename))
+}
+
+// Returns true if the filename follows APTrust's file naming requiremens.
+// May contain upper or lower case letters, numbers, dots, underscores
+// and dashes. (A–Z a–z 0–9 . _ -)
+// MUST not begin with a dash. (-)
+// MUST be at betwee 1 and 255 characters in length (inclusive).
+//
+// Also note that BagIt spec says path seperator must be a forward slash.
+func IsValidFileName(filename string) (bool) {
+	if len(filename) < 1 || len(filename) > 255 {
+		return false
+	}
+	parts := strings.Split(filename, "/")
+	for _, part := range parts {
+		if !NamePartIsValid(part) {
+			return false
+		}
+	}
+	return true
+}
+
+func NamePartIsValid(namePart string) (bool) {
+	if strings.HasPrefix(namePart, "-") {
+		return false
+	}
+	return reLegal.MatchString(namePart)
 }
