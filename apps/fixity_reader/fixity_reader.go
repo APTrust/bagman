@@ -26,7 +26,7 @@ import (
 // but Fedora/Solr is too slow. See PivotalTracker #112606953.
 // When that's fixed, we can increase the batch size.
 const (
-	batchSize = 50
+	batchSize = 100
 )
 
 var workReader *bagman.WorkReader
