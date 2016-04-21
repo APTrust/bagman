@@ -295,8 +295,7 @@ func (storer *Storer) createBagRecord() {
 				Rights: make([]string, 0),
 				// No spec yet on how to specify interpretive; cannot be nil
 				Interpretive: make([]string, 0),
-				// No replicating nodes on a new bag; cannot be nil
-				ReplicatingNodes: make([]string, 0),
+				ReplicatingNodes: []string{"aptrust"},
 				Fixities: fixity,
 			}
 			result.DPNBag = newBag
