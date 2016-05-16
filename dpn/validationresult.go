@@ -291,6 +291,11 @@ func (validator *ValidationResult) checkSpecificTags(bag *bagins.Bag) {
 			validator.AddError("DPN tag Ingest-Node-Name cannot be empty.")
 		} else if tagField.Label() == "Version-Number" && !reInt.MatchString(tagField.Value()) {
 			validator.AddError("DPN tag Version-Number must be an integer.")
+		} else if tagField.Label() == "Bag-Type" {
+			lcTagValue := strings.ToLower(tagField.Value())
+			if lcTagValue != "data" && lcTagValue != "interpretive" && lcTagValue != "rights" {
+				validator.AddError("DPN tag Bag-Type must be data, rights, or interpretive.")
+			}
 		}
 	}
 }
@@ -302,7 +307,6 @@ func (validator *ValidationResult) BagNameValid() (bool) {
 	}
 	basename := strings.Replace(filepath.Base(bagPath), ".tar", "", 1)
 	return reUuidV4.MatchString(basename)
-	//return bagman.LooksLikeUUID(basename)
 }
 
 // If the tag manifest is present, bagins will validate it.

@@ -16,6 +16,7 @@ const (
 	BAG_MISSING_MANIFEST256 = "00000000-0000-4000-a000-000000000003.tar"
 	BAG_MISSING_TAGS = "00000000-0000-4000-a000-000000000004.tar"
 	BAG_MISSING_TAG_MANIFEST = "00000000-0000-4000-a000-000000000005.tar"
+	BAG_BAD_DPN_TAGS = "00000000-0000-4000-a000-000000000006.tar"
 )
 
 func getBagPath(whichBag string) (string, error) {
@@ -149,9 +150,6 @@ func TestValidate_BagMissingTagManifest(t *testing.T) {
 	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
-	// for _, m := range(result.ErrorMessages) {
-	// 	fmt.Println(m)
-	// }
 	if len(result.ErrorMessages) != 1 {
 		t.Errorf("Bag should have exactly 1 error message")
 		return
@@ -161,6 +159,47 @@ func TestValidate_BagMissingTagManifest(t *testing.T) {
 		t.Errorf("ValidationResult should have noted missing tagmanifest-sha256.txt")
 	}
 }
+
+func TestValidate_BagWithBadDPNTags(t *testing.T) {
+	bagPath, err := getBagPath(BAG_BAD_DPN_TAGS)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	result, err := dpn.NewValidationResult(bagPath, nil)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	defer cleanup(result)
+	result.ValidateBag()
+	if result.IsValid() {
+		t.Errorf("Bag should not be valid.")
+	}
+	if len(result.ErrorMessages) != 6 {
+		t.Errorf("Bag should have exactly 6 error message")
+		return
+	}
+	if result.ErrorMessages[0] != "DPN tag DPN-Object-ID must match bag name." {
+		t.Errorf("ValidationResult should have noted DPN tag DPN-Object-ID must match bag name.")
+	}
+	if result.ErrorMessages[1] != "DPN tag Local-ID cannot be empty." {
+		t.Errorf("ValidationResult should have noted DPN tag Local-ID cannot be empty.")
+	}
+	if result.ErrorMessages[2] != "DPN tag Ingest-Node-Name cannot be empty." {
+		t.Errorf("ValidationResult should have noted DPN tag Ingest-Node-Name cannot be empty.")
+	}
+	if result.ErrorMessages[3] != "DPN tag Version-Number must be an integer." {
+		t.Errorf("ValidationResult should have noted DPN tag Version-Number must be an integer.")
+	}
+	if result.ErrorMessages[4] != "DPN tag First-Version-Object-ID must be a valid Version 4 UUID." {
+		t.Errorf("ValidationResult should have noted DPN tag First-Version-Object-ID must be a valid Version 4 UUID.")
+	}
+	if result.ErrorMessages[5] != "DPN tag Bag-Type must be data, rights, or interpretive." {
+		t.Errorf("ValidationResult should have noted DPN tag Bag-Type must be data, rights, or interpretive.")
+	}
+}
+
 
 func TestValidate_Digest(t *testing.T) {
 	bagPath, err := getBagPath(GOOD_BAG)
