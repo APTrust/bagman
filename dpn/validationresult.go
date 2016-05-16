@@ -57,6 +57,9 @@ var TAGS_FOR_FILE = map[string][]string {
 	filepath.Join("dpn-tags", "dpn-info.txt"): DPN_INFO_TAGS,
 }
 
+var reUuidV4 = regexp.MustCompile("[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
+var reInt = regexp.MustCompile("^[0-9]+$")
+
 // TagFiles() returns a list of tag files we should check while
 // performing validation.
 func TagFiles() ([]string) {
@@ -224,6 +227,7 @@ func (validator *ValidationResult) ValidateBag()  {
 	// Make sure the tag files have the required tags.
 	// They can be empty, but they have to be present.
 	validator.checkRequiredTags(bag)
+	validator.checkSpecificTags(bag)
 
 	// Run all the checksums on all files.
 	for _, manifest := range bag.Manifests {
@@ -267,13 +271,38 @@ func (validator *ValidationResult) checkRequiredTags(bag *bagins.Bag) {
 	}
 }
 
+// Make sure certain DPN-specific tags have proper values.
+func (validator *ValidationResult) checkSpecificTags(bag *bagins.Bag) {
+	file := filepath.Join("dpn-tags", "dpn-info.txt")
+	tagFile, err := bag.TagFile(file)
+	if err != nil {
+		validator.AddError(fmt.Sprintf("Error reading tags from file '%s': %v", file, err))
+		return
+	}
+	tagFields := tagFile.Data.Fields()
+	for _, tagField := range tagFields {
+		if tagField.Label() == "DPN-Object-ID" && !strings.Contains(validator.TarFilePath, tagField.Value()) {
+			validator.AddError("DPN tag DPN-Object-ID must match bag name.")
+		} else if tagField.Label() == "First-Version-Object-ID" && !reUuidV4.MatchString(tagField.Value()) {
+			validator.AddError("DPN tag First-Version-Object-ID must be a valid Version 4 UUID.")
+		} else if tagField.Label() == "Local-ID" && tagField.Value() == "" {
+			validator.AddError("DPN tag Local-ID cannot be empty.")
+		} else if tagField.Label() == "Ingest-Node-Name" && tagField.Value() == "" {
+			validator.AddError("DPN tag Ingest-Node-Name cannot be empty.")
+		} else if tagField.Label() == "Version-Number" && !reInt.MatchString(tagField.Value()) {
+			validator.AddError("DPN tag Version-Number must be an integer.")
+		}
+	}
+}
+
 func (validator *ValidationResult) BagNameValid() (bool) {
 	bagPath := validator.TarFilePath
 	if bagPath == "" {
 		bagPath = validator.UntarredPath
 	}
 	basename := strings.Replace(filepath.Base(bagPath), ".tar", "", 1)
-	return bagman.LooksLikeUUID(basename)
+	return reUuidV4.MatchString(basename)
+	//return bagman.LooksLikeUUID(basename)
 }
 
 // If the tag manifest is present, bagins will validate it.
