@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -44,7 +45,7 @@ var DPN_INFO_TAGS = []string {
 	"Ingest-Node-Contact-Email",
 	"Version-Number",
 	"First-Version-Object-ID",
-	// "Brightening-Object-ID",
+	"Brightening-Object-ID",
 	"Rights-Object-ID",
 	"Bag-Type",
 }
@@ -344,11 +345,18 @@ func (validator *ValidationResult) untar() (bool) {
 			return false
 		}
 
-		// Set the untarred path, which will usually be the depositor's
-		// bag identifier.
+		// Set the untarred path, which should be the same as the bag
+		// name, minus the .tar extension.
 		if validator.UntarredPath == "" {
 			nameParts := strings.Split(header.Name, string(os.PathSeparator))
 			validator.UntarredPath = filepath.Join(filepath.Dir(absInputFile), nameParts[0])
+			re := regexp.MustCompile("\\.tar$")
+			expectedName := re.ReplaceAllString(absInputFile, "")
+			if validator.UntarredPath != expectedName {
+				validator.AddError(fmt.Sprintf("Tar file '%s' should untar to '%s', "+
+					"but it wound up in '%s'", absInputFile, expectedName, validator.UntarredPath))
+				return false
+			}
 		}
 
 		outputPath := filepath.Join(filepath.Dir(absInputFile), header.Name)

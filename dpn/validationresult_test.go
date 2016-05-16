@@ -11,11 +11,11 @@ import (
 )
 
 const (
-	GOOD_BAG = "00000000-0000-0000-0000-000000000001.tar"
-	BAG_MISSING_DATA_FILE = "00000000-0000-0000-0000-000000000002.tar"
-	BAG_MISSING_MANIFEST256 = "00000000-0000-0000-0000-000000000003.tar"
-	BAG_MISSING_TAGS = "00000000-0000-0000-0000-000000000004.tar"
-	BAG_MISSING_TAG_MANIFEST = "00000000-0000-0000-0000-000000000005.tar"
+	GOOD_BAG = "00000000-0000-4000-a000-000000000001.tar"
+	BAG_MISSING_DATA_FILE = "00000000-0000-4000-a000-000000000002.tar"
+	BAG_MISSING_MANIFEST256 = "00000000-0000-4000-a000-000000000003.tar"
+	BAG_MISSING_TAGS = "00000000-0000-4000-a000-000000000004.tar"
+	BAG_MISSING_TAG_MANIFEST = "00000000-0000-4000-a000-000000000005.tar"
 )
 
 func getBagPath(whichBag string) (string, error) {
@@ -120,6 +120,7 @@ func TestValidate_BagMissingTags(t *testing.T) {
 	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
+
 	if len(result.ErrorMessages) != 2 {
 		t.Errorf("Bag should have exactly 2 error messages")
 		return
@@ -178,14 +179,14 @@ func TestValidate_Digest(t *testing.T) {
 	result.ValidateBag()
 
 	result.CalculateTagManifestDigest("")
-	expected := "c4e254c4432d8f8755de161c42c4f8188455ca1c5ca1e2fd548d2a991dff009a"
+	expected := "cc6f9d63a699a50eb8ae475eb143bda08c54992e94c996c439c33b06bff5b66a"
 	if result.TagManifestChecksum != expected {
 		t.Errorf("Got tag manifest checksum '%s', expected '%s'",
 			result.TagManifestChecksum, expected)
 	}
 
 	result.CalculateTagManifestDigest("GeorgeWBush")
-	expected = "47656f7267655742757368c4e254c4432d8f8755de161c42c4f8188455ca1c5ca1e2fd548d2a991dff009a"
+	expected = "47656f7267655742757368cc6f9d63a699a50eb8ae475eb143bda08c54992e94c996c439c33b06bff5b66a"
 	if result.TagManifestChecksum != expected {
 		t.Errorf("Got tag manifest checksum '%s', expected '%s'",
 			result.TagManifestChecksum, expected)
