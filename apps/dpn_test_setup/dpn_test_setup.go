@@ -119,8 +119,9 @@ func (testUtil *TestUtil) MakeTestDirs() (error) {
 }
 
 func (testUtil *TestUtil) MakeTestData() (error) {
-	for count, _ := range testUtil.DPNConfig.RemoteNodeURLs {
-
+	count := 0
+	for _, _ = range testUtil.DPNConfig.RemoteNodeURLs {
+		count += 1
 		// Create a symlink from dpn_home/integration_test/<uuid>.tar
 		// to our known good bag in dpn/testdata/000...1.tar
 		bagUuid := fmt.Sprintf("00000000-0000-4000-a000-00000000000%d", count)
