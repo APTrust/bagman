@@ -19,7 +19,7 @@ var APTrustBags = []string {
 	"test.edu/ncsu.1840.16-1028",
 	"test.edu/test.edu.bag2",
 }
-var testBagUuid = "00000000-0000-0000-0000-000000000001"
+var testBagUuid = "00000000-0000-4000-a000-000000000001"
 var goodBagPath = fmt.Sprintf("dpn/testdata/%s.tar", testBagUuid)
 var testBagSize = uint64(268800)
 var testBagDigest = "c4e254c4432d8f8755de161c42c4f8188455ca1c5ca1e2fd548d2a991dff009a"
@@ -119,9 +119,7 @@ func (testUtil *TestUtil) MakeTestDirs() (error) {
 }
 
 func (testUtil *TestUtil) MakeTestData() (error) {
-	count := 0
-	for node, _ := range testUtil.DPNConfig.RemoteNodeURLs {
-		count += 1
+	for count, _ := range testUtil.DPNConfig.RemoteNodeURLs {
 
 		// Create a symlink from dpn_home/integration_test/<uuid>.tar
 		// to our known good bag in dpn/testdata/000...1.tar
@@ -131,25 +129,6 @@ func (testUtil *TestUtil) MakeTestData() (error) {
 			return err
 		} else {
 			testUtil.ProcUtil.MessageLog.Info("Created symlink at %s", linkPath)
-		}
-
-		// Create an entry for this bag on the remote node.
-		bag, err := testUtil.CreateBag(bagUuid, node)
-		if err != nil {
-			return err
-		} else {
-			testUtil.ProcUtil.MessageLog.Info("Created bag %s on %s",
-				bag.UUID, bag.AdminNode)
-		}
-
-		// Create a transfer record for this bag on the remote node.
-		xfer, err := testUtil.CreateReplicationRequest(bag, linkPath)
-		if err != nil {
-			return err
-		} else {
-			testUtil.ProcUtil.MessageLog.Info(
-				"Created replication request %s on %s",
-				xfer.ReplicationId, bag.AdminNode)
 		}
 	}
 	return nil
