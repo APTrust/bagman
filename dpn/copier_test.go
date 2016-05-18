@@ -20,12 +20,12 @@ var testConfig string = "test"
 // and we have data for them in our local DPN REST
 // service (they're in the fixture file TestServerData.json).
 var TEST_BAGS = []string {
-	"10000000-0000-4000-a000-000000000001",
-	"10000000-0000-4000-a000-000000000002",
-	"10000000-0000-4000-a000-000000000003",
-	"10000000-0000-4000-a000-000000000004",
-	"10000000-0000-4000-a000-000000000005",
-	"10000000-0000-4000-a000-000000000006",
+	"00000000-0000-4000-a000-000000000001",
+	"00000000-0000-4000-a000-000000000002",
+	"00000000-0000-4000-a000-000000000003",
+	"00000000-0000-4000-a000-000000000004",
+	"00000000-0000-4000-a000-000000000005",
+	"00000000-0000-4000-a000-000000000006",
 }
 
 var skipCopyMessagePrinted = false
@@ -241,5 +241,44 @@ func TestCopier(t *testing.T) {
 		if dpnResult.BagSize == 0 {
 			t.Errorf("Bag size is missing")
 		}
+	}
+}
+
+func TestCopierFileTooBig(t *testing.T) {
+	// runRestTests is defined in dpnrestclient_test.go
+	if runRestTests(t) == false {
+		return
+	}
+
+	procUtil := bagman.NewProcessUtil(&testConfig)
+	dpnConfig := loadConfig(t, configFile)
+	copier, err := dpn.NewCopier(procUtil, dpnConfig)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	// Get ridda that shizzle
+	defer copyTestCleanup()
+
+	dpnResult := buildTestResult(TEST_BAGS[0], t)
+	if dpnResult == nil {
+		return
+	}
+
+	// Make the bag look too big to copy
+	dpnResult.DPNBag.Size = copier.ProcUtil.Volume.AvailableSpace() + uint64(10000000)
+
+	// RunTest will update DPNResult.CopyResult
+	copier.RunTest(dpnResult)
+
+	if dpnResult.ErrorMessage == "" {
+		t.Errorf("Did not receive expected error saying bag is too large for available disk space")
+	}
+	if dpnResult.CopyResult.ErrorMessage == "" {
+		t.Errorf("Did not receive expected error saying bag is too large for available disk space")
+	}
+	if dpnResult.Retry == false {
+		t.Errorf("DPNResult.Retry should be true")
 	}
 }

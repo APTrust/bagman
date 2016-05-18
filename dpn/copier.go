@@ -142,6 +142,24 @@ func (copier *Copier) doLookup() {
 // Calculate checksums.
 func (copier *Copier) doCopy() {
 	for result := range copier.CopyChannel {
+
+		// Make sure we have enough room on the volume
+		// to download and unpack this bag.
+		err := copier.ProcUtil.Volume.Reserve(uint64(float64(result.DPNBag.Size) * float64(2.1)))
+		if err != nil {
+			// Not enough room on disk
+			copier.ProcUtil.MessageLog.Warning(
+				"Requeueing %s from %s (%d bytes) - not enough disk space",
+				result.TransferRequest.ReplicationId,
+				result.TransferRequest.FromNode,
+				result.DPNBag.Size)
+			result.CopyResult.ErrorMessage = err.Error()
+			result.ErrorMessage = err.Error()
+			result.Retry = true
+			copier.PostProcessChannel <- result
+			continue
+		}
+
 		localPath := filepath.Join(
 			copier.ProcUtil.Config.DPNStagingDirectory,
 			fmt.Sprintf("%s.tar", result.TransferRequest.BagId))
@@ -201,11 +219,13 @@ func (copier *Copier) postProcess() {
 		}
 		result.ErrorMessage = result.CopyResult.ErrorMessage
 
-		// On error, log and send to trouble queue
+		// On error, log and send to trouble queue if the error is fatal
 		if result.ErrorMessage != "" {
 			copier.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			copier.ProcUtil.IncrementFailed()
-			SendToTroubleQueue(result, copier.ProcUtil)
+			if result.Retry == false {
+				SendToTroubleQueue(result, copier.ProcUtil)
+			}
 			if bagman.FileExists(result.CopyResult.LocalPath) {
 				os.Remove(result.CopyResult.LocalPath)
 				copier.ProcUtil.MessageLog.Debug(
