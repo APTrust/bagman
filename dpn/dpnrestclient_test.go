@@ -30,7 +30,7 @@ load that test data into your DPN instance.
 
 var configFile = "dpn/dpn_config.json"
 var skipRestMessagePrinted = false
-var aptrustBagIdentifier = "10000000-0000-4000-a000-000000000001"
+var aptrustBagIdentifier = "00000000-0000-4000-a000-000000000001"
 var replicationIdentifier = "10000000-0000-4111-a000-000000000001"
 var restoreIdentifier = "11000000-0000-4111-a000-000000000001"
 var memberIdentifier = "9a000000-0000-4000-a000-000000000001"
@@ -387,9 +387,10 @@ func TestDPNBagGet(t *testing.T) {
 	if dpnBag.Fixities == nil || dpnBag.Fixities.Sha256 == "" {
 		t.Errorf("Fixities: should not be empty")
 	}
-	if dpnBag.Fixities.Sha256 != "c76dba32693e2c3359921043c5ddfbb3087047cd743856da82ad0291d8546abb" {
-		t.Errorf("Fixities.Sha256: expected 'c76dba32693e2c3359921043c5ddfbb3087047cd743856da82ad0291d8546abb', got '%s'",
-			dpnBag.Fixities.Sha256)
+	expectedFixity := "7569cf2d4bcd8b000b75bcbca82512be6e34f90f5a5479ccf7322b4d56825fde"
+	if dpnBag.Fixities.Sha256 != expectedFixity {
+		t.Errorf("Fixities.Sha256: expected '%s', got '%s'",
+			expectedFixity, dpnBag.Fixities.Sha256)
 	}
 }
 
@@ -597,8 +598,9 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
 	}
-	if !strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
-		t.Errorf("Expected link to end with 'IntTestValidBag01.tar', got '%s'", xfer.Link)
+	expectedTarName := fmt.Sprintf("%s.tar", aptrustBagIdentifier)
+	if !strings.HasSuffix(xfer.Link, expectedTarName) {
+		t.Errorf("Expected link to end with '%s', got '%s'", expectedTarName, xfer.Link)
 	}
 	if xfer.CreatedAt.Format(time.RFC3339) != "2015-09-15T19:38:31Z" {
 		t.Errorf("CreatedAt: expected '2015-09-15T19:38:31Z', got '%s'",
@@ -878,9 +880,9 @@ func TestRestoreTransferGet(t *testing.T) {
 	if xfer.ToNode != "aptrust" {
 		t.Errorf("ToNode: expected 'aptrust', got '%s'", xfer.ToNode)
 	}
-	if xfer.BagId != "10000000-0000-4000-a000-000000000001" {
-		t.Errorf("UUID: expected '10000000-0000-4000-a000-000000000001', got '%s'",
-			xfer.BagId)
+	if xfer.BagId != aptrustBagIdentifier {
+		t.Errorf("UUID: expected '%s', got '%s'",
+			aptrustBagIdentifier, xfer.BagId)
 	}
 	if xfer.RestoreId != restoreIdentifier {
 		t.Errorf("RestoreId: expected '%s', got '%s'", restoreIdentifier, xfer.RestoreId)
@@ -899,8 +901,9 @@ func TestRestoreTransferGet(t *testing.T) {
 		t.Errorf("UpdatedAt: expected '2015-09-15T19:38:31Z', got '%s'",
 			xfer.UpdatedAt.Format(time.RFC3339))
 	}
-	if !strings.HasSuffix(xfer.Link, "IntTestValidBag01.tar") {
-		t.Errorf("Expected link to end with 'IntTestValidBag01.tar', got '%s'", xfer.Link)
+	expectedTarName := fmt.Sprintf("%s.tar", aptrustBagIdentifier)
+	if !strings.HasSuffix(xfer.Link, expectedTarName) {
+		t.Errorf("Expected link to end with '%s', got '%s'", expectedTarName, xfer.Link)
 	}
 }
 

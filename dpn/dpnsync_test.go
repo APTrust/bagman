@@ -11,8 +11,8 @@ import (
 var skipSyncMessagePrinted = false
 
 const (
-	BAG_COUNT     = 6
-	REPL_COUNT    = 24
+	BAG_COUNT     = 1
+	REPL_COUNT    = 4
 	RESTORE_COUNT = 4
 )
 
@@ -162,11 +162,6 @@ func TestSyncBags(t *testing.T) {
 			t.Errorf("Error synching bags for node %s: %v", node.Namespace, err)
 		}
 		expectedBagCount := BAG_COUNT
-		if node.Namespace == "hathi" {
-			// From test fixtures, one of the six
-			// Hathi bags is already in our registry.
-			expectedBagCount = BAG_COUNT - 1
-		}
 		if len(bagsSynched) != expectedBagCount {
 			t.Errorf("Synched %d bags for node %s. Expected %d.",
 				len(bagsSynched), node.Namespace, expectedBagCount)
