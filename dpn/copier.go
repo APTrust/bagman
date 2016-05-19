@@ -44,6 +44,18 @@ func NewCopier(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Copier, err
 		dpnConfig.LocalNode,
 		dpnConfig,
 		procUtil.MessageLog)
+
+	// HACK: ProcUtil assumes the volume it should be managing is
+	// the APTrust volume. In this case, it's the DPN volume.
+	// DPNStagingDirectory
+	volume, err := bagman.NewVolume(procUtil.Config.DPNStagingDirectory, procUtil.MessageLog)
+	if err != nil {
+		message := fmt.Sprintf("Exiting. Cannot init Volume object: %v", err)
+		fmt.Fprintln(os.Stderr, message)
+		procUtil.MessageLog.Fatal(message)
+	}
+	procUtil.Volume = volume
+
 	if err != nil {
 		return nil, fmt.Errorf("Error creating local DPN REST client: %v", err)
 	}
