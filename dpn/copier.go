@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // copier.go copies tarred bags from other nodes via rsync.
@@ -160,15 +161,19 @@ func (copier *Copier) doCopy() {
 		err := copier.ProcUtil.Volume.Reserve(uint64(float64(result.DPNBag.Size) * float64(2.1)))
 		if err != nil {
 			// Not enough room on disk
-			copier.ProcUtil.MessageLog.Warning(
+			msg := fmt.Sprintf(
 				"Requeueing %s from %s (%d bytes) - not enough disk space",
 				result.TransferRequest.ReplicationId,
 				result.TransferRequest.FromNode,
 				result.DPNBag.Size)
-			result.CopyResult.ErrorMessage = err.Error()
-			result.ErrorMessage = err.Error()
-			result.Retry = true
-			copier.PostProcessChannel <- result
+			copier.ProcUtil.MessageLog.Warning(msg)
+			if result.NsqMessage != nil {
+				result.NsqMessage.Requeue(1 * time.Hour)
+			} else {
+				result.ErrorMessage = msg
+				result.CopyResult.ErrorMessage = msg
+				copier.WaitGroup.Done()
+			}
 			continue
 		}
 
