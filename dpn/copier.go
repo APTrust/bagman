@@ -162,10 +162,10 @@ func (copier *Copier) doCopy() {
 		if err != nil {
 			// Not enough room on disk
 			msg := fmt.Sprintf(
-				"Requeueing %s from %s (%d bytes) - not enough disk space",
+				"Requeueing %s from %s (%d bytes) - not enough disk space: %v",
 				result.TransferRequest.ReplicationId,
 				result.TransferRequest.FromNode,
-				result.DPNBag.Size)
+				result.DPNBag.Size, err)
 			copier.ProcUtil.MessageLog.Warning(msg)
 			if result.NsqMessage != nil {
 				result.NsqMessage.Requeue(1 * time.Hour)
