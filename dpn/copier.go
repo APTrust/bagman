@@ -320,7 +320,7 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 func GetRsyncCommand(copyFrom, copyTo string, useSSH bool) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
 	if useSSH {
-		return exec.Command("rsync", "-avz", "-e",  "ssh", copyFrom, copyTo)
+		return exec.Command("rsync", "-avzW", "-e",  "ssh", copyFrom, copyTo)
 	}
-	return exec.Command("rsync", "-avz", copyFrom, copyTo)
+	return exec.Command("rsync", "-avzW", copyFrom, copyTo)
 }
