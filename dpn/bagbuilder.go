@@ -169,8 +169,9 @@ func (builder *BagBuilder) buildDPNInfo() {
 	// Are we also using First-Version-Object-ID?
 	// Check https://wiki.duraspace.org/display/DPN/BagIt+Specification
 	// for updates.
-	dpnInfo.Data.AddField(*bagins.NewTagField("First-Version-Object-ID", ""))
-	dpnInfo.Data.AddField(*bagins.NewTagField("Brightening-Object-ID", ""))
+	dpnInfo.Data.AddField(*bagins.NewTagField("First-Version-Object-ID",
+		builder.UUID))
+	dpnInfo.Data.AddField(*bagins.NewTagField("Interpretive-Object-ID", ""))
 	dpnInfo.Data.AddField(*bagins.NewTagField("Rights-Object-ID", ""))
 
 	// Bag Type

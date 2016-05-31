@@ -1,7 +1,7 @@
 package dpn_test
 
 import (
-//	"fmt"
+	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"github.com/APTrust/bagman/dpn"
 	"os"
@@ -67,14 +67,18 @@ func TestValidate_BagMissingDataFile(t *testing.T) {
 	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
-	if len(result.ErrorMessages) != 2 {
-		t.Errorf("Bag should have exactly 2 error messages")
+	if len(result.ErrorMessages) != 3 {
+		t.Errorf("Bag should have 3 error messages, found %d", len(result.ErrorMessages))
+		printErrors(result.ErrorMessages)
 		return
 	}
-	if !strings.Contains(result.ErrorMessages[0], "checksum") {
+	if result.ErrorMessages[0] != "Required tag 'Interpretive-Object-ID' is missing from dpn-tags/dpn-info.txt" {
+		t.Errorf("ValidationResult should have noted missing Interpretive-Object-ID")
+	}
+	if !strings.Contains(result.ErrorMessages[1], "checksum") {
 		t.Errorf("ValidationResult should have noted bad checksum")
 	}
-	if !strings.Contains(result.ErrorMessages[1], "no such file") {
+	if !strings.Contains(result.ErrorMessages[2], "no such file") {
 		t.Errorf("ValidationResult should have noted missing file")
 	}
 }
@@ -122,8 +126,9 @@ func TestValidate_BagMissingTags(t *testing.T) {
 		t.Errorf("Bag should not be valid.")
 	}
 
-	if len(result.ErrorMessages) != 2 {
-		t.Errorf("Bag should have exactly 2 error messages")
+	if len(result.ErrorMessages) != 3 {
+		t.Errorf("Bag should have 3 error messages, found %d", len(result.ErrorMessages))
+		printErrors(result.ErrorMessages)
 		return
 	}
 	if !strings.Contains(result.ErrorMessages[0], "'DPN-Object-ID' is missing") {
@@ -131,6 +136,9 @@ func TestValidate_BagMissingTags(t *testing.T) {
 	}
 	if !strings.Contains(result.ErrorMessages[1], "'Version-Number' is missing") {
 		t.Errorf("ValidationResult should have noted missing Version-Number tag")
+	}
+	if result.ErrorMessages[2] != "Required tag 'Interpretive-Object-ID' is missing from dpn-tags/dpn-info.txt" {
+		t.Errorf("ValidationResult should have noted missing Interpretive-Object-ID")
 	}
 }
 
@@ -176,26 +184,30 @@ func TestValidate_BagWithBadDPNTags(t *testing.T) {
 	if result.IsValid() {
 		t.Errorf("Bag should not be valid.")
 	}
-	if len(result.ErrorMessages) != 6 {
-		t.Errorf("Bag should have exactly 6 error message")
+	if len(result.ErrorMessages) != 7 {
+		t.Errorf("Bag should have 7 error messages, found %d", len(result.ErrorMessages))
+		printErrors(result.ErrorMessages)
 		return
 	}
-	if result.ErrorMessages[0] != "DPN tag DPN-Object-ID must match bag name." {
+	if result.ErrorMessages[0] != "Required tag 'Interpretive-Object-ID' is missing from dpn-tags/dpn-info.txt" {
+		t.Errorf("ValidationResult should have noted missing Interpretive-Object-ID")
+	}
+	if result.ErrorMessages[1] != "DPN tag DPN-Object-ID must match bag name." {
 		t.Errorf("ValidationResult should have noted DPN tag DPN-Object-ID must match bag name.")
 	}
-	if result.ErrorMessages[1] != "DPN tag Local-ID cannot be empty." {
+	if result.ErrorMessages[2] != "DPN tag Local-ID cannot be empty." {
 		t.Errorf("ValidationResult should have noted DPN tag Local-ID cannot be empty.")
 	}
-	if result.ErrorMessages[2] != "DPN tag Ingest-Node-Name cannot be empty." {
+	if result.ErrorMessages[3] != "DPN tag Ingest-Node-Name cannot be empty." {
 		t.Errorf("ValidationResult should have noted DPN tag Ingest-Node-Name cannot be empty.")
 	}
-	if result.ErrorMessages[3] != "DPN tag Version-Number must be an integer." {
+	if result.ErrorMessages[4] != "DPN tag Version-Number must be an integer." {
 		t.Errorf("ValidationResult should have noted DPN tag Version-Number must be an integer.")
 	}
-	if result.ErrorMessages[4] != "DPN tag First-Version-Object-ID must be a valid Version 4 UUID." {
+	if result.ErrorMessages[5] != "DPN tag First-Version-Object-ID must be a valid Version 4 UUID." {
 		t.Errorf("ValidationResult should have noted DPN tag First-Version-Object-ID must be a valid Version 4 UUID.")
 	}
-	if result.ErrorMessages[5] != "DPN tag Bag-Type must be data, rights, or interpretive." {
+	if result.ErrorMessages[6] != "DPN tag Bag-Type must be data, rights, or interpretive." {
 		t.Errorf("ValidationResult should have noted DPN tag Bag-Type must be data, rights, or interpretive.")
 	}
 }
@@ -218,16 +230,22 @@ func TestValidate_Digest(t *testing.T) {
 	result.ValidateBag()
 
 	result.CalculateTagManifestDigest("")
-	expected := "cc6f9d63a699a50eb8ae475eb143bda08c54992e94c996c439c33b06bff5b66a"
+	expected := "204db9e51fb39acbd965d14e51149c443a1febeab225a1ca3d196b12b7b021bd"
 	if result.TagManifestChecksum != expected {
 		t.Errorf("Got tag manifest checksum '%s', expected '%s'",
 			result.TagManifestChecksum, expected)
 	}
 
 	result.CalculateTagManifestDigest("GeorgeWBush")
-	expected = "47656f7267655742757368cc6f9d63a699a50eb8ae475eb143bda08c54992e94c996c439c33b06bff5b66a"
+	expected = "47656f7267655742757368204db9e51fb39acbd965d14e51149c443a1febeab225a1ca3d196b12b7b021bd"
 	if result.TagManifestChecksum != expected {
 		t.Errorf("Got tag manifest checksum '%s', expected '%s'",
 			result.TagManifestChecksum, expected)
+	}
+}
+
+func printErrors(errors []string) {
+	for _, e := range errors {
+		fmt.Println(e)
 	}
 }

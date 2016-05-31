@@ -147,7 +147,7 @@ func TestDPNInfo(t *testing.T) {
 	verifyTagField(t, tagfile, "First-Node-Contact-Email", "help@aptrust.org")
 	verifyTagField(t, tagfile, "Version-Number", "1")
 	verifyTagField(t, tagfile, "Previous-Version-Object-ID", "")
-	verifyTagField(t, tagfile, "Brightening-Object-ID", "")
+	verifyTagField(t, tagfile, "Interpretive-Object-ID", "")
 	verifyTagField(t, tagfile, "Rights-Object-ID", "")
 	verifyTagField(t, tagfile, "Object-Type", dpn.BAG_TYPE_DATA)
 }
