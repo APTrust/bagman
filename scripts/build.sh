@@ -92,6 +92,10 @@ echo "building dpn_check_requests"
 cd "${BAGMAN_HOME}/apps/dpn_check_requests"
 go build -o ${BAGMAN_BIN}/dpn_check_requests dpn_check_requests.go
 
+echo "building dpn_cleanup"
+cd "${BAGMAN_HOME}/apps/dpn_cleanup"
+go build -o ${BAGMAN_BIN}/dpn_cleanup dpn_cleanup.go
+
 echo "building dpn_copy"
 cd "${BAGMAN_HOME}/apps/dpn_copy"
 go build -o ${BAGMAN_BIN}/dpn_copy dpn_copy.go
