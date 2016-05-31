@@ -468,12 +468,10 @@ func (recorder *Recorder) updateProcessedItem(result *DPNResult) {
 }
 
 func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (string, error) {
-	absPath := filepath.Join(recorder.ProcUtil.Config.DPNStagingDirectory,
-		result.DPNBag.UUID + ".tar")
-	symLink := fmt.Sprintf("%s/dpn.%s/outbound/%s.tar",
-		recorder.ProcUtil.Config.DPNHomeDirectory, toNode, result.DPNBag.UUID)
+	symLink := fmt.Sprintf("/home/dpn.%s/outbound/%s.tar",
+		toNode, result.DPNBag.UUID)
 	recorder.ProcUtil.MessageLog.Debug("Creating symlink from '%s' to '%s'",
-		symLink, absPath)
+		symLink, result.PackageResult.TarFilePath)
 
 	dir := filepath.Dir(symLink)
 	err := os.MkdirAll(dir, 0755)
@@ -483,10 +481,10 @@ func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (strin
 		return "", detailedError
 	}
 
-	err = os.Symlink(absPath, symLink)
+	err = os.Symlink(result.PackageResult.TarFilePath, symLink)
 	if err != nil {
 		detailedError := fmt.Errorf("Error creating symlink at '%s' pointing to '%s': %v",
-			symLink, absPath, err)
+			symLink, result.PackageResult.TarFilePath, err)
 		return "", detailedError
 	}
 	return symLink, nil
