@@ -308,7 +308,11 @@ func (storer *Storer) cleanup() {
 	for result := range storer.CleanupChannel {
 		thisIsNotATest := (result.NsqMessage != nil)
 		storageSucceeded := (result.ErrorMessage == "" && result.StorageURL != "")
-		if storageSucceeded && thisIsNotATest {
+		// If this bag came from another node, we can delete it after storing it.
+		// If it came from our node, we need to keep it around until it's been
+		// replicated.
+		thisBagCameFromAnotherNode := (result.ProcessedItemId == 0)
+		if storageSucceeded && thisIsNotATest && thisBagCameFromAnotherNode {
 			err := os.Remove(result.TarFilePath())
 			if err != nil {
 				storer.ProcUtil.MessageLog.Warning("Error cleaning up %s: %v",
