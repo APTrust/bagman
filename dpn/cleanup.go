@@ -56,7 +56,7 @@ func (cleanup *Cleanup) DeleteReplicatedBags() {
 				bagUUID, err.Error())
 		}
 		tarfile := filepath.Join(cleanup.ProcUtil.Config.DPNStagingDirectory, finfo.Name())
-		if result.Count >= 2 {
+		if result.Count >= int32(cleanup.DPNConfig.ReplicateToNumNodes) {
 			cleanup.ProcUtil.MessageLog.Info("Deleting %s: %d successful replications",
 				tarfile, result.Count)
 			err = os.Remove(tarfile)
