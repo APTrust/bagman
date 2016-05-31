@@ -493,8 +493,9 @@ func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (strin
 func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode string) (*DPNReplicationTransfer) {
 	// Sample rsync link:
 	// dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar
-	link := fmt.Sprintf("dpn.%s@devops.aptrust.org:outbound/%s.tar",
-		toNode, result.DPNBag.UUID)
+	hostname, _ := os.Hostname()
+	link := fmt.Sprintf("dpn.%s@%s:outbound/%s.tar",
+		toNode, hostname, result.DPNBag.UUID)
 	emptyString := ""
 	now := time.Now().UTC().Truncate(time.Second)
 	return &DPNReplicationTransfer{
