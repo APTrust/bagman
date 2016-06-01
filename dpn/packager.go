@@ -343,6 +343,14 @@ func (packager *Packager) doTar() {
 				break
 			}
 
+			// The DPN spec at https://wiki.duraspace.org/display/DPN/BagIt+Specification
+			// says the top-level folder within the bag should have the name of the DPN
+			// Object Identifier (the UUID). So we replace <bag_name>/ with <uuid>/.
+			parts := strings.Split(pathWithinArchive, "/")
+			topLevelDirName := parts[0]
+			pathWithinArchive = strings.Replace(pathWithinArchive, topLevelDirName,
+				result.PackageResult.BagBuilder.UUID, 1)
+
 			err = bagman.AddToArchive(tarWriter, filePath, pathWithinArchive)
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Error adding file %s to archive %s: %v",
