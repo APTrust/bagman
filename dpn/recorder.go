@@ -468,8 +468,8 @@ func (recorder *Recorder) updateProcessedItem(result *DPNResult) {
 }
 
 func (recorder *Recorder) CreateSymLink(result *DPNResult, toNode string) (string, error) {
-	symLink := fmt.Sprintf("/home/dpn.%s/outbound/%s.tar",
-		toNode, result.DPNBag.UUID)
+	symLink := fmt.Sprintf("%s/dpn.%s/outbound/%s.tar",
+		recorder.ProcUtil.Config.DPNHomeDirectory, toNode, result.DPNBag.UUID)
 	recorder.ProcUtil.MessageLog.Debug("Creating symlink from '%s' to '%s'",
 		symLink, result.PackageResult.TarFilePath)
 
@@ -496,7 +496,6 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 	hostname, _ := os.Hostname()
 	link := fmt.Sprintf("dpn.%s@%s:outbound/%s.tar",
 		toNode, hostname, result.DPNBag.UUID)
-	emptyString := ""
 	now := time.Now().UTC().Truncate(time.Second)
 	return &DPNReplicationTransfer{
 		ReplicationId: uuid.NewV4().String(),
@@ -504,8 +503,8 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 		ToNode: toNode,
 		BagId: result.DPNBag.UUID,
 		FixityAlgorithm: "sha256",
-		FixityNonce: &emptyString,
-		FixityValue: &emptyString,
+		FixityNonce: nil,
+		FixityValue: nil,
 		Status: "requested",
 		Protocol: "rsync",
 		Link: link,
