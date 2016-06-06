@@ -62,9 +62,13 @@ type DPNResult struct {
 	// The bag's md5 digest. We need this to copy to Amazon S3/Glacier.
 	BagMd5Digest     string
 
-	// Digest to be recorded in DPN and to be sent as part of receipt
-	// when replicating bags from other nodes.
+	// Sha256Digest of the tarred bag file. No longer used.
 	BagSha256Digest  string
+
+	// Sha256 digest of the tagmanifest-sha256.txt file. We use this
+	// to verify that the bag was correctly copied by replicating
+	// nodes.
+	TagManifestDigest string
 
 	// The size of the bag. Used when copying to S3/Glacier.
 	BagSize          int64

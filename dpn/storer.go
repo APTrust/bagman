@@ -273,7 +273,7 @@ func (storer *Storer) createBagRecord() {
 			storer.ProcUtil.MessageLog.Debug("Creating bag record for %s with md5 %s and sha256 %s",
 				result.BagIdentifier, result.BagMd5Digest, result.BagSha256Digest)
 			fixity := &DPNFixity{
-				Sha256: result.BagSha256Digest,
+				Sha256: result.TagManifestDigest,
 			}
 			fileInfo, err := os.Stat(result.TarFilePath())
 			if err != nil {

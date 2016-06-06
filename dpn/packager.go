@@ -270,7 +270,7 @@ func (packager *Packager) doBuild() {
 			for _, e := range errors {
 				errMessages = fmt.Sprintf("%s %s ", errMessages, e.Error())
 			}
-			result.ErrorMessage += fmt.Sprintf("Error writing bag: %s", errMessages)
+			result.ErrorMessage += fmt.Sprintf("Error writing bag: %s ", errMessages)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -366,8 +366,7 @@ func (packager *Packager) doTar() {
 		tarFile.Close()
 		result.PackageResult.TarFilePath = tarFilePath
 
-		// Calculate the checksums. We need the md5 for the put to S3,
-		// and the sha256 for the bag record.
+		// Calculate the checksums. We need the md5 for the put to S3
 		fileDigest, err := bagman.CalculateDigests(result.PackageResult.TarFilePath)
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
@@ -378,6 +377,19 @@ func (packager *Packager) doTar() {
 		result.BagMd5Digest = fileDigest.Md5Digest
 		result.BagSha256Digest = fileDigest.Sha256Digest
 		result.BagSize = fileDigest.Size
+
+		// Calculate the tagmanifest checksum. This will count as our first
+		// fixity check on the bag, and will be used to verify replication
+		// copies at other nodes.
+		tagManifestPath := filepath.Join(result.PackageResult.BagBuilder.LocalPath, "tagmanifest-sha256.txt")
+		fileDigest, err = bagman.CalculateDigests(tagManifestPath)
+		if err != nil {
+			result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
+				tagManifestPath, err)
+			packager.CleanupChannel <- result
+			continue
+		}
+		result.TagManifestDigest = fileDigest.Sha256Digest
 
 		if result.NsqMessage != nil {
 			result.NsqMessage.Touch()
