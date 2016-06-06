@@ -220,8 +220,13 @@ func (bagRecorder *BagRecorder) updateFluctusStatus(result *bagman.ProcessResult
 
 func (bagRecorder *BagRecorder) doCleanup() {
 	for result := range bagRecorder.CleanupChannel {
-		bagRecorder.ProcUtil.MessageLog.Debug("Cleaning up %s", result.S3File.Key.Key)
-		bagRecorder.DeleteS3File(result)
+		if result.ErrorMessage == "" {
+			bagRecorder.ProcUtil.MessageLog.Info("Cleaning up %s", result.S3File.Key.Key)
+			bagRecorder.DeleteS3File(result)
+		} else {
+			bagRecorder.ProcUtil.MessageLog.Info("Leaving %s in %s because of error: %s",
+				result.S3File.Key.Key, result.S3File.BucketName, result.ErrorMessage)
+		}
 		ingestStatus := result.IngestStatus(bagRecorder.ProcUtil.MessageLog)
 		bagRecorder.updateFluctusStatus(result, ingestStatus.Stage, ingestStatus.Status)
 
