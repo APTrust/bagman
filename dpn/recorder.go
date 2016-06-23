@@ -281,9 +281,16 @@ func (recorder *Recorder) postProcess() {
 // 2. Create a PREMIS event in Fluctus saying this bag has been copied to DPN.
 // 3. Create replication requests for this bag in our local DPN node.
 func (recorder *Recorder) RecordAPTrustDPNData(result *DPNResult) {
-	recorder.registerNewDPNBag(result)
-	if result.ErrorMessage != "" {
-		return
+	// In some cases, we've already created the bag in our local DPN
+	// node, but we couldn't record the data in Fedora. So we might
+	// be retrying. In that case, we'll have a DPNBagCreatedAt timestamp,
+	// and we should not try to create the bag again in the DPN registry.
+	// Doing so will just give us an HTTP 409.
+	if result.RecordResult == nil || result.RecordResult.DPNBagCreatedAt.IsZero() {
+		recorder.registerNewDPNBag(result)
+		if result.ErrorMessage != "" {
+			return
+		}
 	}
 	recorder.recordPremisEvents(result)
 	if result.ErrorMessage != "" {
