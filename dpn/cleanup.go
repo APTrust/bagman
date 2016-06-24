@@ -1,6 +1,7 @@
 package dpn
 
 import (
+	"fmt"
 	"github.com/APTrust/bagman/bagman"
 	"net/url"
 	"io/ioutil"
@@ -46,6 +47,9 @@ func (cleanup *Cleanup) DeleteReplicatedBags() {
 	}
 	for _, finfo := range files {
 		bagUUID := strings.Replace(finfo.Name(), ".tar", "", 1)
+		if !bagman.LooksLikeUUID(bagUUID) {
+			continue  // Don't delete it if it's not a DPN tar file
+		}
 		params := &url.Values{}
 		params.Set("uuid", bagUUID)
 		params.Set("status", "stored") // stored == 4
@@ -54,12 +58,18 @@ func (cleanup *Cleanup) DeleteReplicatedBags() {
 		if err != nil {
 			cleanup.ProcUtil.MessageLog.Error("Error getting replication info for bag '%s': %v",
 				bagUUID, err.Error())
+			continue
 		}
 		tarfile := filepath.Join(cleanup.ProcUtil.Config.DPNStagingDirectory, finfo.Name())
 		if result.Count >= int32(cleanup.DPNConfig.ReplicateToNumNodes) {
 			cleanup.ProcUtil.MessageLog.Info("Deleting %s: %d successful replications",
 				tarfile, result.Count)
 			err = os.Remove(tarfile)
+			for _, xfer := range result.Results {
+				symlink := fmt.Sprintf("%s/dpn.%s/outbound/%s.tar",
+					cleanup.ProcUtil.Config.DPNHomeDirectory, xfer.ToNode, bagUUID)
+				cleanup.ProcUtil.MessageLog.Info("Deleting symlink at %s", symlink)
+			}
 		} else {
 			cleanup.ProcUtil.MessageLog.Info("Leaving %s: %d successful replications",
 				tarfile, result.Count)
