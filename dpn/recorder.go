@@ -281,16 +281,9 @@ func (recorder *Recorder) postProcess() {
 // 2. Create a PREMIS event in Fluctus saying this bag has been copied to DPN.
 // 3. Create replication requests for this bag in our local DPN node.
 func (recorder *Recorder) RecordAPTrustDPNData(result *DPNResult) {
-	// In some cases, we've already created the bag in our local DPN
-	// node, but we couldn't record the data in Fedora. So we might
-	// be retrying. In that case, we'll have a DPNBagCreatedAt timestamp,
-	// and we should not try to create the bag again in the DPN registry.
-	// Doing so will just give us an HTTP 409.
-	if result.RecordResult == nil || result.RecordResult.DPNBagCreatedAt.IsZero() {
-		recorder.registerNewDPNBag(result)
-		if result.ErrorMessage != "" {
-			return
-		}
+	recorder.registerNewDPNBag(result)
+	if result.ErrorMessage != "" {
+		return
 	}
 	recorder.recordPremisEvents(result)
 	if result.ErrorMessage != "" {
@@ -306,6 +299,16 @@ func (recorder *Recorder) RecordAPTrustDPNData(result *DPNResult) {
 // Create a new DPN bag entry in our local DPN registry. We do this only
 // for DPN bags that we ingester here at APTrust.
 func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
+	// In cases where we're retrying after a Fedora failure,
+	// our DPN registry will already have the bag record,
+	// so we skip bag creation to avoid an HTTP 409/Conflict.
+	existingBag, _ := recorder.LocalRESTClient.DPNBagGet(result.DPNBag.UUID)
+	if existingBag != nil {
+		recorder.ProcUtil.MessageLog.Debug(
+			"Skipping DPN bag create: bag %s already exists in local registry.",
+			result.DPNBag.UUID)
+		return
+	}
 	recorder.ensureBagMember(result)
 	if result.ErrorMessage != "" {
 		return
