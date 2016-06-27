@@ -1011,7 +1011,7 @@
         "LogDirectory": "/mnt/apt/logs",
         "ReplicationDirectory": "/mnt/apt/replication",
         "DPNStagingDirectory": "/mnt/dpn/staging",
-        "DPNHomeDirectory": "/mnt/dpn",
+        "DPNHomeDirectory": "/home",
         "MaxFileSize": 0,
         "SkipAlreadyProcessed": true,
         "DeleteOnSuccess": true,
