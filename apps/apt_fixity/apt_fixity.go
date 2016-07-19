@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.FixityWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())

@@ -9,7 +9,7 @@ apt_record records bag metadata in Fluctus, including
 info about Intellectual Objects, Generic Files and Premis Events.
 */
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.RecordWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())

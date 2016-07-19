@@ -44,8 +44,10 @@ cleanup, etc.).
 
 Param requestedConfig should be the name of a valid configuration
 in the config.json file ("dev", "test", etc.).
+
+Param serviceGroup must be either "aptrust" or "dpn".
 */
-func NewProcessUtil(requestedConfig *string) (procUtil *ProcessUtil) {
+func NewProcessUtil(requestedConfig *string, serviceGroup string) (procUtil *ProcessUtil) {
 	procUtil = &ProcessUtil {
 		succeeded: int64(0),
 		failed: int64(0),
@@ -53,7 +55,7 @@ func NewProcessUtil(requestedConfig *string) (procUtil *ProcessUtil) {
 	procUtil.ConfigName = *requestedConfig
 	procUtil.Config = LoadRequestedConfig(requestedConfig)
 	procUtil.initLogging()
-	procUtil.initVolume()
+	procUtil.initVolume(serviceGroup)
 	procUtil.initS3Client()
 	procUtil.initFluctusClient()
 	procUtil.syncMap = NewSynchronizedMap()
@@ -67,8 +69,14 @@ func (procUtil *ProcessUtil) initLogging() {
 }
 
 // Sets up a new Volume object to track estimated disk usage.
-func (procUtil *ProcessUtil) initVolume() {
-	volume, err := NewVolume(procUtil.Config.TarDirectory, procUtil.MessageLog)
+func (procUtil *ProcessUtil) initVolume(serviceGroup string) {
+	// Assume services are for APTrust, unless DPN is specified.
+	// This is a late hack, as we wait for Exchange to replace Bagman.
+	dir := procUtil.Config.TarDirectory
+	if serviceGroup == "dpn" {
+		dir = procUtil.Config.DPNStagingDirectory
+	}
+	volume, err := NewVolume(dir, procUtil.MessageLog)
 	if err != nil {
 		message := fmt.Sprintf("Exiting. Cannot init Volume object: %v", err)
 		fmt.Fprintln(os.Stderr, message)

@@ -7,7 +7,7 @@ import (
 // apt_replicate copies items from the S3 preservation bucket
 // in Virginia to the S3 replication bucket in Oregon.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.ReplicationWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatalf(err.Error())

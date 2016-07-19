@@ -80,7 +80,7 @@ func canRunCopyTests(t *testing.T) (bool) {
 // entry in ~/.ssh/config with settings to connect to
 // the dpn-test server.
 func getTestLink(tarredBagName string) (string) {
-	procUtil := bagman.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig, "dpn")
 	return fmt.Sprintf("dpn-test:%s/%s", procUtil.Config.DPNStagingDirectory, tarredBagName)
 }
 
@@ -124,7 +124,7 @@ func buildTestResult(bagIdentifier string, t *testing.T) (*dpn.DPNResult) {
 
 // Delete rsynched files after testing
 func copyTestCleanup() {
-	procUtil := bagman.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig, "dpn")
 	for _, uuid := range TEST_BAGS {
 		filePath := filepath.Join(procUtil.Config.DPNStagingDirectory, uuid + ".tar")
 		os.Remove(filePath)
@@ -132,7 +132,7 @@ func copyTestCleanup() {
 }
 
 func TestGetRsyncCommand(t *testing.T) {
-	procUtil := bagman.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig, "dpn")
 	copyFrom := getTestLink(TEST_BAGS[0])
 	copyTo := procUtil.Config.DPNStagingDirectory
 
@@ -188,7 +188,7 @@ func TestCopier(t *testing.T) {
 		return
 	}
 
-	procUtil := bagman.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig, "dpn")
 	dpnConfig := loadConfig(t, configFile)
 	copier, err := dpn.NewCopier(procUtil, dpnConfig)
 	if err != nil {
@@ -250,7 +250,7 @@ func TestCopierFileTooBig(t *testing.T) {
 		return
 	}
 
-	procUtil := bagman.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig, "dpn")
 	dpnConfig := loadConfig(t, configFile)
 	copier, err := dpn.NewCopier(procUtil, dpnConfig)
 	if err != nil {

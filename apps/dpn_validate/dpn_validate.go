@@ -7,7 +7,7 @@ import (
 
 // dpn_validate validates bags copied from other nodes before we replicate them.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("dpn")
 	procUtil.MessageLog.Info("Connecting to NSQLookupd at %s", procUtil.Config.NsqLookupd)
 	procUtil.MessageLog.Info("NSQDHttpAddress is %s", procUtil.Config.NsqdHttpAddress)
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.DPNValidationWorker)

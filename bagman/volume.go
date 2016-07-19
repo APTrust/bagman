@@ -8,6 +8,7 @@ package bagman
 import (
 	"fmt"
 	"github.com/op/go-logging"
+	"os"
 	"sync"
 	"syscall"
 )
@@ -43,7 +44,7 @@ func NewVolume(path string, messageLog *logging.Logger) (*Volume, error) {
 	initialFree, err := volume.currentFreeSpace()
 	if err != nil {
 		messageLog.Error("volume.go could not measure " +
-			"free space on storage volume")
+			"free space on storage volume '%s'", path)
 		return nil, err
 	}
 	volume.initialFree = initialFree
@@ -71,6 +72,7 @@ func (volume *Volume) ClaimedSpace() (numBytes uint64) {
 // take into account the number of bytes reserved for pending operations.
 func (volume *Volume) currentFreeSpace() (numBytes uint64, err error) {
 	stat := &syscall.Statfs_t{}
+	os.MkdirAll(volume.path, 0755)
 	err = syscall.Statfs(volume.path, stat)
 	if err != nil {
 		return 0, err

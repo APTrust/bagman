@@ -53,7 +53,7 @@ func (e DateParseError) Error() string { return e.message }
 
 func main() {
 	jsonFiles := parseCommandLine()
-	procUtil = bagman.NewProcessUtil(&config)
+	procUtil = bagman.NewProcessUtil(&config, "aptrust")
 	err := procUtil.Config.EnsureFluctusConfig()
 	if err != nil {
 		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)

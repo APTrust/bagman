@@ -7,7 +7,7 @@ import (
 // apt_failed_fixity dumps information about fixity checks that could
 // not be completed into simple JSON files.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.FailedFixityWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())

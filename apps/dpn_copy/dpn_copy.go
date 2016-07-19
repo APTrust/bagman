@@ -7,7 +7,7 @@ import (
 // dpn_copy copies bags from remote nodes so we can replicate
 // those bags. The copy is done via rsync over ssh.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("dpn")
 	procUtil.MessageLog.Info("Connecting to NSQLookupd at %s", procUtil.Config.NsqLookupd)
 	procUtil.MessageLog.Info("NSQDHttpAddress is %s", procUtil.Config.NsqdHttpAddress)
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.DPNCopyWorker)

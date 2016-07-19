@@ -16,7 +16,7 @@ func main() {
 	// The workers below will share one ProcUtil, which means
 	// some of ProcUtil's internal variables, like success count
 	// and failure count will be updated by each worker.
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("dpn")
 
 	pathToConfigFile := "dpn/dpn_config.json"
 	dpnConfig, err := dpn.LoadConfig(pathToConfigFile, "test")

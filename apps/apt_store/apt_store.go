@@ -7,7 +7,7 @@ import (
 // apt_store stores bags that have been unpacked and validated
 // by apt_prepare.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.StoreWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatal(err.Error())

@@ -31,7 +31,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, msg)
 		os.Exit(1)
 	}
-	procUtil := bagman.NewProcessUtil(&requestedConfig)
+	procUtil := bagman.NewProcessUtil(&requestedConfig, "dpn")
 	client, err := dpn.NewDPNRestClient(
 		dpnConfig.RestClient.LocalServiceURL,
 		dpnConfig.RestClient.LocalAPIRoot,

@@ -12,7 +12,7 @@ func TestDeleteReplicatedBags(t *testing.T) {
 	}
 	requestedConfig := "test"
 	dpnConfig := loadConfig(t, CONFIG_FILE)
-	procUtil := bagman.NewProcessUtil(&requestedConfig)
+	procUtil := bagman.NewProcessUtil(&requestedConfig, "dpn")
 	cleanup, err := dpn.NewCleanup(procUtil, dpnConfig)
 	if err != nil {
 		t.Errorf("Could not create Cleanup object: %v", err)

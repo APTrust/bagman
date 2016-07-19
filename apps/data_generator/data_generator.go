@@ -17,7 +17,7 @@ var HEX_CHARS = []rune("0123456789abcdef")
 
 // Creates one IntellectualObject in Fluctus with lots of generic files.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	procUtil.MessageLog.Info("data_generator started")
 	bagRecorder := workers.NewBagRecorder(procUtil)
 

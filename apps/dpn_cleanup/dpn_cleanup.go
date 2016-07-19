@@ -14,7 +14,7 @@ import (
 //
 // 0 * * * * . $HOME/.bash_profile /home/ubuntu/go/src/github.com/APTrust/bagman/bin/dpn_cleanup -config=demo
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("dpn")
 	procUtil.MessageLog.Info("dpn_cleanup started")
 	dpnConfig, err := dpn.LoadConfig("dpn/dpn_config.json", procUtil.ConfigName)
 	if err != nil {

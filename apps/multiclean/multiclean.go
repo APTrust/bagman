@@ -33,7 +33,7 @@ func main() {
 	requestedConfig := flag.String("config", "", "configuration to run")
 	deleteParts := flag.Bool("delete", false, "delete stray parts of multipart uploads")
 	flag.Parse()
-	procUtil := bagman.NewProcessUtil(requestedConfig)
+	procUtil := bagman.NewProcessUtil(requestedConfig, "aptrust")
 
 	s3Client := procUtil.S3Client.S3
 	bucket := s3Client.Bucket(procUtil.Config.PreservationBucket)

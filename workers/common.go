@@ -10,12 +10,16 @@ import (
 // TODO: Write tests for these.
 
 // Creates and returns a ProcessUtil object for a worker process.
-func CreateProcUtil() (procUtil *bagman.ProcessUtil) {
+// Param serviceGroup should be either "aptrust" or "dpn" and defaults
+// to "aptrust". This is a late hack to fix a problem where DPN services
+// are checking space on the wrong volume. This code will be replaced
+// soon by Exchange.
+func CreateProcUtil(serviceGroup string) (procUtil *bagman.ProcessUtil) {
 	requestedConfig := flag.String("config", "", "Configuration to run. Options are in config.json file. REQUIRED")
 	customEnvFile := flag.String("env", "", "Absolute path to file containing custom environment vars. OPTIONAL")
 	flag.Parse()
 	bagman.LoadCustomEnvOrDie(customEnvFile, nil)
-	procUtil = bagman.NewProcessUtil(requestedConfig)
+	procUtil = bagman.NewProcessUtil(requestedConfig, serviceGroup)
 	err := procUtil.Config.EnsureFluctusConfig()
 	if err != nil {
 		procUtil.MessageLog.Fatalf("Required Fluctus config vars are missing: %v", err)

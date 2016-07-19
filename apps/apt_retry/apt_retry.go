@@ -17,7 +17,7 @@ wound up in the trouble queue.
 */
 func main() {
 	jsonFile := flag.String("file", "", "JSON file to load")
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	procUtil.MessageLog.Info("apt_retry started")
 	bagRecorder := workers.NewBagRecorder(procUtil)
 

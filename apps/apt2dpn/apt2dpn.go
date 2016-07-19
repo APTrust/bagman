@@ -9,7 +9,7 @@ import (
 // This is a quick, one-off program to convert some APTrust
 // test bags to DPN test bags.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("dpn")
 	pathToConfigFile := "dpn/dpn_config.json"
 	dpnConfig, err := dpn.LoadConfig(pathToConfigFile)
 	if err != nil {

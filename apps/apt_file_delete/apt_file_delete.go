@@ -7,7 +7,7 @@ import (
 // apt_file_delete - Deletes individual Generic Files from preservation
 // storage at the request of users/admins.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.FileDeleteWorker)
 	if err != nil {
 		procUtil.MessageLog.Fatalf(err.Error())

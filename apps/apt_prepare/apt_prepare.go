@@ -9,7 +9,7 @@ import (
 // and validates tar files, then queues them for storage,
 // if they untar and validate successfully.
 func main() {
-	procUtil := workers.CreateProcUtil()
+	procUtil := workers.CreateProcUtil("aptrust")
 	procUtil.MessageLog.Info("Connecting to NSQLookupd at %s", procUtil.Config.NsqLookupd)
 	procUtil.MessageLog.Info("NSQDHttpAddress is %s", procUtil.Config.NsqdHttpAddress)
 	consumer, err := workers.CreateNsqConsumer(&procUtil.Config, &procUtil.Config.PrepareWorker)
