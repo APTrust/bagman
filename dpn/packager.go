@@ -227,6 +227,7 @@ func (packager *Packager) doFetch() {
 			result.ErrorMessage += fmt.Sprintf("Fetch succeeded for only %d of %d files",
 				fetchResults.SuccessCount(), len(files))
 			result.ErrorMessage += strings.Join(fetchResults.Errors(), ", ")
+			packager.logFetchErrors(result, fetchResults, files)
 			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 		} else  {
@@ -662,4 +663,17 @@ func PathWithinArchive(result *DPNResult, filePath, bagDir string) (string, erro
 	// will be something like ncsu.1840.16-1004/data/subdir/file1.pdf
 	pathWithinArchive := filepath.Join(bagName, basePath)
 	return pathWithinArchive, nil
+}
+
+func (packager *Packager) logFetchErrors(result *DPNResult, fetchResults *FetchResultCollection, files []*bagman.GenericFile) {
+	for _, gf := range files {
+		fetchResult := fetchResults.FindByIdentifier(gf.Identifier)
+		if fetchResult == nil {
+			packager.ProcUtil.MessageLog.Error("No fetch result for file %s (uri %s)",
+				gf.Identifier, gf.URI)
+		} else if !fetchResult.Succeeded() {
+			packager.ProcUtil.MessageLog.Error("Error fetching file %s: %s",
+				gf.Identifier, fetchResult.FetchResult.ErrorMessage)
+		}
+	}
 }

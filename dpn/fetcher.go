@@ -23,9 +23,14 @@ func (result *DPNFetchResult) Succeeded() (bool) {
 	}
 	ourMd5FromIngest := result.GenericFile.GetChecksum("md5")
 	if ourMd5FromIngest == nil {
+		result.FetchResult.ErrorMessage = "Cannot verify md5 checksum on file, because the system cannot find the GenericFile's original md5 digest."
 		return false  // This should never happen.
 	}
-	return result.FetchResult.LocalMd5 == ourMd5FromIngest.Digest
+	checksumMatches := result.FetchResult.LocalMd5 == ourMd5FromIngest.Digest
+	if !checksumMatches {
+		result.FetchResult.ErrorMessage = fmt.Sprintf("Checksum mismatch: md5 checksum of file fetched from S3 is '%s'; md5 checksum of GenericFile is '%s'", result.FetchResult.LocalMd5, ourMd5FromIngest.Digest)
+	}
+	return checksumMatches
 }
 
 type FetchResultCollection struct {
