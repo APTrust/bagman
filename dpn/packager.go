@@ -224,7 +224,10 @@ func (packager *Packager) doFetch() {
 			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 		} else if fetchResults.SuccessCount() != len(files) {
+			result.ErrorMessage += fmt.Sprintf("Fetch succeeded for only %d of %d files",
+				fetchResults.SuccessCount(), len(files))
 			result.ErrorMessage += strings.Join(fetchResults.Errors(), ", ")
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 		} else  {
 			packager.BuildChannel <- result
