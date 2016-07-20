@@ -144,6 +144,7 @@ func (packager *Packager) doLookup() {
 			// FAIL - Can't get intel obj data (HTTP or Fluctus error)
 			result.ErrorMessage += fmt.Sprintf("Could not fetch info about IntellectualObject " +
 				"'%s' from Fluctus: %s", result.BagIdentifier, err.Error())
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			result.Retry = true
 			packager.PostProcessChannel <- result
 			continue
@@ -152,6 +153,7 @@ func (packager *Packager) doLookup() {
 			// FAIL - Can't get intel obj data (Object not found)
 			result.ErrorMessage += fmt.Sprintf("Fluctus returned nil for IntellectualObject %s",
 				result.BagIdentifier)
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			result.Retry = true
 			packager.PostProcessChannel <- result
 			continue
@@ -162,6 +164,7 @@ func (packager *Packager) doLookup() {
 			packager.ProcUtil.MessageLog.Warning("Requeueing bag %s, %d bytes - not enough disk space",
 				result.BagIdentifier, intelObj.TotalFileSize())
 			result.ErrorMessage += err.Error()
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			result.Retry = true
 			packager.PostProcessChannel <- result
 			continue
@@ -172,6 +175,7 @@ func (packager *Packager) doLookup() {
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Cannot get absolute path for bag directory: %s",
 					err.Error())
+				packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 				result.Retry = true
 				packager.PostProcessChannel <- result
 				continue
@@ -181,6 +185,7 @@ func (packager *Packager) doLookup() {
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Error creating BagBuilder: %s",
 					err.Error())
+				packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 				result.Retry = true
 				packager.PostProcessChannel <- result
 				continue
@@ -200,12 +205,14 @@ func (packager *Packager) doFetch() {
 		targetDirectory, err := packager.DPNBagDirectory(result)
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory: %s", err.Error())
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
 		files, err := packager.FilesToFetch(result)
 		if err != nil {
 			result.ErrorMessage += err.Error()
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -214,6 +221,7 @@ func (packager *Packager) doFetch() {
 		result.FetchResults = fetchResults
 		if err != nil {
 			result.ErrorMessage += err.Error()
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 		} else if fetchResults.SuccessCount() != len(files) {
 			result.ErrorMessage += strings.Join(fetchResults.Errors(), ", ")
@@ -271,6 +279,7 @@ func (packager *Packager) doBuild() {
 				errMessages = fmt.Sprintf("%s %s ", errMessages, e.Error())
 			}
 			result.ErrorMessage += fmt.Sprintf("Error writing bag: %s ", errMessages)
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -296,6 +305,7 @@ func (packager *Packager) doTar() {
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Cannot get abs path for bag directory for bag %s: %s",
 				result.BagIdentifier, err.Error())
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -304,6 +314,7 @@ func (packager *Packager) doTar() {
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Cannot get list of files in directory %s: %s",
 				bagDir, err.Error())
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -317,6 +328,7 @@ func (packager *Packager) doTar() {
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Cannot create directory %s: %s",
 				filepath.Dir(tarFilePath), err.Error())
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -324,6 +336,7 @@ func (packager *Packager) doTar() {
 		if err != nil {
 			result.ErrorMessage += fmt.Sprintf("Error creating tar file %s for bag %s: %v",
 				tarFilePath, result.BagIdentifier, err)
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -336,6 +349,7 @@ func (packager *Packager) doTar() {
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf(
 					"Cannot create base folder in tar archive: %v", err)
+				packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 				tarFile.Close()
 				tarWriter.Close()
 				os.Remove(tarFilePath)
@@ -355,6 +369,7 @@ func (packager *Packager) doTar() {
 			if err != nil {
 				result.ErrorMessage += fmt.Sprintf("Error adding file %s to archive %s: %v",
 					filePath, tarFilePath, err)
+				packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 				tarFile.Close()
 				tarWriter.Close()
 				os.Remove(tarFilePath)
@@ -371,6 +386,7 @@ func (packager *Packager) doTar() {
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
 				result.PackageResult.TarFilePath, err)
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
@@ -386,6 +402,7 @@ func (packager *Packager) doTar() {
 		if err != nil {
 			result.ErrorMessage = fmt.Sprintf("Could not calculate checksums on '%s': %v",
 				tagManifestPath, err)
+			packager.ProcUtil.MessageLog.Error(result.ErrorMessage)
 			packager.CleanupChannel <- result
 			continue
 		}
