@@ -79,6 +79,41 @@ func TestGetChecksum(t *testing.T) {
 	if bogusChecksum != nil {
 		t.Errorf("GetChecksum returned something it shouldn't have")
 	}
+
+	// PT #126734205: Make sure we get the *latest* checksum.
+	// https://www.pivotaltracker.com/story/show/126734205
+	// Add later checksums, and make sure we get the latest ones.
+	newMd5 := &bagman.ChecksumAttribute{
+		Algorithm: "md5",
+		DateTime: time.Now().UTC(),
+		Digest: "0123456789",
+	}
+	newSha256 := &bagman.ChecksumAttribute{
+		Algorithm: "sha256",
+		DateTime: time.Now().UTC(),
+		Digest: "9876543210",
+	}
+	genericFile.ChecksumAttributes = append(genericFile.ChecksumAttributes, newMd5)
+	genericFile.ChecksumAttributes = append(genericFile.ChecksumAttributes, newSha256)
+
+	// New MD5
+	md5Checksum = genericFile.GetChecksum("md5")
+	if md5Checksum == nil {
+		t.Errorf("GetChecksum did not return md5 sum")
+	}
+	if md5Checksum.Digest != "0123456789" {
+		t.Errorf("GetChecksum returned wrong md5 sum")
+	}
+
+	// New SHA256
+	sha256Checksum = genericFile.GetChecksum("sha256")
+	if sha256Checksum == nil {
+		t.Errorf("GetChecksum did not return sha256 sum")
+	}
+	if sha256Checksum.Digest != "9876543210" {
+		t.Errorf("GetChecksum returned wrong sha256 sum")
+	}
+
 }
 
 func TestPreservationStorageFileName(t *testing.T) {

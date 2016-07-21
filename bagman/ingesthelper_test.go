@@ -65,7 +65,7 @@ func getS3File() (*bagman.S3File) {
 func getProcessUtil() (*bagman.ProcessUtil) {
 	makeTestDir()
 	testConfig := "test"
-	return bagman.NewProcessUtil(&testConfig)
+	return bagman.NewProcessUtil(&testConfig, "aptrust")
 }
 
 func getIngestHelper() (*bagman.IngestHelper) {

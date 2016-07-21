@@ -88,14 +88,22 @@ func (gf *GenericFile) InstitutionId() (string, error) {
 	return parts[0], nil
 }
 
-// Returns the checksum digest for the given algorithm for this file.
+// Returns the most recent checksum digest for the given algorithm for this file.
+// We use the most recent checksum to check fixity when doing fixity checks,
+// when restoring bags, and when building bags for DPN. See PT #126734205 at
+// https://www.pivotaltracker.com/story/show/126734205
 func (gf *GenericFile) GetChecksum(algorithm string) (*ChecksumAttribute) {
+	latestTimestamp := time.Time{}
+	var matchingChecksum *ChecksumAttribute
 	for _, cs := range gf.ChecksumAttributes {
 		if cs != nil && cs.Algorithm == algorithm {
-			return cs
+			if cs.DateTime.After(latestTimestamp) {
+				latestTimestamp = cs.DateTime
+				matchingChecksum = cs
+			}
 		}
 	}
-	return nil
+	return matchingChecksum
 }
 
 // Returns events of the specified type
