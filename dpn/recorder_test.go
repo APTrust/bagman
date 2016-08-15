@@ -34,7 +34,7 @@ func recorderTestEnsureFiles(t *testing.T, procUtil *bagman.ProcessUtil) {
 }
 
 func getRecorder(t *testing.T) (*dpn.Recorder) {
-	procUtil := bagman.NewProcessUtil(&testConfig)
+	procUtil := bagman.NewProcessUtil(&testConfig, "dpn")
 	dpnConfig := loadConfig(t, configFile)
 
 	recorder, err := dpn.NewRecorder(procUtil, dpnConfig)

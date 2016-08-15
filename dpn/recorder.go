@@ -8,6 +8,7 @@ import (
 	"github.com/satori/go.uuid"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -504,6 +505,15 @@ func (recorder *Recorder) MakeReplicationTransfer(result *DPNResult, toNode stri
 	// Sample rsync link:
 	// dpn.tdr@devops.aptrust.org:outbound/472218b3-95ce-4b8e-6c21-6e514cfbe43f.tar
 	hostname, _ := os.Hostname()
+	// We should get an fully qualified host name here, but we
+	// have to account for Ansible sometimes hosing our hostname
+	// with an internal name.
+	lc_hostname := strings.ToLower(hostname)
+	if lc_hostname == "dpn" || lc_hostname == "dpn-prod" {
+		hostname = "dpn.aptrust.org"
+	} else if lc_hostname == "dpn-demo" {
+		hostname = "dpn-demo.aptrust.org"
+	}
 	link := fmt.Sprintf("dpn.%s@%s:outbound/%s.tar",
 		toNode, hostname, result.DPNBag.UUID)
 	now := time.Now().UTC().Truncate(time.Second)
