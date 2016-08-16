@@ -89,20 +89,20 @@ type DPNMessageDigest struct {
 // ensure bags are intact and not corrupt.
 type DPNFixityCheck struct {
 	// The UUID that identifies this record.
-	FixityCheckId
+	FixityCheckId       string         `json:"fixity_check_id"`
 	// The bag on which the fixity was calculated.
-	Bag
+	Bag                 string         `json:"bag"`
 	// The node that calculated the fixity check.
-	Node
+	Node                string         `json:"node"`
 	// Indicates whether the fixity that the node calculated
 	// matches the known good fixity of the bag.
-	Success
+	Success             bool           `json:"success"`
 	// Timestamp indicating when the node calculated the
 	// fixity value.
-	FixityAt
+	FixityAt           time.Time       `json:"fixity_at"`
 	// Timestamp indicating when this record was saved by
 	// the DPN Rails app into the database.
-	CreatedAt          time.Time            `json:"created_at"`
+	CreatedAt          time.Time       `json:"created_at"`
 }
 
 // DPNMember describes an institution or depositor that owns
