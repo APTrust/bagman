@@ -110,7 +110,7 @@ func (copier *Copier) HandleMessage(message *nsq.Message) error {
 }
 
 // Look up the DPN bag on the admin node. Although we already have the
-// bag object as bart of the DPNResult object, this request may have been
+// bag object as part of the DPNResult object, this request may have been
 // sitting in the queue for many hours, and the replication request may
 // have been fulfilled or cancelled in that time. So check the status on
 // the authoritative node to avoid unnecessarily processing what might
@@ -123,7 +123,7 @@ func (copier *Copier) doLookup() {
 		copier.ProcUtil.MessageLog.Debug(
 			"Looking up ReplicationId %s, bag %s, on node %s ",
 				result.TransferRequest.ReplicationId,
-				result.TransferRequest.BagId,
+				result.TransferRequest.Bag,
 				result.TransferRequest.FromNode)
 
 
@@ -131,14 +131,17 @@ func (copier *Copier) doLookup() {
 		// not be processed, then don't process it...
 		xfer, _ := remoteClient.ReplicationTransferGet(
 			result.TransferRequest.ReplicationId)
-		if xfer != nil && xfer.Status != "requested" {
+		if xfer != nil && (xfer.Cancelled || xfer.Stored) {
+			cancelMessage := "request was cancelled"
+			if xfer.Stored {
+				cancelMessage = "item has already been stored"
+			}
 			message := fmt.Sprintf(
-				"Cancelling copy of ReplicationId %s (bag %s) because " +
-					"replication status on %s is %s",
+				"Cancelling copy of ReplicationId %s (bag %s) from %s because %s",
 				result.TransferRequest.ReplicationId,
-				result.TransferRequest.BagId,
+				result.TransferRequest.Bag,
 				result.TransferRequest.FromNode,
-				xfer.Status)
+				cancelMessage)
 			copier.ProcUtil.MessageLog.Info(message)
 			result.CopyResult.InfoMessage = message
 			result.Retry = false
@@ -179,7 +182,7 @@ func (copier *Copier) doCopy() {
 
 		localPath := filepath.Join(
 			copier.ProcUtil.Config.DPNStagingDirectory,
-			fmt.Sprintf("%s.tar", result.TransferRequest.BagId))
+			fmt.Sprintf("%s.tar", result.TransferRequest.Bag))
 
 		if !bagman.FileExists(copier.ProcUtil.Config.DPNStagingDirectory) {
 			os.MkdirAll(copier.ProcUtil.Config.DPNStagingDirectory, 0755)

@@ -214,7 +214,10 @@ type DPNReplicationTransfer struct {
 	// FromNode. This value is set by the FromNode.
 	Link            string       `json:"link"`
 
-	// ???
+	// This field will have a value of false when the replication
+	// request is created. When the to_node returns a correct fixity_value
+	// to the from_node, the from_node will set this to true. At that point,
+	// the fron_node can store the bag.
 	StoreRequested  bool         `json:"store_requested"`
 
 	// Indicates whether the ToNode successfully stored the bag.
