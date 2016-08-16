@@ -53,6 +53,7 @@ type BagListResult struct {
 	Count       int32                      `json:count`
 	Next        *string                    `json:next`
 	Previous    *string                    `json:previous`
+	TotalSize   int64                      `json:total_size`
 	Results     []*DPNBag                  `json:results`
 }
 

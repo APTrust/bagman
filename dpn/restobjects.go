@@ -61,19 +61,48 @@ func (node *DPNNode) ChooseNodesForReplication(howMany int) ([]string) {
 	return selectedNodes
 }
 
+// DPNStorage describes the type of storage a node is using
+// to preserve data. For example, "tape," "magnetic disk,"
+// "optical disk," etc.
 type DPNStorage struct {
 	Region               string        `json:"region"`
 	Type                 string        `json:"type"`
 }
 
-// DPNFixity represents a checksum for a bag in the DPN REST
-// service.
-type DPNFixity struct {
+// DPNMessageDigest represents a checksum calculated for a bag
+// upon ingest. Later fixity checks will use this fixity value
+// to determine whether bags are intact.
+type DPNMessageDigest struct {
+	// The value of the digest.
+	Value                string        `json:"value"`
+	// The algorithm used to calculate the digest. Usually "sha256"
+	Algorithm            string        `json:"algorithm"`
+	// The UUID of the bag.
+	Bag                  string        `json:"bag"`
+	// The namespace of the node that created the digest.
+	// "hathi", "aptrust", "tdr", "sdr", or "chron".
+	Node                 string        `json:"node"`
+}
 
-	// The algorithm used to check the fixity. Usually 'sha256',
-	// but others may be valid in the future.
-	Sha256               string       `json:"sha256"`
-
+// DPNFixityCheck represents the result of a fixity check on a
+// stored bag. These checks occur periodically after ingest to
+// ensure bags are intact and not corrupt.
+type DPNFixityCheck struct {
+	// The UUID that identifies this record.
+	FixityCheckId
+	// The bag on which the fixity was calculated.
+	Bag
+	// The node that calculated the fixity check.
+	Node
+	// Indicates whether the fixity that the node calculated
+	// matches the known good fixity of the bag.
+	Success
+	// Timestamp indicating when the node calculated the
+	// fixity value.
+	FixityAt
+	// Timestamp indicating when this record was saved by
+	// the DPN Rails app into the database.
+	CreatedAt          time.Time            `json:"created_at"`
 }
 
 // DPNMember describes an institution or depositor that owns
@@ -143,9 +172,6 @@ type DPNBag struct {
 	// which are strings. E.g. ['aptrust', 'chron', 'tdr']
 	ReplicatingNodes   []string             `json:"replicating_nodes"`
 
-	// Fixities are the checksum/fixity values for this bag.
-	Fixities           *DPNFixity           `json:"fixities"`
-
 	// CreatedAt is when this record was created.
 	CreatedAt          time.Time            `json:"created_at"`
 
@@ -163,7 +189,7 @@ type DPNReplicationTransfer struct {
 	ToNode          string       `json:"to_node"`
 
 	// Bag is the UUID of the bag to be replicated
-	BagId           string       `json:"uuid"`
+	Bag             string       `json:"uuid"`
 
 	// ReplicationId is a unique id for this replication request.
 	// It's a UUID in string format.
@@ -180,34 +206,6 @@ type DPNReplicationTransfer struct {
 	// node sends the info back to the FromNode.
 	FixityValue     *string      `json:"fixity_value"`
 
-	// FixityAccept describes whether the FromNode accepts the fixity
-	// value calculated by the ToNode. This is a nullable boolean,
-	// so it has to be a pointer.
-	FixityAccept    *bool        `json:"fixity_accept"`
-
-	// BagValid is a value set by the ToNode to indicate whether
-	// the bag it received was valid. This is a nullable boolean,
-	// so it has to be a pointer.
-	BagValid        *bool        `json:"bag_valid"`
-
-	// Status is the status of the request, which can be any of:
-	//
-	// "requested"  - The FromNode has requested this transfer.
-	//                This means the transfer is new, and no
-	//                action has been taken yet.
-	// "rejected"   - Set by the ToNode when it will not or cannot
-	//                accept this transfer. (Usually due to disk space.)
-	// "received"   - Set by the ToNode to indicate it has received the
-	//                the bag.
-	// "confirmed"  - Set by the FromNode after the bag has been confirmed
-	//                valid, the fixity value has been approved, and the bag
-	//                has been stored by the ToNode.
-	// "stored"     - Set by the ToNode after the bag has been copied to
-	//                long-term storage.
-	// "cancelled"  - Can be set by either node for any reason. No further
-	//                processing should occur on a cancelled request.
-	Status          string       `json:"status"`
-
 	// Protocol is the network protocol used to transfer the bag.
 	// At launch, the only valid value for this is 'R' for rsync.
 	Protocol        string       `json:"protocol"`
@@ -215,6 +213,19 @@ type DPNReplicationTransfer struct {
 	// Link is a URL that the ToNode can use to copy the bag from the
 	// FromNode. This value is set by the FromNode.
 	Link            string       `json:"link"`
+
+	// ???
+	StoreRequested  bool         `json:"store_requested"`
+
+	// Indicates whether the ToNode successfully stored the bag.
+	Stored          bool         `json:"stored"`
+
+	// Indicates whether the transfer request was cancelled.
+	Cancelled       bool         `json:"cancelled"`
+
+	// The reason the transfer request was cancelled.
+	// Will be null if Cancelled is false.
+	CancelReason    *string      `json:"cancel_reason"`
 
 	// CreatedAt is the datetime when this record was created.
 	CreatedAt       time.Time    `json:"created_at"`
@@ -236,23 +247,20 @@ type DPNRestoreTransfer struct {
 	ToNode          string       `json:"to_node"`
 
 	// Bag is the unique identifier of the bag to be restored.
-	BagId           string       `json:"uuid"`
+	Bag             string       `json:"uuid"`
 
-	// Status is the status of the restoration operation. It can
-	// have any of the following values:
-	//
-	// "requested" - Default status used when record first created.
-	// "accepted"  - Indicates the FromNode has accepted the request to
-	//               restore the bag.
-	// "rejected"  - Set by the FromNode if it cannot or will not restore
-	//               the bag.
-	// "prepared"  - Set by the FromNode when the content has been restored
-	//               locally and staged for transfer back to the to_node.
-	// "finished"  - Set by the ToNode after it has retrieved the restored
-	//               bag from the FromNode.
-	// "cancelled" - Set by either node to indicate the restore operation
-	//               was cancelled.
-	Status          string       `json:"status"`
+	// Indicates whether the FromNode accepted the restore request.
+	Accepted        bool         `json:"accepted"`
+
+	// Indicates that the restore operation is complete.
+	Finished        bool         `json:"finished"`
+
+	// Indicates that the restore operation was cancelled.
+	Cancelled       bool         `json:"cancelled"`
+
+	// The reason the restore operation was cancelled.
+	// Will be null if Cancelled is false.
+	CancelReason    *string      `json:"cancel_reason"`
 
 	// Protocol is the network protocol used to transfer the bag.
 	// At launch, the only valid value for this is 'R' for rsync.
@@ -267,4 +275,23 @@ type DPNRestoreTransfer struct {
 
 	// UpdatedAt is the datetime when this record was last updated.
 	UpdatedAt       time.Time    `json:"updated_at"`
+}
+
+// DPNIngest records the completion of the ingest process for a single bag.
+// As far as dpn-server (the registry) is concerned, the ingest process starts
+// when an ingest node creates a new bag record. It's complete when that bag
+// has been successfully replicated to two other nodes.
+type DPNIngest struct {
+	// The UUID that identifies this record.
+	IngestId         string      `json:"ingest_id"`
+	// The UUID of the bag that was ingested.
+	Bag              string      `json:"bag"`
+	// Indicates whether the ingest and all replications completed
+	// successfully.
+	Ingested         bool        `json:"ingested"`
+	// A list of node namespaces indicating which nodes have
+	// stored a copy of this bag.
+	ReplicatingNodes []string    `json:"replicating_nodes"`
+	// CreatedAt is the datetime when this record was created.
+	CreatedAt       time.Time    `json:"created_at"`
 }
