@@ -13,6 +13,27 @@ import (
 	"time"
 )
 
+// The Recorder records information about a bag and/or
+// transfer request in the DPN registry via the DPN REST
+// service.
+//
+// Note that bags being replicated may go into the NSQ record
+// queue twice: once after the bag was copied, so we can tell
+// DPN whether we got a valid bag and what the fixity value was,
+// and then again after we store the bag, so we can let DPN know
+// the replication is complete. If the bag is invalid or the
+// checksum is bad, the transfer will be cancelled, and we'll
+// never make the second call to DPN.
+//
+// For bags we ingest here at APTrust, we record the following
+// items in our own local DPN registry:
+//
+// 1. The new bag record.
+// 2. A digest record to record the sha-256 checksum of the
+//    the new bag's tag manifest.
+// 3. Two replication requests.
+//
+// TODO for 2.0: Do we need to create an ingest record?
 type Recorder struct {
 	RecordChannel       chan *DPNResult
 	PostProcessChannel  chan *DPNResult
@@ -117,7 +138,7 @@ func (recorder *Recorder) HandleMessage(message *nsq.Message) error {
 	result.NsqMessage = message
 	result.Stage = STAGE_RECORD
 
-	// Fluctus will have a processed item request only
+	// Fluctus will have a ProcessedItem record only
 	// if this bag was ingested at APTrust. APTrust bags
 	// have result.BagIdentifier. Bags replicated from other
 	// nodes do not.
@@ -329,7 +350,15 @@ func (recorder *Recorder) registerNewDPNBag(result *DPNResult) {
 			result.DPNBag.UUID, err.Error())
 		return
 	}
+	digest, err := recorder.LocalRESTClient.MessageDigestCreate(result.MessageDigest)
+	if err != nil {
+		result.ErrorMessage = fmt.Sprintf(
+			"Error creating message digest for bag %s in our local registry: %s",
+			result.DPNBag.UUID, err.Error())
+		return
+	}
 	result.DPNBag = dpnBag
+	result.MessageDigest = digest
 	result.RecordResult.DPNBagCreatedAt = dpnBag.CreatedAt
 }
 

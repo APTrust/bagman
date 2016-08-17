@@ -506,6 +506,40 @@ func (client *DPNRestClient) dpnBagSave(bag *DPNBag, method string) (*DPNBag, er
 	return &returnedBag, nil
 }
 
+func (client *DPNRestClient) MessageDigestCreate(digest *DPNMessageDigest) (*DPNMessageDigest, error) {
+	// POST/Create
+	relativeUrl := fmt.Sprintf("/%s/bag/%s/digest", client.APIVersion, digest.Bag)
+	objUrl := client.BuildUrl(relativeUrl, nil)
+	client.logger.Debug("POSTing digest for bag %s to DPN REST service: %s", objUrl)
+	postData, err := json.Marshal(digest)
+	if err != nil {
+		return nil, err
+	}
+	req, err := client.NewJsonRequest("POST", objUrl, bytes.NewBuffer(postData))
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != 201 {
+		error := fmt.Errorf("POST to %s returned status code %d. Post data: %v",
+			objUrl, response.StatusCode, string(postData))
+		client.buildAndLogError(body, error.Error())
+		//fmt.Println(string(body))
+		return nil, error
+	}
+	returnedDigest := DPNMessageDigest{}
+	err = json.Unmarshal(body, &returnedDigest)
+	if err != nil {
+		error := fmt.Errorf("Could not parse JSON response from  %s", objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+	return &returnedDigest, nil
+}
+
 func (client *DPNRestClient) ReplicationTransferGet(identifier string) (*DPNReplicationTransfer, error) {
 	// /api-v1/replicate/aptrust-999999/
 	relativeUrl := fmt.Sprintf("/%s/replicate/%s/", client.APIVersion, identifier)

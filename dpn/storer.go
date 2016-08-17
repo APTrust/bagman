@@ -107,7 +107,16 @@ func (storer *Storer) store() {
 		}
 		// Remember that TransferRequest will be nil
 		// for bags we built ourselves.
-		if result.TransferRequest != nil && result.TransferRequest.Status == "Cancelled" {
+		if result.TransferRequest != nil && result.TransferRequest.Cancelled {
+			result.ErrorMessage += " Replication request was cancelled."
+			result.Stage = STAGE_CANCELLED
+			result.Retry = false
+			storer.PostProcessChannel <- result
+			continue
+		} else if result.TransferRequest != nil && result.TransferRequest.StoreRequested == false {
+			// TODO: Would be nice to alert someone about this.
+			result.ErrorMessage += " Replication request was not cancelled, " +
+				"but StoreRequested was set to false. SOMETHING IS WRONG HERE!"
 			result.Stage = STAGE_CANCELLED
 			result.Retry = false
 			storer.PostProcessChannel <- result
@@ -188,7 +197,7 @@ func (storer *Storer) store() {
 
 		// Update the transfer request, if there is one.
 		if result.TransferRequest != nil {
-			result.TransferRequest.Status = "Stored"
+			result.TransferRequest.Stored = true
 		}
 		if result.ErrorMessage != "" {
 			result.ErrorMessage = fmt.Sprintf("Bag was stored, but we couldn't " +
@@ -273,9 +282,6 @@ func (storer *Storer) createBagRecord() {
 		if bagWasCreatedHere && bagStoredSuccessfully {
 			storer.ProcUtil.MessageLog.Debug("Creating bag record for %s with md5 %s and sha256 %s",
 				result.BagIdentifier, result.BagMd5Digest, result.BagSha256Digest)
-			fixity := &DPNFixity{
-				Sha256: result.TagManifestDigest,
-			}
 			fileInfo, err := os.Stat(result.TarFilePath())
 			if err != nil {
 				result.ErrorMessage = fmt.Sprintf("Cannot stat %s to get file size: %v",
@@ -297,13 +303,21 @@ func (storer *Storer) createBagRecord() {
 				// No spec yet on how to specify interpretive; cannot be nil
 				Interpretive: make([]string, 0),
 				ReplicatingNodes: []string{"aptrust"},
-				Fixities: fixity,
+			}
+			digest := &DPNMessageDigest{
+				Value: result.TagManifestDigest,
+				Algorithm: "sha256",
+				Node: storer.DPNConfig.LocalNode,
+				Bag: newBag.UUID,
+				CreatedAt: time.Now().UTC(),
 			}
 			result.DPNBag = newBag
+			result.MessageDigest = digest
 		}
 		storer.CleanupChannel <- result
 	}
 }
+
 
 func (storer *Storer) cleanup() {
 	for result := range storer.CleanupChannel {

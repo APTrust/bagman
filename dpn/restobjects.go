@@ -82,6 +82,9 @@ type DPNMessageDigest struct {
 	// The namespace of the node that created the digest.
 	// "hathi", "aptrust", "tdr", "sdr", or "chron".
 	Node                 string        `json:"node"`
+	// Timestamp indicating when the ingest node created
+	// the message digest.
+	CreatedAt          time.Time       `json:"created_at"`
 }
 
 // DPNFixityCheck represents the result of a fixity check on a

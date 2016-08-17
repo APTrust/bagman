@@ -92,6 +92,12 @@ type DPNResult struct {
 	// since the bag won't have a UUID until after it's packaged.
 	DPNBag           *DPNBag
 
+	// The chechsum of the bag's tag manifest, along with
+	// some other metadata that the DPN registry needs to store,
+	// such as who calculated the digest, which algorithm was
+	// used, and which bag the digest should be associated with.
+	MessageDigest    *DPNMessageDigest
+
 	// The DPN transfer request associated with this bag. This will
 	// be nil if it's a bag created at our own node. It will be
 	// non-nil for bags we're replicating from other nodes.
