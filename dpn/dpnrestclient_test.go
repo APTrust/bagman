@@ -306,6 +306,74 @@ func TestDPNMemberUpdate(t *testing.T) {
 	}
 }
 
+func TestMessageDigestGet(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	digest, err := client.MessageDigestGet(aptrustBagIdentifier)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if digest.Bag != aptrustBagIdentifier {
+		t.Errorf("Bag: expected '%s', got '%s'", aptrustBagIdentifier, digest.Bag)
+	}
+	if digest.Algorithm != "sha256" {
+		t.Errorf("Digest: expected 'sha256', got '%s'", digest.Value)
+	}
+	if digest.Node != "aptrust" {
+		t.Errorf("Digest: expected 'aptrust', got '%s'", digest.Node)
+	}
+	if digest.Value != "" {
+		t.Errorf("Digest: expected '', got '%s'", digest.Value)
+	}
+	if digest.CreatedAt.IsZero() {
+		t.Errorf("CreatedAt is not set")
+	}
+}
+
+func TestMessageDigestCreate(t *testing.T) {
+	if runRestTests(t) == false {
+		return
+	}
+	client := getClient(t)
+	bag := MakeBag()
+	dpnBag, err := client.DPNBagCreate(bag)
+	if err != nil {
+		t.Errorf("DPNBagCreate returned error %v", err)
+		return
+	}
+	md := &dpn.DPNMessageDigest{
+		Value: "12345678",
+		Node: "aptrust",
+		Algorithm: "sha256",
+		Bag: bag.UUID,
+		CreatedAt: time.Now().UTC(),
+	}
+	digest, err := client.MessageDigestCreate(md)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	if digest.Bag != dpnBag.UUID {
+		t.Errorf("Bag: expected '%s', got '%s'", dpnBag.UUID, digest.Bag)
+	}
+	if digest.Algorithm != "sha256" {
+		t.Errorf("Digest: expected 'sha256', got '%s'", digest.Value)
+	}
+	if digest.Node != "aptrust" {
+		t.Errorf("Digest: expected 'aptrust', got '%s'", digest.Node)
+	}
+	if digest.Value != "12345678" {
+		t.Errorf("Digest: expected '12345678', got '%s'", digest.Value)
+	}
+	if digest.CreatedAt.IsZero() {
+		t.Errorf("CreatedAt is not set")
+	}
+}
+
+
 func TestDPNBagGet(t *testing.T) {
 	if runRestTests(t) == false {
 		return
