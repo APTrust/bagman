@@ -75,25 +75,26 @@ func buildResultWithTransfer(t *testing.T, recorder *dpn.Recorder) (*dpn.DPNResu
 		return nil
 	}
 	xfer := xfers.Results[0]
-	bag, err := recorder.RemoteClients["hathi"].DPNBagGet(xfer.BagId)
+	bag, err := recorder.RemoteClients["hathi"].DPNBagGet(xfer.Bag)
 	if err != nil {
 		t.Error(err)
 		return nil
 	}
-	if bag.Fixities == nil || bag.Fixities.Sha256 == "" {
-		t.Errorf("Bag %s has no fixity value!", bag.UUID)
+
+	// Get MessageDigest
+	digest, err := recorder.RemoteClients["hathi"].MessageDigestGet(xfer.Bag)
+	if err != nil {
+		t.Error(err)
 		return nil
 	}
+
 	result := dpn.NewDPNResult("")
 	result.DPNBag = bag
 	result.TransferRequest = xfer
-
-	// Need to send this receipt to admin node
-	fixityValue := bag.Fixities.Sha256
-	result.TransferRequest.FixityValue = &fixityValue
+	result.MessageDigest = digest
 
 	result.ValidationResult = &dpn.ValidationResult{
-		TagManifestChecksum: bag.Fixities.Sha256,
+		TagManifestChecksum: digest.Value,
 	}
 	result.BagMd5Digest = "SomeFakeValue"
 	return result

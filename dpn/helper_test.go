@@ -41,16 +41,12 @@ func loadConfig(t *testing.T, configPath string) (*dpn.DPNConfig) {
 // Creates a DPN bag.
 func MakeBag() (*dpn.DPNBag) {
 	youyoueyedee := uuid.NewV4()
-	randChars := youyoueyedee.String()[0:8]
 	tenSecondsAgo := time.Now().Add(-10 * time.Second)
 	return &dpn.DPNBag {
 		UUID: youyoueyedee.String(),
 		Interpretive: []string{},
 		Rights: []string{},
 		ReplicatingNodes: []string{},
-		Fixities: &dpn.DPNFixity{
-			Sha256: randChars,
-		},
 		LocalId: fmt.Sprintf("GO-TEST-BAG-%s", youyoueyedee.String()),
 		Size: 12345678,
 		FirstVersionUUID: youyoueyedee.String(),
@@ -100,7 +96,7 @@ func MakeRestoreRequest(fromNode, toNode, bagUuid string) (*dpn.DPNRestoreTransf
 		RestoreId: uuid.NewV4().String(),
 		Accepted: false,
 		Finished: false,
-		Cancel: false,
+		Cancelled: false,
 		CancelReason: nil,
 		Protocol: "rsync",
 		Link: fmt.Sprintf("rsync://mnt/staging/%s.tar", idString),

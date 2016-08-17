@@ -771,7 +771,6 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	}
 
 	// Mark as received, with a bad fixity.
-	newFixityValue := "1234567890"
 	newXfer.UpdatedAt = newXfer.UpdatedAt.Add(1 * time.Second)
 
 	updatedXfer, err := client.ReplicationTransferUpdate(newXfer)
@@ -996,8 +995,11 @@ func TestRestoreTransferUpdate(t *testing.T) {
 		return
 	}
 
-	// Reject this one...
-	newXfer.Status = "rejected"
+	// Update some of the allowed fields.
+	cancelReason := "I just didn't feel like doing it."
+	newXfer.Cancelled = true
+	newXfer.CancelReason = &cancelReason
+	newXfer.UpdatedAt = newXfer.UpdatedAt.Add(1 * time.Second)
 
 	updatedXfer, err := client.RestoreTransferUpdate(newXfer)
 	if err != nil {
@@ -1009,41 +1011,12 @@ func TestRestoreTransferUpdate(t *testing.T) {
 		return
 	}
 
-	// ... make sure status is correct
-	if updatedXfer.Status != "rejected" {
-		t.Errorf("Status is '%s'; expected 'rejected'", updatedXfer.Status)
-	}
-
-
-	// Update the allowed fields. We're going to send a bad
-	// fixity value, because we don't know the good one, so
-	// the server will cancel this transfer.
-	link := "rsync://blah/blah/blah/yadda/yadda/beer"
-	newXfer.Status = "prepared"
-	newXfer.Link = link
-
-	// Now that there are no milliseconds on the DPN timestamps,
-	// we have to sleep for more than 1 second to test whether
-	// UpdatedAt timestamps change after update.
-	time.Sleep(1500 * time.Millisecond)
-	newXfer.UpdatedAt = time.Now()
-
-	updatedXfer, err = client.RestoreTransferUpdate(newXfer)
-	if err != nil {
-		t.Errorf("RestoreTransferUpdate returned error %v", err)
-		return
-	}
-	if updatedXfer == nil {
-		t.Errorf("RestoreTransferUpdate did not return an object")
-		return
-	}
-
 	// Make sure values were stored...
-	if updatedXfer.Status != "prepared" {
-		t.Errorf("Status is %s; expected prepared", updatedXfer.Status)
+	if updatedXfer.Cancelled != true {
+		t.Errorf("Cancelled: expected true, got false")
 	}
-	if updatedXfer.Link != link {
-		t.Errorf("Status is %s; expected %s", updatedXfer.Link, link)
+	if *updatedXfer.CancelReason != cancelReason {
+		t.Errorf("CancelReason is %s; expected %s", updatedXfer.CancelReason, cancelReason)
 	}
 	if updatedXfer.UpdatedAt.After(newXfer.UpdatedAt) == false {
 		t.Errorf("UpdatedAt was not updated")

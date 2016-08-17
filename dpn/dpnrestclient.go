@@ -506,6 +506,39 @@ func (client *DPNRestClient) dpnBagSave(bag *DPNBag, method string) (*DPNBag, er
 	return &returnedBag, nil
 }
 
+func (client *DPNRestClient) MessageDigestGet(bagUuid string) (*DPNMessageDigest, error) {
+	// /api-v2/bag/<uuid>/digest
+	relativeUrl := fmt.Sprintf("/%s/bag/%s/digest", client.APIVersion, bagUuid)
+	objUrl := client.BuildUrl(relativeUrl, nil)
+	client.logger.Debug("Requesting MessageDigest from DPN REST service: %s", objUrl)
+	request, err := client.NewJsonRequest("GET", objUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	body, response, err := client.doRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// 404 for object not found
+	if response.StatusCode != 200 {
+		error := fmt.Errorf("ReplicationTransferGet expected status 200 but got %d. URL: %s",
+			response.StatusCode, objUrl)
+		client.buildAndLogError(body, error.Error())
+		return nil, error
+	}
+
+	// Build and return the data structure
+	obj := &DPNMessageDigest{}
+	err = json.Unmarshal(body, obj)
+	if err != nil {
+		return nil, client.formatJsonError(objUrl, body, err)
+	}
+	return obj, nil
+}
+
+// Create a MessageDigest record. These records are read-only
+// once they've been created, so there's no update method.
 func (client *DPNRestClient) MessageDigestCreate(digest *DPNMessageDigest) (*DPNMessageDigest, error) {
 	// POST/Create
 	relativeUrl := fmt.Sprintf("/%s/bag/%s/digest", client.APIVersion, digest.Bag)
