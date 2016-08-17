@@ -8,7 +8,6 @@ import (
 	"github.com/satori/go.uuid"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -384,14 +383,6 @@ func TestDPNBagGet(t *testing.T) {
 		t.Errorf("ReplicatingNodes[1]: expected 'hathi', got '%s'",
 			dpnBag.ReplicatingNodes[1])
 	}
-	if dpnBag.Fixities == nil || dpnBag.Fixities.Sha256 == "" {
-		t.Errorf("Fixities: should not be empty")
-	}
-	expectedFixity := "7569cf2d4bcd8b000b75bcbca82512be6e34f90f5a5479ccf7322b4d56825fde"
-	if dpnBag.Fixities.Sha256 != expectedFixity {
-		t.Errorf("Fixities.Sha256: expected '%s', got '%s'",
-			expectedFixity, dpnBag.Fixities.Sha256)
-	}
 }
 
 func TestDPNBagListGet(t *testing.T) {
@@ -481,13 +472,6 @@ func TestDPNBagCreate(t *testing.T) {
 	if dpnBag.BagType != bag.BagType {
 		t.Errorf("BagTypes don't match. Ours = %s, Theirs = %s", bag.BagType, dpnBag.BagType)
 	}
-	if dpnBag.Fixities == nil || dpnBag.Fixities.Sha256 == "" {
-		t.Errorf("Bag fixities are missing")
-	}
-	if dpnBag.Fixities.Sha256 != bag.Fixities.Sha256 {
-		t.Errorf("Fixities don't match. Ours = %s, Theirs = %s",
-			bag.Fixities.Sha256, dpnBag.Fixities.Sha256)
-	}
 
 	// These tests really check that the server is behaving correctly,
 	// which isn't our business, but if it's not, we want to know.
@@ -571,8 +555,8 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.ToNode != "hathi" {
 		t.Errorf("ToNode: expected 'hathi', got '%s'", xfer.ToNode)
 	}
-	if xfer.BagId != aptrustBagIdentifier {
-		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, xfer.BagId)
+	if xfer.Bag != aptrustBagIdentifier {
+		t.Errorf("UUID: expected '%s', got '%s'", aptrustBagIdentifier, xfer.Bag)
 	}
 	if xfer.ReplicationId != replicationIdentifier {
 		t.Errorf("ReplicationId: expected '%s', got '%s'", replicationIdentifier, xfer.ReplicationId)
@@ -586,14 +570,8 @@ func TestReplicationTransferGet(t *testing.T) {
 	if xfer.FixityAlgorithm != "sha256" {
 		t.Errorf("FixityAlgorithm: expected 'sha256', got '%s'", xfer.FixityAlgorithm)
 	}
-	if *xfer.FixityAccept != true {
-		t.Errorf("FixityAccept: expected true, got %t", *xfer.FixityAccept)
-	}
-	if *xfer.BagValid != true {
-		t.Errorf("BagValid: expected true, got %s", *xfer.BagValid)
-	}
-	if xfer.Status != "stored" {
-		t.Errorf("Status: expected 'requested', got '%s'", xfer.Status)
+	if xfer.Stored != true {
+		t.Errorf("Expected Stored to be true, got false")
 	}
 	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
@@ -716,8 +694,8 @@ func TestReplicationTransferCreate(t *testing.T) {
 	if newXfer.ToNode != xfer.ToNode {
 		t.Errorf("ToNode is %s; expected %s", newXfer.ToNode, xfer.ToNode)
 	}
-	if newXfer.BagId != xfer.BagId {
-		t.Errorf("UUID is %s; expected %s", newXfer.BagId, xfer.BagId)
+	if newXfer.Bag != xfer.Bag {
+		t.Errorf("UUID is %s; expected %s", newXfer.Bag, xfer.Bag)
 	}
 	if newXfer.ReplicationId == "" {
 		t.Errorf("ReplicationId is missing")
@@ -734,14 +712,17 @@ func TestReplicationTransferCreate(t *testing.T) {
 		t.Errorf("FixityValue: expected nil but got %s",
 			*newXfer.FixityValue)
 	}
-	if newXfer.FixityAccept != nil {
-		t.Errorf("FixityAccept is %t; expected nil", *newXfer.FixityAccept)
+	if newXfer.Stored != false {
+		t.Errorf("Stored: expected false, got true")
 	}
-	if newXfer.BagValid != nil {
-		t.Errorf("BagValid is %s; expected nil", *newXfer.BagValid)
+	if newXfer.StoreRequested != false {
+		t.Errorf("StoreRequested: expected false, got true")
 	}
-	if newXfer.Status != "requested" {
-		t.Errorf("Status is %s; expected requested", newXfer.Status)
+	if newXfer.Cancelled != false {
+		t.Errorf("Cancelled: expected false, got true")
+	}
+	if newXfer.CancelReason != nil {
+		t.Errorf("CancelReason: expected nil, got '%s'", newXfer.CancelReason)
 	}
 	if newXfer.Protocol != xfer.Protocol {
 		t.Errorf("Protocol is %s; expected %s", newXfer.Protocol, xfer.Protocol)
@@ -790,38 +771,10 @@ func TestReplicationTransferUpdate(t *testing.T) {
 	}
 
 	// Mark as received, with a bad fixity.
-	bagValid := true
-	newFixityValue :=  "1234567890"
-	newXfer.Status = "received"
+	newFixityValue := "1234567890"
 	newXfer.UpdatedAt = newXfer.UpdatedAt.Add(1 * time.Second)
-	newXfer.BagValid = &bagValid
-	newXfer.FixityValue = &newFixityValue
 
 	updatedXfer, err := client.ReplicationTransferUpdate(newXfer)
-	if err != nil {
-		t.Errorf("ReplicationTransferUpdate returned error %v", err)
-		return
-	}
-	if updatedXfer == nil {
-		t.Errorf("ReplicationTransferUpdate did not return an object")
-		return
-	}
-
-	// ... make sure status is correct
-	if updatedXfer.Status != "received" {
-		t.Errorf("Status is %s; expected received", updatedXfer.Status)
-	}
-
-
-	// Mark as confirmed and send a bad fixity value.
-	// The server should cancel this transfer.
-	// At this point, we're testing the server's behavior,
-	// not the behavior of our own code. This kind of test
-	// belongs in the Rails spec.
-	newXfer.Status = "confirmed"
-	newXfer.UpdatedAt = newXfer.UpdatedAt.Add(1 * time.Second)
-
-	updatedXfer, err = client.ReplicationTransferUpdate(newXfer)
 	if err != nil {
 		t.Errorf("ReplicationTransferUpdate returned error %v", err)
 		return
@@ -839,25 +792,12 @@ func TestReplicationTransferUpdate(t *testing.T) {
 		}
 		t.Errorf("FixityValue was %s; expected 1234567890", val)
 	}
-	if updatedXfer.FixityAccept == nil || *updatedXfer.FixityAccept != false {
-		value := "nil"
-		if updatedXfer.FixityAccept != nil {
-			value = strconv.FormatBool(*updatedXfer.FixityAccept)
-		}
-		t.Errorf("FixityAccept is %s; expected false", value)
+	// We sent bad fixity. Should be Cancelled with store not requested
+	if updatedXfer.Cancelled == false {
+		t.Errorf("Cancelled is true, should be false")
 	}
-	if updatedXfer.FixityAccept == nil || *updatedXfer.BagValid != true {
-		value := "nil"
-		if updatedXfer.BagValid != nil {
-			value = strconv.FormatBool(*updatedXfer.BagValid)
-		}
-		t.Errorf("BagValid is %s; expected true", value)
-	}
-	// Note: Status will be cancelled instead of received because
-	// we sent a bogus checksum, and that causes the server to cancel
-	// the transfer.
-	if updatedXfer.Status != "cancelled" {
-		t.Errorf("Status is %s; expected cancelled", updatedXfer.Status)
+	if updatedXfer.StoreRequested {
+		t.Errorf("StoreRequested is true, should be false")
 	}
 	if updatedXfer.UpdatedAt.After(newXfer.UpdatedAt) == false {
 		t.Errorf("UpdatedAt was not updated")
@@ -880,15 +820,12 @@ func TestRestoreTransferGet(t *testing.T) {
 	if xfer.ToNode != "aptrust" {
 		t.Errorf("ToNode: expected 'aptrust', got '%s'", xfer.ToNode)
 	}
-	if xfer.BagId != aptrustBagIdentifier {
+	if xfer.Bag != aptrustBagIdentifier {
 		t.Errorf("UUID: expected '%s', got '%s'",
-			aptrustBagIdentifier, xfer.BagId)
+			aptrustBagIdentifier, xfer.Bag)
 	}
 	if xfer.RestoreId != restoreIdentifier {
 		t.Errorf("RestoreId: expected '%s', got '%s'", restoreIdentifier, xfer.RestoreId)
-	}
-	if xfer.Status != "requested" {
-		t.Errorf("Status: expected 'requested', got '%s'", xfer.Status)
 	}
 	if xfer.Protocol != "rsync" {
 		t.Errorf("Protocol: expected 'R', got '%s'", xfer.Protocol)
@@ -1012,14 +949,11 @@ func TestRestoreTransferCreate(t *testing.T) {
 	if newXfer.ToNode != xfer.ToNode {
 		t.Errorf("ToNode is %s; expected %s", newXfer.ToNode, xfer.ToNode)
 	}
-	if newXfer.BagId != xfer.BagId {
-		t.Errorf("UUID is %s; expected %s", newXfer.BagId, xfer.BagId)
+	if newXfer.Bag != xfer.Bag {
+		t.Errorf("UUID is %s; expected %s", newXfer.Bag, xfer.Bag)
 	}
 	if newXfer.RestoreId == "" {
 		t.Errorf("RestoreId is missing")
-	}
-	if newXfer.Status != "requested" {
-		t.Errorf("Status is %s; expected requested", newXfer.Status)
 	}
 	if newXfer.Protocol != xfer.Protocol {
 		t.Errorf("Protocol is %s; expected %s", newXfer.Protocol, xfer.Protocol)
