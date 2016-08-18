@@ -131,6 +131,14 @@ func (recorder *Recorder) HandleMessage(message *nsq.Message) error {
 			message.Requeue(1 * time.Minute)
 			return fmt.Errorf(errMessage)
 		}
+		if processedItem.Status == bagman.StatusSuccess {
+			// Item was already recorded
+			info := fmt.Sprintf("Bag %s has already been recorded",
+				processedItem.ObjectIdentifier)
+			recorder.ProcUtil.MessageLog.Info(info)
+			message.Finish()
+			return nil
+		}
 		result.processStatus = processedItem
 		result.processStatus.SetNodePidState(result, recorder.ProcUtil.MessageLog)
 		err = recorder.ProcUtil.FluctusClient.UpdateProcessedItem(result.processStatus)
