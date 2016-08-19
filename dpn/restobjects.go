@@ -192,7 +192,7 @@ type DPNReplicationTransfer struct {
 	ToNode          string       `json:"to_node"`
 
 	// Bag is the UUID of the bag to be replicated
-	Bag             string       `json:"uuid"`
+	Bag             string       `json:"bag"`
 
 	// ReplicationId is a unique id for this replication request.
 	// It's a UUID in string format.
@@ -253,7 +253,7 @@ type DPNRestoreTransfer struct {
 	ToNode          string       `json:"to_node"`
 
 	// Bag is the unique identifier of the bag to be restored.
-	Bag             string       `json:"uuid"`
+	Bag             string       `json:"bag"`
 
 	// Indicates whether the FromNode accepted the restore request.
 	Accepted        bool         `json:"accepted"`
