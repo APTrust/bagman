@@ -248,7 +248,13 @@ func (recorder *Recorder) postProcess() {
 					recorder.ProcUtil.MessageLog.Error(result.ErrorMessage)
 				}
 			}
-
+			// Make sure to tell the queue we're done with this,
+			// or it sits in the in-flight state forever.
+			if result.NsqMessage == nil {
+				recorder.WaitGroup.Done()
+			} else {
+				result.NsqMessage.Finish()
+			}
 			continue
 		} else {
 			// Nothing went wrong. Fluctus knows from updateFluctusStatus.
