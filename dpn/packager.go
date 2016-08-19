@@ -108,24 +108,6 @@ func (packager *Packager) HandleMessage(message *nsq.Message) error {
 			message.Requeue(1 * time.Minute)
 			return fmt.Errorf(errMessage)
 		}
-
-		itemIsInCorrectState := (processedItem.Action == bagman.ActionDPN &&
-			processedItem.Stage == bagman.StageRequested &&
-			processedItem.Status == bagman.StatusPending &&
-			processedItem.Retry == true)
-		if !itemIsInCorrectState {
-			// Item has already been packaged, or is in process
-			// by another worker.
-			info := fmt.Sprintf("Bag %s has already been packaged " +
-				"or retry is false. See ProcessedItem #%d",
-				processedItem.ObjectIdentifier,
-				processedItem.Id)
-			packager.ProcUtil.MessageLog.Info(info)
-			message.Finish()
-			return nil
-		}
-
-
 		result.processStatus = processedItem
 		result.processStatus.Status = bagman.StatusStarted
 		result.processStatus.SetNodePidState(result, packager.ProcUtil.MessageLog)
