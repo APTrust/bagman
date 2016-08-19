@@ -126,7 +126,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 		genericSlice := make([]interface{}, len(xferList.Results))
 		for i := range xferList.Results {
 			xfer := xferList.Results[i]
-			bag, err := client.DPNBagGet(xfer.BagId)
+			bag, err := client.DPNBagGet(xfer.Bag)
 			if err != nil {
 				return err
 			}
@@ -141,7 +141,7 @@ func queueReplicationRequests(client *dpn.DPNRestClient, procUtil *bagman.Proces
 			return err
 		}
 		for _, xfer := range xferList.Results {
-			message := fmt.Sprintf("Queued %s - %s", xfer.ReplicationId, xfer.BagId)
+			message := fmt.Sprintf("Queued %s - %s", xfer.ReplicationId, xfer.Bag)
 			procUtil.MessageLog.Info(message)
 			if xfer.UpdatedAt.After(lastCheck) {
 				lastCheck = xfer.UpdatedAt

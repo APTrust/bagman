@@ -172,14 +172,22 @@ func (testUtil *TestUtil) CreateBag(bagUuid, node string) (*dpn.DPNBag, error) {
 		Interpretive: make([]string, 0),
 		ReplicatingNodes: make([]string, 0),
 		Member: FaberCollege,
-		Fixities: &dpn.DPNFixity{
-			Sha256: testBagDigest,
-		},
 		CreatedAt: utcNow,
 		UpdatedAt: utcNow,
 	}
 	// You have to be node admin to create a bag, so use the admin client.
-	return testUtil.RemoteAdminClients[node].DPNBagCreate(bag)
+	savedBag, err := testUtil.RemoteAdminClients[node].DPNBagCreate(bag)
+	if err == nil {
+		digest := &dpn.DPNMessageDigest{
+			Value: testBagDigest,
+			Algorithm: "sha256",
+			Bag: bagUuid,
+			Node: node,
+			CreatedAt: utcNow,
+		}
+		_, err = testUtil.RemoteAdminClients[node].MessageDigestCreate(digest)
+	}
+	return savedBag, err
 }
 
 func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath string) (*dpn.DPNReplicationTransfer, error) {
@@ -187,10 +195,13 @@ func (testUtil *TestUtil) CreateReplicationRequest(bag *dpn.DPNBag, linkPath str
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: bag.AdminNode,
 		ToNode: testUtil.DPNConfig.LocalNode,
-		BagId: bag.UUID,
+		Bag: bag.UUID,
 		ReplicationId: strings.Replace(bag.UUID, "4000", "4444", 1),
 		FixityAlgorithm: "sha256",
-		Status: "requested",
+		StoreRequested: false,
+		Stored: false,
+		Cancelled: false,
+		CancelReason: nil,
 		Protocol: "rsync",
 		Link: linkPath,
 		CreatedAt: utcNow,

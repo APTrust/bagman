@@ -127,11 +127,14 @@ func createXferRequest(client *dpn.DPNRestClient, uuid, checksum string) (*dpn.D
 	xfer := &dpn.DPNReplicationTransfer{
 		FromNode: "aptrust",
 		ToNode: "aptrust",
-		BagId: uuid,
+		Bag: uuid,
 		FixityAlgorithm: "sha256",
 		FixityNonce: &nonce,
 		FixityValue: &checksum,
-		Status: "Requested",
+		StoreRequested: false,
+		Stored: false,
+		Cancelled: false,
+		CancelReason: nil,
 		Protocol: "R",
 		Link: "rsync://our/sink.tar",
 	}
