@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sync"
 	"time"
 )
@@ -320,12 +319,8 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 //
 func GetRsyncCommand(copyFrom, copyTo string, useSSH bool) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
-	specialOpt := "--append-verify"
-	if runtime.GOOS == "darwin" {
-		specialOpt = "--inplace"
-	}
 	if useSSH {
-		return exec.Command("rsync", "-avzW", "-e",  "ssh", copyFrom, copyTo, specialOpt)
+		return exec.Command("rsync", "-avzW", "-e",  "ssh", copyFrom, copyTo, "--inplace")
 	}
-	return exec.Command("rsync", "-avzW", specialOpt, copyFrom, copyTo)
+	return exec.Command("rsync", "-avzW", "--inplace", copyFrom, copyTo)
 }
