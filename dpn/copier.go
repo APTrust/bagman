@@ -319,8 +319,12 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 //
 func GetRsyncCommand(copyFrom, copyTo string, useSSH bool) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
-	if useSSH {
-		return exec.Command("rsync", "-avzW", "-e",  "ssh", copyFrom, copyTo)
+	specialOpt := "--append-verify"
+	if runtime.GOOS == "darwin" {
+		specialOpt = "--inplace"
 	}
-	return exec.Command("rsync", "-avzW", copyFrom, copyTo)
+	if useSSH {
+		return exec.Command("rsync", "-avzW", "-e",  "ssh", copyFrom, copyTo, specialOpt)
+	}
+	return exec.Command("rsync", "-avzW", specialOpt, copyFrom, copyTo)
 }
