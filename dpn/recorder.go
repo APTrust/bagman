@@ -152,6 +152,14 @@ func (recorder *Recorder) HandleMessage(message *nsq.Message) error {
 			message.Requeue(1 * time.Minute)
 			return fmt.Errorf(errMessage)
 		}
+		if processedItem.Status == bagman.StatusSuccess {
+			// Item was already recorded
+			info := fmt.Sprintf("Bag %s has already been recorded",
+				processedItem.ObjectIdentifier)
+			recorder.ProcUtil.MessageLog.Info(info)
+			message.Finish()
+			return nil
+		}
 		result.processStatus = processedItem
 		result.processStatus.SetNodePidState(result, recorder.ProcUtil.MessageLog)
 		err = recorder.ProcUtil.FluctusClient.UpdateProcessedItem(result.processStatus)
@@ -263,7 +271,13 @@ func (recorder *Recorder) postProcess() {
 					recorder.ProcUtil.MessageLog.Error(result.ErrorMessage)
 				}
 			}
-
+			// Make sure to tell the queue we're done with this,
+			// or it sits in the in-flight state forever.
+			if result.NsqMessage == nil {
+				recorder.WaitGroup.Done()
+			} else {
+				result.NsqMessage.Finish()
+			}
 			continue
 		} else {
 			// Nothing went wrong. Fluctus knows from updateFluctusStatus.

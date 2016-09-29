@@ -565,10 +565,10 @@ func (packager *Packager) cleanup(result *DPNResult) {
 	bagDir := result.PackageResult.BagBuilder.LocalPath
 	if (!strings.HasPrefix(bagDir, stagingDir) ||
 		(strings.HasPrefix(stagingDir, "/") && len(stagingDir) < 5)) {
-	 	packager.ProcUtil.MessageLog.Error("Skipping clean-up because bagDir '%s' looks suspicious", bagDir)
+		packager.ProcUtil.MessageLog.Error("Skipping clean-up because bagDir '%s' looks suspicious", bagDir)
 		packager.ProcUtil.MessageLog.Error("bagDir should start with '%s', and '%s' should not be == '/'",
 			stagingDir, stagingDir)
-	 	return
+		return
 	}
 	err := os.RemoveAll(bagDir)
 	if err != nil {

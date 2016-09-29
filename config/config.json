@@ -1180,24 +1180,24 @@
             "NsqTopic": "dpn_validation_topic",
             "NsqChannel": "dpn_validation_channel",
             "MaxAttempts": 3,
-            "MaxInFlight": 20,
+            "MaxInFlight": 1,
             "HeartbeatInterval": "10s",
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
-            "MessageTimeout": "180m"
+            "MessageTimeout": "300m"
         },
 
         "DPNCopyWorker": {
             "NetworkConnections": 8,
-            "Workers": 4,
+            "Workers": 1,
             "NsqTopic": "dpn_copy_topic",
             "NsqChannel": "dpn_copy_channel",
             "MaxAttempts": 3,
-            "MaxInFlight": 20,
+            "MaxInFlight": 1,
             "HeartbeatInterval": "10s",
             "ReadTimeout": "60s",
             "WriteTimeout": "10s",
-            "MessageTimeout": "180m"
+            "MessageTimeout": "300m"
         },
 
         "DPNStoreWorker": {

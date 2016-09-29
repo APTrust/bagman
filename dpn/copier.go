@@ -71,7 +71,7 @@ func NewCopier(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Copier, err
 		LocalClient: localClient,
 		RemoteClients: remoteClients,
 	}
-	workerBufferSize := procUtil.Config.DPNPackageWorker.Workers * 4
+	workerBufferSize := procUtil.Config.DPNCopyWorker.Workers * 4
 	copier.LookupChannel = make(chan *DPNResult, workerBufferSize)
 	copier.CopyChannel = make(chan *DPNResult, workerBufferSize)
 	copier.PostProcessChannel = make(chan *DPNResult, workerBufferSize)
@@ -323,7 +323,7 @@ func (copier *Copier) RunTest(dpnResult *DPNResult) {
 func GetRsyncCommand(copyFrom, copyTo string, useSSH bool) (*exec.Cmd) {
 //	rsync -avz -e ssh remoteuser@remotehost:/remote/dir /this/dir/
 	if useSSH {
-		return exec.Command("rsync", "-avzW", "-e",  "ssh", copyFrom, copyTo)
+		return exec.Command("rsync", "-avzW", "-e",  "ssh", copyFrom, copyTo, "--inplace")
 	}
-	return exec.Command("rsync", "-avzW", copyFrom, copyTo)
+	return exec.Command("rsync", "-avzW", "--inplace", copyFrom, copyTo)
 }
