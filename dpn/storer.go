@@ -88,7 +88,7 @@ func (storer *Storer) HandleMessage(message *nsq.Message) error {
 	return nil
 }
 
-// TODO for 2.0: Don't store if StoreRequested == false
+
 func (storer *Storer) store() {
 	for result := range storer.StorageChannel {
 		if result.NsqMessage != nil {
