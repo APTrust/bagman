@@ -71,7 +71,7 @@ func NewCopier(procUtil *bagman.ProcessUtil, dpnConfig *DPNConfig) (*Copier, err
 		LocalClient: localClient,
 		RemoteClients: remoteClients,
 	}
-	workerBufferSize := procUtil.Config.DPNPackageWorker.Workers * 4
+	workerBufferSize := procUtil.Config.DPNCopyWorker.Workers * 4
 	copier.LookupChannel = make(chan *DPNResult, workerBufferSize)
 	copier.CopyChannel = make(chan *DPNResult, workerBufferSize)
 	copier.PostProcessChannel = make(chan *DPNResult, workerBufferSize)
